@@ -1,0 +1,101 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2
+					],
+					"jsonFile" : "directory-.-Release-d0094a50bb2071803777.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22.0"
+					},
+					"projectIndex" : 0,
+					"source" : "."
+				},
+				{
+					"build" : "Relentless",
+					"jsonFile" : "directory-Relentless-Release-b54a0026649e151ee4b0.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "Relentless",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "Relentless-Editor",
+					"jsonFile" : "directory-Relentless-Editor-Release-3206b8ed848ed1db6f84.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "Relentless-Editor",
+					"targetIndexes" : 
+					[
+						1
+					]
+				}
+			],
+			"name" : "Release",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2
+					],
+					"name" : "Relentless",
+					"targetIndexes" : 
+					[
+						0,
+						1
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 1,
+					"id" : "Relentless::@f0592470b6781bb259b8",
+					"jsonFile" : "target-Relentless-Release-f0f8f6bd3b4b83056c03.json",
+					"name" : "Relentless",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "Relentless-Editor::@009c1b353b6918cb0a2a",
+					"jsonFile" : "target-Relentless-Editor-Release-30cab64f113ddac973dc.json",
+					"name" : "Relentless-Editor",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/emilf/Desktop/Relentless/out/build/x64-Release",
+		"source" : "C:/Users/emilf/Desktop/Relentless"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}
