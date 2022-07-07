@@ -4,3 +4,5 @@
 #define NOMINMAX
 #include <Windows.h>
 #include <memory>
+#include <string>
+#include <sstream>
