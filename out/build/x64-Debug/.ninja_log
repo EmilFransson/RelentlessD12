@@ -1,9 +1,0 @@
-# ninja log v5
-1	871	6789126222306867	Relentless/CMakeFiles/Relentless.dir/cmake_pch.cxx.obj	1698232de1593f11
-1037	1089	6789102751288481	C:/Users/emilf/Desktop/Relentless/out/build/x64-Debug/Relentless-Editor/Relentless-Editor.dir/Relentless.pdb	16812abd447e0c36
-975	1103	6789126224418795	Relentless-Editor/Relentless-Editor.exe	778b626e56131953
-930	975	6789126223358791	Relentless-Editor/CMakeFiles/Relentless-Editor.dir/src/RelentlessEditorApp.cpp.obj	db5456c2a3d2dbd
-872	902	6789126222626875	Relentless/CMakeFiles/Relentless.dir/src/Relentless/Application.cpp.obj	9c06ace6e6116f5e
-1	169	6789105913228225	Relentless-Editor/CMakeFiles/Relentless-Editor.dir/src/main.cpp.obj	f5c596548e63302c
-904	930	6789126222888810	Relentless/Relentless-static-debug.lib	d0f7e3ac6f3fe404
-1037	1089	6789102751288481	Relentless-Editor/Relentless-Editor.dir/Relentless.pdb	16812abd447e0c36
