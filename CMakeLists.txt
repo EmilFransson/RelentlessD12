@@ -1,4 +1,5 @@
 #Top/Root/Relentless
+include(FetchContent)
 cmake_minimum_required(VERSION "3.22.0")
 
 if(${CMAKE_VERSION} VERSION_LESS "3.22.0")
@@ -9,9 +10,12 @@ if (NOT WIN32)
 	message(FATAL_ERROR "Fatal error: Relentless currently only supports Windows platform. Exiting...")
 endif()
 
-#if (NOT CMAKE_GENERATOR MATCHES "Visual Studio")
-#	message(FATAL_ERROR "Fatal error: Relentless currently only supports Visual Studio as generator. Exiting...")
-#endif()
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog
+    GIT_TAG v1.10.0
+)
+FetchContent_MakeAvailable(spdlog)
 
 project("Relentless")
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

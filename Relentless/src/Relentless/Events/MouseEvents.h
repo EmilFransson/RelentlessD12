@@ -5,10 +5,10 @@ namespace Relentless
 	class MouseMoveEvent : public IEvent
 	{
 	public:
-		MouseMoveEvent(const unsigned int& xCoordinate, const unsigned int& yCoordinate) noexcept
+		MouseMoveEvent(const uint32_t xCoordinate, const uint32_t yCoordinate) noexcept
 			: m_XCoordinate{ xCoordinate }, m_YCoordinate{ yCoordinate }
 		{}
-		virtual ~MouseMoveEvent() noexcept = default;
+		virtual ~MouseMoveEvent() noexcept override final = default;
 		[[nodiscard]] virtual constexpr EventType GetEventType() const noexcept override final
 		{
 			return EventType::MouseMoveEvent;
@@ -27,17 +27,17 @@ namespace Relentless
 			ss << GetDebugName() << ": (x,y) = (" << std::to_string(m_XCoordinate) << "," << std::to_string(m_YCoordinate) << ")";
 			return ss.str();
 		}
-		[[nodiscard]] constexpr unsigned int GetXCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetXCoordinate() const noexcept
 		{
 			return m_XCoordinate;
 		}
-		[[nodiscard]] constexpr unsigned int GetYCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetYCoordinate() const noexcept
 		{
 			return m_YCoordinate;
 		}
 	private:
-		unsigned int m_XCoordinate;
-		unsigned int m_YCoordinate;
+		uint32_t m_XCoordinate;
+		uint32_t m_YCoordinate;
 	};
 
 	class RawMouseMoveEvent : public IEvent
@@ -46,7 +46,7 @@ namespace Relentless
 		RawMouseMoveEvent(const int dx, const int dy) noexcept
 			: m_DX{ dx }, m_DY{ dy }
 		{}
-		virtual ~RawMouseMoveEvent() noexcept = default;
+		virtual ~RawMouseMoveEvent() noexcept override final = default;
 		[[nodiscard]] virtual constexpr EventType GetEventType() const noexcept override final
 		{
 			return EventType::RawMouseMoveEvent;
@@ -81,10 +81,10 @@ namespace Relentless
 	class LeftMouseButtonPressedEvent : public IEvent
 	{
 	public:
-		LeftMouseButtonPressedEvent(const unsigned int& xCoordinate, const unsigned int& yCoordinate) noexcept
+		LeftMouseButtonPressedEvent(const uint32_t xCoordinate, const uint32_t yCoordinate) noexcept
 			: m_XCoordinate{ xCoordinate }, m_YCoordinate{ yCoordinate }
 		{}
-		virtual ~LeftMouseButtonPressedEvent() noexcept = default;
+		virtual ~LeftMouseButtonPressedEvent() noexcept override final = default;
 		[[nodiscard]] virtual constexpr EventType GetEventType() const noexcept override final
 		{
 			return EventType::LeftMouseButtonPressedEvent;
@@ -103,26 +103,26 @@ namespace Relentless
 			ss << GetDebugName() << ": (x,y) = (" << std::to_string(m_XCoordinate) << "," << std::to_string(m_YCoordinate) << ")";
 			return ss.str();
 		}
-		[[nodiscard]] constexpr unsigned int GetXCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetXCoordinate() const noexcept
 		{
 			return m_XCoordinate;
 		}
-		[[nodiscard]] constexpr unsigned int GetYCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetYCoordinate() const noexcept
 		{
 			return m_YCoordinate;
 		}
 	private:
-		unsigned int m_XCoordinate;
-		unsigned int m_YCoordinate;
+		uint32_t m_XCoordinate;
+		uint32_t m_YCoordinate;
 	};
 
 	class LeftMouseButtonReleasedEvent : public IEvent
 	{
 	public:
-		LeftMouseButtonReleasedEvent(const unsigned int& xCoordinate, const unsigned int& yCoordinate) noexcept
+		LeftMouseButtonReleasedEvent(const uint32_t xCoordinate, const uint32_t yCoordinate) noexcept
 			: m_XCoordinate{ xCoordinate }, m_YCoordinate{ yCoordinate }
 		{}
-		virtual ~LeftMouseButtonReleasedEvent() noexcept = default;
+		virtual ~LeftMouseButtonReleasedEvent() noexcept override final = default;
 		[[nodiscard]] virtual constexpr EventType GetEventType() const noexcept override final
 		{
 			return EventType::LeftMouseButtonReleasedEvent;
@@ -141,26 +141,26 @@ namespace Relentless
 			ss << GetDebugName() << ": (x,y) = (" << std::to_string(m_XCoordinate) << "," << std::to_string(m_YCoordinate) << ")";
 			return ss.str();
 		}
-		[[nodiscard]] constexpr unsigned int GetXCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetXCoordinate() const noexcept
 		{
 			return m_XCoordinate;
 		}
-		[[nodiscard]] constexpr unsigned int GetYCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetYCoordinate() const noexcept
 		{
 			return m_YCoordinate;
 		}
 	private:
-		unsigned int m_XCoordinate;
-		unsigned int m_YCoordinate;
+		uint32_t m_XCoordinate;
+		uint32_t m_YCoordinate;
 	};
 
 	class RightMouseButtonPressedEvent : public IEvent
 	{
 	public:
-		RightMouseButtonPressedEvent(const unsigned int& xCoordinate, const unsigned int& yCoordinate) noexcept
+		RightMouseButtonPressedEvent(const uint32_t xCoordinate, const uint32_t yCoordinate) noexcept
 			: m_XCoordinate{ xCoordinate }, m_YCoordinate{ yCoordinate }
 		{}
-		virtual ~RightMouseButtonPressedEvent() noexcept = default;
+		virtual ~RightMouseButtonPressedEvent() noexcept override final = default;
 		[[nodiscard]] virtual constexpr EventType GetEventType() const noexcept override final
 		{
 			return EventType::RightMouseButtonPressedEvent;
@@ -179,26 +179,26 @@ namespace Relentless
 			ss << GetDebugName() << ": (x,y) = (" << std::to_string(m_XCoordinate) << "," << std::to_string(m_YCoordinate) << ")";
 			return ss.str();
 		}
-		[[nodiscard]] constexpr unsigned int GetXCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetXCoordinate() const noexcept
 		{
 			return m_XCoordinate;
 		}
-		[[nodiscard]] constexpr unsigned int GetYCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetYCoordinate() const noexcept
 		{
 			return m_YCoordinate;
 		}
 	private:
-		unsigned int m_XCoordinate;
-		unsigned int m_YCoordinate;
+		uint32_t m_XCoordinate;
+		uint32_t m_YCoordinate;
 	};
 
 	class RightMouseButtonReleasedEvent : public IEvent
 	{
 	public:
-		RightMouseButtonReleasedEvent(const unsigned int& xCoordinate, const unsigned int& yCoordinate) noexcept
+		RightMouseButtonReleasedEvent(const uint32_t xCoordinate, const uint32_t yCoordinate) noexcept
 			: m_XCoordinate{ xCoordinate }, m_YCoordinate{ yCoordinate }
 		{}
-		virtual ~RightMouseButtonReleasedEvent() noexcept = default;
+		virtual ~RightMouseButtonReleasedEvent() noexcept override final = default;
 		[[nodiscard]] virtual constexpr EventType GetEventType() const noexcept override final
 		{
 			return EventType::RightMouseButtonReleasedEvent;
@@ -217,26 +217,26 @@ namespace Relentless
 			ss << GetDebugName() << ": (x,y) = (" << std::to_string(m_XCoordinate) << "," << std::to_string(m_YCoordinate) << ")";
 			return ss.str();
 		}
-		[[nodiscard]] constexpr unsigned int GetXCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetXCoordinate() const noexcept
 		{
 			return m_XCoordinate;
 		}
-		[[nodiscard]] constexpr unsigned int GetYCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetYCoordinate() const noexcept
 		{
 			return m_YCoordinate;
 		}
 	private:
-		unsigned int m_XCoordinate;
-		unsigned int m_YCoordinate;
+		uint32_t m_XCoordinate;
+		uint32_t m_YCoordinate;
 	};
 
 	class MouseWheelPressedEvent : public IEvent
 	{
 	public:
-		MouseWheelPressedEvent(const unsigned int& xCoordinate, const unsigned int& yCoordinate) noexcept
+		MouseWheelPressedEvent(const uint32_t xCoordinate, const uint32_t yCoordinate) noexcept
 			: m_XCoordinate{ xCoordinate }, m_YCoordinate{ yCoordinate }
 		{}
-		virtual ~MouseWheelPressedEvent() noexcept = default;
+		virtual ~MouseWheelPressedEvent() noexcept override final = default;
 		[[nodiscard]] virtual constexpr EventType GetEventType() const noexcept override final
 		{
 			return EventType::MouseWheelPressedEvent;
@@ -255,26 +255,26 @@ namespace Relentless
 			ss << GetDebugName() << ": (x,y) = (" << std::to_string(m_XCoordinate) << "," << std::to_string(m_YCoordinate) << ")";
 			return ss.str();
 		}
-		[[nodiscard]] constexpr unsigned int GetXCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetXCoordinate() const noexcept
 		{
 			return m_XCoordinate;
 		}
-		[[nodiscard]] constexpr unsigned int GetYCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetYCoordinate() const noexcept
 		{
 			return m_YCoordinate;
 		}
 	private:
-		unsigned int m_XCoordinate;
-		unsigned int m_YCoordinate;
+		uint32_t m_XCoordinate;
+		uint32_t m_YCoordinate;
 	};
 
 	class MouseWheelReleasedEvent : public IEvent
 	{
 	public:
-		MouseWheelReleasedEvent(const unsigned int& xCoordinate, const unsigned int& yCoordinate) noexcept
+		MouseWheelReleasedEvent(const uint32_t xCoordinate, const uint32_t yCoordinate) noexcept
 			: m_XCoordinate{ xCoordinate }, m_YCoordinate{ yCoordinate }
 		{}
-		virtual ~MouseWheelReleasedEvent() noexcept = default;
+		virtual ~MouseWheelReleasedEvent() noexcept override final = default;
 		[[nodiscard]] virtual constexpr EventType GetEventType() const noexcept override final
 		{
 			return EventType::MouseWheelReleasedEvent;
@@ -293,17 +293,17 @@ namespace Relentless
 			ss << GetDebugName() << ": (x,y) = (" << std::to_string(m_XCoordinate) << "," << std::to_string(m_YCoordinate) << ")";
 			return ss.str();
 		}
-		[[nodiscard]] constexpr unsigned int GetXCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetXCoordinate() const noexcept
 		{
 			return m_XCoordinate;
 		}
-		[[nodiscard]] constexpr unsigned int GetYCoordinate() const noexcept
+		[[nodiscard]] constexpr uint32_t GetYCoordinate() const noexcept
 		{
 			return m_YCoordinate;
 		}
 	private:
-		unsigned int m_XCoordinate;
-		unsigned int m_YCoordinate;
+		uint32_t m_XCoordinate;
+		uint32_t m_YCoordinate;
 	};
 
 	enum class RLS_WHEEL { Up = 0, Down };
@@ -313,7 +313,7 @@ namespace Relentless
 		MouseWheelScrolledEvent(const RLS_WHEEL direction) noexcept
 			: m_Direction{ direction }
 		{}
-		virtual ~MouseWheelScrolledEvent() noexcept = default;
+		virtual ~MouseWheelScrolledEvent() noexcept override final = default;
 		[[nodiscard]] virtual constexpr EventType GetEventType() const noexcept override final
 		{
 			return EventType::MouseWheelScrolledEvent;
