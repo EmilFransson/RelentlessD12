@@ -17,6 +17,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(spdlog)
 
+#FetchContent_Declare(
+#    imgui
+#    GIT_REPOSITORY https://github.com/ocornut/imgui
+#    GIT_TAG docking
+#)
+#FetchContent_MakeAvailable(imgui)
+
 project("Relentless")
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CXX_STANDARD 20)

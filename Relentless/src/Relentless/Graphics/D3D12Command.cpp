@@ -36,6 +36,7 @@ namespace Relentless
 		}
 
 		DXCall(D3D12Core::GetDevice()->CreateCommandList(0u, m_CommandType, m_CommandAllocators[0].Get(), nullptr, IID_PPV_ARGS(&m_pCommandList)));
+		DXCall(m_pCommandList->Close());
 		NAME_D12_OBJECT(m_pCommandList, L"Main Command List");
 	}
 }

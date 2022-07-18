@@ -2,8 +2,7 @@
 #include "Utility.h"
 #include "Input\Mouse.h"
 #include "Input\Keyboard.h"
-//#include "Renderer\Graphics.h"
-//#include "DXDebug.h"
+#include "Graphics/D3D12Core.h"
 //#include "imgui.h"
 
 //extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -22,6 +21,10 @@ namespace Relentless
 	bool Window::m_CursorVisible = false;
 	uint32_t Window::m_MouseX = 0u;
 	uint32_t Window::m_MouseY = 0u;
+	Microsoft::WRL::ComPtr<IDXGISwapChain4> Window::m_pSwapChain{ nullptr };
+	std::unique_ptr<DescriptorHeap> Window::m_pBackBufferRTVHeap{ nullptr };
+	uint8_t Window::m_NrOfBackBuffers{ 2u };
+	std::vector<BackBuffer> Window::m_BackBuffers;
 
 	const Window& Window::Get() noexcept
 	{
@@ -67,23 +70,26 @@ namespace Relentless
 				/ (float)::GetSystemMetrics(SM_CYSCREEN)) / 2)));
 		//[https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-createwindowexa]
 		m_WindowHandle = CreateWindowEx(0,										//Extended window styles (bits).
-			m_ClassName.c_str(),					//The window class name.
-			windowTitle.c_str(),					//The window title.
-			WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_SIZEBOX,	//The window styles defining the window appearance.
-			windowStartPositionX,					//Start x-position for window.
-			windowStartPositionY,					//Start y-position for window.
-			windowRect.right - windowRect.left,		//Width of window.
-			windowRect.bottom - windowRect.top,		//Height of window.
-			nullptr,								//Handle to window parent.								
-			nullptr,								//Handle to menu.
-			::GetModuleHandle(nullptr),				//Handle to the instance that contains the window procedure for class. 
-			nullptr);									//Pointer to value passed to the window through CREATESTRUCT structure.
+			m_ClassName.c_str(),												//The window class name.
+			windowTitle.c_str(),												//The window title.
+			WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_SIZEBOX,				//The window styles defining the window appearance.
+			windowStartPositionX,												//Start x-position for window.
+			windowStartPositionY,												//Start y-position for window.
+			windowRect.right - windowRect.left,									//Width of window.
+			windowRect.bottom - windowRect.top,									//Height of window.
+			nullptr,															//Handle to window parent.								
+			nullptr,															//Handle to menu.
+			::GetModuleHandle(nullptr),											//Handle to the instance that contains the window procedure for class. 
+			nullptr);															//Pointer to value passed to the window through CREATESTRUCT structure.
 		RLS_ASSERT(m_WindowHandle != nullptr, "Failed to create window.");
 
 		m_Title = windowTitle;
 		m_Width = width;
 		m_Height = height;
 		RLS_CORE_INFO("Created Window: {0} ({1},{2})", m_Title, m_Width, m_Height);
+
+		m_pBackBufferRTVHeap = std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2u, false);
+		CreateSwapchain();
 
 		RAWINPUTDEVICE rawInputDevice;
 		rawInputDevice.usUsagePage = 0x01;
@@ -149,6 +155,11 @@ namespace Relentless
 	void Window::FreeMouseCursor() noexcept
 	{
 		ClipCursor(nullptr);
+	}
+
+	void Window::Present() noexcept
+	{
+		DXCall(m_pSwapChain->Present(0u, DXGI_PRESENT_ALLOW_TEARING));
 	}
 
 	LRESULT Window::HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
@@ -264,5 +275,52 @@ namespace Relentless
 		}
 		}
 		return DefWindowProc(hWnd, msg, wParam, lParam);
+	}
+
+	void Window::CreateSwapchain() noexcept
+	{
+		Microsoft::WRL::ComPtr<IDXGIFactory7> pFactory{ nullptr };
+#if defined(RLS_DEBUG)
+		DXCall(::CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&pFactory)));
+#else
+		::CreateDXGIFactory2(0u, IID_PPV_ARGS(&pFactory));
+#endif
+		DXGI_SWAP_CHAIN_DESC1 swapChainDescriptor{};
+		swapChainDescriptor.Width = m_Width;
+		swapChainDescriptor.Height = m_Height;
+		swapChainDescriptor.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		swapChainDescriptor.Stereo = false;
+		swapChainDescriptor.SampleDesc = { 1u, 0u };
+		swapChainDescriptor.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDescriptor.BufferCount = m_NrOfBackBuffers;
+		swapChainDescriptor.Scaling = DXGI_SCALING_STRETCH;
+		swapChainDescriptor.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		swapChainDescriptor.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+		swapChainDescriptor.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+		Microsoft::WRL::ComPtr<IDXGISwapChain1> pTempSwapChain{ nullptr };
+		DXCall(pFactory->CreateSwapChainForHwnd
+		(
+			D3D12Core::GetCommandQueue().Get(), 
+			m_WindowHandle, 
+			&swapChainDescriptor, 
+			nullptr, 
+			nullptr, 
+			&pTempSwapChain
+		));
+		DXCall(pTempSwapChain->QueryInterface(IID_PPV_ARGS(&m_pSwapChain)));
+
+		m_BackBuffers.reserve(m_NrOfBackBuffers);
+		for (uint32_t i{ 0u }; i < m_NrOfBackBuffers; ++i)
+		{
+			BackBuffer backBuffer{};
+
+			DXCall(m_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer.pBackBuffer)));
+			backBuffer.Handle = m_pBackBufferRTVHeap->AllocateDescriptor();
+			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(backBuffer.pBackBuffer.Get(), nullptr, backBuffer.Handle.CPUHandle));
+			
+			NAME_D12_OBJECT_INDEXED(backBuffer.pBackBuffer, L"Back buffer", i);
+			m_BackBuffers.emplace_back(std::move(backBuffer));
+		}
 	}
 }

@@ -3,7 +3,8 @@ namespace Relentless
 {
 	Microsoft::WRL::ComPtr<ID3D12Device10> D3D12Core::m_pDevice{ nullptr };
 	Microsoft::WRL::ComPtr<IDXGIFactory7> D3D12Core::m_pFactory{nullptr};
-	D3D12Command D3D12Core::m_DirectCommand{};
+	D3D12Command D3D12Core::m_DirectCommandInterface{};
+	uint8_t D3D12Core::m_NrOfBufferedFrames{ 2u };
 #if defined(RLS_DEBUG)
 	Microsoft::WRL::ComPtr<ID3D12InfoQueue> D3D12Core::m_pInfoQueue{nullptr};
 	Microsoft::WRL::ComPtr<ID3D12Debug6> D3D12Core::m_pDebugController{ nullptr };
@@ -19,7 +20,6 @@ namespace Relentless
 #else
 		::CreateDXGIFactory2(0u, IID_PPV_ARGS(&m_pFactory));
 #endif
-
 		//Enumerate adapters:
 		Microsoft::WRL::ComPtr<IDXGIAdapter4> pAdapter{ nullptr };
 		bool adapterFound{ false };
@@ -45,7 +45,8 @@ namespace Relentless
 #if defined(RLS_DEBUG)
 		D3D12Debug::Initialize();
 #endif
-		m_DirectCommand.Initialize(D3D12_COMMAND_LIST_TYPE_DIRECT, 2u);
+		m_DirectCommandInterface.Initialize(D3D12_COMMAND_LIST_TYPE_DIRECT, m_NrOfBufferedFrames);
+
 	}
 
 	void D3D12Core::CreateDebugAndValidationLayer() noexcept

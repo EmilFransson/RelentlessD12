@@ -1,8 +1,14 @@
 #pragma once
 #include "Events\EventPublisher.h"
 #include "Events\MouseEvents.h"
+#include "Graphics\DescriptorHeap.h"
 namespace Relentless
 {
+	struct BackBuffer
+	{
+		Microsoft::WRL::ComPtr<ID3D12Resource> pBackBuffer;
+		DescriptorHandle Handle;
+	};
 	class Window : public EventPublisher
 	{
 	public:
@@ -16,10 +22,14 @@ namespace Relentless
 		static void ShowMouseCursor() noexcept;
 		static void ConfineMouseCursor(float left, float right, float bottom, float top) noexcept;
 		static void FreeMouseCursor() noexcept;
+		static void Present() noexcept;
+		[[nodiscard]] static constexpr std::vector<BackBuffer>& GetBackBuffers() noexcept { return m_BackBuffers; }
+		[[nodiscard]] static uint32_t GetCurrentBackbufferIndex() noexcept { return m_pSwapChain->GetCurrentBackBufferIndex(); }
 	private:
 		Window() noexcept = default;
 		~Window() noexcept = default;
 		static LRESULT HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
+		static void CreateSwapchain() noexcept;
 #pragma region "Deleted Ctors"
 		Window(const Window& otherWindow) = delete;
 		Window& operator=(const Window& otherWindow) = delete;
@@ -40,5 +50,9 @@ namespace Relentless
 		static uint32_t m_MouseX;
 		static uint32_t m_MouseY;
 		static bool disabled;
+		static Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain;
+		static std::unique_ptr<DescriptorHeap> m_pBackBufferRTVHeap;
+		static uint8_t m_NrOfBackBuffers;
+		static std::vector<BackBuffer> m_BackBuffers;
 	};
 }

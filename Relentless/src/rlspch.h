@@ -8,6 +8,8 @@
 #include <string>
 #include <sstream>
 #include <stdint.h>
+#include <thread>
+#include <mutex>
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
@@ -21,6 +23,8 @@
 #include <comdef.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
+#include <DirectXMath.h>
+#include <DirectXColors.h>
 
 //Relentless-specific files:
 #include "Relentless/Log.h"

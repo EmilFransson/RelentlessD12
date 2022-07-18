@@ -18,7 +18,7 @@ namespace Relentless
 	class Mouse : public EventPublisher
 	{
 	public:
-		[[nodiscard]] static const Mouse& Get() noexcept;
+		static const Mouse& Get() noexcept;
 		[[nodiscard]] static bool IsButtonPressed(const RLS_MOUSE button) noexcept;
 		static void OnButtonPressed(const RLS_MOUSE button) noexcept;
 		static void OnButtonReleased(const RLS_MOUSE button) noexcept;

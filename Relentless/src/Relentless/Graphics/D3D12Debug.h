@@ -49,6 +49,32 @@ namespace Relentless
 		}
 	#endif //DXCall
 
+	#ifndef DXCall_STD
+		#define DXCall_STD(function2)	\
+		{	\
+			D3D12Debug::GetInfoQueue()->ClearStoredMessages();	\
+			(function2);	\
+			if (D3D12Debug::GetInfoQueue()->GetNumStoredMessages() > 0)	\
+			{	\
+				std::stringstream ss2;	\
+				ss2 << "Direct3D12 has encountered a critical error.\n";	\
+				ss2 << "File: " << __FILE__ << "\n";	\
+				ss2 << "Function: " << __FUNCTION__ << "\n";	\
+				ss2 << "Line: " << __LINE__ << "\n";	\
+				for (uint32_t messageIndex2{0u}; messageIndex2 < D3D12Debug::GetInfoQueue()->GetNumStoredMessages(); messageIndex2++)	\
+				{	\
+					SIZE_T messageLength2{0u};	\
+					D3D12Debug::GetInfoQueue()->GetMessage(messageIndex2, NULL, &messageLength2);	\
+					std::unique_ptr<D3D12_MESSAGE> pMessage2 = std::unique_ptr<D3D12_MESSAGE>(RLS_NEW D3D12_MESSAGE[messageLength2]);	\
+					D3D12Debug::GetInfoQueue()->GetMessage(messageIndex2, pMessage2.get(), &messageLength2);	\
+					ss2 << "D3D12 Message [" << std::to_string(messageIndex2 + 1) << "]: ";	\
+					ss2 << pMessage2->pDescription;	\
+				}	\
+				RLS_ASSERT(false, ss2.str());	\
+			}	\
+		}
+	#endif //DXCall_STD
+
 	#ifndef NAME_D12_OBJECT
 		#define NAME_D12_OBJECT(obj, name) DXCall(obj->SetName(name)); 
 	#endif //NAME_D12_OBJECT
@@ -63,6 +89,10 @@ namespace Relentless
 	#ifndef DXCall
 		#define DXCall(function) function
 	#endif //DXCall
+
+	#ifndef DXCall_STD
+		#define DXCall_STD(function) function
+	#endif //DXCall_STD
 
 	#ifndef NAME_D12_OBJECT
 		#define NAME_D12_OBJECT(obj, name) 
