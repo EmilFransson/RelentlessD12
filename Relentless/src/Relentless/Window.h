@@ -23,8 +23,10 @@ namespace Relentless
 		static void ConfineMouseCursor(float left, float right, float bottom, float top) noexcept;
 		static void FreeMouseCursor() noexcept;
 		static void Present() noexcept;
+		static void CreateSizeDependentResources() noexcept { CreateSwapchain(); }
 		[[nodiscard]] static constexpr std::vector<BackBuffer>& GetBackBuffers() noexcept { return m_BackBuffers; }
 		[[nodiscard]] static uint32_t GetCurrentBackbufferIndex() noexcept { return m_pSwapChain->GetCurrentBackBufferIndex(); }
+		[[nodiscard]] static BackBuffer& GetCurrentBackBuffer() noexcept { return GetBackBuffers()[GetCurrentBackbufferIndex()]; }
 	private:
 		Window() noexcept = default;
 		~Window() noexcept = default;
@@ -51,7 +53,6 @@ namespace Relentless
 		static uint32_t m_MouseY;
 		static bool disabled;
 		static Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain;
-		static std::unique_ptr<DescriptorHeap> m_pBackBufferRTVHeap;
 		static uint8_t m_NrOfBackBuffers;
 		static std::vector<BackBuffer> m_BackBuffers;
 	};

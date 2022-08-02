@@ -3,11 +3,13 @@ namespace Relentless
 {
 	class DescriptorHeap;
 
+	enum class DescriptorHandleType { RTV = 0u, DSV, SRV, CBV, UAV, SRV_NV, CBV_NV, UAV_NV }; //NV = Non shader visible
+
 	struct DescriptorHandle
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle;
 		D3D12_GPU_DESCRIPTOR_HANDLE GPUHandle;
-
+		DescriptorHandleType Type; //Set by memory manager!
 #if defined(RLS_DEBUG)
 		friend class DescriptorHeap;
 		DescriptorHeap* pDebugInterface;
@@ -27,6 +29,7 @@ namespace Relentless
 		[[nodiscard]] constexpr D3D12_GPU_DESCRIPTOR_HANDLE GetGPUStartHandle() noexcept { return m_GpuHandleStart; }
 	private:
 		[[nodiscard]] constexpr bool IsShaderVisible() noexcept { return m_GpuHandleStart.ptr != 0u; }
+		void SetDebugName() noexcept;
 	private:
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_pDescriptorHeap;
 		std::mutex m_Mutex;
@@ -37,6 +40,6 @@ namespace Relentless
 		uint32_t m_Capacity;
 		uint32_t m_CurrentNrOfDescriptors;
 		std::unique_ptr<uint32_t[]> m_FreeHandles;
-		std::vector<DescriptorHandle> m_DeferredFreeList;
+		std::vector<DescriptorHandle> m_FreeList;
 	};
 }

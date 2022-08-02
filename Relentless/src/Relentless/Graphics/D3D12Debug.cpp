@@ -6,7 +6,6 @@ namespace Relentless
 
 	void D3D12Debug::Initialize() noexcept
 	{
-		HRESULT hr = D3D12Core::GetDevice()->QueryInterface(IID_PPV_ARGS(&m_pInfoQueue));
-		RLS_ASSERT(SUCCEEDED(hr), "Failed to query Information Queue interface.");
+		RLS_ASSERT(D3D12Core::GetDevice()->QueryInterface(IID_PPV_ARGS(&m_pInfoQueue)) == S_OK, "Failed to query Information Queue interface.");
 	}
 }

@@ -2,10 +2,11 @@
 #include "Utility.h"
 #include "Input\Mouse.h"
 #include "Input\Keyboard.h"
-#include "Graphics/D3D12Core.h"
-//#include "imgui.h"
+#include "Graphics\D3D12Core.h"
+#include "Graphics\MemoryManager.h"
+#include "imgui.h"
 
-//extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace Relentless
 {
@@ -22,7 +23,6 @@ namespace Relentless
 	uint32_t Window::m_MouseX = 0u;
 	uint32_t Window::m_MouseY = 0u;
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> Window::m_pSwapChain{ nullptr };
-	std::unique_ptr<DescriptorHeap> Window::m_pBackBufferRTVHeap{ nullptr };
 	uint8_t Window::m_NrOfBackBuffers{ 2u };
 	std::vector<BackBuffer> Window::m_BackBuffers;
 
@@ -88,7 +88,6 @@ namespace Relentless
 		m_Height = height;
 		RLS_CORE_INFO("Created Window: {0} ({1},{2})", m_Title, m_Width, m_Height);
 
-		m_pBackBufferRTVHeap = std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2u, false);
 		CreateSwapchain();
 
 		RAWINPUTDEVICE rawInputDevice;
@@ -108,16 +107,11 @@ namespace Relentless
 
 	void Window::OnUpdate()
 	{
-		//PROFILE_FUNC;
-
 		while (PeekMessage(&m_WindowMessage, nullptr, 0u, 0u, PM_REMOVE))
 		{
 			TranslateMessage(&m_WindowMessage);
 			DispatchMessage(&m_WindowMessage);
 		}
-		//HR_I(Graphics::GetSwapChain()->Present(0u, 0u));
-		//CHECK_STD(Graphics::GetContext()->DiscardView(Graphics::GetBackBufferRTV().Get()));
-		//CHECK_STD(Graphics::GetContext()->DiscardView(Graphics::GetDepthStencilView().Get()));
 	}
 
 	void Window::HideMouseCursor() noexcept
@@ -164,8 +158,8 @@ namespace Relentless
 
 	LRESULT Window::HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 	{
-		//if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-		//	return true;
+		if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+			return true;
 
 		switch (msg)
 		{
@@ -267,10 +261,7 @@ namespace Relentless
 		{
 			m_Width = LOWORD(lParam);
 			m_Height = HIWORD(lParam);
-			//if (Graphics::IsInitialized())
-			//{
-			//	Graphics::CreateWindowSizeDependentResources(m_Width, m_Height);
-			//}
+			PublishEvent(WindowResizeEvent(m_Width, m_Height));
 			break;
 		}
 		}
@@ -279,45 +270,65 @@ namespace Relentless
 
 	void Window::CreateSwapchain() noexcept
 	{
-		Microsoft::WRL::ComPtr<IDXGIFactory7> pFactory{ nullptr };
-#if defined(RLS_DEBUG)
-		DXCall(::CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&pFactory)));
-#else
-		::CreateDXGIFactory2(0u, IID_PPV_ARGS(&pFactory));
-#endif
-		DXGI_SWAP_CHAIN_DESC1 swapChainDescriptor{};
-		swapChainDescriptor.Width = m_Width;
-		swapChainDescriptor.Height = m_Height;
-		swapChainDescriptor.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		swapChainDescriptor.Stereo = false;
-		swapChainDescriptor.SampleDesc = { 1u, 0u };
-		swapChainDescriptor.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDescriptor.BufferCount = m_NrOfBackBuffers;
-		swapChainDescriptor.Scaling = DXGI_SCALING_STRETCH;
-		swapChainDescriptor.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-		swapChainDescriptor.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-		swapChainDescriptor.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+		if (!m_pSwapChain)
+		{
+			Microsoft::WRL::ComPtr<IDXGIFactory7> pFactory{ nullptr };
+		#if defined(RLS_DEBUG)
+			DXCall(::CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&pFactory)));
+		#else
+			::CreateDXGIFactory2(0u, IID_PPV_ARGS(&pFactory));
+		#endif
 
-		Microsoft::WRL::ComPtr<IDXGISwapChain1> pTempSwapChain{ nullptr };
-		DXCall(pFactory->CreateSwapChainForHwnd
-		(
-			D3D12Core::GetCommandQueue().Get(), 
-			m_WindowHandle, 
-			&swapChainDescriptor, 
-			nullptr, 
-			nullptr, 
-			&pTempSwapChain
-		));
-		DXCall(pTempSwapChain->QueryInterface(IID_PPV_ARGS(&m_pSwapChain)));
+			DXGI_SWAP_CHAIN_DESC1 swapChainDescriptor{};
+			swapChainDescriptor.Width = m_Width;
+			swapChainDescriptor.Height = m_Height;
+			swapChainDescriptor.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			swapChainDescriptor.Stereo = false;
+			swapChainDescriptor.SampleDesc = { 1u, 0u };
+			swapChainDescriptor.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+			swapChainDescriptor.BufferCount = m_NrOfBackBuffers;
+			swapChainDescriptor.Scaling = DXGI_SCALING_STRETCH;
+			swapChainDescriptor.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+			swapChainDescriptor.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+			swapChainDescriptor.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+
+			Microsoft::WRL::ComPtr<IDXGISwapChain1> pTempSwapChain{ nullptr };
+			DXCall(pFactory->CreateSwapChainForHwnd
+			(
+				D3D12Core::GetCommandQueue().Get(),
+				m_WindowHandle,
+				&swapChainDescriptor,
+				nullptr,
+				nullptr,
+				&pTempSwapChain
+			));
+			DXCall(pTempSwapChain->QueryInterface(IID_PPV_ARGS(&m_pSwapChain)));
+		}
+		else
+		{
+			for (uint8_t i{ 0u }; i < m_BackBuffers.size(); ++i)
+			{
+				MemoryManager::Get().DestroyDescriptorHandle(m_BackBuffers[i].Handle);
+			}
+			m_BackBuffers.clear();
+			DXCall(m_pSwapChain->ResizeBuffers(2u, m_Width, m_Height, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING));
+		}
 
 		m_BackBuffers.reserve(m_NrOfBackBuffers);
+
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+		rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
 		for (uint32_t i{ 0u }; i < m_NrOfBackBuffers; ++i)
 		{
 			BackBuffer backBuffer{};
 
 			DXCall(m_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer.pBackBuffer)));
-			backBuffer.Handle = m_pBackBufferRTVHeap->AllocateDescriptor();
-			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(backBuffer.pBackBuffer.Get(), nullptr, backBuffer.Handle.CPUHandle));
+			backBuffer.Handle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::RTV);
+
+			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(backBuffer.pBackBuffer.Get(), &rtvDesc, backBuffer.Handle.CPUHandle));
 			
 			NAME_D12_OBJECT_INDEXED(backBuffer.pBackBuffer, L"Back buffer", i);
 			m_BackBuffers.emplace_back(std::move(backBuffer));

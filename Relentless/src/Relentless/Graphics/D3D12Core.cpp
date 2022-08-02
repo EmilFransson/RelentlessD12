@@ -5,6 +5,7 @@ namespace Relentless
 	Microsoft::WRL::ComPtr<IDXGIFactory7> D3D12Core::m_pFactory{nullptr};
 	D3D12Command D3D12Core::m_DirectCommandInterface{};
 	uint8_t D3D12Core::m_NrOfBufferedFrames{ 2u };
+	bool D3D12Core::m_IsInitialized{ false };
 #if defined(RLS_DEBUG)
 	Microsoft::WRL::ComPtr<ID3D12InfoQueue> D3D12Core::m_pInfoQueue{nullptr};
 	Microsoft::WRL::ComPtr<ID3D12Debug6> D3D12Core::m_pDebugController{ nullptr };
@@ -47,6 +48,7 @@ namespace Relentless
 #endif
 		m_DirectCommandInterface.Initialize(D3D12_COMMAND_LIST_TYPE_DIRECT, m_NrOfBufferedFrames);
 
+		m_IsInitialized = true;
 	}
 
 	void D3D12Core::CreateDebugAndValidationLayer() noexcept

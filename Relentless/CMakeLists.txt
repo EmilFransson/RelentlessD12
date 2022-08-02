@@ -1,6 +1,6 @@
 #Relentless/Relentless
 
-set(SourcesList "src/rlspch.h" "src/Relentless.h" "src/Relentless/Application.h" "src/Relentless/Application.cpp" "src/Relentless/EntryPoint.h" "src/Relentless/Events/EventType.h" "src/Relentless/Events/EventCategory.h" "src/Relentless/Events/IEvent.h" "src/Relentless/Events/IEvent.cpp" "src/Relentless/Events/MouseEvents.h" "src/Relentless/Events/WindowEvents.h" "src/Relentless/Events/IEventListener.h" "src/Relentless/Core.h" "src/Relentless/Events/KeyboardEvents.h" "src/Relentless/Events/Layer.h" "src/Relentless/Events/Layer.cpp" "src/Relentless/Events/LayerStack.h" "src/Relentless/Events/LayerStack.cpp" "src/Relentless/Events/EventBuss.h" "src/Relentless/Events/EventBuss.cpp" "src/Relentless/Input/KeyCodes.h" "src/Relentless/Input/MouseCodes.h" "src/Relentless/Input/Keyboard.h" "src/Relentless/Input/Keyboard.cpp" "src/Relentless/Events/EventPublisher.h" "src/Relentless/Events/EventPublisher.cpp" "src/Relentless/Input/Mouse.h" "src/Relentless/Input/Mouse.cpp" "src/Relentless/Log.h" "src/Relentless/Log.cpp" "src/Relentless/Window.h" "src/Relentless/Window.cpp" "src/Relentless/Utility.h" "src/Relentless/Utility.cpp" "src/Relentless/Graphics/D3D12Core.h" "src/Relentless/Graphics/D3D12Core.cpp" "src/Relentless/Graphics/d3dx12.h" "src/Relentless/Graphics/D3D12Debug.h" "src/Relentless/Graphics/D3D12Command.h" "src/Relentless/Graphics/D3D12Command.cpp" "src/Relentless/Graphics/D3D12Debug.cpp" "src/Relentless/Graphics/DescriptorHeap.h" "src/Relentless/Graphics/DescriptorHeap.cpp" "src/Relentless/Graphics/Renderer/RenderCommand.h" "src/Relentless/Graphics/Renderer/RenderCommand.cpp" "src/Relentless/ImGui/ImguiLayer.h" "src/Relentless/ImGui/ImguiLayer.cpp")
+set(SourcesList "src/rlspch.h" "src/Relentless.h" "src/Relentless/Application.h" "src/Relentless/Application.cpp" "src/Relentless/EntryPoint.h" "src/Relentless/Events/EventType.h" "src/Relentless/Events/EventCategory.h" "src/Relentless/Events/IEvent.h" "src/Relentless/Events/IEvent.cpp" "src/Relentless/Events/MouseEvents.h" "src/Relentless/Events/WindowEvents.h" "src/Relentless/Events/IEventListener.h" "src/Relentless/Core.h" "src/Relentless/Events/KeyboardEvents.h" "src/Relentless/Events/Layer.h" "src/Relentless/Events/Layer.cpp" "src/Relentless/Events/LayerStack.h" "src/Relentless/Events/LayerStack.cpp" "src/Relentless/Events/EventBuss.h" "src/Relentless/Events/EventBuss.cpp" "src/Relentless/Input/KeyCodes.h" "src/Relentless/Input/MouseCodes.h" "src/Relentless/Input/Keyboard.h" "src/Relentless/Input/Keyboard.cpp" "src/Relentless/Events/EventPublisher.h" "src/Relentless/Events/EventPublisher.cpp" "src/Relentless/Input/Mouse.h" "src/Relentless/Input/Mouse.cpp" "src/Relentless/Log.h" "src/Relentless/Log.cpp" "src/Relentless/Window.h" "src/Relentless/Window.cpp" "src/Relentless/Utility.h" "src/Relentless/Utility.cpp" "src/Relentless/Graphics/D3D12Core.h" "src/Relentless/Graphics/D3D12Core.cpp" "src/Relentless/Graphics/d3dx12.h" "src/Relentless/Graphics/D3D12Debug.h" "src/Relentless/Graphics/D3D12Command.h" "src/Relentless/Graphics/D3D12Command.cpp" "src/Relentless/Graphics/D3D12Debug.cpp" "src/Relentless/Graphics/DescriptorHeap.h" "src/Relentless/Graphics/DescriptorHeap.cpp" "src/Relentless/Graphics/Renderer/RenderCommand.h" "src/Relentless/Graphics/Renderer/RenderCommand.cpp" "src/Relentless/ImGui/ImguiLayer.h" "src/Relentless/ImGui/ImguiLayer.cpp" "src/Relentless/Graphics/Renderer/Renderer3D.h"  "src/Relentless/Graphics/Renderer/Renderer3D.cpp" "src/Relentless/Graphics/Resources/IResource.h" "src/Relentless/Graphics/Resources/IResource.cpp" "src/Relentless/Graphics/Resources/Texture.h" "src/Relentless/Graphics/Resources/Texture.cpp" "src/Relentless/Graphics/MemoryManager.h" "src/Relentless/Graphics/MemoryManager.cpp")
 
 add_library(Relentless STATIC ${SourcesList})
 
@@ -11,6 +11,29 @@ target_precompile_headers("${PROJECT_NAME}" PRIVATE "src/rlspch.h")
 #set_property(TARGET Relentless PROPERTY
 #             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
+set (IMGUI_SOURCES 
+"vendor/imgui/imgui.cpp"
+"vendor/imgui/imgui_demo.cpp"
+"vendor/imgui/imgui_draw.cpp"
+"vendor/imgui/imgui_tables.cpp"
+"vendor/imgui/imgui_widgets.cpp"
+"vendor/imgui/backends/imgui_impl_win32.cpp"
+"vendor/imgui/backends/imgui_impl_dx12.cpp"
+)
+
+set (IMGUI_HEADERS
+"vendor/imgui/imconfig.h"
+"vendor/imgui/imgui.h"
+"vendor/imgui/imgui_internal.h"
+"vendor/imgui/imstb_rectpack.h"
+"vendor/imgui/imstb_textedit.h"
+"vendor/imgui/imstb_truetype.h"
+"vendor/imgui/backends/imgui_impl_win32.h"
+"vendor/imgui/backends/imgui_impl_dx12.h"
+)
+
+add_library("imgui" STATIC ${IMGUI_SOURCES} ${IMGUI_HEADERS})
+target_include_directories("imgui" PUBLIC "vendor/imgui/")
 
 if(NOT BUILD_SHARED_LIBS)
     set(STATIC_POSTFIX "-static")

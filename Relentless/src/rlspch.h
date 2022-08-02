@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <thread>
 #include <mutex>
+#include <span>
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
@@ -28,4 +29,5 @@
 
 //Relentless-specific files:
 #include "Relentless/Log.h"
+#include "Relentless/Core.h"
 #include "Relentless/Graphics/D3D12Debug.h"

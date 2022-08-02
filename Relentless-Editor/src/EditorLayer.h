@@ -13,6 +13,9 @@ namespace Relentless
 		virtual void OnAttach() noexcept override final;
 		virtual void OnUpdate(const float deltaTime) noexcept override final;
 	private:
-		
+		void OnSceneViewportChanged() noexcept;
+	private:
+		ImVec2 m_ViewportPanelSize;
+		bool m_SceneViewportChanged;
 	};
 }

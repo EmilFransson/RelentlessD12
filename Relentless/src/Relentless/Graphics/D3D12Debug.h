@@ -1,5 +1,4 @@
 #pragma once
-#include "../Core.h"
 namespace Relentless
 {
 	class D3D12Debug

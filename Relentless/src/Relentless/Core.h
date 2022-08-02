@@ -15,6 +15,10 @@ namespace Relentless
 	#ifndef RLS_NEW
 		#define RLS_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
 	#endif
+
+	#ifndef DEBUG_OPERATION
+		#define DEBUG_OPERATION(statement) statement
+	#endif
 #else
 	#ifndef APPLICATION_SUFFIX
 		#define APPLICATION_SUFFIX ""
@@ -27,5 +31,9 @@ namespace Relentless
 	#ifndef RLS_NEW
 		#define RLS_NEW new
 	#endif
+
+#ifndef DEBUG_OPERATION
+	#define DEBUG_OPERATION(statement)
+#endif
 #endif
 }

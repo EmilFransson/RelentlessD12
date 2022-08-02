@@ -38,6 +38,7 @@ namespace Relentless
 		}
 
 		DXCall_STD(m_DescriptorSize = D3D12Core::GetDevice()->GetDescriptorHandleIncrementSize(m_Type));
+		DEBUG_OPERATION(SetDebugName());
 	}
 
 	DescriptorHandle DescriptorHeap::AllocateDescriptor() noexcept
@@ -47,24 +48,32 @@ namespace Relentless
 		RLS_ASSERT(m_pDescriptorHeap, "D3D12 Descriptor heap interface is not initialized.");
 		RLS_ASSERT(m_CurrentNrOfDescriptors != m_Capacity, "Descriptor heap capacity reached.");
 
-		//Perhaps check a free-list for earlier deleted (and now free!) handles?
-
-		const uint32_t index = m_FreeHandles[m_CurrentNrOfDescriptors];
-		const uint32_t offset = index * m_DescriptorSize;
-		m_CurrentNrOfDescriptors++;
-
-		DescriptorHandle descriptorHandleToReturn{};
-		descriptorHandleToReturn.CPUHandle.ptr = m_CpuHandleStart.ptr + offset;
-		if (IsShaderVisible())
+		if (m_FreeList.empty())
 		{
-			descriptorHandleToReturn.GPUHandle.ptr = m_GpuHandleStart.ptr + offset;
-		}
+			const uint32_t index = m_FreeHandles[m_CurrentNrOfDescriptors];
+			const uint32_t offset = index * m_DescriptorSize;
+			m_CurrentNrOfDescriptors++;
+
+			DescriptorHandle descriptorHandleToReturn{};
+			descriptorHandleToReturn.CPUHandle.ptr = m_CpuHandleStart.ptr + offset;
+			if (IsShaderVisible())
+			{
+				descriptorHandleToReturn.GPUHandle.ptr = m_GpuHandleStart.ptr + offset;
+			}
 
 #if defined(RLS_DEBUG)
-		descriptorHandleToReturn.pDebugInterface = this;
-		descriptorHandleToReturn.Index = index;
+			descriptorHandleToReturn.pDebugInterface = this;
+			descriptorHandleToReturn.Index = index;
 #endif
-		return descriptorHandleToReturn; 
+			return descriptorHandleToReturn;
+		}
+		else
+		{
+			DescriptorHandle descriptorHandle = m_FreeList[m_FreeList.size() - 1];
+			m_CurrentNrOfDescriptors++;
+			m_FreeList.pop_back();
+			return descriptorHandle;
+		} 
 	}
 
 	void DescriptorHeap::FreeDescriptor(const DescriptorHandle& descriptorHandle) noexcept
@@ -73,11 +82,41 @@ namespace Relentless
 		RLS_ASSERT(m_pDescriptorHeap, "D3D12 Descriptor heap interface is not initialized.");
 		RLS_ASSERT(descriptorHandle.pDebugInterface == this, "Descriptor heap object pointer mismatch.");
 		RLS_ASSERT(descriptorHandle.Index <= m_Capacity, "Descriptor handle index out of bounds.");
-		RLS_ASSERT(descriptorHandle.CPUHandle.ptr > 0 && (descriptorHandle.CPUHandle.ptr <= m_CpuHandleStart.ptr + (m_CurrentNrOfDescriptors * m_DescriptorSize)), "CPU descriptor handle out of bounds.");
-		RLS_ASSERT(!(descriptorHandle.GPUHandle.ptr > 0 && descriptorHandle.GPUHandle.ptr <= m_GpuHandleStart.ptr + (m_CurrentNrOfDescriptors * m_DescriptorSize)), "GPU descriptor handle out of bounds.");
 		RLS_ASSERT((descriptorHandle.CPUHandle.ptr - m_CpuHandleStart.ptr) % m_DescriptorSize == 0u, "CPU handle pointer is not valid for this descriptor heap.");
 
-		//TODO: Handle deferred freeing of descriptors.
-		m_DeferredFreeList.emplace_back(descriptorHandle);
+		m_FreeList.emplace_back(descriptorHandle);
+		m_CurrentNrOfDescriptors--;
+	}
+
+	void DescriptorHeap::SetDebugName() noexcept
+	{
+		std::wstring debugName = L"Descriptor_Heap_";
+		switch (m_Type)
+		{
+		case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
+		{
+			debugName += L"CBV_SRV_UAV";
+			break;
+		}
+		case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
+		{
+			debugName += L"RTV";
+			break;
+		}
+		case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
+		{
+			debugName += L"DSV";
+			break;
+		}
+		case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
+		{
+			debugName += L"SAMPLER";
+			break;
+		}
+		}
+		debugName += L" [Capacity: ";
+		debugName += std::to_wstring(m_Capacity);
+		debugName += L"]";
+		NAME_D12_OBJECT(m_pDescriptorHeap, debugName.c_str());
 	}
 }

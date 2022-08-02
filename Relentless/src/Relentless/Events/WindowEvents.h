@@ -77,4 +77,35 @@ namespace Relentless
 			return ss.str();
 		}
 	};
+
+	class WindowResizeEvent : public IEvent
+	{
+	public:
+		WindowResizeEvent(const uint32_t newWidth, const uint32_t newHeight) noexcept
+			: m_Width{newWidth}, m_Height{newHeight}
+		{}
+		virtual ~WindowResizeEvent() noexcept override final = default;
+		[[nodiscard]] virtual constexpr EventType GetEventType() const noexcept override final
+		{
+			return EventType::WindowResizeEvent;
+		}
+		[[nodiscard]] virtual constexpr EventCategory GetEventCategory() const noexcept override final
+		{
+			return EventCategory::WindowEventCategory;
+		}
+		[[nodiscard]] virtual constexpr std::string GetDebugName() const noexcept override final
+		{
+			return std::string("WindowResizeEvent");
+		}
+		[[nodiscard]] virtual const std::string GetDebugInfo() const noexcept override final
+		{
+			std::stringstream ss;
+			ss << GetDebugName();
+			return ss.str();
+		}
+		[[nodiscard]] constexpr std::pair<uint32_t, uint32_t> GetNewDimension() const noexcept { return std::make_pair(m_Width, m_Height); }
+	private:
+		uint32_t m_Width;
+		uint32_t m_Height;
+	};
 }
