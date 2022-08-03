@@ -113,6 +113,8 @@ namespace Relentless
 		
 		m_SRVDescriptorHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::SRV_NV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), nullptr, m_SRVDescriptorHandle.CPUHandle));
+
+		NAME_D12_OBJECT(m_pResource, L"Main MSAA Texture");
 	}
 
 	std::shared_ptr<RenderTextureMSAA> RenderTextureMSAA::Create(const uint32_t width, const uint32_t height, const uint8_t multiSampleCount) noexcept

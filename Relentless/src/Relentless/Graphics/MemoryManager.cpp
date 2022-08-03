@@ -15,6 +15,7 @@ namespace Relentless
 		m_pRTVDescriptorHeap = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 100'000, false));
 		m_pShaderBindablesDescriptorHeapNV = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, false));
 		m_pDeferredFreeLists = std::move(std::unique_ptr<std::vector<DescriptorHandle>[]>(new std::vector<DescriptorHandle>[D3D12Core::GetNrOfBufferedFrames()]));
+		m_pDeferredFreeListsResources = std::move(std::unique_ptr<std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>[]>(new std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>[D3D12Core::GetNrOfBufferedFrames()]));
 	}
 
 	const DescriptorHandle MemoryManager::CreateDescriptorHandle(DescriptorHandleType descriptorHandleType) noexcept
@@ -48,26 +49,35 @@ namespace Relentless
 		m_pDeferredFreeLists[index].emplace_back(descriptorHandle);
 	}
 
+	void MemoryManager::DestroyResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource) noexcept
+	{
+		const uint32_t index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
+		m_pDeferredFreeListsResources[index].emplace_back(std::move(resource));
+	}
+
 	void MemoryManager::PerformDeferredDeletion() noexcept
 	{
 		const uint32_t index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
-		if (m_pDeferredFreeLists[index].empty())
-			return;
-
-		for (uint32_t i{ 0u }; i < m_pDeferredFreeLists[index].size(); ++i)
+		if (!m_pDeferredFreeLists[index].empty())
 		{
-			switch (m_pDeferredFreeLists[index][i].Type)
+			for (uint32_t i{ 0u }; i < m_pDeferredFreeLists[index].size(); ++i)
 			{
-			case DescriptorHandleType::RTV:
-				m_pRTVDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[index][i]);
-				break;
-			case DescriptorHandleType::CBV_NV:
-			case DescriptorHandleType::SRV_NV:
-			case DescriptorHandleType::UAV_NV:
-				m_pShaderBindablesDescriptorHeapNV->FreeDescriptor(m_pDeferredFreeLists[index][i]);
-				break;
+				switch (m_pDeferredFreeLists[index][i].Type)
+				{
+				case DescriptorHandleType::RTV:
+					m_pRTVDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[index][i]);
+					break;
+				case DescriptorHandleType::CBV_NV:
+				case DescriptorHandleType::SRV_NV:
+				case DescriptorHandleType::UAV_NV:
+					m_pShaderBindablesDescriptorHeapNV->FreeDescriptor(m_pDeferredFreeLists[index][i]);
+					break;
+				}
 			}
+			m_pDeferredFreeLists[index].clear();
 		}
-		m_pDeferredFreeLists[index].clear();
+		if (m_pDeferredFreeListsResources[index].empty())
+			return;
+		m_pDeferredFreeListsResources[index].clear();
 	}
 }

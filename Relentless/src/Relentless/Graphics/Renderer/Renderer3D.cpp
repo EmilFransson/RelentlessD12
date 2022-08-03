@@ -3,6 +3,7 @@
 #include "RenderCommand.h"
 #include "../../Window.h"
 #include "../../ImGui/ImguiLayer.h"
+#include "../MemoryManager.h"
 namespace Relentless
 {
 	struct Renderer3dData 
@@ -159,6 +160,7 @@ namespace Relentless
 
 	void Renderer3D::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
 	{
+		MemoryManager::Get().DestroyResource(std::move(s_RendererData.m_pRenderTexture->GetInterface()));
 		s_RendererData.m_pRenderTexture = RenderTextureMSAA::Create(width, height, 8u);
 
 		s_RendererData.viewPort.Width = static_cast<float>(width);

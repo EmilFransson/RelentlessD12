@@ -59,10 +59,6 @@ target_link_libraries(Relentless PUBLIC imgui)
 target_compile_definitions(Relentless PUBLIC "$<$<CONFIG:DEBUG>:RLS_DEBUG>")
 target_compile_definitions(Relentless PUBLIC "$<$<CONFIG:RELEASE>:RLS_RELEASE>")
 
-#file(GLOB_RECURSE imgui-inc "${imgui_SOURCE_DIR}/*.h")
-#add_library(imgui INTERFACE ${imgui-inc})
-#target_include_directories(imgui INTERFACE "${imgui_SOURCE_DIR}")
-
 FetchContent_Declare(d3d12-agility
        URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.602.0
        )
@@ -72,8 +68,6 @@ add_library(d3d12-agility INTERFACE ${d3d12-agility-inc})
 target_include_directories(d3d12-agility INTERFACE "${d3d12-agility_SOURCE_DIR}/build/native/include")
 target_link_libraries(d3d12-agility INTERFACE "d3d12.lib" "dxgi.lib")
 target_link_libraries(${PROJECT_NAME} PRIVATE d3d12-agility) # LINK UR PROJECT HERE
-#target_link_libraries(${PROJECT_NAME} PUBLIC imgui)
-
 
 # Copy DLLS
 add_custom_command(

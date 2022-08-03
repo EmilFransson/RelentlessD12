@@ -1,6 +1,7 @@
 #include "ImguiLayer.h"
 #include "../Graphics/D3D12Core.h"
 #include "../Window.h"
+#include "../Graphics/MemoryManager.h"
 namespace Relentless
 {
 	std::unique_ptr<DescriptorHeap> ImguiLayer::m_pDescriptorHeap{ nullptr };
@@ -251,6 +252,8 @@ namespace Relentless
 
 	void ImguiLayer::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
 	{
+		MemoryManager::Get().DestroyResource(std::move(m_pUITexture));
+
 		//Descriptor heap handles:
 		UINT handle_increment = D3D12Core::GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		int descriptor_index = 1; // The descriptor table index to use (not normally a hard-coded constant, but in this case we'll assume we have slot 1 reserved for us)
