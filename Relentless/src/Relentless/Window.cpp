@@ -25,6 +25,7 @@ namespace Relentless
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> Window::m_pSwapChain{ nullptr };
 	uint8_t Window::m_NrOfBackBuffers{ 2u };
 	std::vector<BackBuffer> Window::m_BackBuffers;
+	bool Window::m_IsResizing{ false };
 
 	const Window& Window::Get() noexcept
 	{
@@ -111,6 +112,11 @@ namespace Relentless
 		{
 			TranslateMessage(&m_WindowMessage);
 			DispatchMessage(&m_WindowMessage);
+		}
+		if (m_IsResizing && !Mouse::IsButtonPressed(RLS_MOUSE::Left))
+		{
+			PublishEvent(WindowResizeEvent(m_Width, m_Height));
+			m_IsResizing = false;
 		}
 	}
 
@@ -261,7 +267,7 @@ namespace Relentless
 		{
 			m_Width = LOWORD(lParam);
 			m_Height = HIWORD(lParam);
-			PublishEvent(WindowResizeEvent(m_Width, m_Height));
+			m_IsResizing = true;
 			break;
 		}
 		}
@@ -270,53 +276,57 @@ namespace Relentless
 
 	void Window::CreateSwapchain() noexcept
 	{
-		if (!m_pSwapChain)
-		{
-			Microsoft::WRL::ComPtr<IDXGIFactory7> pFactory{ nullptr };
-		#if defined(RLS_DEBUG)
-			DXCall(::CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&pFactory)));
-		#else
-			::CreateDXGIFactory2(0u, IID_PPV_ARGS(&pFactory));
-		#endif
+		Microsoft::WRL::ComPtr<IDXGIFactory7> pFactory{ nullptr };
+	#if defined(RLS_DEBUG)
+		DXCall(::CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&pFactory)));
+	#else
+		::CreateDXGIFactory2(0u, IID_PPV_ARGS(&pFactory));
+	#endif
 
-			DXGI_SWAP_CHAIN_DESC1 swapChainDescriptor{};
-			swapChainDescriptor.Width = m_Width;
-			swapChainDescriptor.Height = m_Height;
-			swapChainDescriptor.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			swapChainDescriptor.Stereo = false;
-			swapChainDescriptor.SampleDesc = { 1u, 0u };
-			swapChainDescriptor.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-			swapChainDescriptor.BufferCount = m_NrOfBackBuffers;
-			swapChainDescriptor.Scaling = DXGI_SCALING_STRETCH;
-			swapChainDescriptor.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-			swapChainDescriptor.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-			swapChainDescriptor.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+		DXGI_SWAP_CHAIN_DESC1 swapChainDescriptor{};
+		swapChainDescriptor.Width = m_Width;
+		swapChainDescriptor.Height = m_Height;
+		swapChainDescriptor.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		swapChainDescriptor.Stereo = false;
+		swapChainDescriptor.SampleDesc = { 1u, 0u };
+		swapChainDescriptor.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDescriptor.BufferCount = m_NrOfBackBuffers;
+		swapChainDescriptor.Scaling = DXGI_SCALING_STRETCH;
+		swapChainDescriptor.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		swapChainDescriptor.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+		swapChainDescriptor.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
-
-			Microsoft::WRL::ComPtr<IDXGISwapChain1> pTempSwapChain{ nullptr };
-			DXCall(pFactory->CreateSwapChainForHwnd
-			(
-				D3D12Core::GetCommandQueue().Get(),
-				m_WindowHandle,
-				&swapChainDescriptor,
-				nullptr,
-				nullptr,
-				&pTempSwapChain
-			));
-			DXCall(pTempSwapChain->QueryInterface(IID_PPV_ARGS(&m_pSwapChain)));
-		}
-		else
-		{
-			for (uint8_t i{ 0u }; i < m_BackBuffers.size(); ++i)
-			{
-				MemoryManager::Get().DestroyDescriptorHandle(m_BackBuffers[i].Handle);
-			}
-			m_BackBuffers.clear();
-			DXCall(m_pSwapChain->ResizeBuffers(2u, m_Width, m_Height, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING));
-		}
-
+		Microsoft::WRL::ComPtr<IDXGISwapChain1> pTempSwapChain{ nullptr };
+		DXCall(pFactory->CreateSwapChainForHwnd
+		(
+			D3D12Core::GetCommandQueue().Get(),
+			m_WindowHandle,
+			&swapChainDescriptor,
+			nullptr,
+			nullptr,
+			&pTempSwapChain
+		));
+		DXCall(pTempSwapChain->QueryInterface(IID_PPV_ARGS(&m_pSwapChain)));
+	
 		m_BackBuffers.reserve(m_NrOfBackBuffers);
+		Finalize();
+	}
 
+	void Window::Resize() noexcept
+	{
+		for (uint8_t i{ 0u }; i < m_BackBuffers.size(); ++i)
+		{
+			MemoryManager::Get().DestroyDescriptorHandle(m_BackBuffers[i].Handle);
+		}
+		m_BackBuffers.clear();
+		DXCall(m_pSwapChain->ResizeBuffers(m_NrOfBackBuffers, m_Width, m_Height, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING));
+
+		Finalize();
+		RLS_CORE_INFO("Resized window with [width, height]=[{0},{1}]", m_Width, m_Height);
+	}
+
+	void Window::Finalize() noexcept
+	{
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 		rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
@@ -329,7 +339,7 @@ namespace Relentless
 			backBuffer.Handle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::RTV);
 
 			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(backBuffer.pBackBuffer.Get(), &rtvDesc, backBuffer.Handle.CPUHandle));
-			
+
 			NAME_D12_OBJECT_INDEXED(backBuffer.pBackBuffer, L"Back buffer", i);
 			m_BackBuffers.emplace_back(std::move(backBuffer));
 		}

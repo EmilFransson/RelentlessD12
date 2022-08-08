@@ -23,15 +23,16 @@ namespace Relentless
 		static void ConfineMouseCursor(float left, float right, float bottom, float top) noexcept;
 		static void FreeMouseCursor() noexcept;
 		static void Present() noexcept;
-		static void CreateSizeDependentResources() noexcept { CreateSwapchain(); }
 		[[nodiscard]] static constexpr std::vector<BackBuffer>& GetBackBuffers() noexcept { return m_BackBuffers; }
 		[[nodiscard]] static uint32_t GetCurrentBackbufferIndex() noexcept { return m_pSwapChain->GetCurrentBackBufferIndex(); }
 		[[nodiscard]] static BackBuffer& GetCurrentBackBuffer() noexcept { return GetBackBuffers()[GetCurrentBackbufferIndex()]; }
+		static void Resize() noexcept;
 	private:
 		Window() noexcept = default;
 		~Window() noexcept = default;
 		static LRESULT HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
 		static void CreateSwapchain() noexcept;
+		static void Finalize() noexcept;
 #pragma region "Deleted Ctors"
 		Window(const Window& otherWindow) = delete;
 		Window& operator=(const Window& otherWindow) = delete;
@@ -55,5 +56,6 @@ namespace Relentless
 		static Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain;
 		static uint8_t m_NrOfBackBuffers;
 		static std::vector<BackBuffer> m_BackBuffers;
+		static bool m_IsResizing;
 	};
 }

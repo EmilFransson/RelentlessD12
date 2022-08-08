@@ -40,7 +40,7 @@ namespace Relentless
 
 	void EditorLayer::OnUpdate(const float) noexcept
 	{
-		if (m_SceneViewportChanged)
+		if (m_SceneViewportChanged && !Mouse::IsButtonPressed(RLS_MOUSE::Left))
 			OnSceneViewportChanged();
 
 		Renderer3D::Begin();

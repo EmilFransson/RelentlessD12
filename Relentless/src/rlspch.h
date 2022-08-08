@@ -11,6 +11,8 @@
 #include <thread>
 #include <mutex>
 #include <span>
+#include <filesystem>
+#include <fstream>
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>

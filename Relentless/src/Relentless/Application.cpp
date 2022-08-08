@@ -1,5 +1,6 @@
 #include "Application.h"
 #include "Window.h"
+#include "ImGui\ImguiLayer.h"
 #include "Graphics/D3D12Core.h"
 #include "Events/LayerStack.h"
 #include "Events/EventBuss.h"
@@ -10,24 +11,16 @@ namespace Relentless
 	Application::Application(const ApplicationSpecification& applicationSpecification) noexcept
 		: m_ApplicationSpecification{ applicationSpecification }
 	{
-		EventBuss::Get().SetMainApplication(this);
-		Log::Initialize();
-		D3D12Core::Initialize();
-		MemoryManager::Get().Initialize();
-		Window::Initialize(m_ApplicationSpecification.Name);
-		Renderer3D::Initialize();
-		PushOverlay(std::make_unique<ImguiLayer>());
-
-		m_IsRunning = true;
+		OnStartUp();
 	}
 
 	void Application::Run() noexcept
 	{
 		while (m_IsRunning)
 		{
-			MemoryManager::Get().PerformDeferredDeletion();
-
 			Window::OnUpdate();
+			
+			MemoryManager::Get().PerformDeferredDeletion();
 
 			for (auto& pLayer : LayerStack::Get())
 				pLayer->OnUpdate(0.1f);
@@ -68,19 +61,56 @@ namespace Relentless
 			if (!IsInitialized())
 				return;
 
-			auto[width, height] = static_cast<WindowResizeEvent&>(event).GetNewDimension();
-			RLS_CORE_INFO("Resized window: [{0},{1}]", width, height);
-
 			Renderer3D::WaitForGPU();
-			Window::CreateSizeDependentResources();
-			MemoryManager::Get().PerformDeferredDeletion();
+			Window::Resize();
 			break;
 		}
 		}
 	}
 
+	void Application::OnStartUp() noexcept
+	{
+		EventBuss::Get().SetMainApplication(this);
+		Log::Initialize();
+		D3D12Core::Initialize();
+		MemoryManager::Get().Initialize();
+
+		uint32_t windowWidth{ 1280u };
+		uint32_t windowHeight{ 720u };
+		if (std::filesystem::exists("engine.ini"))
+		{
+			std::ifstream inFile("engine.ini");
+			std::string s;
+			while (inFile >> s)
+			{
+				if (s == "[RenderWindow][Dimensions]")
+				{
+					inFile.ignore(1);
+					inFile >> windowWidth;
+					inFile >> windowHeight;
+					break;
+				}
+			}
+			inFile.close();
+		}
+
+		Window::Initialize(m_ApplicationSpecification.Name, windowWidth, windowHeight);
+		Renderer3D::Initialize();
+		PushOverlay(std::make_unique<ImguiLayer>());
+
+		m_IsRunning = true;
+	}
+
 	void Application::ShutDown() noexcept
 	{
 		Renderer3D::OnShutDown();
+
+		std::ofstream outFile("engine.ini");
+		outFile << "[RenderWindow][Dimensions]\n";
+		outFile << Window::GetWidth() << "\n";
+		outFile << Window::GetHeight();
+		outFile.close();
+
+		m_IsRunning = false;
 	}
 }

@@ -1,6 +1,5 @@
 #pragma once
 #include "Events\Layer.h"
-#include "ImGui\ImguiLayer.h"
 namespace Relentless
 {
 	struct ApplicationSpecification
@@ -18,6 +17,7 @@ namespace Relentless
 		void PushOverlay(std::unique_ptr<Layer> pLayer) const noexcept;
 		void OnEvent(IEvent& event) noexcept;
 	private:
+		void OnStartUp() noexcept;
 		void ShutDown() noexcept;
 		[[nodiscard]] constexpr const bool IsInitialized() const noexcept { return m_IsRunning == true; }
 	private:

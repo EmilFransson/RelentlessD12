@@ -14,8 +14,8 @@ namespace Relentless
 	{
 		m_pRTVDescriptorHeap = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 100'000, false));
 		m_pShaderBindablesDescriptorHeapNV = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, false));
-		m_pDeferredFreeLists = std::move(std::unique_ptr<std::vector<DescriptorHandle>[]>(new std::vector<DescriptorHandle>[D3D12Core::GetNrOfBufferedFrames()]));
-		m_pDeferredFreeListsResources = std::move(std::unique_ptr<std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>[]>(new std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>[D3D12Core::GetNrOfBufferedFrames()]));
+		m_pDeferredFreeLists = std::move(std::unique_ptr<std::vector<DescriptorHandle>[]>(RLS_NEW std::vector<DescriptorHandle>[D3D12Core::GetNrOfBufferedFrames()]));
+		m_pDeferredFreeListsResources = std::move(std::unique_ptr<std::vector<std::shared_ptr<IResource>>[]>(RLS_NEW std::vector<std::shared_ptr<IResource>>[D3D12Core::GetNrOfBufferedFrames()]));
 	}
 
 	const DescriptorHandle MemoryManager::CreateDescriptorHandle(DescriptorHandleType descriptorHandleType) noexcept
@@ -37,7 +37,7 @@ namespace Relentless
 			return handle;
 		}
 		default:
-			RLS_ASSERT(false, "Unknown dscriptor handle type.");
+			RLS_ASSERT(false, "Unknown descriptor handle type.");
 			break;
 		}
 		return DescriptorHandle();
@@ -49,10 +49,10 @@ namespace Relentless
 		m_pDeferredFreeLists[index].emplace_back(descriptorHandle);
 	}
 
-	void MemoryManager::DestroyResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource) noexcept
+	void MemoryManager::DestroyResource(std::shared_ptr<IResource> pResource) noexcept
 	{
 		const uint32_t index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
-		m_pDeferredFreeListsResources[index].emplace_back(std::move(resource));
+		m_pDeferredFreeListsResources[index].emplace_back(std::move(pResource));
 	}
 
 	void MemoryManager::PerformDeferredDeletion() noexcept
@@ -76,8 +76,7 @@ namespace Relentless
 			}
 			m_pDeferredFreeLists[index].clear();
 		}
-		if (m_pDeferredFreeListsResources[index].empty())
-			return;
-		m_pDeferredFreeListsResources[index].clear();
+		if (!m_pDeferredFreeListsResources[index].empty())
+			m_pDeferredFreeListsResources[index].clear();
 	}
 }

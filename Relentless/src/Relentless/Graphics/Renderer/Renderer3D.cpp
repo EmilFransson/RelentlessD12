@@ -56,7 +56,14 @@ namespace Relentless
 
 		RenderCommand::TransitionResource(s_RendererData.m_pRenderTexture->GetInterface().Get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-		RenderCommand::ClearRenderTarget(s_RendererData.m_pRenderTexture->GetRTVDescriptorHandle().CPUHandle, DirectX::Colors::Brown);
+		DirectX::XMVECTOR convertedColor = DirectX::XMColorSRGBToRGB(DirectX::Colors::Brown);
+		DirectX::XMVECTORF32 clearColor;
+		clearColor.f[0] = DirectX::XMVectorGetX(convertedColor);
+		clearColor.f[1] = DirectX::XMVectorGetY(convertedColor);
+		clearColor.f[2] = DirectX::XMVectorGetZ(convertedColor);
+		clearColor.f[3] = DirectX::XMVectorGetW(convertedColor);
+
+		RenderCommand::ClearRenderTarget(s_RendererData.m_pRenderTexture->GetRTVDescriptorHandle().CPUHandle, clearColor);
 		DXCall_STD(pCommandList->OMSetRenderTargets(1u, &s_RendererData.m_pRenderTexture->GetRTVDescriptorHandle().CPUHandle, false, nullptr));
 	}
 
@@ -78,23 +85,23 @@ namespace Relentless
 
 		RenderCommand::TransitionResource
 		(
-			ImguiLayer::GetUITexture().Get(),
+			ImguiLayer::GetUITexture()->GetInterface().Get(),
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 			D3D12_RESOURCE_STATE_RESOLVE_DEST
 		);
 		 
 		DXCall_STD(D3D12Core::GetCommandList()->ResolveSubresource
 		(
-			ImguiLayer::GetUITexture().Get(),
+			ImguiLayer::GetUITexture()->GetInterface().Get(),
 			0, 
 			s_RendererData.m_pRenderTexture->GetInterface().Get(), 
 			0, 
-			DXGI_FORMAT_R8G8B8A8_UNORM)
+			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
 		); 
 
 		RenderCommand::TransitionResource
 		(
-			ImguiLayer::GetUITexture().Get(),
+			ImguiLayer::GetUITexture()->GetInterface().Get(),
 			D3D12_RESOURCE_STATE_RESOLVE_DEST,
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
 		);
@@ -160,7 +167,7 @@ namespace Relentless
 
 	void Renderer3D::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
 	{
-		MemoryManager::Get().DestroyResource(std::move(s_RendererData.m_pRenderTexture->GetInterface()));
+		MemoryManager::Get().DestroyResource(std::move(s_RendererData.m_pRenderTexture));
 		s_RendererData.m_pRenderTexture = RenderTextureMSAA::Create(width, height, 8u);
 
 		s_RendererData.viewPort.Width = static_cast<float>(width);

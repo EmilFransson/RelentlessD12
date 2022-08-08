@@ -5,9 +5,9 @@
 namespace Relentless
 {
 	std::unique_ptr<DescriptorHeap> ImguiLayer::m_pDescriptorHeap{ nullptr };
-	Microsoft::WRL::ComPtr<ID3D12Resource> ImguiLayer::m_pUITexture{ nullptr };
 	D3D12_CPU_DESCRIPTOR_HANDLE ImguiLayer::my_texture_srv_cpu_handle{ };
 	D3D12_GPU_DESCRIPTOR_HANDLE ImguiLayer::my_texture_srv_gpu_handle{ };
+	std::shared_ptr<RenderTexture> ImguiLayer::m_pUITexture{ nullptr };
 
 	ImguiLayer::ImguiLayer() noexcept
 		:Layer("ImGuiLayer")
@@ -191,52 +191,17 @@ namespace Relentless
 		my_texture_srv_gpu_handle.ptr += (handle_increment * descriptor_index);
 
 		//UI TEXTURE
-		D3D12_HEAP_PROPERTIES heapProperties{};
-		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
-		heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		heapProperties.CreationNodeMask = 0u;
-		heapProperties.VisibleNodeMask = 0u;
-
-		D3D12_RESOURCE_DESC resourceDescriptor{};
-		resourceDescriptor.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		resourceDescriptor.Alignment = 0u;
-		resourceDescriptor.Width = 800;
-		resourceDescriptor.Height = 600;
-		resourceDescriptor.DepthOrArraySize = 1u;
-		resourceDescriptor.MipLevels = 1u;
-		resourceDescriptor.Format = DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		resourceDescriptor.SampleDesc = { 1u, 0u };
-		resourceDescriptor.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		resourceDescriptor.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
-		D3D12_CLEAR_VALUE clearValue{};
-		clearValue.Format = DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		clearValue.Color[0] = DirectX::Colors::Brown.f[0];
-		clearValue.Color[1] = DirectX::Colors::Brown.f[1];
-		clearValue.Color[2] = DirectX::Colors::Brown.f[2];
-		clearValue.Color[3] = DirectX::Colors::Brown.f[3];
-
-		DXCall(D3D12Core::GetDevice()->CreateCommittedResource
-		(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDescriptor,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-			&clearValue,
-			IID_PPV_ARGS(&m_pUITexture)
-		));
+		m_pUITexture = std::move(RenderTexture::Create(800u, 600u));
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
 		ZeroMemory(&srvDesc, sizeof(srvDesc));
 		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = resourceDescriptor.MipLevels;
+		srvDesc.Texture2D.MipLevels = 1u;
 		srvDesc.Texture2D.MostDetailedMip = 0;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pUITexture.Get(), &srvDesc, my_texture_srv_cpu_handle));
 		
-		NAME_D12_OBJECT(m_pUITexture, L"UI TEXTURE");
+		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pUITexture->GetInterface().Get(), &srvDesc, my_texture_srv_cpu_handle));
 
 		ImGui_ImplWin32_Init(::GetActiveWindow());
 		ImGui_ImplDX12_Init
@@ -253,61 +218,15 @@ namespace Relentless
 	void ImguiLayer::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
 	{
 		MemoryManager::Get().DestroyResource(std::move(m_pUITexture));
-
-		//Descriptor heap handles:
-		UINT handle_increment = D3D12Core::GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		int descriptor_index = 1; // The descriptor table index to use (not normally a hard-coded constant, but in this case we'll assume we have slot 1 reserved for us)
-		my_texture_srv_cpu_handle = m_pDescriptorHeap->GetCPUStartHandle();
-		my_texture_srv_cpu_handle.ptr += (handle_increment * descriptor_index);
-		my_texture_srv_gpu_handle = m_pDescriptorHeap->GetGPUStartHandle();
-		my_texture_srv_gpu_handle.ptr += (handle_increment * descriptor_index);
-
-		//UI TEXTURE
-		D3D12_HEAP_PROPERTIES heapProperties{};
-		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
-		heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		heapProperties.CreationNodeMask = 0u;
-		heapProperties.VisibleNodeMask = 0u;
-
-		D3D12_RESOURCE_DESC resourceDescriptor{};
-		resourceDescriptor.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		resourceDescriptor.Alignment = 0u;
-		resourceDescriptor.Width = width;
-		resourceDescriptor.Height = height;
-		resourceDescriptor.DepthOrArraySize = 1u;
-		resourceDescriptor.MipLevels = 1u;
-		resourceDescriptor.Format = DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		resourceDescriptor.SampleDesc = { 1u, 0u };
-		resourceDescriptor.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		resourceDescriptor.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
-		D3D12_CLEAR_VALUE clearValue{};
-		clearValue.Format = DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		clearValue.Color[0] = DirectX::Colors::Brown.f[0];
-		clearValue.Color[1] = DirectX::Colors::Brown.f[1];
-		clearValue.Color[2] = DirectX::Colors::Brown.f[2];
-		clearValue.Color[3] = DirectX::Colors::Brown.f[3];
-
-		DXCall(D3D12Core::GetDevice()->CreateCommittedResource
-		(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDescriptor,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-			&clearValue,
-			IID_PPV_ARGS(&m_pUITexture)
-		));
+		m_pUITexture = std::move(RenderTexture::Create(width, height));
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
 		ZeroMemory(&srvDesc, sizeof(srvDesc));
 		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = resourceDescriptor.MipLevels;
+		srvDesc.Texture2D.MipLevels = 1u;
 		srvDesc.Texture2D.MostDetailedMip = 0;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pUITexture.Get(), &srvDesc, my_texture_srv_cpu_handle));
-
-		NAME_D12_OBJECT(m_pUITexture, L"UI TEXTURE");
+		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pUITexture->GetInterface().Get(), &srvDesc, my_texture_srv_cpu_handle));
 	}
 }
