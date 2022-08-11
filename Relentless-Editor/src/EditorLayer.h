@@ -17,5 +17,6 @@ namespace Relentless
 	private:
 		ImVec2 m_ViewportPanelSize;
 		bool m_SceneViewportChanged;
+		std::shared_ptr<Triangle> m_pTriangle;
 	};
 }

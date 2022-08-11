@@ -1,4 +1,5 @@
 #include "Window.h"
+#include "Events\MouseEvents.h"
 #include "Utility.h"
 #include "Input\Mouse.h"
 #include "Input\Keyboard.h"

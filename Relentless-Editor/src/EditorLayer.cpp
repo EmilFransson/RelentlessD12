@@ -35,7 +35,7 @@ namespace Relentless
 
 	void EditorLayer::OnAttach() noexcept
 	{
-	
+		m_pTriangle = std::make_shared<Triangle>();
 	}
 
 	void EditorLayer::OnUpdate(const float) noexcept
@@ -44,7 +44,7 @@ namespace Relentless
 			OnSceneViewportChanged();
 
 		Renderer3D::Begin();
-		Renderer3D::Submit();
+		Renderer3D::Submit(m_pTriangle);
 		Renderer3D::End();
 	}
 

@@ -1,12 +1,13 @@
 #pragma once
-#include "Events\Layer.h"
 namespace Relentless
 {
 	struct ApplicationSpecification
 	{
 		std::string Name;
 	};
-
+	
+	class Layer;
+	class IEvent;
 	class Application
 	{
 	public:

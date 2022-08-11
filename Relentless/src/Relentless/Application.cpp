@@ -16,6 +16,8 @@ namespace Relentless
 
 	void Application::Run() noexcept
 	{
+		Renderer3D::ExecuteCommands();
+		Renderer3D::WaitForGPU();
 		while (m_IsRunning)
 		{
 			Window::OnUpdate();
@@ -30,6 +32,7 @@ namespace Relentless
 				pLayer->OnImGuiRender();
 			ImguiLayer::EndFrame();
 
+			Renderer3D::PrepareBackBuffer();
 			Renderer3D::ExecuteCommands();
 
 			Window::Present();

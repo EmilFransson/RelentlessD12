@@ -180,7 +180,7 @@ namespace Relentless
 			c = { ToLinear(c.x), ToLinear(c.y), ToLinear(c.z), c.w };
 		}
 
-		m_pDescriptorHeap = std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2u, true);
+		m_pDescriptorHeap = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2u, true));
 		
 		//Descriptor heap handles:
 		UINT handle_increment = D3D12Core::GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -191,11 +191,18 @@ namespace Relentless
 		my_texture_srv_gpu_handle.ptr += (handle_increment * descriptor_index);
 
 		//UI TEXTURE
-		m_pUITexture = std::move(RenderTexture::Create(800u, 600u));
+		TextureSpecification textureSpecification = {};
+		textureSpecification.Width = 800u;
+		textureSpecification.Height = 600u;
+		textureSpecification.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		textureSpecification.MultiSampleCount = 1u;
+		textureSpecification.CreateDescriptorHandles = false;
+		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Brown.f);
 
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		ZeroMemory(&srvDesc, sizeof(srvDesc));
-		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		m_pUITexture = std::move(RenderTexture::Create(textureSpecification, "Main UI RenderTexture"));
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = m_pUITexture->GetFormat();
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = 1u;
 		srvDesc.Texture2D.MostDetailedMip = 0;
@@ -217,12 +224,20 @@ namespace Relentless
 
 	void ImguiLayer::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
 	{
+		TextureSpecification textureSpecification = {};
+		textureSpecification.Width = width;
+		textureSpecification.Height = height;
+		textureSpecification.Format = m_pUITexture->GetFormat();
+		textureSpecification.MultiSampleCount = 1u;
+		textureSpecification.CreateDescriptorHandles = false;
+		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Brown);
+		
 		MemoryManager::Get().DestroyResource(std::move(m_pUITexture));
-		m_pUITexture = std::move(RenderTexture::Create(width, height));
 
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		ZeroMemory(&srvDesc, sizeof(srvDesc));
-		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		m_pUITexture = std::move(RenderTexture::Create(textureSpecification, "Main UI Texture"));
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = m_pUITexture->GetFormat();
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = 1u;
 		srvDesc.Texture2D.MostDetailedMip = 0;

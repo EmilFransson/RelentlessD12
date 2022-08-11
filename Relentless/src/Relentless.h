@@ -21,3 +21,6 @@
 #include "Relentless/Window.h"
 #include "Relentless/Input/Mouse.h"
 #include "Relentless/Input/Keyboard.h"
+
+//Mesh
+#include "Relentless/Mesh/Triangle.h"

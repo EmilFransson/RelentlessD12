@@ -28,6 +28,7 @@
 #include <dxgi1_6.h>
 #include <DirectXMath.h>
 #include <DirectXColors.h>
+#include <d3dcompiler.h>
 
 //Relentless-specific files:
 #include "Relentless/Log.h"
