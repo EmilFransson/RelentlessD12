@@ -13,6 +13,8 @@
 #include <span>
 #include <filesystem>
 #include <fstream>
+#include <array>
+#include <chrono>
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>

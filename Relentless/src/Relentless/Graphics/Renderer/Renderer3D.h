@@ -1,13 +1,24 @@
 #pragma once
 namespace Relentless
 {
+	struct VP
+	{
+		DirectX::XMFLOAT4X4 VPMatrix;
+	};
+
+	struct World
+	{
+		DirectX::XMFLOAT4X4 WorldMatrix;
+	};
+
 	class RenderTexture;
 	class Triangle;
+	class PerspectiveCamera;
 	class Renderer3D
 	{
 	public:
 		static void Initialize() noexcept;
-		static void Begin() noexcept;
+		static void Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera) noexcept;
 		static void Submit(const std::shared_ptr<Triangle>& pTriangle) noexcept;
 		static void End() noexcept;
 		static void PrepareBackBuffer() noexcept;

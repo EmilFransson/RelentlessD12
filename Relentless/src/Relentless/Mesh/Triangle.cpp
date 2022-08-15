@@ -7,6 +7,8 @@ namespace Relentless
 		: m_NrOfVertices{ 3u },
 		  m_NrOfIndices{ 3u }
 	{
+		DirectX::XMStoreFloat4x4(&m_WorldMatrix, DirectX::XMMatrixIdentity());
+
 		SimpleVertex vertices[3];
 		vertices[0].Position = DirectX::XMFLOAT3(-0.5f, -0.5f, 0.0f);
 		vertices[1].Position = DirectX::XMFLOAT3(0.0f, 0.5f, 0.0f);

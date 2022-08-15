@@ -7,6 +7,7 @@
 #include "../../ImGui/ImguiLayer.h"
 #include "../MemoryManager.h"
 #include "../../Mesh/Triangle.h"
+#include "Camera/PerspectiveCamera.h"
 namespace Relentless
 {
 	struct Renderer3dData 
@@ -49,8 +50,8 @@ namespace Relentless
 
 		s_RendererData.viewPort.TopLeftX = 0.0f;
 		s_RendererData.viewPort.TopLeftY = 0.0f;
-		s_RendererData.viewPort.Width = 800;
-		s_RendererData.viewPort.Height = 600;
+		s_RendererData.viewPort.Width = 800.0f;
+		s_RendererData.viewPort.Height = 600.0f;
 		s_RendererData.viewPort.MinDepth = 0.0f;
 		s_RendererData.viewPort.MaxDepth = 1.0f;
 
@@ -63,7 +64,7 @@ namespace Relentless
 		CreateTestPipelineState();
 	}
 
-	void Renderer3D::Begin() noexcept
+	void Renderer3D::Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera) noexcept
 	{
 		RenderCommand::ResetFrameCommandUnits(s_RendererData.currentFrameIndex);
 
@@ -79,12 +80,24 @@ namespace Relentless
 		RenderCommand::SetRootSignature(s_RendererData.pRootSignature);
 		RenderCommand::SetPipelineState(s_RendererData.pPipelineState);
 		RenderCommand::SetTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		static VP vpMatrixCBuffer;
+		auto vpMatrix = DirectX::XMLoadFloat4x4(&(pSceneCamera->GetViewProjectionMatrix()));
+		vpMatrix = DirectX::XMMatrixTranspose(vpMatrix);
+		DirectX::XMStoreFloat4x4(&vpMatrixCBuffer.VPMatrix, vpMatrix);
+		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(2u, 4 * 4, &vpMatrixCBuffer, 0u));
 	}
 
 	void Renderer3D::Submit(const std::shared_ptr<Triangle>& pTriangle) noexcept
 	{
 		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(0u, pTriangle->GetVertexBuffer()->GetGPUVirtualAddress()));
 		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(1u, pTriangle->GetIndexBuffer()->GetGPUVirtualAddress()));
+		
+		static World worldMatrixCBuffer;
+		auto worldMatrix = DirectX::XMLoadFloat4x4(&(pTriangle->GetWorldMatrix()));
+		worldMatrix = DirectX::XMMatrixTranspose(worldMatrix);
+		DirectX::XMStoreFloat4x4(&worldMatrixCBuffer.WorldMatrix, worldMatrix);
+		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3u, 4 * 4, &worldMatrixCBuffer, 0u));
 		DXCall_STD(D3D12Core::GetCommandList()->DrawInstanced(pTriangle->GetNrOfIndices(), 1u, 0u, 0u));
 	}
 
@@ -203,21 +216,35 @@ namespace Relentless
 		indexBufferSRVParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;	
 		rootParameters.push_back(indexBufferSRVParameter);
 
-		Microsoft::WRL::ComPtr<ID3DBlob> pRootSignatureBlob{ nullptr };
+		D3D12_ROOT_PARAMETER vpRootParameterVS = {};
+		vpRootParameterVS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		vpRootParameterVS.Constants.Num32BitValues = 4 * 4;
+		vpRootParameterVS.Constants.ShaderRegister = 0u;
+		vpRootParameterVS.Constants.RegisterSpace = 0u;
+		vpRootParameterVS.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParameters.push_back(vpRootParameterVS);
+
+		D3D12_ROOT_PARAMETER worldMatrixRootParameterVS = {};
+		worldMatrixRootParameterVS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		worldMatrixRootParameterVS.Constants.Num32BitValues = 4 * 4;
+		worldMatrixRootParameterVS.Constants.ShaderRegister = 1u;
+		worldMatrixRootParameterVS.Constants.RegisterSpace = 0u;
+		worldMatrixRootParameterVS.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParameters.push_back(worldMatrixRootParameterVS);
+
 		D3D12_ROOT_SIGNATURE_DESC rootSignatureDescriptor = {};
 		rootSignatureDescriptor.NumParameters = static_cast<UINT>(rootParameters.size());
 		rootSignatureDescriptor.pParameters = rootParameters.data();
 		rootSignatureDescriptor.NumStaticSamplers = 0u;
 		rootSignatureDescriptor.pStaticSamplers = nullptr;
-
-		D3D12_ROOT_SIGNATURE_FLAGS flags = 
+		rootSignatureDescriptor.Flags = 
 			  D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS
 			| D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
 			| D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
 			| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS
 			| D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
-		rootSignatureDescriptor.Flags = flags;
 
+		Microsoft::WRL::ComPtr<ID3DBlob> pRootSignatureBlob{ nullptr };
 		SERIALIZE_ROOT_SIGNATURE(rootSignatureDescriptor, pRootSignatureBlob);
 		DXCall(D3D12Core::GetDevice()->CreateRootSignature
 		(
@@ -289,7 +316,7 @@ namespace Relentless
 		COMPILE_SHADER_FROM_FILE("PixelShader.hlsl", "ps_main", "ps_5_1", ppShaderBlob);
 
 		//We now create the Graphics Pipe line state, the PSO:
-		std::vector<DXGI_FORMAT> rtvFormats = { DXGI_FORMAT_R8G8B8A8_UNORM_SRGB };
+		std::array<DXGI_FORMAT, 1> rtvFormats = {DXGI_FORMAT_R8G8B8A8_UNORM_SRGB};
 		s_RendererData.psoDescriptor.pRootSignature = s_RendererData.pRootSignature.Get();
 		s_RendererData.psoDescriptor.VS.pShaderBytecode = pvShaderBlob->GetBufferPointer();
 		s_RendererData.psoDescriptor.VS.BytecodeLength = pvShaderBlob->GetBufferSize();

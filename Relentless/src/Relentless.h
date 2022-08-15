@@ -8,6 +8,8 @@
 //Events:
 #include "Relentless/ImGui/ImguiLayer.h"
 #include <Relentless/Events/Layer.h>
+#include <Relentless/Events/IEvent.h>
+
 
 //Graphics:
 #include <Relentless/Graphics/D3D12Core.h>
@@ -24,3 +26,6 @@
 
 //Mesh
 #include "Relentless/Mesh/Triangle.h"
+
+//Camera
+#include "Relentless/Graphics/Renderer/Camera/PerspectiveCamera.h"

@@ -6,6 +6,7 @@
 #include "Events/EventBuss.h"
 #include "Graphics/Renderer/Renderer3D.h"
 #include "Graphics/MemoryManager.h"
+#include "Timer.h"
 namespace Relentless
 {
 	Application::Application(const ApplicationSpecification& applicationSpecification) noexcept
@@ -20,12 +21,14 @@ namespace Relentless
 		Renderer3D::WaitForGPU();
 		while (m_IsRunning)
 		{
+			Timer::Update();
+
 			Window::OnUpdate();
 			
 			MemoryManager::Get().PerformDeferredDeletion();
 
 			for (auto& pLayer : LayerStack::Get())
-				pLayer->OnUpdate(0.1f);
+				pLayer->OnUpdate(Timer::GetDeltaTime());
 
 			ImguiLayer::BeginFrame();
 			for (auto& pLayer : LayerStack::Get())

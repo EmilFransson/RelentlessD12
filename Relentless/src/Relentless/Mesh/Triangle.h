@@ -11,11 +11,14 @@ namespace Relentless
 		[[nodiscard]] constexpr const Microsoft::WRL::ComPtr<ID3D12Resource>& GetIndexBuffer() const noexcept { return m_pIndexBuffer; }
 		[[nodiscard]] constexpr const uint32_t GetNrOfVertices() const noexcept { return m_NrOfVertices; }
 		[[nodiscard]] constexpr const uint32_t GetNrOfIndices() const noexcept{ return m_NrOfIndices; }
+		[[nodiscard]] constexpr const DirectX::XMFLOAT4X4& GetWorldMatrix() const noexcept { return m_WorldMatrix; }
 	private:
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_pVertexBuffer;
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_pIndexBuffer;
 
 		uint32_t m_NrOfVertices;
 		uint32_t m_NrOfIndices;
+
+		DirectX::XMFLOAT4X4 m_WorldMatrix;
 	};
 }
