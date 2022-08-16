@@ -81,11 +81,13 @@ namespace Relentless
 		D3D12Core::Initialize();
 		MemoryManager::Get().Initialize();
 
+		std::string engineIni = std::string(MAIN_ENGINE_DIRECTORY) + std::string("engine.ini");
+
 		uint32_t windowWidth{ 1280u };
 		uint32_t windowHeight{ 720u };
-		if (std::filesystem::exists("engine.ini"))
+		if (std::filesystem::exists(engineIni))
 		{
-			std::ifstream inFile("engine.ini");
+			std::ifstream inFile(engineIni);
 			std::string s;
 			while (inFile >> s)
 			{
@@ -109,13 +111,15 @@ namespace Relentless
 
 	void Application::ShutDown() noexcept
 	{
-		Renderer3D::OnShutDown();
+		std::string engineDirectory = std::string(MAIN_ENGINE_DIRECTORY) + std::string("engine.ini");
 
-		std::ofstream outFile("engine.ini");
+		std::ofstream outFile(engineDirectory);
 		outFile << "[RenderWindow][Dimensions]\n";
 		outFile << Window::GetWidth() << "\n";
 		outFile << Window::GetHeight();
 		outFile.close();
+
+		Renderer3D::OnShutDown();
 
 		m_IsRunning = false;
 	}

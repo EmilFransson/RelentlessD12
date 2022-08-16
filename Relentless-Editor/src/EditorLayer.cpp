@@ -72,9 +72,13 @@ namespace Relentless
 		
 		if (m_ViewportPanelSize.x != ImGui::GetContentRegionAvail().x || m_ViewportPanelSize.y != ImGui::GetContentRegionAvail().y)
 		{
-			m_ViewportPanelSize.x = ImGui::GetContentRegionAvail().x;
-			m_ViewportPanelSize.y = ImGui::GetContentRegionAvail().y;
-			m_SceneViewportChanged = true;
+			//Verify values are valid (as is not the case when shutting down the program!)
+			if (!(ImGui::GetContentRegionAvail().x < 0.0f) && !(ImGui::GetContentRegionAvail().y < 0.0f))
+			{
+				m_ViewportPanelSize.x = ImGui::GetContentRegionAvail().x;
+				m_ViewportPanelSize.y = ImGui::GetContentRegionAvail().y;
+				m_SceneViewportChanged = true;
+			}
 		}
 		
 		ImGui::Image
@@ -105,7 +109,7 @@ namespace Relentless
 
 	void EditorLayer::OnAttach() noexcept
 	{
-		m_pSceneCamera = std::move(PerspectiveCamera::Create(DirectX::XMVECTORF32{ 0.0f, 0.0f, -10.0f }, 1360u, 750));
+		m_pSceneCamera = std::move(PerspectiveCamera::Create(DirectX::XMVECTORF32{ 0.0f, 0.0f, -10.0f }, static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y)));
 		m_pTriangle = std::make_shared<Triangle>();
 	}
 

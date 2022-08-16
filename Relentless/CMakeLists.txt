@@ -59,6 +59,7 @@ target_link_libraries(Relentless PUBLIC imgui)
 target_compile_definitions(Relentless PUBLIC "$<$<CONFIG:DEBUG>:RLS_DEBUG>")
 target_compile_definitions(Relentless PUBLIC "$<$<CONFIG:RELEASE>:RLS_RELEASE>")
 target_compile_definitions(Relentless PUBLIC SHADER_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/src/Relentless/Graphics/Shaders/")
+target_compile_definitions(Relentless PUBLIC MAIN_ENGINE_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/")
 
 FetchContent_Declare(d3d12-agility
        URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.602.0
