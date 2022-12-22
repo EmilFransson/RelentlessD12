@@ -1,20 +1,41 @@
-#Relentless/Relentless-Editor
-#source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES "src/main.cpp")
+#Root/Relentless-Editor
+set(SourceFiles 
+		"src/Core/RelentlessEditorApp.cpp" "src/Core/EditorLayer.h" "src/Core/EditorLayer.cpp"
+ "src/Panels/SceneHierarchyPanel.h" "src/Panels/SceneHierarchyPanel.cpp" "src/Panels/MetricsPanel.h" "src/Panels/MetricsPanel.cpp" "src/Panels/PropertiesPanel.h" "src/Panels/PropertiesPanel.cpp" "src/Panels/ContentBrowserPanel.h" "src/Panels/ContentBrowserPanel.cpp" "src/Core/EditorGrid.h" "src/Core/EditorGrid.cpp")
+		
+set(ExecutableName "Relentless-Editor")
+set (ExternalIncludePath "${CMAKE_SOURCE_DIR}/Relentless-Editor/vendor/includes/")
+set (ExternalLibPath "${CMAKE_SOURCE_DIR}/Relentless-Editor/vendor/libs")
 
-include_directories(${PROJECT_SOURCE_DIR}/Relentless)
+add_executable("${ExecutableName}" "${SourceFiles}")
 
-add_executable(Relentless-Editor WIN32 "src/RelentlessEditorApp.cpp"  "src/EditorLayer.h" "src/EditorLayer.cpp")
-target_compile_options(Relentless-Editor PRIVATE /W4 /WX)
+target_include_directories("${ExecutableName}" PRIVATE "src/")
+target_include_directories("${ExecutableName}" PRIVATE "${CMAKE_SOURCE_DIR}/Relentless/" "${ExternalIncludePath}")
 
-target_link_libraries(Relentless-Editor Relentless)
+target_link_libraries("${ExecutableName}" PRIVATE "Relentless")
+target_compile_options("${ExecutableName}" PRIVATE "/W4")
 
-target_include_directories(Relentless-Editor PUBLIC "src")
+target_compile_definitions("${ExecutableName}" PRIVATE RUNTIME_DIR="${CMAKE_CURRENT_SOURCE_DIR}/")
+target_compile_definitions("${ExecutableName}" PRIVATE PROJECT_WORKSPACE="${CMAKE_SOURCE_DIR}/")
+target_compile_definitions("${ExecutableName}" PRIVATE PROJECT_BIN="${CMAKE_BINARY_DIR}/${ExecutableName}")
 
-target_precompile_headers(Relentless-Editor REUSE_FROM Relentless)
+##### Section for linking external libraries #####
+file(GLOB_RECURSE libFiles
+	  ${ExternalLibPath}/${CMAKE_BUILD_TYPE}/*.lib)
 
-#set_property(TARGET Relentless-Editor PROPERTY
-#             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+foreach(var ${libFiles})
+	target_link_libraries("${ExecutableName}" PRIVATE "${var}")
+endforeach()
 
-set_target_properties(Relentless-Editor PROPERTIES LINKER_LANGUAGE CXX)
+file(GLOB_RECURSE dlls
+	  ${ExternalLibPath}/${CMAKE_BUILD_TYPE}/*.dll ${ExternalLibPath}/${CMAKE_BUILD_TYPE}/*.pdb)
 
-set_property(TARGET Relentless-Editor PROPERTY FOLDER "Executables")
+foreach(var ${dlls})
+	add_custom_command(
+	TARGET "${ExecutableName}" POST_BUILD 
+	COMMAND ${CMAKE_COMMAND} -E copy 
+	"${var}"
+	${CMAKE_BINARY_DIR}/Relentless-Editor/
+
+	)
+endforeach()

@@ -1,4 +1,6 @@
 #pragma once
+
+#pragma warning(push, 0)
 #include <iostream>
 #include <vector>
 #include <map>
@@ -14,7 +16,12 @@
 #include <filesystem>
 #include <fstream>
 #include <array>
+#include <queue>
 #include <chrono>
+#include <tuple>
+#include <queue>
+#include <algorithm>
+#include <functional>
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
@@ -24,6 +31,7 @@
 #define NOMINMAX
 #include <Windows.h>
 #include <Windowsx.h>
+#include <rpc.h>
 #include <wrl/client.h>
 #include <comdef.h>
 #include <d3d12.h>
@@ -31,8 +39,11 @@
 #include <DirectXMath.h>
 #include <DirectXColors.h>
 #include <d3dcompiler.h>
+#include <d3d12sdklayers.h>
+#pragma warning(pop)
 
 //Relentless-specific files:
-#include "Relentless/Log.h"
-#include "Relentless/Core.h"
-#include "Relentless/Graphics/D3D12Debug.h"
+#include "Core/Log.h"
+#include "Core/Core.h"
+#include "Core/Utility.h"
+#include "Graphics/D3D12Debug.h"

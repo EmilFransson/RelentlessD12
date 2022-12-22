@@ -1,95 +1,89 @@
 #Relentless/Relentless
 
-set(SourcesList "src/rlspch.h" "src/Relentless.h" "src/Relentless/Application.h" "src/Relentless/Application.cpp" "src/Relentless/EntryPoint.h" "src/Relentless/Events/EventType.h" "src/Relentless/Events/EventCategory.h" "src/Relentless/Events/IEvent.h" "src/Relentless/Events/IEvent.cpp" "src/Relentless/Events/MouseEvents.h" "src/Relentless/Events/WindowEvents.h" "src/Relentless/Events/IEventListener.h" "src/Relentless/Core.h" "src/Relentless/Events/KeyboardEvents.h" "src/Relentless/Events/Layer.h" "src/Relentless/Events/Layer.cpp" "src/Relentless/Events/LayerStack.h" "src/Relentless/Events/LayerStack.cpp" "src/Relentless/Events/EventBuss.h" "src/Relentless/Events/EventBuss.cpp" "src/Relentless/Input/KeyCodes.h" "src/Relentless/Input/MouseCodes.h" "src/Relentless/Input/Keyboard.h" "src/Relentless/Input/Keyboard.cpp" "src/Relentless/Events/EventPublisher.h" "src/Relentless/Events/EventPublisher.cpp" "src/Relentless/Input/Mouse.h" "src/Relentless/Input/Mouse.cpp" "src/Relentless/Log.h" "src/Relentless/Log.cpp" "src/Relentless/Window.h" "src/Relentless/Window.cpp" "src/Relentless/Utility.h" "src/Relentless/Utility.cpp" "src/Relentless/Graphics/D3D12Core.h" "src/Relentless/Graphics/D3D12Core.cpp" "src/Relentless/Graphics/d3dx12.h" "src/Relentless/Graphics/D3D12Debug.h" "src/Relentless/Graphics/D3D12Command.h" "src/Relentless/Graphics/D3D12Command.cpp" "src/Relentless/Graphics/D3D12Debug.cpp" "src/Relentless/Graphics/DescriptorHeap.h" "src/Relentless/Graphics/DescriptorHeap.cpp" "src/Relentless/Graphics/Renderer/RenderCommand.h" "src/Relentless/Graphics/Renderer/RenderCommand.cpp" "src/Relentless/ImGui/ImguiLayer.h" "src/Relentless/ImGui/ImguiLayer.cpp" "src/Relentless/Graphics/Renderer/Renderer3D.h"  "src/Relentless/Graphics/Renderer/Renderer3D.cpp" "src/Relentless/Graphics/Resources/IResource.h" "src/Relentless/Graphics/Resources/IResource.cpp" "src/Relentless/Graphics/Resources/Texture.h" "src/Relentless/Graphics/Resources/Texture.cpp" "src/Relentless/Graphics/MemoryManager.h" "src/Relentless/Graphics/MemoryManager.cpp" "src/Relentless/Graphics/Resources/DepthStencil.h" "src/Relentless/Graphics/Resources/DepthStencil.cpp" "src/Relentless/Mesh/Triangle.h" "src/Relentless/Mesh/Triangle.cpp" "src/Relentless/Mesh/Vertex.h" "src/Relentless/Graphics/Renderer/Camera/ICamera.h" "src/Relentless/Graphics/Renderer/Camera/ICamera.cpp" "src/Relentless/Graphics/Renderer/Camera/PerspectiveCamera.h" "src/Relentless/Graphics/Renderer/Camera/PerspectiveCamera.cpp" "src/Relentless/Timer.h" "src/Relentless/Timer.cpp")
+set(SourcesList "src/rlspch.h" "Relentless.h" "src/Core/Application.h" "src/Core/Application.cpp" "EntryPoint.h"
+"src/EventSystem/IEvent.h" "src/EventSystem/MouseEvents.h" "src/EventSystem/WindowEvents.h" "src/EventSystem/Layer.h" 
+"src/EventSystem/LayerStack.h" "src/EventSystem/LayerStack.cpp" "src/Core/Core.h" "src/EventSystem/KeyboardEvents.h"
+ "src/EventSystem/EventBus.h" "src/EventSystem/EventBus.cpp"  "src/Input/Keyboard.h" 
+"src/Input/Keyboard.cpp" "src/EventSystem/EventPublisher.h" "src/EventSystem/EventPublisher.cpp" 
+"src/Input/Mouse.h" "src/Input/Mouse.cpp" "src/Core/Log.h" "src/Core/Log.cpp" "src/Core/Window.h" 
+"src/Core/Window.cpp" "src/Core/Utility.h" "src/Core/Utility.cpp" "src/Graphics/D3D12Core.h" 
+"src/Graphics/D3D12Core.cpp" "src/Graphics/d3dx12.h" "src/Graphics/D3D12Debug.h" 
+"src/Graphics/D3D12Command.h" "src/Graphics/D3D12Command.cpp" "src/Graphics/D3D12Debug.cpp" 
+"src/Graphics/DescriptorHeap.h" "src/Graphics/DescriptorHeap.cpp" "src/Graphics/Renderer/RenderCommand.h" 
+"src/Graphics/Renderer/RenderCommand.cpp" "src/ImGui/ImguiLayer.h" "src/ImGui/ImguiLayer.cpp" 
+"src/Graphics/Renderer/Renderer3D.h"  "src/Graphics/Renderer/Renderer3D.cpp" "src/Graphics/Resources/IResource.h" 
+"src/Graphics/Resources/IResource.cpp" "src/Graphics/Resources/Texture.h" "src/Graphics/Resources/Texture.cpp" 
+"src/Graphics/MemoryManager.h" "src/Graphics/MemoryManager.cpp" "src/Graphics/Resources/DepthStencil.h"
+"src/Graphics/Resources/DepthStencil.cpp"   
+"src/Mesh/Vertex.h" "src/Graphics/Renderer/Camera/ICamera.h" "src/Graphics/Renderer/Camera/ICamera.cpp" 
+"src/Graphics/Renderer/Camera/PerspectiveCamera.h" "src/Graphics/Renderer/Camera/PerspectiveCamera.cpp" 
+"src/Core/Timer.h" "src/Core/Timer.cpp" "src/Graphics/Renderer/Camera/OrthographicCamera.h" 
+"src/Graphics/Renderer/Camera/OrthographicCamera.cpp"  
+   
+"src/ECS/EntityManager.h" "src/ECS/EntityManager.cpp" 
+"src/ECS/Component.h" "src/ECS/Component.cpp" "src/ECS/System.h" "src/Scene/Scene.h" "src/Scene/Scene.cpp" "src/Graphics/Shaders/Shader.h" "src/Graphics/Shaders/Shader.cpp" "src/Graphics/Shaders/ShaderCompiler.h" "src/Graphics/Shaders/ShaderCompiler.cpp" "src/Graphics/Shaders/ShaderLibrary.h" "src/Graphics/Shaders/ShaderLibrary.cpp" "vendor/includes/ImGuizmo/ImCurveEdit.cpp" "vendor/includes/ImGuizmo/ImCurveEdit.h" "vendor/includes/ImGuizmo/ImGradient.cpp" "vendor/includes/ImGuizmo/ImGradient.h" "vendor/includes/ImGuizmo/ImGuizmo.cpp" "vendor/includes/ImGuizmo/ImGuizmo.h" "vendor/includes/ImGuizmo/ImSequencer.cpp" "vendor/includes/ImGuizmo/ImSequencer.h" "src/Graphics/Resources/VertexBuffer.h" "src/Graphics/Resources/VertexBuffer.cpp" "src/Graphics/Resources/IndexBuffer.h" "src/Graphics/Resources/IndexBuffer.cpp" "src/Graphics/Resources/UploadBuffer.h" "src/Graphics/Resources/UploadBuffer.cpp" "src/Graphics/Resources/AssetManager.h" "src/Graphics/Resources/AssetManager.cpp")
 
-add_library(Relentless STATIC ${SourcesList})
+set(LibraryName "Relentless")
+set (ExternalIncludePath "${CMAKE_SOURCE_DIR}/Relentless/vendor/includes/")
+set (ExternalLibPath "${CMAKE_SOURCE_DIR}/Relentless/vendor/libs")
 
-target_include_directories(Relentless PUBLIC "src")
+add_library("${LibraryName}" STATIC "${SourcesList}")
+target_include_directories("${LibraryName}" PRIVATE "${CMAKE_SOURCE_DIR}/Core/src/" "${ExternalIncludePath}")
+target_compile_options("${LibraryName}" PRIVATE "/W4")
+set_target_properties("${LibraryName}" PROPERTIES LINKER_LANGUAGE "CXX")
+target_link_libraries("${LibraryName}" PRIVATE "d3d12" "dxgi" "dxguid" "dxcompiler" "d3dcompiler" "Rpcrt4")
 
-target_precompile_headers("${PROJECT_NAME}" PRIVATE "src/rlspch.h")
-
-#set_property(TARGET Relentless PROPERTY
-#             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-
-set (IMGUI_SOURCES 
-"vendor/imgui/imgui.cpp"
-"vendor/imgui/imgui_demo.cpp"
-"vendor/imgui/imgui_draw.cpp"
-"vendor/imgui/imgui_tables.cpp"
-"vendor/imgui/imgui_widgets.cpp"
-"vendor/imgui/backends/imgui_impl_win32.cpp"
-"vendor/imgui/backends/imgui_impl_dx12.cpp"
-)
-
-set (IMGUI_HEADERS
-"vendor/imgui/imconfig.h"
-"vendor/imgui/imgui.h"
-"vendor/imgui/imgui_internal.h"
-"vendor/imgui/imstb_rectpack.h"
-"vendor/imgui/imstb_textedit.h"
-"vendor/imgui/imstb_truetype.h"
-"vendor/imgui/backends/imgui_impl_win32.h"
-"vendor/imgui/backends/imgui_impl_dx12.h"
-)
-
-add_library("imgui" STATIC ${IMGUI_SOURCES} ${IMGUI_HEADERS})
-target_include_directories("imgui" PUBLIC "vendor/imgui/")
+target_precompile_headers("${LibraryName}" PUBLIC "src/rlspch.h")
 
 if(NOT BUILD_SHARED_LIBS)
     set(STATIC_POSTFIX "-static")
 endif()
 
-set_target_properties("${PROJECT_NAME}"
+set_target_properties("${LibraryName}"
     PROPERTIES
     DEBUG_POSTFIX "${STATIC_POSTFIX}-debug"
     RELEASE_POSTFIX "${STATIC_POSTFIX}"
 )
 
-set_target_properties(Relentless PROPERTIES LINKER_LANGUAGE CXX)
+##### Section for linking external libraries #####
+file(GLOB_RECURSE libFiles
+      ${ExternalLibPath}/${CMAKE_BUILD_TYPE}/*.lib)
 
-target_compile_options(Relentless PRIVATE /W4 /WX)
+foreach(var ${libFiles})
+    target_link_libraries("${LibraryName}" PRIVATE "${var}")
+endforeach()
 
-set_property(TARGET Relentless PROPERTY FOLDER "Libraries")
+file(GLOB_RECURSE dlls
+      ${ExternalLibPath}/${CMAKE_BUILD_TYPE}/*.dll ${ExternalLibPath}/${CMAKE_BUILD_TYPE}/*.pdb)
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SourcesList})
+foreach(var ${dlls})
+    add_custom_command(
+    TARGET "${LibraryName}" POST_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E copy 
+    "${var}"
+    ${CMAKE_BINARY_DIR}/Relentless-Editor/
 
-target_link_libraries(Relentless PUBLIC spdlog)
-target_link_libraries(Relentless PUBLIC imgui)
-
-target_compile_definitions(Relentless PUBLIC "$<$<CONFIG:DEBUG>:RLS_DEBUG>")
-target_compile_definitions(Relentless PUBLIC "$<$<CONFIG:RELEASE>:RLS_RELEASE>")
-target_compile_definitions(Relentless PUBLIC SHADER_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/src/Relentless/Graphics/Shaders/")
-target_compile_definitions(Relentless PUBLIC MAIN_ENGINE_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/")
-
-FetchContent_Declare(d3d12-agility
-       URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.602.0
-       )
-FetchContent_MakeAvailable(d3d12-agility)
-file(GLOB_RECURSE d3d12-agility-inc "${d3d12-agility_SOURCE_DIR}/build/native/include/*.h")
-add_library(d3d12-agility INTERFACE ${d3d12-agility-inc})
-target_include_directories(d3d12-agility INTERFACE "${d3d12-agility_SOURCE_DIR}/build/native/include")
-target_link_libraries(d3d12-agility INTERFACE "d3d12.lib" "dxgi.lib" "d3dcompiler.lib")
-target_link_libraries(${PROJECT_NAME} PRIVATE d3d12-agility) # LINK UR PROJECT HERE
-
-# Copy DLLS
-add_custom_command(
-    TARGET Relentless POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy    
-            "${d3d12-agility_SOURCE_DIR}/build/native/bin/x64/D3D12Core.dll"
-            ${CMAKE_BINARY_DIR}/Relentless-Editor/d3d12/D3D12Core.dll
-            
-    COMMAND ${CMAKE_COMMAND} -E copy    
-            "${d3d12-agility_SOURCE_DIR}/build/native/bin/x64/D3D12Core.pdb"
-            ${CMAKE_BINARY_DIR}/Relentless-Editor/d3d12/D3D12Core.pbd
-            
-    COMMAND ${CMAKE_COMMAND} -E copy    
-            "${d3d12-agility_SOURCE_DIR}/build/native/bin/x64/d3d12SDKLayers.dll"
-            ${CMAKE_BINARY_DIR}/Relentless-Editor/d3d12/d3d12SDKLayers.dll
-            
-    COMMAND ${CMAKE_COMMAND} -E copy    
-            "${d3d12-agility_SOURCE_DIR}/build/native/bin/x64/d3d12SDKLayers.pdb"
-            ${CMAKE_BINARY_DIR}/Relentless-Editor/d3d12/d3d12SDKLayers.pbd
     )
+endforeach()
 
-message(${CMAKE_BINARY_DIR}/Relentless-Editor/d3d12/d3d12SDKLayers.pbd)
-message("${d3d12-agility_SOURCE_DIR}/build/native/bin/x64/d3d12SDKLayers.dll")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Relentless-Editor/D3D12")
+
+add_custom_command(
+    TARGET ${LibraryName} POST_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E copy 
+    "${CMAKE_BINARY_DIR}/Relentless-Editor/D3D12Core.dll"
+    "${CMAKE_BINARY_DIR}/Relentless-Editor/D3D12/"
+)
+
+add_custom_command(
+    TARGET ${LibraryName} POST_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E copy 
+    "${CMAKE_BINARY_DIR}/Relentless-Editor/d3d12SDKLayers.dll"
+    "${CMAKE_BINARY_DIR}/Relentless-Editor/D3D12/"
+)
+
+target_compile_definitions(${LibraryName} PUBLIC "$<$<CONFIG:DEBUG>:RLS_DEBUG>")
+target_compile_definitions(${LibraryName} PUBLIC "$<$<CONFIG:RELEASE>:RLS_RELEASE>")
+target_compile_definitions(${LibraryName} PUBLIC SHADER_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/src/Graphics/Shaders/")
+target_compile_definitions(${LibraryName} PUBLIC ENGINE_ASSET_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/Assets/")
+target_compile_definitions(${LibraryName} PUBLIC MAIN_ENGINE_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/")
