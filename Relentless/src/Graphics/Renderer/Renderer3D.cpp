@@ -145,6 +145,7 @@ namespace Relentless
 
 		RenderCommand::SetRenderTarget(s_RendererData.m_pMSAARenderTexture, s_RendererData.m_pMSAADepthStencil);
 
+		DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		RenderCommand::SetRootSignature(s_RendererData.pRootSignature);
 		RenderCommand::SetPipelineState(s_RendererData.pPipelineState);
 		RenderCommand::SetTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -178,6 +179,13 @@ namespace Relentless
 			static World worldMatrixCBuffer;
 			worldMatrixCBuffer.WorldMatrix = entityManager.Get<TransformComponent>(e).Transform;
 			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3u, 4 * 4, &worldMatrixCBuffer, 0u));
+			static PerDrawData2 perDrawData2;
+			auto& mrc = entityManager.Get<MeshRendererComponent>(e);
+
+			auto index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
+			perDrawData2.colorIndex = mrc.constantBuffer->m_VisibleHandles[index].Index;
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4, 1, &perDrawData2, 0u));
+
 			RenderCommand::DrawInstanced(ib->GetNrOfIndices());
 		}
 
@@ -258,11 +266,10 @@ namespace Relentless
 
 		//Post process:
 		{
-			static VP vpMatrixCBuffer;
 			static PerFrameData textureData;
 			textureData.PostProcessTextureIndex = s_RendererData.m_pPostProcessRenderTexture->GetSRVDescriptorHandle().Index;
-			uint32_t count = sizeof(PerFrameData) / 4;
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4, count, &textureData, 0u));
+			constexpr uint32_t COUNT = 1u;
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, COUNT, &textureData, 0u));
 			RenderCommand::DrawInstanced(3u);
 		}
 
@@ -433,6 +440,14 @@ namespace Relentless
 		worldMatrixRootParameterVS.Constants.ShaderRegister = 1u;
 		worldMatrixRootParameterVS.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 		rootParameters.push_back(worldMatrixRootParameterVS);
+
+		D3D12_ROOT_PARAMETER perFramePS = {};
+		perFramePS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		perFramePS.Constants.Num32BitValues = 1u;
+		perFramePS.Constants.RegisterSpace = 0u;
+		perFramePS.Constants.ShaderRegister = 3u;
+		perFramePS.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		rootParameters.push_back(perFramePS);
 
 		D3D12_ROOT_SIGNATURE_DESC rootSignatureDescriptor = {};
 		rootSignatureDescriptor.NumParameters = static_cast<UINT>(rootParameters.size());

@@ -4,6 +4,7 @@
 #include "Resources/UploadBuffer.h"
 namespace Relentless
 {
+	class ConstantBuffer;
 	class MemoryManager
 	{
 	public:
@@ -15,6 +16,7 @@ namespace Relentless
 		void PerformDeferredDeletion() noexcept;
 		[[nodiscard]] constexpr const std::unique_ptr<UploadBuffer>& GetUploadBuffer() const { return m_pUploadBuffer; }
 		[[nodiscard]] constexpr const std::unique_ptr<DescriptorHeap>& GetShaderBindableDescriptorHeap() const { return m_pShaderBindablesDescriptorHeap; }
+		void UpdateConstantBuffer(const ConstantBuffer& constantBuffer, void* pData) noexcept;
 	private:
 		MemoryManager() noexcept = default;
 		~MemoryManager() noexcept = default;

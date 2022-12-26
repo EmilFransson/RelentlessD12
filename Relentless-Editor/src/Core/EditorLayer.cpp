@@ -247,6 +247,7 @@ namespace Relentless
 		EntityManager& entityManager = m_Scene.GetEntityManager();
 		entityManager.Add<MeshFilterComponent>(entity, vbID, ibID);
 		entityManager.Add<ForwardPassComponent>(entity);
+		entityManager.Add<MeshRendererComponent>(entity);
 	}
 
 	void EditorLayer::OnAttach() noexcept
@@ -302,6 +303,12 @@ namespace Relentless
 		{
 			m_pSceneCamera->Update(deltaTime);
 		}
+
+		m_Scene.GetEntityManager().Collect<MeshRendererComponent>().Do([](MeshRendererComponent& mrc)
+			{
+				auto& cb = *mrc.constantBuffer;
+				MemoryManager::Get().UpdateConstantBuffer(cb, &mrc.Color);
+			});
 	}
 
 	void EditorLayer::OnRender() noexcept

@@ -4,7 +4,21 @@ struct PS_IN
     float2 inTexCoords  : TEXCOORDS;
 };
 
+struct PerDrawData
+{
+    uint colorIndex;
+};
+
+struct Color
+{
+    float3 col;
+};
+
+ConstantBuffer<PerDrawData> perDrawData : register(b3, space0);
+
 float4 ps_main(in PS_IN psIn) : SV_TARGET
 {
-    return float4(1.0f, 0.0f, 0.0f, 1.0f);
+    ConstantBuffer<Color> color = ResourceDescriptorHeap[perDrawData.colorIndex];
+
+    return float4(color.col, 1.0f);
 }

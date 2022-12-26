@@ -1,6 +1,7 @@
 #include "MemoryManager.h"
 #include "D3D12Core.h"
 #include "../Core/Window.h"
+#include "Resources/ConstantBuffer.h"
 namespace Relentless
 {
 	MemoryManager MemoryManager::s_Instance;
@@ -102,5 +103,22 @@ namespace Relentless
 #endif
 		if (!m_pDeferredFreeListsResources[index].empty())
 			m_pDeferredFreeListsResources[index].clear();
+	}
+
+	void MemoryManager::UpdateConstantBuffer(const ConstantBuffer& constantBuffer, void* pData) noexcept
+	{
+		RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
+		auto address = constantBuffer.GetInterface()->GetGPUVirtualAddress();
+
+		constexpr const D3D12_RANGE range = { 0,0 };
+		DXCall(constantBuffer.GetInterface()->Map(0u, &range, reinterpret_cast<void**>(&address)));
+		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), constantBuffer.m_SizeInBytes);
+		DXCall_STD(constantBuffer.GetInterface()->Unmap(0u, nullptr));
+
+		auto index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
+		auto dstHandle = constantBuffer.m_VisibleHandles[index].CPUHandle;
+		auto srcHandle = constantBuffer.m_NonVisibleHandle.CPUHandle;
+
+		DXCall_STD(D3D12Core::GetDevice()->CopyDescriptorsSimple(1u, dstHandle, srcHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 	}
 }

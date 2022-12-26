@@ -17,6 +17,11 @@ namespace Relentless
 		uint32_t PostProcessTextureIndex;
 	};
 
+	struct PerDrawData2
+	{
+		uint32_t colorIndex;
+	};
+
 	struct PerDrawData
 	{
 		uint32_t vertexBufferIndex;

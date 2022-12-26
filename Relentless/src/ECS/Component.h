@@ -1,5 +1,6 @@
 #pragma once
 #include "../Graphics/Resources/AssetManager.h"
+#include "../Graphics/Resources/ConstantBuffer.h"
 
 namespace Relentless
 {
@@ -35,6 +36,18 @@ namespace Relentless
 	{
 		ResourceID VertexBufferID;
 		ResourceID IndexBufferID;
+	};
+
+	struct MeshRendererComponent
+	{
+		MeshRendererComponent()
+			:Color{ 1.0f, 0.0f, 0.0f }
+		{
+			constantBuffer = RLS_NEW ConstantBuffer(sizeof(DirectX::XMFLOAT3));
+		}
+
+		DirectX::XMFLOAT3 Color;
+		ConstantBuffer* constantBuffer;
 	};
 
 	struct ForwardPassComponent
