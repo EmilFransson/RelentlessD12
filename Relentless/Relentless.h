@@ -32,6 +32,7 @@
 
 //Mesh-related:
 #include <src/Mesh/Vertex.h>
+#include <src/Mesh/MeshFactory.h>
 
 //Camera
 #include <src/Graphics/Renderer/Camera/PerspectiveCamera.h>

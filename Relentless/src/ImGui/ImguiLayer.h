@@ -3,6 +3,7 @@
 #include "../Graphics/DescriptorHeap.h"
 #pragma warning(push, 0)
 #include "../../vendor/includes/ImGUI/imgui.h"
+#include "../../vendor/includes/ImGUI/imgui_internal.h"
 #include "../../vendor/includes/ImGUI/backends/imgui_impl_win32.h"
 #include "../../vendor/includes/ImGUI/backends/imgui_impl_dx12.h"
 #include "../../vendor/includes/ImGuizmo/ImGuizmo.h"
@@ -10,6 +11,8 @@
 #include "../Graphics/Resources/Texture.h"
 namespace Relentless
 {
+#define OPENSANS_BOLD_18 0
+
 	class ImguiLayer : public Layer 
 	{
 	public:

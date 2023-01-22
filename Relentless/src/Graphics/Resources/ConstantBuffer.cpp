@@ -2,7 +2,7 @@
 #include "../D3D12Core.h"
 namespace Relentless
 {
-	ConstantBuffer::ConstantBuffer(uint32_t sizeInBytes) noexcept
+	ConstantBuffer::ConstantBuffer(size_t sizeInBytes) noexcept
 		: m_SizeInBytes{sizeInBytes}
 	{
 		D3D12_HEAP_PROPERTIES bufferHeapProperties = {};
@@ -32,7 +32,7 @@ namespace Relentless
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferDescriptor = {};
 		constantBufferDescriptor.BufferLocation = m_pResource->GetGPUVirtualAddress();
-		constantBufferDescriptor.SizeInBytes = sizeInBytes;
+		constantBufferDescriptor.SizeInBytes = static_cast<UINT>(sizeInBytes);
 
 		m_NonVisibleHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::CBV_NV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateConstantBufferView(&constantBufferDescriptor, m_NonVisibleHandle.CPUHandle));

@@ -75,10 +75,35 @@ namespace Relentless
 		
 		LightComponent(Type type, const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f))
 			:LightType{ type },
-			 Color{ color }
-		{}
+			 Color{ color },
+			 Intensity{1.0f}
+		{
+			constantBuffer = RLS_NEW ConstantBuffer((sizeof(DirectX::XMFLOAT3) * 2) + sizeof(float));
+		}
 
 		Type LightType;
 		DirectX::XMFLOAT3 Color;
+		float Intensity;
+		ConstantBuffer* constantBuffer;
+	};
+
+	struct CameraComponent
+	{
+		CameraComponent()
+			: ViewMatrix{},
+			  ProjectionMatrix{},
+			  FieldOfViewDegrees{60.0f},
+			  ClippingPlaneNear{0.3f},
+			  ClippingPlaneFar{1000.0f},
+			  ClearColor{ DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue) },
+			  IsMainCamera{false}
+		{}
+		DirectX::XMFLOAT4X4 ViewMatrix;
+		DirectX::XMFLOAT4X4 ProjectionMatrix;
+		float FieldOfViewDegrees;
+		float ClippingPlaneNear;
+		float ClippingPlaneFar;
+		DirectX::XMFLOAT4 ClearColor;
+		bool IsMainCamera;
 	};
 }

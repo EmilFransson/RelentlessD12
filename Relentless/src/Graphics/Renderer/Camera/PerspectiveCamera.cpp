@@ -6,13 +6,13 @@ namespace Relentless
 	PerspectiveCamera::PerspectiveCamera(const DirectX::XMVECTOR& position, const uint32_t width, const uint32_t height) noexcept
 		: m_UpVector{ DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f) },
 		m_RightVector{ DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f) },
-		m_Yaw{ 130.0f },
-		m_Pitch{ -40.0f },
+		m_Yaw{ 134.0f },
+		m_Pitch{ -35.0f },
 		m_CameraSpeed{ 10.0f },
 		m_TiltSensitivity{ 0.25f },
 		m_FieldOfViewDegrees{ 60.0f },
-		m_NearPlane{0.1f},
-		m_FarPlane{ 100.f }
+		m_NearPlane{0.3f},
+		m_FarPlane{ 1000.f }
 	{
 		DirectX::XMStoreFloat3(&m_Position, position);
 		DirectX::XMStoreFloat3(&m_FrontVector, DirectX::XMVector3Normalize(DirectX::XMVectorSubtract({ 0.0f, 0.0f, 0.0f }, position)));
@@ -31,6 +31,8 @@ namespace Relentless
 		DirectX::XMStoreFloat4x4(&m_ViewProjectionMatrix, viewMatrix * projectionMatrix);
 		DirectX::XMStoreFloat4x4(&m_ViewMatrix, viewMatrix);
 		DirectX::XMStoreFloat4x4(&m_ProjectionMatrix, projectionMatrix);
+
+		m_pConstantBuffer = std::make_unique<ConstantBuffer>(sizeof(DirectX::XMFLOAT3));
 	}
 
 	void PerspectiveCamera::RecalculateViewProjectionMatrix() noexcept

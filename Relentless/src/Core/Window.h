@@ -29,6 +29,7 @@ namespace Relentless
 		[[nodiscard]] static BackBuffer& GetCurrentBackBuffer() noexcept { return GetBackBuffers()[GetCurrentBackbufferIndex()]; }
 		static void Resize() noexcept;
 	private:
+		static void ToggleFullScreen() noexcept;
 		static LRESULT HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
 		static void CreateSwapchain() noexcept;
 		static void Finalize() noexcept;
@@ -38,6 +39,7 @@ namespace Relentless
 		static std::string m_ClassName;
 		static uint32_t m_Width;
 		static uint32_t m_Height;
+		static UINT m_WindowStyle;
 		static HWND m_WindowHandle;
 		static RECT m_ClientRect;
 		static RECT m_NonClientRect;
@@ -52,5 +54,6 @@ namespace Relentless
 		static uint8_t m_NrOfBackBuffers;
 		static std::vector<BackBuffer> m_BackBuffers;
 		static bool m_IsResizing;
+		static bool m_IsFullScreen;
 	};
 }

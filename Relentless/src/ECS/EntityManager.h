@@ -7,7 +7,7 @@
 
 namespace Relentless
 {
-#define set(ID) (static_cast<SparseSet<ComponentType>*>(m_components.at(ID).get()))
+#define set_internal(ID) (static_cast<SparseSet<ComponentType>*>(m_components.at(ID).get()))
 
 #if defined RLS_DEBUG
 	#ifndef ECS_DEBUG_OP
@@ -357,11 +357,11 @@ namespace Relentless
 			//m_mgr->HasAllOf<ComponentType...>((*ePointer)[i])
 			if (EntityHasAllComponents((*ePointer)[i]))
 			{
-				std::apply([&](const auto&... pool)
-					{
-						func(pool->components[(*ePointer)[i]] ...);
-					}, m_pools);
-				//func(m_mgr->Get<ComponentType>((*ePointer)[i])...);
+				//std::apply([&](const auto&... pool)
+				//	{
+				//		func(pool->components[(*ePointer)[i]] ...);
+				//	}, m_pools);
+				func(m_mgr->Get<ComponentType>((*ePointer)[i])...);
 			}
 		}
 	}

@@ -17,6 +17,7 @@ namespace Relentless
 	std::string Window::m_ClassName = "RelentlessWindowClass";
 	uint32_t Window::m_Width = 0u;
 	uint32_t Window::m_Height = 0u;
+	UINT Window::m_WindowStyle{ 0u };
 	HWND Window::m_WindowHandle{nullptr};
 	RECT Window::m_ClientRect{};
 	RECT Window::m_NonClientRect{};
@@ -30,6 +31,7 @@ namespace Relentless
 	uint8_t Window::m_NrOfBackBuffers{ 2u };
 	std::vector<BackBuffer> Window::m_BackBuffers;
 	bool Window::m_IsResizing{ false };
+	bool Window::m_IsFullScreen{ false };
 
 	void Window::Initialize(const std::string& windowTitle, const uint32_t width, const uint32_t height)
 	{
@@ -51,6 +53,9 @@ namespace Relentless
 #else
 		::RegisterClassEx(&windowClass);
 #endif
+
+		m_WindowStyle = WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_SIZEBOX;
+
 		/*Calculate the rectangle equivalent to the client region of the window based
 		  on the window styles included for the window.*/
 		RECT windowRect = { 0 };
@@ -58,7 +63,7 @@ namespace Relentless
 		windowRect.right = width + windowRect.left;
 		windowRect.top = 0;
 		windowRect.bottom = windowRect.top + height;
-		::AdjustWindowRect(&windowRect, WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_SIZEBOX, FALSE);
+		::AdjustWindowRect(&windowRect, m_WindowStyle, FALSE);
 
 		//Calculate dimension-agnostic start position for window:
 		int windowStartPositionX = static_cast<int>((::GetSystemMetrics(SM_CXSCREEN) *
@@ -72,7 +77,7 @@ namespace Relentless
 		m_WindowHandle = CreateWindowEx(0,										//Extended window styles (bits).
 			m_ClassName.c_str(),												//The window class name.
 			windowTitle.c_str(),												//The window title.
-			WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_SIZEBOX,				//The window styles defining the window appearance.
+			m_WindowStyle,														//The window styles defining the window appearance.
 			windowStartPositionX,												//Start x-position for window.
 			windowStartPositionY,												//Start y-position for window.
 			windowRect.right - windowRect.left,									//Width of window.
@@ -125,7 +130,7 @@ namespace Relentless
 		m_MouseX = x;
 		m_MouseY = y;
 
-		while (ShowCursor(false) >= 0);
+		while (::ShowCursor(false) >= 0);
 		m_CursorVisible = false;
 	}
 
@@ -158,7 +163,59 @@ namespace Relentless
 
 	void Window::Present() noexcept
 	{
-		DXCall(m_pSwapChain->Present(0u, DXGI_PRESENT_ALLOW_TEARING));
+		UINT presentFlags = !m_IsFullScreen ? DXGI_PRESENT_ALLOW_TEARING : 0;
+		DXCall(m_pSwapChain->Present(0u, presentFlags));
+	}
+
+	void Window::ToggleFullScreen() noexcept
+	{
+		if (m_IsFullScreen)
+		{
+			// Restore the window's attributes and size.
+			::SetWindowLong(m_WindowHandle, GWL_STYLE, m_WindowStyle);
+
+			::SetWindowPos(
+				m_WindowHandle,
+				HWND_NOTOPMOST,
+				m_NonClientRect.left,
+				m_NonClientRect.top,
+				m_NonClientRect.right - m_NonClientRect.left,
+				m_NonClientRect.bottom - m_NonClientRect.top,
+				SWP_FRAMECHANGED | SWP_NOACTIVATE);
+
+			::ShowWindow(m_WindowHandle, SW_NORMAL);
+		}
+		else
+		{
+			// Save the old window rect so we can restore it when exiting fullscreen mode.
+			::GetWindowRect(m_WindowHandle, &m_NonClientRect);
+
+			// Make the window borderless so that the client area can fill the screen.
+			::SetWindowLong(m_WindowHandle, GWL_STYLE, m_WindowStyle & ~(WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SYSMENU | WS_THICKFRAME));
+
+			RECT fullscreenWindowRect;
+		
+			// Get the settings of the display on which the app's window is currently displayed
+			Microsoft::WRL::ComPtr<IDXGIOutput> pOutput;
+			DXCall(m_pSwapChain->GetContainingOutput(&pOutput));
+			DXGI_OUTPUT_DESC Desc;
+			DXCall(pOutput->GetDesc(&Desc));
+			fullscreenWindowRect = Desc.DesktopCoordinates;
+
+			::SetWindowPos(
+				m_WindowHandle,
+				HWND_TOPMOST,
+				fullscreenWindowRect.left,
+				fullscreenWindowRect.top,
+				fullscreenWindowRect.right,
+				fullscreenWindowRect.bottom,
+				SWP_FRAMECHANGED | SWP_NOACTIVATE);
+
+
+			::ShowWindow(m_WindowHandle, SW_MAXIMIZE);
+		}
+
+		m_IsFullScreen = !m_IsFullScreen;
 	}
 
 	LRESULT Window::HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
@@ -170,6 +227,21 @@ namespace Relentless
 		{
 		case WM_MOVE:
 		{
+			POINT centerPointRelativeToScreen{ 0,0 };
+			#if defined RLS_DEBUG
+			RLS_ASSERT(::GetWindowRect(hWnd, &m_NonClientRect) != 0, "Failed to retrieve window client rectangle.");
+			RLS_ASSERT(::ClientToScreen(hWnd, &centerPointRelativeToScreen) != 0, "Failed to retrieve window non client center point.");
+			#else
+			::GetWindowRect(hWnd, &m_NonClientRect);
+			::ClientToScreen(hWnd, &centerPointRelativeToScreen);
+			#endif
+
+			const uint32_t invisibleResizeBorderSize = (centerPointRelativeToScreen.x - m_NonClientRect.left);
+			m_ClientRect.left = centerPointRelativeToScreen.x;
+			m_ClientRect.top = centerPointRelativeToScreen.y;
+			m_ClientRect.right = m_NonClientRect.right - invisibleResizeBorderSize;
+			m_ClientRect.bottom = m_NonClientRect.bottom - invisibleResizeBorderSize;
+
 			break;
 		}
 		case WM_MOUSEMOVE:
@@ -235,6 +307,16 @@ namespace Relentless
 			else
 				if (repeatFlag && Keyboard::IsRepeatEnabled())
 					Keyboard::OnKeyDown((RLS_KEY)wParam);
+			break;
+		}
+		case WM_SYSKEYDOWN:
+		{
+			// Handle ALT+ENTER:
+			if ((wParam == VK_RETURN) && (lParam & (1 << 29)))
+			{
+				ToggleFullScreen();
+				return 0;
+			}
 			break;
 		}
 		case WM_KEYUP:

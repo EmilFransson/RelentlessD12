@@ -12,6 +12,9 @@ namespace Relentless
 		void SetEntityManager(EntityManager* const entityManager) noexcept;
 	private:
 		void DrawAllComponentNodes();
+		template<typename Component, typename ContextFunction>
+		void DrawComponentNode(const char* nodeName, const ContextFunction&& func) noexcept;
+		void DrawVec3Control(const char* label, DirectX::XMFLOAT3& values, float dragSpeed = 0.1f, float resetValue = 0.0f, float minValue = std::numeric_limits<float>::lowest(), float maxValue = std::numeric_limits<float>::max(), float columnWidth = 100.0f) noexcept;
 	private:
 		bool m_FormattingName = false;
 		entity m_SelectedEntity;

@@ -21,7 +21,7 @@ namespace Relentless
 		{
 			const bool isNavigatingScene = (m_HoveringSceneViewport && Mouse::IsButtonPressed(RLS_BUTTON::Right));
 			if (isNavigatingScene)
-				m_pSceneCamera->OnMouseMove();
+				m_pEditorCamera->OnMouseMove();
 			event.StopPropagation();
 			break;
 		}
@@ -134,8 +134,8 @@ namespace Relentless
 			ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 
 			auto& transformComponent = m_Scene.GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
-			DirectX::XMFLOAT4X4 viewMatrix = m_pSceneCamera->GetViewMatrix();
-			DirectX::XMFLOAT4X4 projectionMatrix = m_pSceneCamera->GetProjectionMatrix();
+			DirectX::XMFLOAT4X4 viewMatrix = m_pEditorCamera->GetViewMatrix();
+			DirectX::XMFLOAT4X4 projectionMatrix = m_pEditorCamera->GetProjectionMatrix();
 
 			ImGuizmo::Manipulate(*viewMatrix.m, *projectionMatrix.m, (ImGuizmo::OPERATION)m_CurrentGizmoType, ImGuizmo::LOCAL, *transformComponent.Transform.m);
 			if (ImGuizmo::IsUsing())
@@ -207,60 +207,38 @@ namespace Relentless
 		m_MetricsPanel.OnImGuiRender();
 	}
 
-	void EditorLayer::CreateTriangle() noexcept
-	{
-		auto entity = m_Scene.CreateEntity("Triangle");
-
-		static constexpr SimpleVertex vertices[3] =
-		{
-			DirectX::XMFLOAT3(-0.5f, -0.5f, 0.0f),
-			DirectX::XMFLOAT2(0.0f, 0.0f),
-			DirectX::XMFLOAT3(0.0f, 0.5f, 0.0f),
-			DirectX::XMFLOAT2(0.0f, 0.0f),
-			DirectX::XMFLOAT3(0.5f, -0.5f, 0.0f),
-			DirectX::XMFLOAT2(0.0f, 0.0f)
-		};
-
-		VertexBuffer::Specification vbSpec
-		{
-			.NrOfVertices = ARRAYSIZE(vertices),
-			.TotalSizeInBytes = sizeof(vertices),
-			.Stride = sizeof(SimpleVertex),
-			.pBuffer = (void*)vertices,
-			.Name = "Triangle vertex buffer"
-		};
-
-		constexpr uint32_t indices[3] = { 0, 1, 2 };
-		IndexBuffer::Specification ibSpec
-		{
-			.NrOfIndices = ARRAYSIZE(indices),
-			.TotalSizeInBytes = sizeof(indices),
-			.Stride = sizeof(uint32_t),
-			.pBuffer = (void*)indices,
-			.Name = "Triangle index buffer"
-		};
-		
-		AssetManager& am = AssetManager::Get();
-		const auto vbID = am.Load<VertexBuffer>("Triangle vertex buffer" , &vbSpec);
-		const auto ibID = am.Load<IndexBuffer>("Triangle index buffer" , &ibSpec);
-
-		EntityManager& entityManager = m_Scene.GetEntityManager();
-		entityManager.Add<MeshFilterComponent>(entity, vbID, ibID);
-		entityManager.Add<ForwardPassComponent>(entity);
-		entityManager.Add<MeshRendererComponent>(entity);
-	}
-
 	void EditorLayer::OnAttach() noexcept
 	{
-		m_pSceneCamera = std::move(PerspectiveCamera::Create(DirectX::XMVECTORF32{ 4.0f, 5.0f, -5.0f }, static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y)));
-		m_pSceneCamera->OnMouseMove(); // Make sure it is set up once for eventual early mouse move.
+		m_pEditorCamera = std::move(PerspectiveCamera::Create(DirectX::XMVECTORF32{ 5.0f, 5.0f, -5.0f }, static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y)));
 
-		CreateTriangle();
-		CreateTriangle();
-		MemoryManager::Get().GetUploadBuffer()->Upload();
+		m_Scene.CreateLight("Directional Light", LightComponent::Type::Directional);
+		auto ground = m_Scene.CreateShape<Shape::Cube>();
+		auto& tc1 = m_Scene.GetEntityManager().Get<TransformComponent>(ground);
+		m_Scene.GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
+		m_Scene.GetEntityManager().Get<MeshRendererComponent>(ground).Color = {42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f };
+
+		tc1.Scale = DirectX::XMFLOAT3{ 6.4f, 0.1f, 6.4f };
+
+		DirectX::XMMATRIX world1 = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc1.Scale))
+			* DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(tc1.Rotation.x))
+			* DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(tc1.Rotation.y))
+			* DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(tc1.Rotation.z))
+			* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc1.Translation));
+		DirectX::XMStoreFloat4x4(&tc1.Transform, world1);
+
+		auto cube = m_Scene.CreateShape<Shape::Cube>();
+		auto& tc2 = m_Scene.GetEntityManager().Get<TransformComponent>(cube);
+		tc2.Translation = {0.0f, 0.55f, 0.0f};
+
+		DirectX::XMMATRIX world2 = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc2.Scale))
+			* DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(tc2.Rotation.x))
+			* DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(tc2.Rotation.y))
+			* DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(tc2.Rotation.z))
+			* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc2.Translation));
+		DirectX::XMStoreFloat4x4(&tc2.Transform, world2);
 
 		m_SceneHierarchyPanel.SetActiveScene(&m_Scene);
-		m_SceneHierarchyPanel.SetCallbackFunction([this](entity entityID) 
+		m_SceneHierarchyPanel.SetOnEntityDestroyFunction([this](entity entityID)
 			{
 				if (entityID == m_SelectedEntity)
 				{
@@ -272,6 +250,10 @@ namespace Relentless
 			});
 
 		m_PropertiesPanel.SetEntityManager(&m_Scene.GetEntityManager());
+		MemoryManager::Get().GetUploadBuffer()->Upload();
+		m_Scene.SetViewportPanelSize(m_ViewportPanelSize);
+
+		
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -301,20 +283,19 @@ namespace Relentless
 
 		if (m_HoveringSceneViewport)
 		{
-			m_pSceneCamera->Update(deltaTime);
+			m_pEditorCamera->Update(deltaTime);
 		}
 
-		m_Scene.GetEntityManager().Collect<MeshRendererComponent>().Do([](MeshRendererComponent& mrc)
-			{
-				auto& cb = *mrc.constantBuffer;
-				MemoryManager::Get().UpdateConstantBuffer(cb, &mrc.Color);
-			});
+		auto& cb = *m_pEditorCamera->m_pConstantBuffer;
+		MemoryManager::Get().UpdateConstantBuffer(cb, &m_pEditorCamera->GetPosition());
+
+		m_Scene.OnUpdate();
 	}
 
 	void EditorLayer::OnRender() noexcept
 	{
-		Renderer3D::Begin(m_pSceneCamera);
-		m_Scene.GetEntityManager().Collect<ForwardPassComponent, MeshFilterComponent>().Do([](entity id, ForwardPassComponent&, MeshFilterComponent&)
+		Renderer3D::Begin(m_pEditorCamera, m_Scene.GetEntityManager());
+		m_Scene.GetEntityManager().Bundle<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([](entity id, ForwardPassComponent&, MeshFilterComponent&, MeshRendererComponent&)
 			{
 				Renderer3D::Submit(id);
 			});
@@ -325,8 +306,9 @@ namespace Relentless
 	{
 		m_ViewportPanelSize.x = std::max(1.0f, m_ViewportPanelSize.x);
 		m_ViewportPanelSize.y = std::max(1.0f, m_ViewportPanelSize.y);
+		m_Scene.SetViewportPanelSize(m_ViewportPanelSize);
 
-		m_pSceneCamera->RecalculateProjectionMatrix(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
+		m_pEditorCamera->RecalculateProjectionMatrix(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		Renderer3D::OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		ImguiLayer::OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		m_SceneViewportChanged = false;

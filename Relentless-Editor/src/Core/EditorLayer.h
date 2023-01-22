@@ -20,7 +20,6 @@ namespace Relentless
 		virtual void OnDetach() noexcept override final{};
 		virtual void OnUpdate(const float deltaTime) noexcept override final;
 		virtual void OnRender() noexcept override final;
-		void CreateTriangle() noexcept;
 	private:
 		void OnSceneViewportChanged() noexcept;
 	private:
@@ -28,7 +27,7 @@ namespace Relentless
 		bool m_SceneViewportChanged;
 		bool m_HoveringSceneViewport;
 		bool m_ClickedSceneViewPort;
-		std::shared_ptr<PerspectiveCamera> m_pSceneCamera;
+		std::shared_ptr<PerspectiveCamera> m_pEditorCamera;
 		ImVec2 vMin;
 		ImVec2 vMax;
 
@@ -45,5 +44,7 @@ namespace Relentless
 		MetricsPanel m_MetricsPanel;
 
 		Scene m_Scene;
+
+		MeshFactory m_MeshFactory;
 	};
 }

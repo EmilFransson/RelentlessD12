@@ -100,21 +100,6 @@ namespace Relentless
 	{
 		//static bool showWindow = true;
 		//ImGui::ShowDemoWindow(&showWindow);
-
-		//if (ImGui::BeginMainMenuBar())
-		//{
-		//	if (ImGui::BeginMenu("Options"))
-		//	{
-		//		ImGui::MenuItem("Save...");
-		//		ImGui::EndMenu();
-		//	}
-		//
-		//	ImGui::EndMainMenuBar();
-		//}
-
-		//static bool show = true;
-		//ImGui::Begin("Hello", &show);
-		//ImGui::End();
 	}
 
 	void ImguiLayer::OnAttach()

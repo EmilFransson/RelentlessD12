@@ -5,20 +5,18 @@ namespace Relentless
 	SceneHierarchyPanel::SceneHierarchyPanel() noexcept
 		: m_pScene{ nullptr },
 		  m_SelectedEntity{ NULL_ENTITY }
-	{
-
-	}
+	{}
 
 	void SceneHierarchyPanel::OnImGuiRender() noexcept
 	{
 		RLS_ASSERT(m_pScene, "Scene is nullptr.");
-		ImGui::Begin("Scene Hierarchy Panel");
+		ImGui::Begin("Scene Hierarchy");
 
 		ImGuiTreeNodeFlags sceneNodeflags = ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_DefaultOpen;
 		sceneNodeflags |= ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_Framed;
 
 		ImGuiIO& io = ImGui::GetIO();
-		auto boldFont = io.Fonts->Fonts[0];
+		auto boldFont = io.Fonts->Fonts[OPENSANS_BOLD_18];
 		ImGui::PushFont(boldFont);
 		bool opened = ImGui::TreeNodeEx(m_pScene->GetName(), sceneNodeflags, m_pScene->GetName());
 		ImGui::PopFont();
@@ -39,6 +37,52 @@ namespace Relentless
 			if (ImGui::MenuItem("Create Empty"))
 				m_pScene->CreateEntity("Entity");
 
+			if (ImGui::BeginMenu("Shapes"))
+			{
+				if (ImGui::MenuItem("Triangle"))
+				{
+					m_pScene->CreateShape<Shape::Triangle>();
+				}
+				if (ImGui::MenuItem("Cube"))
+				{
+					m_pScene->CreateShape<Shape::Cube>();
+				}
+				if (ImGui::MenuItem("Cylinder"))
+				{
+					m_pScene->CreateShape<Shape::Cylinder>();
+				}
+				if (ImGui::MenuItem("Capsule"))
+				{
+					m_pScene->CreateShape<Shape::Capsule>();
+				}
+				if (ImGui::MenuItem("Cone"))
+				{
+					m_pScene->CreateShape<Shape::Cone>();
+				}
+				if (ImGui::MenuItem("Sphere"))
+				{
+					m_pScene->CreateShape<Shape::Sphere>();
+				}
+				if (ImGui::MenuItem("Quad"))
+				{
+					m_pScene->CreateShape<Shape::Quad>();
+				}
+				if (ImGui::MenuItem("Plane"))
+				{
+					m_pScene->CreateShape<Shape::Plane>();
+				}
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Extras"))
+			{
+				if (ImGui::MenuItem("Utah Teapot"))
+				{
+					m_pScene->CreateUtahTeapot();
+				}
+				ImGui::EndMenu();
+			}
+
 			if (ImGui::BeginMenu("Light"))
 			{
 				if (ImGui::MenuItem("Directional Light"))
@@ -47,6 +91,9 @@ namespace Relentless
 				}
 				ImGui::EndMenu();
 			}
+
+			if (ImGui::MenuItem("Camera"))
+				m_pScene->CreateCamera("Camera");
 
 			ImGui::EndPopup();
 		}
@@ -80,7 +127,7 @@ namespace Relentless
 			if (ImGui::MenuItem("Delete Entity"))
 			{
 				m_pScene->DestroyEntity(entityID);
-				CallbackFunction(entityID);
+				m_OnEntityDestroyedCallBack(entityID);
 				if (m_SelectedEntity == entityID)
 				{
 					m_SelectedEntity = NULL_ENTITY;
@@ -101,8 +148,8 @@ namespace Relentless
 		m_SelectedEntity = entityID;
 	}
 
-	void SceneHierarchyPanel::SetCallbackFunction(std::function<void(entity id)> callBackFunction) noexcept
+	void SceneHierarchyPanel::SetOnEntityDestroyFunction(std::function<void(entity id)> callBackFunction) noexcept
 	{
-		CallbackFunction = callBackFunction;
+		m_OnEntityDestroyedCallBack = callBackFunction;
 	}
 }

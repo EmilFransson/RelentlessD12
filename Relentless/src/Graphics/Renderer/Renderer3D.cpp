@@ -127,7 +127,7 @@ namespace Relentless
 		RenderCommand::ResetFrameCommandUnits(0u); //TO BE CHANGED! UPLOAD BUFFER SHOULD UPLOAD EVERYTHING SEQUENTIALLY!
 	}
 
-	void Renderer3D::Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera) noexcept
+	void Renderer3D::Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, EntityManager& entityManager) noexcept
 	{
 		s_RendererData.m_ForwardPassEntities.clear();
 		s_RendererData.m_PickingPassEntities.clear();
@@ -154,6 +154,17 @@ namespace Relentless
 		auto vpMatrix = DirectX::XMLoadFloat4x4(&(pSceneCamera->GetViewProjectionMatrix()));
 		DirectX::XMStoreFloat4x4(&vpMatrixCBuffer.VPMatrix, vpMatrix);
 		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(2u, 4 * 4, &vpMatrixCBuffer, 0u));
+
+		auto index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
+		static PerFrameData2 perFrameData2;
+		perFrameData2.cameraDataIndex = pSceneCamera->m_pConstantBuffer->m_VisibleHandles[index].Index;
+		
+		entityManager.Collect<LightComponent>().Do([&](LightComponent& lc)
+			{
+				perFrameData2.directionalLightDataIndex = lc.constantBuffer->m_VisibleHandles[index].Index;
+			});
+
+		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, (uint32_t)sizeof(PerFrameData2) / 4, &perFrameData2, 0u));
 	}
 
 	void Renderer3D::Submit(const entity e) noexcept
@@ -269,7 +280,7 @@ namespace Relentless
 			static PerFrameData textureData;
 			textureData.PostProcessTextureIndex = s_RendererData.m_pPostProcessRenderTexture->GetSRVDescriptorHandle().Index;
 			constexpr uint32_t COUNT = 1u;
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, COUNT, &textureData, 0u));
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(6, COUNT, &textureData, 0u));
 			RenderCommand::DrawInstanced(3u);
 		}
 
@@ -441,11 +452,19 @@ namespace Relentless
 		worldMatrixRootParameterVS.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 		rootParameters.push_back(worldMatrixRootParameterVS);
 
+		D3D12_ROOT_PARAMETER perDrawPS = {};
+		perDrawPS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		perDrawPS.Constants.Num32BitValues = 1u;
+		perDrawPS.Constants.RegisterSpace = 0u;
+		perDrawPS.Constants.ShaderRegister = 3u;
+		perDrawPS.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		rootParameters.push_back(perDrawPS);
+
 		D3D12_ROOT_PARAMETER perFramePS = {};
 		perFramePS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		perFramePS.Constants.Num32BitValues = 1u;
+		perFramePS.Constants.Num32BitValues = 2u;
 		perFramePS.Constants.RegisterSpace = 0u;
-		perFramePS.Constants.ShaderRegister = 3u;
+		perFramePS.Constants.ShaderRegister = 4u;
 		perFramePS.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		rootParameters.push_back(perFramePS);
 
