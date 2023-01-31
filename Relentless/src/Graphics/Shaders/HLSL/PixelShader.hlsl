@@ -66,16 +66,22 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
         float3 lightD = -normalize(directionalLight.direction);
     
         float3 diffuseColor = material.color * directionalLight.color * directionalLight.intensity;
-        float3 finalDiffuseColor = saturate(max(dot(psIn.inNormalWS, lightD), 0.0f)) * diffuseColor;
+        float3 finalDiffuseColor = saturate(dot(psIn.inNormalWS, lightD)) * diffuseColor;
     
-        float3 halfWayDir = normalize(lightD + viewDir);
+        if (dot(psIn.inNormalWS, lightD) > 0.0f)
+        {
+            float3 halfWayDir = normalize(lightD + viewDir);
     
-        float specularFactor = pow(max(dot(psIn.inNormalWS, halfWayDir), 0.0f), 16.0f);
-        float3 specularColor = directionalLight.color * specularFactor * directionalLight.intensity * material.color;
+            float specularFactor = pow(max(dot(psIn.inNormalWS, halfWayDir), 0.0f), 16.0f);
+            float3 specularColor = directionalLight.color * specularFactor * directionalLight.intensity * material.color;
         
-        lightOut += (finalDiffuseColor + specularColor);
+            lightOut += (finalDiffuseColor + specularColor);
+        }
+        else
+        {
+            lightOut += finalDiffuseColor;
+        }
     }
-    
     
     for (uint j = 0u; j < perFrameData.nrOfPointLights; j++)
     {
@@ -86,13 +92,21 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
         float3 diffuseColor = material.color * pointLight.color * pointLight.intensity;
         float3 finalDiffuseColor = saturate(dot(psIn.inNormalWS, surfaceToLightDirection)) * diffuseColor;
     
-        float3 halfWayDir = normalize(surfaceToLightDirection + viewDir);
+        if (dot(psIn.inNormalWS, surfaceToLightDirection) > 0.0f)
+        {
+            float3 halfWayDir = normalize(surfaceToLightDirection + viewDir);
     
-        float specularFactor = pow(max(dot(psIn.inNormalWS, halfWayDir), 0.0f), 16.0f);
-        float3 specularColor = pointLight.color * specularFactor * pointLight.intensity * material.color;
+            float specularFactor = pow(max(dot(psIn.inNormalWS, halfWayDir), 0.0f), 16.0f);
+            float3 specularColor = pointLight.color * specularFactor * pointLight.intensity * material.color;
         
-        lightOut += (finalDiffuseColor + specularColor);
+            lightOut += (finalDiffuseColor + specularColor);
+        }
+        else
+        {
+            lightOut += finalDiffuseColor;
+
+        }
     }
-    
-        return float4(lightOut + ambientColor, 1.0f);
+        
+    return float4(lightOut + ambientColor, 1.0f);
 }
