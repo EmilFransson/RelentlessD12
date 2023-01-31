@@ -27,12 +27,11 @@ namespace Relentless
 		}
 		case EventType::RightMouseButtonPressedEvent:
 		{
-			//TODO: Mouse should have the functions stated below, not Window.
 			bool isNavigatingScene = m_HoveringSceneViewport;
 			if (isNavigatingScene)
 			{
-				Window::ConfineMouseCursor(vMin.x, vMax.x, vMax.y, vMin.y);
-				Window::HideMouseCursor();
+				Mouse::ConfineCursor(vMin.x, vMax.x, vMax.y, vMin.y);
+				Mouse::HideCursor();
 				event.StopPropagation();
 			}
 			break;
@@ -42,8 +41,8 @@ namespace Relentless
 			bool isNavigatingScene = m_HoveringSceneViewport;
 			if (isNavigatingScene)
 			{
-				Window::FreeMouseCursor();
-				Window::ShowMouseCursor();
+				Mouse::FreeCursor();
+				Mouse::ShowCursor();
 				event.StopPropagation();
 			}
 			break;
@@ -73,7 +72,7 @@ namespace Relentless
 		}
 		case EventType::KeyPressedEvent:
 		{
-			bool isNavigatingScene = m_HoveringSceneViewport && Mouse::IsButtonPressed(RLS_BUTTON::Right);
+			const bool isNavigatingScene = m_HoveringSceneViewport && Mouse::IsButtonPressed(RLS_BUTTON::Right);
 			if (!isNavigatingScene)
 			{
 				RLS_KEY key = EVENT(KeyPressedEvent).key;
@@ -85,6 +84,10 @@ namespace Relentless
 					m_CurrentGizmoType = (GizmoType)ImGuizmo::ROTATE;
 				else if (key == RLS_KEY::R)
 					m_CurrentGizmoType = (GizmoType)ImGuizmo::SCALE;
+				else if (key == RLS_KEY::D && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+					CopySelectedEntity();
+				else if (key == RLS_KEY::Delete)
+					DestroySelectedEntity();
 			}
 			event.StopPropagation();
 			break;
@@ -136,8 +139,13 @@ namespace Relentless
 			auto& transformComponent = m_Scene.GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
 			DirectX::XMFLOAT4X4 viewMatrix = m_pEditorCamera->GetViewMatrix();
 			DirectX::XMFLOAT4X4 projectionMatrix = m_pEditorCamera->GetProjectionMatrix();
-
-			ImGuizmo::Manipulate(*viewMatrix.m, *projectionMatrix.m, (ImGuizmo::OPERATION)m_CurrentGizmoType, ImGuizmo::LOCAL, *transformComponent.Transform.m);
+			
+			static DirectX::XMFLOAT3 snapTranslationScale{ 1.0f, 1.0f, 1.0f };
+			static float snapRotation{ 10.0f };
+			if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+				ImGuizmo::Manipulate(*viewMatrix.m, *projectionMatrix.m, (ImGuizmo::OPERATION)m_CurrentGizmoType, ImGuizmo::LOCAL, *transformComponent.Transform.m, nullptr, (m_CurrentGizmoType == GizmoType::ROTATE) ? &snapRotation : &snapTranslationScale.x);
+			else
+				ImGuizmo::Manipulate(*viewMatrix.m, *projectionMatrix.m, (ImGuizmo::OPERATION)m_CurrentGizmoType, ImGuizmo::LOCAL, *transformComponent.Transform.m);
 			if (ImGuizmo::IsUsing())
 			{
 				float translation[3] = { 0 };
@@ -211,7 +219,7 @@ namespace Relentless
 	{
 		m_pEditorCamera = std::move(PerspectiveCamera::Create(DirectX::XMVECTORF32{ 5.0f, 5.0f, -5.0f }, static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y)));
 
-		m_Scene.CreateLight("Directional Light", LightComponent::Type::Directional);
+		m_Scene.CreateLight("Directional Light", LightType::Directional);
 		auto ground = m_Scene.CreateShape<Shape::Cube>();
 		auto& tc1 = m_Scene.GetEntityManager().Get<TransformComponent>(ground);
 		m_Scene.GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
@@ -252,8 +260,6 @@ namespace Relentless
 		m_PropertiesPanel.SetEntityManager(&m_Scene.GetEntityManager());
 		MemoryManager::Get().GetUploadBuffer()->Upload();
 		m_Scene.SetViewportPanelSize(m_ViewportPanelSize);
-
-		
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -277,11 +283,18 @@ namespace Relentless
 				m_HoveredEntity = NULL_ENTITY;
 		}
 
-		const bool resizedSceneViewport = (m_SceneViewportChanged && !Mouse::IsButtonPressed(RLS_BUTTON::Left));
-		if (resizedSceneViewport)
+		if (m_SceneViewportChanged)
 			OnSceneViewportChanged();
 
-		if (m_HoveringSceneViewport)
+		//CameraController should handle all this (and more for an even better editor camera experience!)
+		const bool isNavigatingViewport = m_HoveringSceneViewport && Mouse::IsButtonPressed(RLS_BUTTON::Right);
+		if (isNavigatingViewport && 
+			(		Keyboard::IsKeyPressed(RLS_KEY::W) 
+				||	Keyboard::IsKeyPressed(RLS_KEY::S) 
+				||	Keyboard::IsKeyPressed(RLS_KEY::A) 
+				||	Keyboard::IsKeyPressed(RLS_KEY::D)
+				|| Keyboard::IsKeyPressed(RLS_KEY::Q)
+				|| Keyboard::IsKeyPressed(RLS_KEY::E)))
 		{
 			m_pEditorCamera->Update(deltaTime);
 		}
@@ -312,5 +325,58 @@ namespace Relentless
 		Renderer3D::OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		ImguiLayer::OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		m_SceneViewportChanged = false;
+	}
+
+	void EditorLayer::DestroySelectedEntity() noexcept
+	{
+		if (m_SelectedEntity == NULL_ENTITY)
+			return;
+
+		m_Scene.GetEntityManager().DestroyEntity(m_SelectedEntity);
+		m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
+		m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
+		m_SelectedEntity = NULL_ENTITY;
+	}
+
+	//Should be extended to perform full copies, however as for now
+	//it serves as an easy way of getting more shapes on screen.
+	void EditorLayer::CopySelectedEntity() noexcept
+	{
+		if (m_SelectedEntity == NULL_ENTITY)
+			return;
+
+		auto& mgr = m_Scene.GetEntityManager();
+		auto newEntity = m_Scene.CreateEntityWithUUID(mgr.Get<NameComponent>(m_SelectedEntity).Name.c_str());
+		auto& tc1 = mgr.Get<TransformComponent>(m_SelectedEntity);
+		auto& tc2 = mgr.Get<TransformComponent>(newEntity);
+		tc2.Translation = tc1.Translation;
+		tc2.Rotation = tc1.Rotation;
+		tc2.Scale = tc1.Scale;
+		tc2.Transform = tc1.Transform;
+
+		if (mgr.Has<MeshFilterComponent>(m_SelectedEntity))
+		{
+			auto& mfc = mgr.Get<MeshFilterComponent>(m_SelectedEntity);
+			mgr.Add<MeshFilterComponent>(newEntity, mfc.VertexBufferID, mfc.IndexBufferID);
+		}
+		if (mgr.Has<MeshRendererComponent>(m_SelectedEntity))
+		{
+			auto& mrc = mgr.Get<MeshRendererComponent>(m_SelectedEntity);
+			auto& mrc2 = mgr.Add<MeshRendererComponent>(newEntity);
+			mrc2.Color = mrc.Color;
+		}
+		if (mgr.Has<ForwardPassComponent>(m_SelectedEntity))
+			mgr.Add<ForwardPassComponent>(newEntity);
+		if (mgr.Has<DirectionalLightComponent>(m_SelectedEntity))
+		{
+			auto& dlc = mgr.Get<DirectionalLightComponent>(m_SelectedEntity);
+			auto& newDlc = mgr.Add<DirectionalLightComponent>(newEntity);
+			newDlc.Color = dlc.Color;
+			newDlc.Intensity = dlc.Intensity;
+		}
+
+		m_SelectedEntity = newEntity;
+		m_SceneHierarchyPanel.SetSelectedEntity(m_SelectedEntity);
+		m_PropertiesPanel.SetSelectedEntity(m_SelectedEntity);
 	}
 }

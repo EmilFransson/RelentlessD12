@@ -5,14 +5,22 @@
 #include "../Mesh/MeshFactory.h"
 namespace Relentless
 {
-	struct LightStruct
+	struct DirectionalLightStruct
 	{
 		DirectX::XMFLOAT3 Direction;
 		float Intensity;
 		DirectX::XMFLOAT3 Color;
 	};
 
+	struct PointLightStruct
+	{
+		DirectX::XMFLOAT3 Position;
+		float Intensity;
+		DirectX::XMFLOAT3 Color;
+	};
+
 	enum class Shape : uint8_t { Triangle = 0, Cube, Cylinder, Capsule, Cone, Sphere, Quad, Plane };
+	enum class LightType : uint8_t { Directional = 0, Point };
 
 	class Scene
 	{
@@ -23,38 +31,48 @@ namespace Relentless
 		void OnUpdate() noexcept;
 		entity CreateEntity(const char* tag) noexcept;
 		entity CreateEntityWithUUID(const char* tag) noexcept;
-		entity CreateLight(const char* name, LightComponent::Type type) noexcept;
-		void CreateUtahTeapot() noexcept;
+		entity CreateLight(const char* name, LightType type) noexcept;
+		entity CreateUtahTeapot() noexcept;
 
 		template<auto ShapeType>
 		requires std::is_same_v<decltype(ShapeType), Shape>
 		entity CreateShape() noexcept
 		{
 			std::filesystem::path finalPath = GetFullShapePath<ShapeType>();
-			MeshFactory factory;
-			Mesh shapeMesh = factory.LoadFromFile(finalPath)[0]; //We know a shape only consists of one mesh
-
 			std::string nameString = finalPath.stem().string();
 
-			VertexBuffer::Specification vbSpec
+			ResourceID vbID;
+			ResourceID ibID;
+			if (!AssetManager::Get().HasLoaded(nameString + " Vertex Buffer"))
 			{
-				.NrOfVertices = (uint32_t)shapeMesh.Vertices.size(),
-				.TotalSizeInBytes = (uint32_t)shapeMesh.Vertices.size() * sizeof(SimpleVertex),
-				.Stride = sizeof(SimpleVertex),
-				.pBuffer = (void*)shapeMesh.Vertices.data(),
-				.Name = nameString + std::string(" Vertex Buffer")
-			};
+				MeshFactory factory;
+				Mesh shapeMesh = factory.LoadFromFile(finalPath)[0]; //We know a shape only consists of one mesh
 
-			IndexBuffer::Specification ibSpec
+				VertexBuffer::Specification vbSpec
+				{
+					.NrOfVertices = (uint32_t)shapeMesh.Vertices.size(),
+					.TotalSizeInBytes = (uint32_t)shapeMesh.Vertices.size() * sizeof(SimpleVertex),
+					.Stride = sizeof(SimpleVertex),
+					.pBuffer = (void*)shapeMesh.Vertices.data(),
+					.Name = nameString + std::string(" Vertex Buffer")
+				};
+
+				IndexBuffer::Specification ibSpec
+				{
+					.NrOfIndices = (uint32_t)shapeMesh.Indices.size(),
+					.TotalSizeInBytes = (uint32_t)shapeMesh.Indices.size() * sizeof(uint32_t),
+					.Stride = sizeof(uint32_t),
+					.pBuffer = (void*)shapeMesh.Indices.data(),
+					.Name = nameString + std::string(" Index Buffer")
+				};
+				vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
+				ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
+			}
+			else
 			{
-				.NrOfIndices = (uint32_t)shapeMesh.Indices.size(),
-				.TotalSizeInBytes = (uint32_t)shapeMesh.Indices.size() * sizeof(uint32_t),
-				.Stride = sizeof(uint32_t),
-				.pBuffer = (void*)shapeMesh.Indices.data(),
-				.Name = nameString + std::string(" Index Buffer")
-			};
-			auto vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
-			auto ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
+				vbID = AssetManager::Get().Load<VertexBuffer>(nameString + " Vertex Buffer", nullptr);
+				ibID = AssetManager::Get().Load<IndexBuffer>(nameString + " Index Buffer", nullptr);
+			}
 
 			auto entity = CreateEntityWithUUID(nameString.c_str());
 

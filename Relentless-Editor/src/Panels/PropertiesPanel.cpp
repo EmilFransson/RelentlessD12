@@ -90,7 +90,9 @@ namespace Relentless
 		{
 			auto& tc = m_pEntityManager->Get<TransformComponent>(m_SelectedEntity);
 			DrawVec3Control("Position", tc.Translation, 0.06f);
+			ImGui::Separator();
 			DrawVec3Control("Rotation", tc.Rotation, 0.03f);
+			ImGui::Separator();
 			DrawVec3Control("Scale", tc.Scale, 0.03f, 1.0f, 0.01f);
 			
 			DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc.Scale)) 
@@ -103,11 +105,11 @@ namespace Relentless
 			ImGui::TreePop();
 		}
 
-		DrawComponentNode<LightComponent>("Light", [this]()
+		DrawComponentNode<DirectionalLightComponent>("Light", [this]()
 			{
-				auto& lc = m_pEntityManager->Get<LightComponent>(m_SelectedEntity);
-				constexpr const char* lightTypeStrings[] = { "Directional" };
-				const char* currentLightTypeString = lightTypeStrings[(int)lc.LightType];
+				auto& lc = m_pEntityManager->Get<DirectionalLightComponent>(m_SelectedEntity);
+				constexpr const char* lightTypeStrings[] = { "Directional", "Point" };
+				const char* currentLightTypeString = lightTypeStrings[(int)LightType::Directional];
 
 				if (ImGui::BeginCombo("Type", currentLightTypeString))
 				{
@@ -116,7 +118,49 @@ namespace Relentless
 						bool isSelected = currentLightTypeString == lightTypeStrings[i];
 						if (ImGui::Selectable(lightTypeStrings[i], isSelected))
 						{
-							//...
+							if (!isSelected)
+							{
+								auto color = lc.Color;
+								auto intensity = lc.Intensity;
+								m_pEntityManager->Remove<DirectionalLightComponent>(m_SelectedEntity);
+								auto& dlc = m_pEntityManager->Add<PointLightComponent>(m_SelectedEntity);
+								dlc.Color = color;
+								dlc.Intensity = intensity;
+							}
+						}
+						if (isSelected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+
+				ImGui::ColorEdit3("Color", &lc.Color.x);
+
+				ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, 1.0f);
+			});
+
+		DrawComponentNode<PointLightComponent>("Light", [this]()
+			{
+				auto& lc = m_pEntityManager->Get<PointLightComponent>(m_SelectedEntity);
+				constexpr const char* lightTypeStrings[] = { "Directional", "Point" };
+				const char* currentLightTypeString = lightTypeStrings[(int)LightType::Point];
+
+				if (ImGui::BeginCombo("Type", currentLightTypeString))
+				{
+					for (uint8_t i = 0u; i < ARRAYSIZE(lightTypeStrings); i++)
+					{
+						bool isSelected = currentLightTypeString == lightTypeStrings[i];
+						if (ImGui::Selectable(lightTypeStrings[i], isSelected))
+						{
+							if (!isSelected)
+							{
+								auto color = lc.Color;
+								auto intensity = lc.Intensity;
+								m_pEntityManager->Remove<PointLightComponent>(m_SelectedEntity);
+								auto& dlc = m_pEntityManager->Add<DirectionalLightComponent>(m_SelectedEntity);
+								dlc.Color = color;
+								dlc.Intensity = intensity;
+							}
 						}
 						if (isSelected)
 							ImGui::SetItemDefaultFocus();
@@ -166,6 +210,38 @@ namespace Relentless
 					componentString = "MeshRenderer";
 				}
 			}
+			if (ImGui::BeginMenu("Light"))
+			{
+				if (ImGui::MenuItem("Directional"))
+				{
+					if (!m_pEntityManager->Has<DirectionalLightComponent>(m_SelectedEntity) &&
+						!m_pEntityManager->Has<PointLightComponent>(m_SelectedEntity))
+					{
+						m_pEntityManager->Add<DirectionalLightComponent>(m_SelectedEntity);
+					}
+					else
+					{
+						alreadyHasComponent = true;
+						componentString = "Light";
+					}
+				}
+				if (ImGui::MenuItem("Point"))
+				{
+					if (!m_pEntityManager->Has<DirectionalLightComponent>(m_SelectedEntity) &&
+						!m_pEntityManager->Has<PointLightComponent>(m_SelectedEntity))
+					{
+						m_pEntityManager->Add<PointLightComponent>(m_SelectedEntity);
+					}
+					else
+					{
+						alreadyHasComponent = true;
+						componentString = "Light";
+					}
+				}
+
+				ImGui::EndMenu();
+			}
+
 			ImGui::EndPopup();
 		}
 

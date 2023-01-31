@@ -13,17 +13,29 @@ namespace Relentless
 				MemoryManager::Get().UpdateConstantBuffer(cb, &mrc.Color);
 			});
 
-		static LightStruct lightStruct;
-		m_EntityManager.Collect<TransformComponent, LightComponent>().Do([&](TransformComponent& tc, LightComponent& lc)
+		/****LIGHTS****/
+		static DirectionalLightStruct directionalLightStruct;
+		m_EntityManager.Collect<TransformComponent, DirectionalLightComponent>().Do([&](TransformComponent& tc, DirectionalLightComponent& lc)
 			{
-				lightStruct.Direction.x = std::sin(DirectX::XMConvertToRadians(tc.Rotation.y));
-				lightStruct.Direction.y = std::cos(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
-				lightStruct.Direction.z = std::sin(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
-				lightStruct.Intensity = lc.Intensity;
-				lightStruct.Color = lc.Color;
+				directionalLightStruct.Direction.x = std::sin(DirectX::XMConvertToRadians(tc.Rotation.y));
+				directionalLightStruct.Direction.y = std::cos(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
+				directionalLightStruct.Direction.z = std::sin(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
+				directionalLightStruct.Intensity = lc.Intensity;
+				directionalLightStruct.Color = lc.Color;
 
 				auto& cb = *lc.constantBuffer;
-				MemoryManager::Get().UpdateConstantBuffer(cb, &lightStruct);
+				MemoryManager::Get().UpdateConstantBuffer(cb, &directionalLightStruct);
+			});
+
+		static PointLightStruct pointLightStruct;
+		m_EntityManager.Collect<TransformComponent, PointLightComponent>().Do([&](TransformComponent& tc, PointLightComponent& lc)
+			{
+				pointLightStruct.Position = tc.Translation;
+				pointLightStruct.Intensity = lc.Intensity;
+				pointLightStruct.Color = lc.Color;
+
+				auto& cb = *lc.constantBuffer;
+				MemoryManager::Get().UpdateConstantBuffer(cb, &pointLightStruct);
 			});
 	}
 
@@ -42,53 +54,71 @@ namespace Relentless
 		return entity;
 	}
 
-	entity Scene::CreateLight(const char* name, LightComponent::Type type) noexcept
+	entity Scene::CreateLight(const char* name, LightType type) noexcept
 	{
 		auto lightEntity = CreateEntityWithUUID(name);
 		m_EntityManager.Get<TransformComponent>(lightEntity).Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
-		m_EntityManager.Add<LightComponent>(lightEntity, type);
-		if (type == LightComponent::Type::Directional)
+		if (type == LightType::Directional)
 		{
-			m_EntityManager.Get<LightComponent>(lightEntity).Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
+			auto& dlc = m_EntityManager.Add<DirectionalLightComponent>(lightEntity);
+			dlc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
+			m_EntityManager.Get<TransformComponent>(lightEntity).Translation = { 0.0f, 3.0f, 0.0f };
+		}
+		else if (type == LightType::Point)
+		{
+			auto& plc = m_EntityManager.Add<PointLightComponent>(lightEntity);
+			plc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
 			m_EntityManager.Get<TransformComponent>(lightEntity).Translation = { 0.0f, 3.0f, 0.0f };
 		}
 		
 		return lightEntity;
 	}
 
-	void Scene::CreateUtahTeapot() noexcept
+	entity Scene::CreateUtahTeapot() noexcept
 	{
 		std::filesystem::path finalPath = std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/UtahTeapot.gltf";
-		MeshFactory factory;
-		Mesh shapeMesh = factory.LoadFromFile(finalPath)[0];
-
 		std::string nameString = finalPath.stem().string();
 
-		VertexBuffer::Specification vbSpec
+		ResourceID vbID;
+		ResourceID ibID;
+		if (!AssetManager::Get().HasLoaded(nameString + " Vertex Buffer"))
 		{
-			.NrOfVertices = (uint32_t)shapeMesh.Vertices.size(),
-			.TotalSizeInBytes = (uint32_t)shapeMesh.Vertices.size() * sizeof(SimpleVertex),
-			.Stride = sizeof(SimpleVertex),
-			.pBuffer = (void*)shapeMesh.Vertices.data(),
-			.Name = nameString + std::string(" Vertex Buffer")
-		};
+			MeshFactory factory;
+			Mesh shapeMesh = factory.LoadFromFile(finalPath)[0];
 
-		IndexBuffer::Specification ibSpec
+			VertexBuffer::Specification vbSpec
+			{
+				.NrOfVertices = (uint32_t)shapeMesh.Vertices.size(),
+				.TotalSizeInBytes = (uint32_t)shapeMesh.Vertices.size() * sizeof(SimpleVertex),
+				.Stride = sizeof(SimpleVertex),
+				.pBuffer = (void*)shapeMesh.Vertices.data(),
+				.Name = nameString + std::string(" Vertex Buffer")
+			};
+
+			IndexBuffer::Specification ibSpec
+			{
+				.NrOfIndices = (uint32_t)shapeMesh.Indices.size(),
+				.TotalSizeInBytes = (uint32_t)shapeMesh.Indices.size() * sizeof(uint32_t),
+				.Stride = sizeof(uint32_t),
+				.pBuffer = (void*)shapeMesh.Indices.data(),
+				.Name = nameString + std::string(" Index Buffer")
+			};
+
+			vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
+			ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
+		}
+		else
 		{
-			.NrOfIndices = (uint32_t)shapeMesh.Indices.size(),
-			.TotalSizeInBytes = (uint32_t)shapeMesh.Indices.size() * sizeof(uint32_t),
-			.Stride = sizeof(uint32_t),
-			.pBuffer = (void*)shapeMesh.Indices.data(),
-			.Name = nameString + std::string(" Index Buffer")
-		};
-		auto vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
-		auto ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
+			vbID = AssetManager::Get().Load<VertexBuffer>(nameString + " Vertex Buffer", nullptr);
+			ibID = AssetManager::Get().Load<IndexBuffer>(nameString + " Index Buffer", nullptr);
+		}
 
 		auto entity = CreateEntityWithUUID(nameString.c_str());
-
 		m_EntityManager.Add<MeshFilterComponent>(entity, vbID, ibID);
 		m_EntityManager.Add<ForwardPassComponent>(entity);
 		m_EntityManager.Add<MeshRendererComponent>(entity).Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+
+		return entity;
 	}
 
 	entity Scene::CreateCamera(const char* name) noexcept

@@ -22,11 +22,7 @@ namespace Relentless
 	RECT Window::m_ClientRect{};
 	RECT Window::m_NonClientRect{};
 	MSG Window::m_WindowMessage = { 0 };
-	bool Window::m_IsVSync = false;
 	BOOL Window::m_IsVisible = 0;
-	bool Window::m_CursorVisible = false;
-	uint32_t Window::m_MouseX = 0u;
-	uint32_t Window::m_MouseY = 0u;
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> Window::m_pSwapChain{ nullptr };
 	uint8_t Window::m_NrOfBackBuffers{ 2u };
 	std::vector<BackBuffer> Window::m_BackBuffers;
@@ -41,7 +37,7 @@ namespace Relentless
 		windowClass.lpfnWndProc = HandleMessages;						//Long pointer to function handling the window messages (setup in this case).
 		windowClass.cbClsExtra = 0;										//Extra bytes allocated to the window class structure.
 		windowClass.cbWndExtra = 0;										//Extra bytes allocated following the window instance.
-		windowClass.hInstance = ::GetModuleHandle(nullptr); 				//Handle to the instance that contains the window procedure for class.
+		windowClass.hInstance = ::GetModuleHandle(nullptr); 			//Handle to the instance that contains the window procedure for class.
 		windowClass.hIcon = nullptr;									//Handle to the class icon.
 		windowClass.hCursor = nullptr;									//Handle to the class cursor.
 		windowClass.hbrBackground = nullptr;							//Handle to the class background brush.
@@ -53,8 +49,7 @@ namespace Relentless
 #else
 		::RegisterClassEx(&windowClass);
 #endif
-
-		m_WindowStyle = WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_SIZEBOX;
+		m_WindowStyle = WS_OVERLAPPEDWINDOW;
 
 		/*Calculate the rectangle equivalent to the client region of the window based
 		  on the window styles included for the window.*/
@@ -117,48 +112,11 @@ namespace Relentless
 			::TranslateMessage(&m_WindowMessage);
 			::DispatchMessage(&m_WindowMessage);
 		}
-		if (m_IsResizing && !Mouse::IsButtonPressed(RLS_BUTTON::Left))
+		if (m_IsResizing)
 		{
 			PublishEvent<WindowResizedEvent>(Vector2u{ m_Width, m_Height });
 			m_IsResizing = false;
 		}
-	}
-
-	void Window::HideMouseCursor() noexcept
-	{
-		auto [x, y] = Mouse::GetCoordinates();
-		m_MouseX = x;
-		m_MouseY = y;
-
-		while (::ShowCursor(false) >= 0);
-		m_CursorVisible = false;
-	}
-
-	void Window::ShowMouseCursor() noexcept
-	{
-		while (::ShowCursor(true) < 0);
-		m_CursorVisible = true;
-
-		RECT rect = {};
-		::GetWindowRect(m_WindowHandle, &rect);
-		m_MouseX += (rect.left + 8);
-		m_MouseY += (rect.top + 31);
-		::SetCursorPos(m_MouseX, m_MouseY);
-	}
-
-	void Window::ConfineMouseCursor(float left, float right, float bottom, float top) noexcept
-	{
-		RECT rect = {};
-		rect.left = static_cast<LONG>(left);
-		rect.right = static_cast<LONG>(right);
-		rect.bottom = static_cast<LONG>(bottom);
-		rect.top = static_cast<LONG>(top);
-		::ClipCursor(&rect);
-	}
-
-	void Window::FreeMouseCursor() noexcept
-	{
-		::ClipCursor(nullptr);
 	}
 
 	void Window::Present() noexcept
@@ -220,7 +178,7 @@ namespace Relentless
 
 	LRESULT Window::HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 	{
-		if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+		if (::ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
 			return true;
 
 		switch (msg)
@@ -244,86 +202,6 @@ namespace Relentless
 
 			break;
 		}
-		case WM_MOUSEMOVE:
-		{
-			Mouse::OnMove({ (uint32_t)GET_X_LPARAM(lParam), (uint32_t)GET_Y_LPARAM(lParam) });
-
-			break;
-		}
-		case WM_INPUT:
-		{
-			UINT size = 0u;
-			if (::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &size, sizeof(RAWINPUTHEADER)) == -1)
-				break;
-
-			std::vector<char> rawBuffer;
-			rawBuffer.resize(size);
-			if (::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, rawBuffer.data(), &size, sizeof(RAWINPUTHEADER)) != size)
-				break;
-
-			auto& ri = reinterpret_cast<const RAWINPUT&>(*rawBuffer.data());
-			if (ri.header.dwType == RIM_TYPEMOUSE && (ri.data.mouse.lLastX != 0 || ri.data.mouse.lLastY != 0))
-			{
-				Mouse::OnRawDelta({ ri.data.mouse.lLastX, ri.data.mouse.lLastY });
-			}
-
-			break;
-		}
-		case WM_LBUTTONDOWN:
-		{
-			Mouse::OnButtonPressed(RLS_BUTTON::Left);
-			break;
-		}
-		case WM_LBUTTONUP:
-		{
-			Mouse::OnButtonReleased(RLS_BUTTON::Left);
-			break;
-		}
-		case WM_RBUTTONDOWN:
-		{
-			Mouse::OnButtonPressed(RLS_BUTTON::Right);
-			break;
-		}
-		case WM_RBUTTONUP:
-		{
-			Mouse::OnButtonReleased(RLS_BUTTON::Right);
-			break;
-		}
-		case WM_MBUTTONDOWN:
-		{
-			Mouse::OnButtonPressed(RLS_BUTTON::Wheel);
-			break;
-		}
-		case WM_MBUTTONUP:
-		{
-			Mouse::OnButtonReleased(RLS_BUTTON::Wheel);
-			break;
-		}
-		case WM_KEYDOWN:
-		{
-			BOOL repeatFlag = (HIWORD(lParam) & KF_REPEAT) == KF_REPEAT;
-			if (repeatFlag == FALSE)
-				Keyboard::OnKeyDown((RLS_KEY)wParam);
-			else
-				if (repeatFlag && Keyboard::IsRepeatEnabled())
-					Keyboard::OnKeyDown((RLS_KEY)wParam);
-			break;
-		}
-		case WM_SYSKEYDOWN:
-		{
-			// Handle ALT+ENTER:
-			if ((wParam == VK_RETURN) && (lParam & (1 << 29)))
-			{
-				ToggleFullScreen();
-				return 0;
-			}
-			break;
-		}
-		case WM_KEYUP:
-		{
-			Keyboard::OnKeyUp((RLS_KEY)wParam);
-			break;
-		}
 		case WM_CLOSE:
 		{
 			PublishEvent<WindowClosedEvent>();
@@ -344,21 +222,49 @@ namespace Relentless
 			m_Width = LOWORD(lParam);
 			m_Height = HIWORD(lParam);
 			m_IsResizing = true;
-			POINT centerPointRelativeToScreen{0,0};
-			#if defined RLS_DEBUG
+			POINT centerPointRelativeToScreen{ 0,0 };
+#if defined RLS_DEBUG
 			RLS_ASSERT(::GetWindowRect(hWnd, &m_NonClientRect) != 0, "Failed to retrieve window client rectangle.");
 			RLS_ASSERT(::ClientToScreen(hWnd, &centerPointRelativeToScreen) != 0, "Failed to retrieve window non client center point.");
-			#else
+#else
 			::GetWindowRect(hWnd, &m_NonClientRect);
 			::ClientToScreen(hWnd, &centerPointRelativeToScreen);
-			#endif
-
+#endif
 			const uint32_t invisibleResizeBorderSize = (centerPointRelativeToScreen.x - m_NonClientRect.left);
 			m_ClientRect.left = centerPointRelativeToScreen.x;
 			m_ClientRect.top = centerPointRelativeToScreen.y;
 			m_ClientRect.right = m_NonClientRect.right - invisibleResizeBorderSize;
 			m_ClientRect.bottom = m_NonClientRect.bottom - invisibleResizeBorderSize;
 
+			break;
+		}
+		case WM_MOUSEMOVE:
+		case WM_INPUT:
+		case WM_LBUTTONDOWN:
+		case WM_LBUTTONUP:
+		case WM_RBUTTONDOWN:
+		case WM_RBUTTONUP:
+		case WM_MBUTTONDOWN:
+		case WM_MBUTTONUP:
+		{
+			Mouse::OnWindowsEvent(msg, lParam, wParam);
+			break;
+		}
+		case WM_KEYDOWN:
+		case WM_KEYUP:
+		{
+			Keyboard::OnWindowsEvent(msg, lParam, wParam);
+			break;
+		}
+		case WM_SYSKEYDOWN:
+		{
+			// Handle ALT+ENTER:
+			if ((wParam == VK_RETURN) && (lParam & (1 << 29)))
+			{
+				ToggleFullScreen();
+				return 0;
+			}
+			Keyboard::OnWindowsEvent(msg, lParam, wParam);
 			break;
 		}
 		}

@@ -155,16 +155,31 @@ namespace Relentless
 		DirectX::XMStoreFloat4x4(&vpMatrixCBuffer.VPMatrix, vpMatrix);
 		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(2u, 4 * 4, &vpMatrixCBuffer, 0u));
 
-		auto index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
+		auto frameIndex = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
 		static PerFrameData2 perFrameData2;
-		perFrameData2.cameraDataIndex = pSceneCamera->m_pConstantBuffer->m_VisibleHandles[index].Index;
+		perFrameData2.cameraDataIndex = pSceneCamera->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
 		
-		entityManager.Collect<LightComponent>().Do([&](LightComponent& lc)
-			{
-				perFrameData2.directionalLightDataIndex = lc.constantBuffer->m_VisibleHandles[index].Index;
-			});
+		{
+			uint32_t i = 0u;
+			entityManager.Collect<DirectionalLightComponent>().Do([&](DirectionalLightComponent& lc)
+				{
+					perFrameData2.directionalLightDataIndex[i] = lc.constantBuffer->m_VisibleHandles[frameIndex].Index;
+			i++;
+				});
+			perFrameData2.nrOfDirectionalLights = i;
+		}
+		{
+			uint32_t i = 0u;
+			entityManager.Collect<PointLightComponent>().Do([&](PointLightComponent& lc)
+				{
+					perFrameData2.pointLightDataIndex[i] = lc.constantBuffer->m_VisibleHandles[frameIndex].Index;
+					i++;
+				});
+			perFrameData2.nrOfPointLights = i;
+		}
 
-		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, (uint32_t)sizeof(PerFrameData2) / 4, &perFrameData2, 0u));
+
+		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, (uint32_t)sizeof(PerFrameData2) / sizeof(uint32_t), &perFrameData2, 0u));
 	}
 
 	void Renderer3D::Submit(const entity e) noexcept
@@ -462,7 +477,7 @@ namespace Relentless
 
 		D3D12_ROOT_PARAMETER perFramePS = {};
 		perFramePS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		perFramePS.Constants.Num32BitValues = 2u;
+		perFramePS.Constants.Num32BitValues = (uint32_t)sizeof(PerFrameData2) / sizeof(uint32_t);
 		perFramePS.Constants.RegisterSpace = 0u;
 		perFramePS.Constants.ShaderRegister = 4u;
 		perFramePS.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;

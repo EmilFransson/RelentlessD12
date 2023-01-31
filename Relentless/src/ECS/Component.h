@@ -69,21 +69,35 @@ namespace Relentless
 		UUID UuId;
 	};
 
-	struct LightComponent
+	struct DirectionalLightComponent
 	{
-		enum class Type : uint8_t { Directional = 0u };
-		
-		LightComponent(Type type, const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f))
-			:LightType{ type },
-			 Color{ color },
-			 Intensity{1.0f}
+		explicit DirectionalLightComponent(const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f))
+			: Color{color},
+			  Intensity{1.0f}
 		{
+			//We multiply by 2 as we make room for the direction too, however this is part of the "DirectionalLightStruct type"
 			constantBuffer = RLS_NEW ConstantBuffer((sizeof(DirectX::XMFLOAT3) * 2) + sizeof(float));
 		}
 
-		Type LightType;
 		DirectX::XMFLOAT3 Color;
 		float Intensity;
+
+		ConstantBuffer* constantBuffer;
+	};
+
+	struct PointLightComponent
+	{
+		explicit PointLightComponent(const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f))
+			:Color{color},
+			 Intensity{1.0f}
+		{
+			//We multiply by 2 as we make room for the position too, however this is part of the "PointLightStruct type"
+			constantBuffer = RLS_NEW ConstantBuffer((sizeof(DirectX::XMFLOAT3) * 2) + sizeof(float));
+		}
+
+		DirectX::XMFLOAT3 Color;
+		float Intensity;
+
 		ConstantBuffer* constantBuffer;
 	};
 

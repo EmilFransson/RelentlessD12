@@ -7,11 +7,16 @@ namespace Relentless
 	class Mouse : public EventPublisher
 	{
 	public:
+		static void OnWindowsEvent(const uint32_t message, const LPARAM lParam, const WPARAM wParam) noexcept;
 		static void OnButtonPressed(const RLS_BUTTON button) noexcept;
 		static void OnButtonReleased(const RLS_BUTTON button) noexcept;
 		static void OnMove(Vector2u newCoords) noexcept;
 		static void OnRawDelta(Vector2i deltaCoords) noexcept;
 		static void Reset() noexcept;
+		static void ConfineCursor(const float left, const float right, const float bottom, const float top) noexcept;
+		static void FreeCursor() noexcept;
+		static void ShowCursor() noexcept;
+		static void HideCursor() noexcept;
 		static [[nodiscard]] const bool IsButtonPressed(const RLS_BUTTON button) noexcept;
 		static [[nodiscard]] const std::pair<uint32_t, uint32_t> GetCoordinates() noexcept;
 		static [[nodiscard]] const std::pair<int32_t, int32_t> GetDeltaCoordinates() noexcept;
@@ -19,6 +24,7 @@ namespace Relentless
 		static std::bitset<BUTTON_COUNT> s_buttons;
 		static Vector2u s_currentMouseCoords;
 		static Vector2i s_deltaMouseCoords;
+		static bool s_CursorVisible;
 		STATIC_CLASS(Mouse);
 	};
 }

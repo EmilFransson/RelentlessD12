@@ -22,6 +22,8 @@ namespace Relentless
 		virtual void OnRender() noexcept override final;
 	private:
 		void OnSceneViewportChanged() noexcept;
+		void DestroySelectedEntity() noexcept;
+		void CopySelectedEntity() noexcept;
 	private:
 		ImVec2 m_ViewportPanelSize;
 		bool m_SceneViewportChanged;
@@ -44,7 +46,5 @@ namespace Relentless
 		MetricsPanel m_MetricsPanel;
 
 		Scene m_Scene;
-
-		MeshFactory m_MeshFactory;
 	};
 }

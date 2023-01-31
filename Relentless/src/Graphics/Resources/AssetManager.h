@@ -26,6 +26,8 @@ namespace Relentless
 
 		[[nodiscard]] static constexpr AssetManager& Get() noexcept { return s_instance; }
 
+		[[nodiscard]] bool HasLoaded(const std::string& assetPath) const noexcept;
+
 		template<typename AssetType>
 		requires std::is_base_of_v<IResource, AssetType>
 		const ResourceID& Load(const std::string& contextName, void* pSpecification) noexcept
@@ -34,9 +36,9 @@ namespace Relentless
 			{
 				UUID uuID;
 				#if defined RLS_DEBUG
-				RLS_ASSERT(UuidCreate(&uuID) == RPC_S_OK, "Failed to generate UUID.");
+				RLS_ASSERT(::UuidCreate(&uuID) == RPC_S_OK, "Failed to generate UUID.");
 				#else
-				UuidCreate(&uuID);
+				::UuidCreate(&uuID);
 				#endif
 				m_PathToResourceIDMap[contextName] = uuID;
 				LoadInternal<AssetType>(uuID, pSpecification);
@@ -61,7 +63,7 @@ namespace Relentless
 		}
 
 		template<>
-		void LoadInternal<VertexBuffer>(const ResourceID& uuID,  void* pSpecification)
+		void LoadInternal<VertexBuffer>(const ResourceID& uuID, void* pSpecification)
 		{
 			VertexBuffer::Specification* pVertexBufferSpecification = static_cast<VertexBuffer::Specification*>(pSpecification);
 			m_Assets[uuID] = std::move(std::make_shared<VertexBuffer>(pVertexBufferSpecification));

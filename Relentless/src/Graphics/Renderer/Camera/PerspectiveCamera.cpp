@@ -77,49 +77,46 @@ namespace Relentless
 
 	void PerspectiveCamera::Update(const float deltaTime) noexcept
 	{
-		if (Mouse::IsButtonPressed(RLS_BUTTON::Right))
+		DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&m_Position);
+		if (Keyboard::IsKeyPressed(RLS_KEY::W))
 		{
-			DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&m_Position);
-			if (Keyboard::IsKeyPressed(RLS_KEY::W))
-			{
-				DirectX::XMVECTOR frontVector = DirectX::XMLoadFloat3(&m_FrontVector);
-				frontVector = DirectX::XMVectorScale(frontVector, m_CameraSpeed * deltaTime);
-				position = DirectX::XMVectorAdd(position, frontVector);
-			}
-			else if (Keyboard::IsKeyPressed(RLS_KEY::S))
-			{
-				DirectX::XMVECTOR frontVector = DirectX::XMLoadFloat3(&m_FrontVector);
-				frontVector = DirectX::XMVectorScale(frontVector, m_CameraSpeed * deltaTime);
-				position = DirectX::XMVectorSubtract(position, frontVector);
-			}
-			if (Keyboard::IsKeyPressed(RLS_KEY::D))
-			{
-				DirectX::XMVECTOR rightVector = DirectX::XMLoadFloat3(&m_RightVector);
-				rightVector = DirectX::XMVectorScale(rightVector, m_CameraSpeed * deltaTime);
-				position = DirectX::XMVectorAdd(position, rightVector);
-			}
-			else if (Keyboard::IsKeyPressed(RLS_KEY::A))
-			{
-				DirectX::XMVECTOR rightVector = DirectX::XMLoadFloat3(&m_RightVector);
-				rightVector = DirectX::XMVectorScale(rightVector, m_CameraSpeed * deltaTime);
-				position = DirectX::XMVectorSubtract(position, rightVector);
-			}
-			if (Keyboard::IsKeyPressed(RLS_KEY::Q))
-			{
-				DirectX::XMVECTOR upVector = DirectX::XMLoadFloat3(&m_UpVector);
-				upVector = DirectX::XMVectorScale(upVector, m_CameraSpeed * deltaTime);
-				position = DirectX::XMVectorSubtract(position, upVector);
-			}
-			else if (Keyboard::IsKeyPressed(RLS_KEY::E))
-			{
-				DirectX::XMVECTOR upVector = DirectX::XMLoadFloat3(&m_UpVector);
-				upVector = DirectX::XMVectorScale(upVector, m_CameraSpeed * deltaTime);
-				position = DirectX::XMVectorAdd(position, upVector);
-			}
-
-			DirectX::XMStoreFloat3(&m_Position, position);
-			RecalculateViewProjectionMatrix();
+			DirectX::XMVECTOR frontVector = DirectX::XMLoadFloat3(&m_FrontVector);
+			frontVector = DirectX::XMVectorScale(frontVector, m_CameraSpeed * deltaTime);
+			position = DirectX::XMVectorAdd(position, frontVector);
 		}
+		else if (Keyboard::IsKeyPressed(RLS_KEY::S))
+		{
+			DirectX::XMVECTOR frontVector = DirectX::XMLoadFloat3(&m_FrontVector);
+			frontVector = DirectX::XMVectorScale(frontVector, m_CameraSpeed * deltaTime);
+			position = DirectX::XMVectorSubtract(position, frontVector);
+		}
+		if (Keyboard::IsKeyPressed(RLS_KEY::D))
+		{
+			DirectX::XMVECTOR rightVector = DirectX::XMLoadFloat3(&m_RightVector);
+			rightVector = DirectX::XMVectorScale(rightVector, m_CameraSpeed * deltaTime);
+			position = DirectX::XMVectorAdd(position, rightVector);
+		}
+		else if (Keyboard::IsKeyPressed(RLS_KEY::A))
+		{
+			DirectX::XMVECTOR rightVector = DirectX::XMLoadFloat3(&m_RightVector);
+			rightVector = DirectX::XMVectorScale(rightVector, m_CameraSpeed * deltaTime);
+			position = DirectX::XMVectorSubtract(position, rightVector);
+		}
+		if (Keyboard::IsKeyPressed(RLS_KEY::Q))
+		{
+			DirectX::XMVECTOR upVector = DirectX::XMLoadFloat3(&m_UpVector);
+			upVector = DirectX::XMVectorScale(upVector, m_CameraSpeed * deltaTime);
+			position = DirectX::XMVectorSubtract(position, upVector);
+		}
+		else if (Keyboard::IsKeyPressed(RLS_KEY::E))
+		{
+			DirectX::XMVECTOR upVector = DirectX::XMLoadFloat3(&m_UpVector);
+			upVector = DirectX::XMVectorScale(upVector, m_CameraSpeed * deltaTime);
+			position = DirectX::XMVectorAdd(position, upVector);
+		}
+
+		DirectX::XMStoreFloat3(&m_Position, position);
+		RecalculateViewProjectionMatrix();
 	}
 
 	void PerspectiveCamera::OnMouseMove() noexcept

@@ -44,12 +44,7 @@ namespace Relentless
 		static RECT m_ClientRect;
 		static RECT m_NonClientRect;
 		static MSG m_WindowMessage;
-		static bool m_IsVSync;
 		static BOOL m_IsVisible;
-		static bool m_CursorVisible;
-		static uint32_t m_MouseX;
-		static uint32_t m_MouseY;
-		static bool disabled;
 		static Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain;
 		static uint8_t m_NrOfBackBuffers;
 		static std::vector<BackBuffer> m_BackBuffers;

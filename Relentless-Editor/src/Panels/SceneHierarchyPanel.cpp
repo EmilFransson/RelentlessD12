@@ -35,41 +35,41 @@ namespace Relentless
 		if (ImGui::BeginPopupContextWindow(0, 1, false /*over items*/))
 		{
 			if (ImGui::MenuItem("Create Empty"))
-				m_pScene->CreateEntity("Entity");
+				m_SelectedEntity = m_pScene->CreateEntity("Entity");
 
 			if (ImGui::BeginMenu("Shapes"))
 			{
 				if (ImGui::MenuItem("Triangle"))
 				{
-					m_pScene->CreateShape<Shape::Triangle>();
+					m_SelectedEntity = m_pScene->CreateShape<Shape::Triangle>();
 				}
 				if (ImGui::MenuItem("Cube"))
 				{
-					m_pScene->CreateShape<Shape::Cube>();
+					m_SelectedEntity = m_pScene->CreateShape<Shape::Cube>();
 				}
 				if (ImGui::MenuItem("Cylinder"))
 				{
-					m_pScene->CreateShape<Shape::Cylinder>();
+					m_SelectedEntity = m_pScene->CreateShape<Shape::Cylinder>();
 				}
 				if (ImGui::MenuItem("Capsule"))
 				{
-					m_pScene->CreateShape<Shape::Capsule>();
+					m_SelectedEntity = m_pScene->CreateShape<Shape::Capsule>();
 				}
 				if (ImGui::MenuItem("Cone"))
 				{
-					m_pScene->CreateShape<Shape::Cone>();
+					m_SelectedEntity = m_pScene->CreateShape<Shape::Cone>();
 				}
 				if (ImGui::MenuItem("Sphere"))
 				{
-					m_pScene->CreateShape<Shape::Sphere>();
+					m_SelectedEntity = m_pScene->CreateShape<Shape::Sphere>();
 				}
 				if (ImGui::MenuItem("Quad"))
 				{
-					m_pScene->CreateShape<Shape::Quad>();
+					m_SelectedEntity = m_pScene->CreateShape<Shape::Quad>();
 				}
 				if (ImGui::MenuItem("Plane"))
 				{
-					m_pScene->CreateShape<Shape::Plane>();
+					m_SelectedEntity = m_pScene->CreateShape<Shape::Plane>();
 				}
 				ImGui::EndMenu();
 			}
@@ -78,7 +78,7 @@ namespace Relentless
 			{
 				if (ImGui::MenuItem("Utah Teapot"))
 				{
-					m_pScene->CreateUtahTeapot();
+					m_SelectedEntity = m_pScene->CreateUtahTeapot();
 				}
 				ImGui::EndMenu();
 			}
@@ -87,13 +87,17 @@ namespace Relentless
 			{
 				if (ImGui::MenuItem("Directional Light"))
 				{
-					m_pScene->CreateLight("Directional Light", LightComponent::Type::Directional);
+					m_SelectedEntity = m_pScene->CreateLight("Directional Light", LightType::Directional);
+				}
+				if (ImGui::MenuItem("Point Light"))
+				{
+					m_SelectedEntity = m_pScene->CreateLight("Point Light", LightType::Point);
 				}
 				ImGui::EndMenu();
 			}
 
 			if (ImGui::MenuItem("Camera"))
-				m_pScene->CreateCamera("Camera");
+				m_SelectedEntity = m_pScene->CreateCamera("Camera");
 
 			ImGui::EndPopup();
 		}

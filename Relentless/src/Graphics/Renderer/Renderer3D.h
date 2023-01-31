@@ -19,8 +19,11 @@ namespace Relentless
 
 	struct PerFrameData2
 	{
+		uint32_t directionalLightDataIndex[4];
+		uint32_t pointLightDataIndex[16];
+		uint32_t nrOfDirectionalLights;
+		uint32_t nrOfPointLights;
 		uint32_t cameraDataIndex;
-		uint32_t directionalLightDataIndex;
 	};
 
 	struct PerDrawData2
