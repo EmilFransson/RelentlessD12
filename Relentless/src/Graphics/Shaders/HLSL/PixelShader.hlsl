@@ -28,7 +28,7 @@ struct Camera
 };
 
 //Should probably make it so I have the lights in a structured buffer
-//and just have the "nrOf..." in this meta data struct, to know the amount of content of
+//and just have the "nrOf..." members in this meta data struct, to know the amount of content of
 //the structured buffer(s). In this way I could keep the number of lights dynamic. =)
 struct LightMetaData
 {
@@ -64,25 +64,26 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
     ConstantBuffer<LightMetaData> lightData             = ResourceDescriptorHeap[perFrameData.lightMetaDataIndex];
 
     psIn.inNormalWS = normalize(psIn.inNormalWS);
-    float3 viewDir = normalize(camera.positionWS - psIn.inPositionWS);
+    const float3 viewDir = normalize(camera.positionWS - psIn.inPositionWS);
     
-    float3 ambientColor = material.color * ambientLight;
+    const float3 ambientColor = material.color * ambientLight;
     
     float3 lightOut = float3(0.0f, 0.0f, 0.0f);
     for (uint i = 0u; i < lightData.nrOfDirectionalLights; i++)
     {
         ConstantBuffer<DirectionalLight> directionalLight = ResourceDescriptorHeap[lightData.directionalLightIndex[i / 4][i % 4]];
-        float3 lightD = -normalize(directionalLight.direction);
+        const float3 lightD = -normalize(directionalLight.direction);
+        const float normalDotLightDir = dot(psIn.inNormalWS, lightD);
     
-        float3 diffuseColor = material.color * directionalLight.color * directionalLight.intensity;
-        float3 finalDiffuseColor = saturate(dot(psIn.inNormalWS, lightD)) * diffuseColor;
+        const float3 diffuseColor = material.color * directionalLight.color * directionalLight.intensity;
+        const float3 finalDiffuseColor = saturate(normalDotLightDir) * diffuseColor;
     
-        if (dot(psIn.inNormalWS, lightD) > 0.0f)
+        if (normalDotLightDir > 0.0f)
         {
-            float3 halfWayDir = normalize(lightD + viewDir);
+            const float3 halfWayDir = normalize(lightD + viewDir);
     
-            float specularFactor = pow(max(dot(psIn.inNormalWS, halfWayDir), 0.0f), 16.0f);
-            float3 specularColor = directionalLight.color * specularFactor * directionalLight.intensity * material.color;
+            const float specularFactor = pow(max(dot(psIn.inNormalWS, halfWayDir), 0.0f), 16.0f);
+            const float3 specularColor = directionalLight.color * specularFactor * directionalLight.intensity * material.color;
         
             lightOut += (finalDiffuseColor + specularColor);
         }
@@ -96,17 +97,18 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
     {
         ConstantBuffer<PointLight> pointLight = ResourceDescriptorHeap[lightData.pointLightIndex[j / 4][j % 4]];
         
-        float3 surfaceToLightDirection = normalize(pointLight.position - psIn.inPositionWS);
+        const float3 surfaceToLightDirection = normalize(pointLight.position - psIn.inPositionWS);
+        const float normalDotLightDir = dot(psIn.inNormalWS, surfaceToLightDirection);
         
-        float3 diffuseColor = material.color * pointLight.color * pointLight.intensity;
-        float3 finalDiffuseColor = saturate(dot(psIn.inNormalWS, surfaceToLightDirection)) * diffuseColor;
+        const float3 diffuseColor = material.color * pointLight.color * pointLight.intensity;
+        const float3 finalDiffuseColor = saturate(normalDotLightDir) * diffuseColor;
     
-        if (dot(psIn.inNormalWS, surfaceToLightDirection) > 0.0f)
+        if (normalDotLightDir > 0.0f)
         {
-            float3 halfWayDir = normalize(surfaceToLightDirection + viewDir);
+            const float3 halfWayDir = normalize(surfaceToLightDirection + viewDir);
     
-            float specularFactor = pow(max(dot(psIn.inNormalWS, halfWayDir), 0.0f), 16.0f);
-            float3 specularColor = pointLight.color * specularFactor * pointLight.intensity * material.color;
+            const float specularFactor = pow(max(dot(psIn.inNormalWS, halfWayDir), 0.0f), 16.0f);
+            const float3 specularColor = pointLight.color * specularFactor * pointLight.intensity * material.color;
         
             lightOut += (finalDiffuseColor + specularColor);
         }
