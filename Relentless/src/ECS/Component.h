@@ -25,7 +25,7 @@ namespace Relentless
 
 	struct NameComponent
 	{
-		NameComponent(const char* name)
+		explicit NameComponent(const char* name)
 			: Name{name}
 		{ }
 
@@ -43,11 +43,11 @@ namespace Relentless
 		MeshRendererComponent()
 			:Color{ 1.0f, 0.0f, 0.0f }
 		{
-			constantBuffer = RLS_NEW ConstantBuffer(sizeof(DirectX::XMFLOAT3));
+			constantBuffer = std::make_unique<ConstantBuffer>(sizeof(DirectX::XMFLOAT3));
 		}
 
 		DirectX::XMFLOAT3 Color;
-		ConstantBuffer* constantBuffer;
+		std::unique_ptr<ConstantBuffer> constantBuffer;
 	};
 
 	struct ForwardPassComponent
@@ -76,13 +76,13 @@ namespace Relentless
 			  Intensity{1.0f}
 		{
 			//We multiply by 2 as we make room for the direction too, however this is part of the "DirectionalLightStruct type"
-			constantBuffer = RLS_NEW ConstantBuffer((sizeof(DirectX::XMFLOAT3) * 2) + sizeof(float));
+			constantBuffer = std::make_unique<ConstantBuffer>((sizeof(DirectX::XMFLOAT3) * 2) + sizeof(float));
 		}
 
 		DirectX::XMFLOAT3 Color;
 		float Intensity;
 
-		ConstantBuffer* constantBuffer;
+		std::unique_ptr<ConstantBuffer> constantBuffer;
 	};
 
 	struct PointLightComponent
@@ -92,13 +92,13 @@ namespace Relentless
 			 Intensity{1.0f}
 		{
 			//We multiply by 2 as we make room for the position too, however this is part of the "PointLightStruct type"
-			constantBuffer = RLS_NEW ConstantBuffer((sizeof(DirectX::XMFLOAT3) * 2) + sizeof(float));
+			constantBuffer = std::make_unique<ConstantBuffer>((sizeof(DirectX::XMFLOAT3) * 2) + sizeof(float));
 		}
 
 		DirectX::XMFLOAT3 Color;
 		float Intensity;
 
-		ConstantBuffer* constantBuffer;
+		std::unique_ptr<ConstantBuffer> constantBuffer;
 	};
 
 	struct CameraComponent

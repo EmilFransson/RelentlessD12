@@ -218,32 +218,36 @@ namespace Relentless
 	void EditorLayer::OnAttach() noexcept
 	{
 		m_pEditorCamera = std::move(PerspectiveCamera::Create(DirectX::XMVECTORF32{ 5.0f, 5.0f, -5.0f }, static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y)));
-
 		m_Scene.CreateLight("Directional Light", LightType::Directional);
-		auto ground = m_Scene.CreateShape<Shape::Cube>();
-		auto& tc1 = m_Scene.GetEntityManager().Get<TransformComponent>(ground);
-		m_Scene.GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
-		m_Scene.GetEntityManager().Get<MeshRendererComponent>(ground).Color = {42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f };
 
-		tc1.Scale = DirectX::XMFLOAT3{ 6.4f, 0.1f, 6.4f };
+		{
+			auto ground = m_Scene.CreateShape<Shape::Cube>();
+			m_Scene.GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
+			m_Scene.GetEntityManager().Get<MeshRendererComponent>(ground).Color = { 42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f };
 
-		DirectX::XMMATRIX world1 = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc1.Scale))
-			* DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(tc1.Rotation.x))
-			* DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(tc1.Rotation.y))
-			* DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(tc1.Rotation.z))
-			* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc1.Translation));
-		DirectX::XMStoreFloat4x4(&tc1.Transform, world1);
+			auto& tc = m_Scene.GetEntityManager().Get<TransformComponent>(ground);
+			tc.Scale = DirectX::XMFLOAT3{ 6.4f, 0.1f, 6.4f };
 
-		auto cube = m_Scene.CreateShape<Shape::Cube>();
-		auto& tc2 = m_Scene.GetEntityManager().Get<TransformComponent>(cube);
-		tc2.Translation = {0.0f, 0.55f, 0.0f};
+			DirectX::XMMATRIX world1 = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc.Scale))
+				* DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(tc.Rotation.x))
+				* DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(tc.Rotation.y))
+				* DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(tc.Rotation.z))
+				* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc.Translation));
+			DirectX::XMStoreFloat4x4(&tc.Transform, world1);
+		}
 
-		DirectX::XMMATRIX world2 = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc2.Scale))
-			* DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(tc2.Rotation.x))
-			* DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(tc2.Rotation.y))
-			* DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(tc2.Rotation.z))
-			* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc2.Translation));
-		DirectX::XMStoreFloat4x4(&tc2.Transform, world2);
+		{
+			auto cube = m_Scene.CreateShape<Shape::Cube>();
+			auto& tc = m_Scene.GetEntityManager().Get<TransformComponent>(cube);
+			tc.Translation = { 0.0f, 0.55f, 0.0f };
+
+			DirectX::XMMATRIX world2 = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc.Scale))
+				* DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(tc.Rotation.x))
+				* DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(tc.Rotation.y))
+				* DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(tc.Rotation.z))
+				* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc.Translation));
+			DirectX::XMStoreFloat4x4(&tc.Transform, world2);
+		}
 
 		m_SceneHierarchyPanel.SetActiveScene(&m_Scene);
 		m_SceneHierarchyPanel.SetOnEntityDestroyFunction([this](entity entityID)
@@ -293,8 +297,8 @@ namespace Relentless
 				||	Keyboard::IsKeyPressed(RLS_KEY::S) 
 				||	Keyboard::IsKeyPressed(RLS_KEY::A) 
 				||	Keyboard::IsKeyPressed(RLS_KEY::D)
-				|| Keyboard::IsKeyPressed(RLS_KEY::Q)
-				|| Keyboard::IsKeyPressed(RLS_KEY::E)))
+				||  Keyboard::IsKeyPressed(RLS_KEY::Q)
+				||  Keyboard::IsKeyPressed(RLS_KEY::E)))
 		{
 			m_pEditorCamera->Update(deltaTime);
 		}

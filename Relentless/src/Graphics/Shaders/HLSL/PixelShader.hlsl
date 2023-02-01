@@ -18,16 +18,24 @@ struct Material
 
 struct PerFrameData
 {
-    uint4 directionalLightIndex; //Allows for 4 directional lights!
-    uint4 pointLightIndex[4];
-    uint nrOfDirectionalLights;
-    uint nrOfPointLights;
-    uint cameraIndex;
+    uint cameraMetaDataIndex;
+    uint lightMetaDataIndex;
 };
 
 struct Camera
 {
     float3 positionWS;
+};
+
+//Should probably make it so I have the lights in a structured buffer
+//and just have the "nrOf..." in this meta data struct, to know the amount of content of
+//the structured buffer(s). In this way I could keep the number of lights dynamic. =)
+struct LightMetaData
+{
+    uint4 directionalLightIndex[16];
+    uint4 pointLightIndex[128];
+    uint nrOfDirectionalLights;
+    uint nrOfPointLights;
 };
 
 struct DirectionalLight
@@ -52,7 +60,8 @@ static const float3 ambientLight = float3(0.065f, 0.065f, 0.065f);
 float4 ps_main(in PS_IN psIn) : SV_TARGET
 {
     ConstantBuffer<Material> material                   = ResourceDescriptorHeap[perDrawData.materialIndex];
-    ConstantBuffer<Camera> camera                       = ResourceDescriptorHeap[perFrameData.cameraIndex];
+    ConstantBuffer<Camera> camera                       = ResourceDescriptorHeap[perFrameData.cameraMetaDataIndex];
+    ConstantBuffer<LightMetaData> lightData             = ResourceDescriptorHeap[perFrameData.lightMetaDataIndex];
 
     psIn.inNormalWS = normalize(psIn.inNormalWS);
     float3 viewDir = normalize(camera.positionWS - psIn.inPositionWS);
@@ -60,9 +69,9 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
     float3 ambientColor = material.color * ambientLight;
     
     float3 lightOut = float3(0.0f, 0.0f, 0.0f);
-    for (uint i = 0u; i < perFrameData.nrOfDirectionalLights; i++)
+    for (uint i = 0u; i < lightData.nrOfDirectionalLights; i++)
     {
-        ConstantBuffer<DirectionalLight> directionalLight = ResourceDescriptorHeap[perFrameData.directionalLightIndex[i]];
+        ConstantBuffer<DirectionalLight> directionalLight = ResourceDescriptorHeap[lightData.directionalLightIndex[i / 4][i % 4]];
         float3 lightD = -normalize(directionalLight.direction);
     
         float3 diffuseColor = material.color * directionalLight.color * directionalLight.intensity;
@@ -83,9 +92,9 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
         }
     }
     
-    for (uint j = 0u; j < perFrameData.nrOfPointLights; j++)
+    for (uint j = 0u; j < lightData.nrOfPointLights; j++)
     {
-        ConstantBuffer<PointLight> pointLight = ResourceDescriptorHeap[perFrameData.pointLightIndex[j / 4][j % 4]];
+        ConstantBuffer<PointLight> pointLight = ResourceDescriptorHeap[lightData.pointLightIndex[j / 4][j % 4]];
         
         float3 surfaceToLightDirection = normalize(pointLight.position - psIn.inPositionWS);
         

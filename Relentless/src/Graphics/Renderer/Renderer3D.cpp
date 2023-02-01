@@ -45,6 +45,8 @@ namespace Relentless
 
 		uint32_t totalBytes;
 		entity hoveredEntity { NULL_ENTITY };
+
+		std::unique_ptr<ConstantBuffer> pLightMetaDataConstantBuffer;
 	};
 	static Renderer3dData s_RendererData = {};
 	
@@ -116,6 +118,8 @@ namespace Relentless
 		s_RendererData.scissorRect.bottom = static_cast<LONG>(s_RendererData.viewPort.Height);
 
 		s_RendererData.m_ShaderLibrary.Initialize();
+
+		s_RendererData.pLightMetaDataConstantBuffer = std::make_unique<ConstantBuffer>(sizeof(LightMetaData));
 		
 		CreateMainRootSignature();
 		CreateMainPipelineState();
@@ -159,25 +163,29 @@ namespace Relentless
 		static PerFrameData2 perFrameData2;
 		perFrameData2.cameraDataIndex = pSceneCamera->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
 		
+		perFrameData2.lightMetaDataIndex = s_RendererData.pLightMetaDataConstantBuffer->m_VisibleHandles[frameIndex].Index;
+
+		static LightMetaData lightMetaData;
 		{
 			uint32_t i = 0u;
 			entityManager.Collect<DirectionalLightComponent>().Do([&](DirectionalLightComponent& lc)
 				{
-					perFrameData2.directionalLightDataIndex[i] = lc.constantBuffer->m_VisibleHandles[frameIndex].Index;
-			i++;
+					lightMetaData.directionalLightDataIndex[i] = lc.constantBuffer->m_VisibleHandles[frameIndex].Index;
+					i++;
 				});
-			perFrameData2.nrOfDirectionalLights = i;
+			lightMetaData.nrOfDirectionalLights = i;
 		}
 		{
 			uint32_t i = 0u;
 			entityManager.Collect<PointLightComponent>().Do([&](PointLightComponent& lc)
 				{
-					perFrameData2.pointLightDataIndex[i] = lc.constantBuffer->m_VisibleHandles[frameIndex].Index;
+					lightMetaData.pointLightDataIndex[i] = lc.constantBuffer->m_VisibleHandles[frameIndex].Index;
 					i++;
 				});
-			perFrameData2.nrOfPointLights = i;
+			lightMetaData.nrOfPointLights = i;
 		}
-
+		auto& cb = *s_RendererData.pLightMetaDataConstantBuffer;
+		MemoryManager::Get().UpdateConstantBuffer(cb, &lightMetaData);
 
 		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, (uint32_t)sizeof(PerFrameData2) / sizeof(uint32_t), &perFrameData2, 0u));
 	}
