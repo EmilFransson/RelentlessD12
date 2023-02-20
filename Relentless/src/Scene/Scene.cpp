@@ -14,28 +14,28 @@ namespace Relentless
 			});
 
 		/****LIGHTS****/
-		static DirectionalLightStruct directionalLightStruct;
-		m_EntityManager.Collect<TransformComponent, DirectionalLightComponent>().Do([&](TransformComponent& tc, DirectionalLightComponent& lc)
+		m_EntityManager.Collect<TransformComponent, DirectionalLightComponent, DirtyLightComponent>().Do([&](entity entityID, TransformComponent& tc, DirectionalLightComponent& lc, DirtyLightComponent& dirty)
 			{
-				directionalLightStruct.Direction.x = std::sin(DirectX::XMConvertToRadians(tc.Rotation.y));
-				directionalLightStruct.Direction.y = std::cos(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
-				directionalLightStruct.Direction.z = std::sin(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
-				directionalLightStruct.Intensity = lc.Intensity;
-				directionalLightStruct.Color = lc.Color;
+				lc.Direction.x = std::sin(DirectX::XMConvertToRadians(tc.Rotation.y));
+				lc.Direction.y = std::cos(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
+				lc.Direction.z = std::sin(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
 
-				auto& cb = *lc.constantBuffer;
-				MemoryManager::Get().UpdateConstantBuffer(cb, &directionalLightStruct);
+				m_LightManager.UpdateDirectionalLight(lc, entityID);
+				
+				dirty.Updates--;
+				if (dirty.Updates == 0u)
+					m_EntityManager.Remove<DirtyLightComponent>(entityID);
 			});
 
-		static PointLightStruct pointLightStruct;
-		m_EntityManager.Collect<TransformComponent, PointLightComponent>().Do([&](TransformComponent& tc, PointLightComponent& lc)
+		m_EntityManager.Collect<TransformComponent, PointLightComponent, DirtyLightComponent>().Do([&](entity entityID, TransformComponent& tc, PointLightComponent& lc, DirtyLightComponent& dirty)
 			{
-				pointLightStruct.Position = tc.Translation;
-				pointLightStruct.Intensity = lc.Intensity;
-				pointLightStruct.Color = lc.Color;
+				lc.Position = tc.Translation;
+				
+				m_LightManager.UpdatePointLight(lc, entityID);
 
-				auto& cb = *lc.constantBuffer;
-				MemoryManager::Get().UpdateConstantBuffer(cb, &pointLightStruct);
+				dirty.Updates--;
+				if (dirty.Updates == 0u)
+					m_EntityManager.Remove<DirtyLightComponent>(entityID);
 			});
 	}
 
@@ -57,68 +57,26 @@ namespace Relentless
 	entity Scene::CreateLight(const char* name, LightType type) noexcept
 	{
 		auto lightEntity = CreateEntityWithUUID(name);
-		m_EntityManager.Get<TransformComponent>(lightEntity).Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
 		if (type == LightType::Directional)
 		{
+			auto& tc = m_EntityManager.Get<TransformComponent>(lightEntity);
+			tc.Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
+			tc.Translation = { 0.0f, 3.0f, 0.0f };
 			auto& dlc = m_EntityManager.Add<DirectionalLightComponent>(lightEntity);
 			dlc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
-			m_EntityManager.Get<TransformComponent>(lightEntity).Translation = { 0.0f, 3.0f, 0.0f };
+			m_LightManager.AllocateDirectionalLight(lightEntity);
 		}
 		else if (type == LightType::Point)
 		{
-			auto& plc = m_EntityManager.Add<PointLightComponent>(lightEntity);
-			plc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
 			m_EntityManager.Get<TransformComponent>(lightEntity).Translation = { 0.0f, 3.0f, 0.0f };
+			auto& plc = m_EntityManager.Add<PointLightComponent>(lightEntity);
+			plc.Position = { 0.0f, 3.0f, 0.0f };
+			plc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
+			m_LightManager.AllocatePointLight(lightEntity);
 		}
+		m_EntityManager.Add<DirtyLightComponent>(lightEntity);
 		
 		return lightEntity;
-	}
-
-	entity Scene::CreateUtahTeapot() noexcept
-	{
-		std::filesystem::path finalPath = std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/UtahTeapot.gltf";
-		std::string nameString = finalPath.stem().string();
-
-		ResourceID vbID;
-		ResourceID ibID;
-		if (!AssetManager::Get().HasLoaded(nameString + " Vertex Buffer"))
-		{
-			MeshFactory factory;
-			Mesh shapeMesh = factory.LoadFromFile(finalPath)[0];
-
-			VertexBuffer::Specification vbSpec
-			{
-				.NrOfVertices = (uint32_t)shapeMesh.Vertices.size(),
-				.TotalSizeInBytes = (uint32_t)shapeMesh.Vertices.size() * sizeof(SimpleVertex),
-				.Stride = sizeof(SimpleVertex),
-				.pBuffer = (void*)shapeMesh.Vertices.data(),
-				.Name = nameString + std::string(" Vertex Buffer")
-			};
-
-			IndexBuffer::Specification ibSpec
-			{
-				.NrOfIndices = (uint32_t)shapeMesh.Indices.size(),
-				.TotalSizeInBytes = (uint32_t)shapeMesh.Indices.size() * sizeof(uint32_t),
-				.Stride = sizeof(uint32_t),
-				.pBuffer = (void*)shapeMesh.Indices.data(),
-				.Name = nameString + std::string(" Index Buffer")
-			};
-
-			vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
-			ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
-		}
-		else
-		{
-			vbID = AssetManager::Get().Load<VertexBuffer>(nameString + " Vertex Buffer", nullptr);
-			ibID = AssetManager::Get().Load<IndexBuffer>(nameString + " Index Buffer", nullptr);
-		}
-
-		auto entity = CreateEntityWithUUID(nameString.c_str());
-		m_EntityManager.Add<MeshFilterComponent>(entity, vbID, ibID);
-		m_EntityManager.Add<ForwardPassComponent>(entity);
-		m_EntityManager.Add<MeshRendererComponent>(entity).Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-
-		return entity;
 	}
 
 	entity Scene::CreateCamera(const char* name) noexcept
@@ -146,6 +104,15 @@ namespace Relentless
 			
 	void Scene::DestroyEntity(const entity entityHandle) noexcept
 	{
+		if (m_EntityManager.Has<PointLightComponent>(entityHandle))
+		{
+			m_LightManager.DeallocatePointLight(entityHandle);
+		}
+		else if (m_EntityManager.Has<DirectionalLightComponent>(entityHandle))
+		{
+			m_LightManager.DeallocateDirectionalLight(entityHandle);
+		}
+
 		m_EntityManager.DestroyEntity(entityHandle);
 	}
 }

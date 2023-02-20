@@ -95,6 +95,9 @@ namespace Relentless
 		template<typename ComponentType, typename ...Args>
 		ComponentType& Add(const entity entityID, Args&& ...args) noexcept;
 
+		template<typename ComponentType, typename ...Args>
+		ComponentType& AddOrReplace(const entity entityID, Args&& ...args) noexcept;
+
 		template<typename ComponentType>
 		void Remove(const entity entityID) noexcept;
 
@@ -189,6 +192,38 @@ namespace Relentless
 		ValidateComponentPool<ComponentType>();
 
 		auto& pool = static_cast<SparseSet<ComponentType>&>(*m_components.at(ComponentID));
+
+		const size_t position = pool.denseArray.size();
+		pool.denseArray.emplace_back(entityID);
+		pool.components.emplace_back(ComponentType(std::forward<Args>(args)...));
+		pool.sparseArray[entityID] = static_cast<entity>(position);
+
+		if (pool.bundle != nullptr)
+		{
+			auto componentIdx = m_bundles[pool.bundle]->UpdateOnAdd(entityID);
+			if (componentIdx)
+			{
+				return pool.components[*componentIdx];
+			}
+		}
+		return pool.components.back();
+	}
+
+	template<typename ComponentType, typename ...Args>
+	ComponentType& EntityManager::AddOrReplace(const entity entityID, Args&& ...args) noexcept
+	{
+		static constexpr auto ComponentID = sti::getTypeIndex<ComponentType>();
+		RLS_ASSERT(Exists(entityID), "Entity is invalid");
+
+		ValidateComponentPool<ComponentType>();
+		auto& pool = static_cast<SparseSet<ComponentType>&>(*m_components.at(ComponentID));
+
+		if (Has<ComponentType>(entityID))
+		{
+			pool.components[pool.sparseArray[entityID]] = ComponentType(std::forward<Args>(args)...);
+			return pool.components[pool.sparseArray[entityID]];
+		}
+
 
 		const size_t position = pool.denseArray.size();
 		pool.denseArray.emplace_back(entityID);

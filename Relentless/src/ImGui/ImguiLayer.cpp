@@ -168,7 +168,7 @@ namespace Relentless
 		RenderTextureSpecification textureSpecification = {};
 		textureSpecification.Width = 800u;
 		textureSpecification.Height = 600u;
-		textureSpecification.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		textureSpecification.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 		textureSpecification.MultiSampleCount = 1u;
 		textureSpecification.CreateSRV = false;
 		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Brown.f);

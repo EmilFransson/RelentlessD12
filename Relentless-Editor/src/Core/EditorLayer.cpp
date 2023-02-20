@@ -7,7 +7,6 @@ namespace Relentless
 		  m_ViewportPanelSize{100.0f, 100.0f}, 
 		  m_SceneViewportChanged{ false },
 		  m_HoveringSceneViewport{ false },
-		  m_ClickedSceneViewPort{ false },
 		  m_HoveredEntity{ NULL_ENTITY },
 		  m_SelectedEntity{ NULL_ENTITY },
 		  m_CurrentGizmoType{ GizmoType::NONE }
@@ -27,7 +26,7 @@ namespace Relentless
 		}
 		case EventType::RightMouseButtonPressedEvent:
 		{
-			bool isNavigatingScene = m_HoveringSceneViewport;
+			const bool isNavigatingScene = m_HoveringSceneViewport;
 			if (isNavigatingScene)
 			{
 				Mouse::ConfineCursor(vMin.x, vMax.x, vMax.y, vMin.y);
@@ -38,7 +37,7 @@ namespace Relentless
 		}
 		case EventType::RightMouseButtonReleasedEvent:
 		{
-			bool isNavigatingScene = m_HoveringSceneViewport;
+			const bool isNavigatingScene = m_HoveringSceneViewport;
 			if (isNavigatingScene)
 			{
 				Mouse::FreeCursor();
@@ -174,6 +173,9 @@ namespace Relentless
 
 				DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.Scale)) * DirectX::XMMatrixRotationX(angleX) * DirectX::XMMatrixRotationY(angleY) * DirectX::XMMatrixRotationZ(angleZ) * DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.Translation));
 				DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
+
+				if (m_Scene.GetEntityManager().HasAnyOf<DirectionalLightComponent, PointLightComponent>(m_SelectedEntity))
+					m_Scene.GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
 			}
 		}
 
@@ -261,7 +263,7 @@ namespace Relentless
 					m_HoveredEntity = NULL_ENTITY;
 			});
 
-		m_PropertiesPanel.SetEntityManager(&m_Scene.GetEntityManager());
+		m_PropertiesPanel.SetActiveScene(&m_Scene);
 		MemoryManager::Get().GetUploadBuffer()->Upload();
 		m_Scene.SetViewportPanelSize(m_ViewportPanelSize);
 	}
@@ -311,7 +313,7 @@ namespace Relentless
 
 	void EditorLayer::OnRender() noexcept
 	{
-		Renderer3D::Begin(m_pEditorCamera, m_Scene.GetEntityManager());
+		Renderer3D::Begin(m_pEditorCamera, m_Scene.GetEntityManager(), m_Scene);
 		m_Scene.GetEntityManager().Bundle<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([](entity id, ForwardPassComponent&, MeshFilterComponent&, MeshRendererComponent&)
 			{
 				Renderer3D::Submit(id);
@@ -336,7 +338,7 @@ namespace Relentless
 		if (m_SelectedEntity == NULL_ENTITY)
 			return;
 
-		m_Scene.GetEntityManager().DestroyEntity(m_SelectedEntity);
+		m_Scene.DestroyEntity(m_SelectedEntity);
 		m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
 		m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
 		m_SelectedEntity = NULL_ENTITY;
@@ -375,8 +377,17 @@ namespace Relentless
 		{
 			auto& dlc = mgr.Get<DirectionalLightComponent>(m_SelectedEntity);
 			auto& newDlc = mgr.Add<DirectionalLightComponent>(newEntity);
+			m_Scene.GetLightManager().AllocateDirectionalLight(newEntity);
 			newDlc.Color = dlc.Color;
 			newDlc.Intensity = dlc.Intensity;
+		}
+		else if (mgr.Has<PointLightComponent>(m_SelectedEntity))
+		{
+			auto& plc = mgr.Get<PointLightComponent>(m_SelectedEntity);
+			auto& newDlc = mgr.Add<PointLightComponent>(newEntity);
+			m_Scene.GetLightManager().AllocatePointLight(newEntity);
+			newDlc.Color = plc.Color;
+			newDlc.Intensity = plc.Intensity;
 		}
 
 		m_SelectedEntity = newEntity;

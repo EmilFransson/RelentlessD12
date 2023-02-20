@@ -3,7 +3,7 @@ namespace Relentless
 {
 	PropertiesPanel::PropertiesPanel() noexcept
 		: m_SelectedEntity{ NULL_ENTITY },
-		  m_pEntityManager{ nullptr }
+		  m_pScene{ nullptr }
 	{}
 
 	void PropertiesPanel::OnImGuiRender() noexcept
@@ -22,15 +22,15 @@ namespace Relentless
 		m_FormattingName = false;
 	}
 
-	void PropertiesPanel::SetEntityManager(EntityManager* const entityManager) noexcept
+	void PropertiesPanel::SetActiveScene(Scene* const pScene) noexcept
 	{
-		RLS_ASSERT(entityManager, "Entity manager is nullptr.");
-		m_pEntityManager = entityManager;
+		RLS_ASSERT(pScene, "Entity manager is nullptr.");
+		m_pScene = pScene;
 	}
 
 	void PropertiesPanel::DrawAllComponentNodes()
 	{
-		auto& nc = m_pEntityManager->Get<NameComponent>(m_SelectedEntity);
+		auto& nc = m_pScene->GetEntityManager().Get<NameComponent>(m_SelectedEntity);
 
 		if (m_FormattingName == false)
 		{
@@ -41,13 +41,13 @@ namespace Relentless
 #pragma warning(push, 0)
 			_itoa(m_SelectedEntity, bPtr, 2);
 #pragma warning(pop)			
-			bool shouldRender = m_pEntityManager->Has<ForwardPassComponent>(m_SelectedEntity);
+			bool shouldRender = m_pScene->GetEntityManager().Has<ForwardPassComponent>(m_SelectedEntity);
 			if (ImGui::Checkbox(buff, &shouldRender))
 			{
 				if (!shouldRender)
-					m_pEntityManager->Remove<ForwardPassComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().Remove<ForwardPassComponent>(m_SelectedEntity);
 				else
-					m_pEntityManager->Add<ForwardPassComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().Add<ForwardPassComponent>(m_SelectedEntity);
 			}
 
 			ImGuiIO& io = ImGui::GetIO();
@@ -88,29 +88,38 @@ namespace Relentless
 		const bool opened = ImGui::TreeNodeEx((void*)typeid(TransformComponent).hash_code(), flags, "Transform");
 		if (opened)
 		{
-			auto& tc = m_pEntityManager->Get<TransformComponent>(m_SelectedEntity);
-			DrawVec3Control("Position", tc.Translation, 0.06f);
+			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
+			bool changedValues = DrawVec3Control("Position", tc.Translation, 0.06f);
 			ImGui::Separator();
-			DrawVec3Control("Rotation", tc.Rotation, 0.03f);
+			changedValues |= DrawVec3Control("Rotation", tc.Rotation, 0.03f);
 			ImGui::Separator();
-			DrawVec3Control("Scale", tc.Scale, 0.03f, 1.0f, 0.01f);
+			changedValues |= DrawVec3Control("Scale", tc.Scale, 0.03f, 1.0f, 0.01f);
 			
-			DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc.Scale)) 
-				* DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(tc.Rotation.x)) 
-				* DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(tc.Rotation.y)) 
-				* DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(tc.Rotation.z))
-				* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc.Translation));
-			DirectX::XMStoreFloat4x4(&tc.Transform, world);
+			if (changedValues)
+			{
+				DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc.Scale))
+					* DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(tc.Rotation.x))
+					* DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(tc.Rotation.y))
+					* DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(tc.Rotation.z))
+					* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc.Translation));
+				DirectX::XMStoreFloat4x4(&tc.Transform, world);
+
+				//Temporary for now!
+				if (m_pScene->GetEntityManager().HasAnyOf<DirectionalLightComponent, PointLightComponent>(m_SelectedEntity))
+				{
+					m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
+				}
+			}
 			
 			ImGui::TreePop();
 		}
 
 		DrawComponentNode<DirectionalLightComponent>("Light", [this]()
 			{
-				auto& lc = m_pEntityManager->Get<DirectionalLightComponent>(m_SelectedEntity);
 				constexpr const char* lightTypeStrings[] = { "Directional", "Point" };
-				const char* currentLightTypeString = lightTypeStrings[(int)LightType::Directional];
-
+				constexpr const char* currentLightTypeString = lightTypeStrings[(int)LightType::Directional];
+				auto& lc = m_pScene->GetEntityManager().Get<DirectionalLightComponent>(m_SelectedEntity);
+				
 				if (ImGui::BeginCombo("Type", currentLightTypeString))
 				{
 					for (uint8_t i = 0u; i < ARRAYSIZE(lightTypeStrings); i++)
@@ -122,10 +131,13 @@ namespace Relentless
 							{
 								auto color = lc.Color;
 								auto intensity = lc.Intensity;
-								m_pEntityManager->Remove<DirectionalLightComponent>(m_SelectedEntity);
-								auto& dlc = m_pEntityManager->Add<PointLightComponent>(m_SelectedEntity);
+								m_pScene->GetEntityManager().Remove<DirectionalLightComponent>(m_SelectedEntity);
+								m_pScene->GetLightManager().DeallocateDirectionalLight(m_SelectedEntity);
+								auto& dlc = m_pScene->GetEntityManager().Add<PointLightComponent>(m_SelectedEntity);
+								m_pScene->GetLightManager().AllocatePointLight(m_SelectedEntity);
 								dlc.Color = color;
 								dlc.Intensity = intensity;
+								m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
 							}
 						}
 						if (isSelected)
@@ -134,16 +146,18 @@ namespace Relentless
 					ImGui::EndCombo();
 				}
 
-				ImGui::ColorEdit3("Color", &lc.Color.x);
+				if (ImGui::ColorEdit3("Color", &lc.Color.x))
+					m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
 
-				ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, 1.0f);
+				if (ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, 1.0f))
+					m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
 			});
 
-		DrawComponentNode<PointLightComponent>("Light", [this]()
+		DrawComponentNode<PointLightComponent>("Light", [&]()
 			{
-				auto& lc = m_pEntityManager->Get<PointLightComponent>(m_SelectedEntity);
 				constexpr const char* lightTypeStrings[] = { "Directional", "Point" };
-				const char* currentLightTypeString = lightTypeStrings[(int)LightType::Point];
+				constexpr const char* currentLightTypeString = lightTypeStrings[(int)LightType::Point];
+				auto& lc = m_pScene->GetEntityManager().Get<PointLightComponent>(m_SelectedEntity);
 
 				if (ImGui::BeginCombo("Type", currentLightTypeString))
 				{
@@ -156,10 +170,15 @@ namespace Relentless
 							{
 								auto color = lc.Color;
 								auto intensity = lc.Intensity;
-								m_pEntityManager->Remove<PointLightComponent>(m_SelectedEntity);
-								auto& dlc = m_pEntityManager->Add<DirectionalLightComponent>(m_SelectedEntity);
+								m_pScene->GetEntityManager().Remove<PointLightComponent>(m_SelectedEntity);
+								m_pScene->GetLightManager().DeallocatePointLight(m_SelectedEntity);
+								auto& dlc = m_pScene->GetEntityManager().Add<DirectionalLightComponent>(m_SelectedEntity);
+								m_pScene->GetLightManager().AllocateDirectionalLight(m_SelectedEntity);
 								dlc.Color = color;
 								dlc.Intensity = intensity;
+								m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
+
+								m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
 							}
 						}
 						if (isSelected)
@@ -168,20 +187,22 @@ namespace Relentless
 					ImGui::EndCombo();
 				}
 
-				ImGui::ColorEdit3("Color", &lc.Color.x);
+				if (ImGui::ColorEdit3("Color", &lc.Color.x))
+					m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
 
-				ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, 1.0f);
+				if (ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, 1.0f))
+					m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
 			});
 
 		DrawComponentNode<MeshRendererComponent>("Mesh Renderer", [this]()
 			{
-				auto& mrc = m_pEntityManager->Get<MeshRendererComponent>(m_SelectedEntity);
+				auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(m_SelectedEntity);
 				ImGui::ColorEdit3("Color", &mrc.Color.x);
 			});
 
 		DrawComponentNode<CameraComponent>("Camera", [this]()
 			{
-				auto& cc = m_pEntityManager->Get<CameraComponent>(m_SelectedEntity);
+				auto& cc = m_pScene->GetEntityManager().Get<CameraComponent>(m_SelectedEntity);
 				ImGui::DragFloat("Field of View", &cc.FieldOfViewDegrees, 1.0f, 1.0f, 179.0f);
 				ImGui::DragFloat("Near Clipping Plane", &cc.ClippingPlaneNear, 0.03f, 0.01f, cc.ClippingPlaneFar);
 				ImGui::DragFloat("Far Clipping Plane", &cc.ClippingPlaneFar, 0.03f, cc.ClippingPlaneNear);
@@ -202,8 +223,8 @@ namespace Relentless
 		{
 			if (ImGui::MenuItem("Mesh Renderer"))
 			{
-				if (!m_pEntityManager->Has<MeshRendererComponent>(m_SelectedEntity))
-					m_pEntityManager->Add<MeshRendererComponent>(m_SelectedEntity);
+				if (!m_pScene->GetEntityManager().Has<MeshRendererComponent>(m_SelectedEntity))
+					m_pScene->GetEntityManager().Add<MeshRendererComponent>(m_SelectedEntity);
 				else
 				{
 					alreadyHasComponent = true;
@@ -214,10 +235,11 @@ namespace Relentless
 			{
 				if (ImGui::MenuItem("Directional"))
 				{
-					if (!m_pEntityManager->Has<DirectionalLightComponent>(m_SelectedEntity) &&
-						!m_pEntityManager->Has<PointLightComponent>(m_SelectedEntity))
+					if (!m_pScene->GetEntityManager().Has<DirectionalLightComponent>(m_SelectedEntity) &&
+						!m_pScene->GetEntityManager().Has<PointLightComponent>(m_SelectedEntity))
 					{
-						m_pEntityManager->Add<DirectionalLightComponent>(m_SelectedEntity);
+						m_pScene->GetEntityManager().Add<DirectionalLightComponent>(m_SelectedEntity);
+						m_pScene->GetLightManager().AllocateDirectionalLight(m_SelectedEntity);
 					}
 					else
 					{
@@ -227,10 +249,11 @@ namespace Relentless
 				}
 				if (ImGui::MenuItem("Point"))
 				{
-					if (!m_pEntityManager->Has<DirectionalLightComponent>(m_SelectedEntity) &&
-						!m_pEntityManager->Has<PointLightComponent>(m_SelectedEntity))
+					if (!m_pScene->GetEntityManager().Has<DirectionalLightComponent>(m_SelectedEntity) &&
+						!m_pScene->GetEntityManager().Has<PointLightComponent>(m_SelectedEntity))
 					{
-						m_pEntityManager->Add<PointLightComponent>(m_SelectedEntity);
+						m_pScene->GetEntityManager().Add<PointLightComponent>(m_SelectedEntity);
+						m_pScene->GetLightManager().AllocatePointLight(m_SelectedEntity);
 					}
 					else
 					{
@@ -253,7 +276,7 @@ namespace Relentless
 
 			if (ImGui::BeginPopupModal("Can't add the same component multiple times!", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove))
 			{
-				ImGui::Text("The component %s can't be added because \n%s already contains the same component.\n\n\n", componentString.c_str(), m_pEntityManager->Get<NameComponent>(m_SelectedEntity).Name.c_str());
+				ImGui::Text("The component %s can't be added because \n%s already contains the same component.\n\n\n", componentString.c_str(), m_pScene->GetEntityManager().Get<NameComponent>(m_SelectedEntity).Name.c_str());
 				ImGui::Separator();
 				const ImVec2 buttonTextSize = ImGui::CalcTextSize("Cancel");
 				ImGui::SetCursorPosX((ImGui::GetWindowContentRegionWidth() / 2.0f) - (buttonTextSize.x / 2.0f));
@@ -273,7 +296,7 @@ namespace Relentless
 	template<typename ComponentType, typename ContextFunction>
 	void PropertiesPanel::DrawComponentNode(const char* nodeName,const ContextFunction&& func) noexcept
 	{
-		if (!m_pEntityManager->Has<ComponentType>(m_SelectedEntity))
+		if (!m_pScene->GetEntityManager().Has<ComponentType>(m_SelectedEntity))
 			return;
 
 		ImGui::Separator();
@@ -304,11 +327,13 @@ namespace Relentless
 		}
 
 		if (removeComponent)
-			m_pEntityManager->Remove<ComponentType>(m_SelectedEntity);
+			m_pScene->GetEntityManager().Remove<ComponentType>(m_SelectedEntity);
 	}
 
-	void PropertiesPanel::DrawVec3Control(const char* label, DirectX::XMFLOAT3& values, float dragSpeed, float resetValue, float minValue, float maxValue, float columnWidth) noexcept
+	bool PropertiesPanel::DrawVec3Control(const char* label, DirectX::XMFLOAT3& values, float dragSpeed, float resetValue, float minValue, float maxValue, float columnWidth) noexcept
 	{
+		bool changedValues{ false };
+
 		ImGui::PushID(label);
 		auto pFont = ImGui::GetIO().Fonts->Fonts[OPENSANS_BOLD_18];
 
@@ -334,7 +359,7 @@ namespace Relentless
 		ImGui::PopStyleColor(3);
 
 		ImGui::SameLine();
-		ImGui::DragFloat("##X", &values.x, dragSpeed);
+		changedValues |= ImGui::DragFloat("##X", &values.x, dragSpeed);
 		ImGui::PopItemWidth();
 		ImGui::SameLine();
 
@@ -348,7 +373,7 @@ namespace Relentless
 		ImGui::PopStyleColor(3);
 
 		ImGui::SameLine();
-		ImGui::DragFloat("##Y", &values.y, dragSpeed);
+		changedValues |= ImGui::DragFloat("##Y", &values.y, dragSpeed);
 		ImGui::PopItemWidth();
 		ImGui::SameLine();
 
@@ -362,7 +387,7 @@ namespace Relentless
 		ImGui::PopStyleColor(3);
 
 		ImGui::SameLine();
-		ImGui::DragFloat("##Z", &values.z, dragSpeed);
+		changedValues |= ImGui::DragFloat("##Z", &values.z, dragSpeed);
 		ImGui::PopItemWidth();
 
 		ImGui::PopStyleVar();
@@ -374,5 +399,7 @@ namespace Relentless
 		values.x = std::clamp(values.x, minValue, maxValue);
 		values.y = std::clamp(values.y, minValue, maxValue);
 		values.z = std::clamp(values.z, minValue, maxValue);
+
+		return changedValues;
 	}
 }

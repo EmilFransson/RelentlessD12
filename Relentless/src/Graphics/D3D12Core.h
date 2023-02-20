@@ -12,7 +12,9 @@ namespace Relentless
 		[[nodiscard]] static constexpr Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>& GetCommandList() noexcept { return m_DirectCommandInterface.GetCommandList(); }
 		[[nodiscard]] static constexpr Microsoft::WRL::ComPtr<IDXGIFactory7>& GetFactory() noexcept { return m_pFactory; }
 		[[nodiscard]] static constexpr uint8_t GetNrOfBufferedFrames() noexcept { return m_NrOfBufferedFrames; }
+		[[nodiscard]] static constexpr uint32_t GetCurrentFrame() noexcept { return m_CurrentFrame; }
 		[[nodiscard]] static constexpr bool IsInitialized() noexcept { return m_IsInitialized; }
+		static void AdvanceToNextFrame() noexcept { m_CurrentFrame++; }
 	private:
 		D3D12Core() noexcept = default;
 		~D3D12Core() noexcept = default;
@@ -22,6 +24,7 @@ namespace Relentless
 		static Microsoft::WRL::ComPtr<IDXGIFactory7> m_pFactory;
 		static D3D12Command m_DirectCommandInterface;
 		static uint8_t m_NrOfBufferedFrames;
+		static uint32_t m_CurrentFrame;
 		static bool m_IsInitialized;
 #if defined(RLS_DEBUG)
 		static Microsoft::WRL::ComPtr<ID3D12Debug5> m_pDebugController;

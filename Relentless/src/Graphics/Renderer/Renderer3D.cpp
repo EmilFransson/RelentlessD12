@@ -9,6 +9,7 @@
 #include "Camera/PerspectiveCamera.h"
 #include "../Shaders/ShaderLibrary.h"
 #include "../Resources/AssetManager.h"
+#include "../../Scene/Scene.h"
 
 namespace Relentless
 {
@@ -45,8 +46,6 @@ namespace Relentless
 
 		uint32_t totalBytes;
 		entity hoveredEntity { NULL_ENTITY };
-
-		std::unique_ptr<ConstantBuffer> pLightMetaDataConstantBuffer;
 	};
 	static Renderer3dData s_RendererData = {};
 	
@@ -62,7 +61,7 @@ namespace Relentless
 		RenderTextureSpecification textureSpecification = {};
 		textureSpecification.Width = 800u;
 		textureSpecification.Height = 600u;
-		textureSpecification.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		textureSpecification.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 		textureSpecification.MultiSampleCount = 8u;
 		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
 		textureSpecification.CreateSRV = true;
@@ -118,8 +117,6 @@ namespace Relentless
 		s_RendererData.scissorRect.bottom = static_cast<LONG>(s_RendererData.viewPort.Height);
 
 		s_RendererData.m_ShaderLibrary.Initialize();
-
-		s_RendererData.pLightMetaDataConstantBuffer = std::make_unique<ConstantBuffer>(sizeof(LightMetaData));
 		
 		CreateMainRootSignature();
 		CreateMainPipelineState();
@@ -131,7 +128,7 @@ namespace Relentless
 		RenderCommand::ResetFrameCommandUnits(0u); //TO BE CHANGED! UPLOAD BUFFER SHOULD UPLOAD EVERYTHING SEQUENTIALLY!
 	}
 
-	void Renderer3D::Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, EntityManager& entityManager) noexcept
+	void Renderer3D::Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, EntityManager& entityManager, Scene& scene) noexcept
 	{
 		s_RendererData.m_ForwardPassEntities.clear();
 		s_RendererData.m_PickingPassEntities.clear();
@@ -159,33 +156,30 @@ namespace Relentless
 		DirectX::XMStoreFloat4x4(&vpMatrixCBuffer.VPMatrix, vpMatrix);
 		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(2u, 4 * 4, &vpMatrixCBuffer, 0u));
 
-		auto frameIndex = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
+		//auto frameIndex = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
+		auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+
 		static PerFrameData2 perFrameData2;
 		perFrameData2.cameraDataIndex = pSceneCamera->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
-		
-		perFrameData2.lightMetaDataIndex = s_RendererData.pLightMetaDataConstantBuffer->m_VisibleHandles[frameIndex].Index;
+		perFrameData2.pointLightStructuredBufferIndex = scene.GetLightManager().GetPointLights()->m_VisibleHandles[frameIndex].Index;
+		perFrameData2.directionalLightStructuredBufferIndex = scene.GetLightManager().GetDirectionalLights()->m_VisibleHandles[frameIndex].Index;
 
-		static LightMetaData lightMetaData;
 		{
 			uint32_t i = 0u;
-			entityManager.Collect<DirectionalLightComponent>().Do([&](DirectionalLightComponent& lc)
+			entityManager.Collect<DirectionalLightComponent>().Do([&](DirectionalLightComponent&)
 				{
-					lightMetaData.directionalLightDataIndex[i] = lc.constantBuffer->m_VisibleHandles[frameIndex].Index;
 					i++;
 				});
-			lightMetaData.nrOfDirectionalLights = i;
+			perFrameData2.nrOfDirectionalLights = i;
 		}
 		{
 			uint32_t i = 0u;
-			entityManager.Collect<PointLightComponent>().Do([&](PointLightComponent& lc)
+			entityManager.Collect<PointLightComponent>().Do([&](PointLightComponent&)
 				{
-					lightMetaData.pointLightDataIndex[i] = lc.constantBuffer->m_VisibleHandles[frameIndex].Index;
 					i++;
 				});
-			lightMetaData.nrOfPointLights = i;
+			perFrameData2.nrOfPointLights = i;
 		}
-		auto& cb = *s_RendererData.pLightMetaDataConstantBuffer;
-		MemoryManager::Get().UpdateConstantBuffer(cb, &lightMetaData);
 
 		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, (uint32_t)sizeof(PerFrameData2) / sizeof(uint32_t), &perFrameData2, 0u));
 	}
@@ -216,8 +210,9 @@ namespace Relentless
 			static PerDrawData2 perDrawData2;
 			auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 
-			auto index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
-			perDrawData2.colorIndex = mrc.constantBuffer->m_VisibleHandles[index].Index;
+			auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+			
+			perDrawData2.colorIndex = mrc.constantBuffer->m_VisibleHandles[frameIndex].Index;
 			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4, 1, &perDrawData2, 0u));
 
 			RenderCommand::DrawInstanced(ib->GetNrOfIndices());
@@ -338,7 +333,9 @@ namespace Relentless
 		DXCall(D3D12Core::GetCommandQueue()->Signal(s_RendererData.pFence.Get(), currentFenceValue));
 
 		// Update the frame index.
-		s_RendererData.currentFrameIndex = Window::GetCurrentBackbufferIndex();
+		//s_RendererData.currentFrameIndex = Window::GetCurrentBackbufferIndex();
+
+		s_RendererData.currentFrameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
 
 		// If the next frame is not ready to be rendered yet, wait until it is ready.
 		if (s_RendererData.pFence->GetCompletedValue() < s_RendererData.pFenceValues[s_RendererData.currentFrameIndex])
@@ -395,7 +392,6 @@ namespace Relentless
 		MemoryManager::Get().DestroyDescriptorHandle(s_RendererData.m_pPostProcessRenderTexture->GetRTVDescriptorHandle());
 		MemoryManager::Get().DestroyResource(std::move(s_RendererData.m_pPostProcessRenderTexture));
 		s_RendererData.m_pPostProcessRenderTexture = std::move(RenderTexture::Create(textureSpecification, "Post process RenderTexture"));
-
 
 		textureSpecification.MultiSampleCount = 1u;
 		textureSpecification.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
@@ -670,7 +666,7 @@ namespace Relentless
 		streamOutputDescriptor.RasterizedStream = 0u;
 
 		//We now create the Graphics Pipe line state, the PSO:
-		std::array<DXGI_FORMAT, 1> rtvFormats = { DXGI_FORMAT_R16G16B16A16_FLOAT };
+		std::array<DXGI_FORMAT, 1> rtvFormats = { DXGI_FORMAT_R32G32B32A32_FLOAT };
 		s_RendererData.psoDescriptor.pRootSignature = s_RendererData.pRootSignature.Get();
 		s_RendererData.psoDescriptor.VS.pShaderBytecode = s_RendererData.m_ShaderLibrary.Get("VertexShader")->GetBuffer()->GetBufferPointer();
 		s_RendererData.psoDescriptor.VS.BytecodeLength = s_RendererData.m_ShaderLibrary.Get("VertexShader")->GetBuffer()->GetBufferSize();

@@ -1,6 +1,7 @@
 #pragma once
 #include "../Graphics/Resources/AssetManager.h"
 #include "../Graphics/Resources/ConstantBuffer.h"
+#include "../Graphics/D3D12Core.h"
 
 namespace Relentless
 {
@@ -72,33 +73,36 @@ namespace Relentless
 	struct DirectionalLightComponent
 	{
 		explicit DirectionalLightComponent(const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f))
-			: Color{color},
-			  Intensity{1.0f}
-		{
-			//We multiply by 2 as we make room for the direction too, however this is part of the "DirectionalLightStruct type"
-			constantBuffer = RLS_NEW ConstantBuffer((sizeof(DirectX::XMFLOAT3) * 2) + sizeof(float));
-		}
+			: Direction{ 0.0f, 0.0f, 0.0f },
+			  Intensity{1.0f},
+			  Color{color}
+		{}
 
-		DirectX::XMFLOAT3 Color;
+		DirectX::XMFLOAT3 Direction;
 		float Intensity;
-
-		ConstantBuffer* constantBuffer;
+		DirectX::XMFLOAT3 Color;
 	};
 
 	struct PointLightComponent
 	{
 		explicit PointLightComponent(const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f))
-			:Color{color},
-			 Intensity{1.0f}
-		{
-			//We multiply by 2 as we make room for the position too, however this is part of the "PointLightStruct type"
-			constantBuffer = RLS_NEW ConstantBuffer((sizeof(DirectX::XMFLOAT3) * 2) + sizeof(float));
-		}
+			:Position{0.0f, 0.0f, 0.0f},
+			 Intensity{ 1.0f },
+			 Color{ color }
+		{}
 
-		DirectX::XMFLOAT3 Color;
+		DirectX::XMFLOAT3 Position;
 		float Intensity;
+		DirectX::XMFLOAT3 Color;
+	};
 
-		ConstantBuffer* constantBuffer;
+	struct DirtyLightComponent
+	{
+		DirtyLightComponent()
+			: Updates{ D3D12Core::GetNrOfBufferedFrames() }
+		{}
+
+		uint32_t Updates;
 	};
 
 	struct CameraComponent

@@ -5,6 +5,8 @@ namespace Relentless
 	ConstantBuffer::ConstantBuffer(size_t sizeInBytes) noexcept
 		: m_SizeInBytes{sizeInBytes}
 	{
+		RLS_ASSERT(sizeInBytes > 0, "Constant buffer size is 0.");
+
 		D3D12_HEAP_PROPERTIES bufferHeapProperties = {};
 		bufferHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
 		bufferHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;

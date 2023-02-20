@@ -45,6 +45,7 @@ namespace Relentless
 			Mouse::Reset();
 
 			Window::OnUpdate();
+			D3D12Core::AdvanceToNextFrame();
 		}
 		ShutDown();
 	}

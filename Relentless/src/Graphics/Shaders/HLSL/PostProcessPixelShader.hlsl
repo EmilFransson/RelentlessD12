@@ -17,7 +17,7 @@ float3 ToneMapACES(float3 hdrColor)
 
 struct TextureMetaData
 {
-    uint textureIndex;
+    uint hdrTextureIndex;
 };
 
 struct PS_IN
@@ -30,9 +30,9 @@ ConstantBuffer<TextureMetaData> TextureData : register(b2, space0);
 
 float4 ps_main(in PS_IN psIn) : SV_TARGET
 {
-    Texture2D myTex = ResourceDescriptorHeap[TextureData.textureIndex];
+    Texture2D hdrTexture = ResourceDescriptorHeap[TextureData.hdrTextureIndex];
     
-    float4 hdrTextureColor = myTex.Sample(pointSampler, float2(psIn.inTexCoords.x, psIn.inTexCoords.y));
+    float4 hdrTextureColor = hdrTexture.Sample(pointSampler, float2(psIn.inTexCoords.x, psIn.inTexCoords.y));
     float3 sdr = ToneMapACES(hdrTextureColor.xyz);
     float3 sRGB = LinearToSRGB(sdr);
     return float4(sRGB, hdrTextureColor.a);

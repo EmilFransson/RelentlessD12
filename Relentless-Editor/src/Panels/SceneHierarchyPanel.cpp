@@ -78,7 +78,7 @@ namespace Relentless
 			{
 				if (ImGui::MenuItem("Utah Teapot"))
 				{
-					m_SelectedEntity = m_pScene->CreateUtahTeapot();
+					m_SelectedEntity = m_pScene->CreateExtra<Extra::UtahTeapot>();
 				}
 				ImGui::EndMenu();
 			}

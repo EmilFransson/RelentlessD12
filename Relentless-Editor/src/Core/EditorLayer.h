@@ -5,6 +5,7 @@
 #include "../Panels/ContentBrowserPanel.h"
 #include "../Panels/MetricsPanel.h"
 
+
 namespace Relentless
 {
 	enum class GizmoType : int8_t { NONE = -1, TRANSLATE = 0, ROTATE = 1, SCALE = 2 };
@@ -28,7 +29,6 @@ namespace Relentless
 		ImVec2 m_ViewportPanelSize;
 		bool m_SceneViewportChanged;
 		bool m_HoveringSceneViewport;
-		bool m_ClickedSceneViewPort;
 		std::shared_ptr<PerspectiveCamera> m_pEditorCamera;
 		ImVec2 vMin;
 		ImVec2 vMax;

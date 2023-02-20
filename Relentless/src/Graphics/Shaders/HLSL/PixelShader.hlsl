@@ -19,23 +19,15 @@ struct Material
 struct PerFrameData
 {
     uint cameraMetaDataIndex;
-    uint lightMetaDataIndex;
+    uint pointLightStructuredBufferIndex;
+    uint directionalLightStructuredBufferIndex;
+    uint nrOfDirectionalLights;
+    uint nrOfPointLights;
 };
 
 struct Camera
 {
     float3 positionWS;
-};
-
-//Should probably make it so I have the lights in a structured buffer
-//and just have the "nrOf..." members in this meta data struct, to know the amount of content of
-//the structured buffer(s). In this way I could keep the number of lights dynamic. =)
-struct LightMetaData
-{
-    uint4 directionalLightIndex[16];
-    uint4 pointLightIndex[128];
-    uint nrOfDirectionalLights;
-    uint nrOfPointLights;
 };
 
 struct DirectionalLight
@@ -61,7 +53,6 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
 {
     ConstantBuffer<Material> material                   = ResourceDescriptorHeap[perDrawData.materialIndex];
     ConstantBuffer<Camera> camera                       = ResourceDescriptorHeap[perFrameData.cameraMetaDataIndex];
-    ConstantBuffer<LightMetaData> lightData             = ResourceDescriptorHeap[perFrameData.lightMetaDataIndex];
 
     psIn.inNormalWS = normalize(psIn.inNormalWS);
     const float3 viewDir = normalize(camera.positionWS - psIn.inPositionWS);
@@ -69,19 +60,20 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
     const float3 ambientColor = material.color * ambientLight;
     
     float3 lightOut = float3(0.0f, 0.0f, 0.0f);
-    for (uint i = 0u; i < lightData.nrOfDirectionalLights; i++)
+    StructuredBuffer<DirectionalLight> directionalLights = ResourceDescriptorHeap[perFrameData.directionalLightStructuredBufferIndex];
+    for (uint i = 0u; i < perFrameData.nrOfDirectionalLights; i++)
     {
-        ConstantBuffer<DirectionalLight> directionalLight = ResourceDescriptorHeap[lightData.directionalLightIndex[i / 4][i % 4]];
+        DirectionalLight directionalLight = directionalLights[i];
         const float3 lightD = -normalize(directionalLight.direction);
         const float normalDotLightDir = dot(psIn.inNormalWS, lightD);
-    
+        
         const float3 diffuseColor = material.color * directionalLight.color * directionalLight.intensity;
         const float3 finalDiffuseColor = saturate(normalDotLightDir) * diffuseColor;
-    
+        
         if (normalDotLightDir > 0.0f)
         {
             const float3 halfWayDir = normalize(lightD + viewDir);
-    
+        
             const float specularFactor = pow(max(dot(psIn.inNormalWS, halfWayDir), 0.0f), 16.0f);
             const float3 specularColor = directionalLight.color * specularFactor * directionalLight.intensity * material.color;
         
@@ -93,9 +85,10 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
         }
     }
     
-    for (uint j = 0u; j < lightData.nrOfPointLights; j++)
+    StructuredBuffer<PointLight> pointLights = ResourceDescriptorHeap[perFrameData.pointLightStructuredBufferIndex];
+    for (uint j = 0u; j < perFrameData.nrOfPointLights; j++)
     {
-        ConstantBuffer<PointLight> pointLight = ResourceDescriptorHeap[lightData.pointLightIndex[j / 4][j % 4]];
+        PointLight pointLight = pointLights[j];
         
         const float3 surfaceToLightDirection = normalize(pointLight.position - psIn.inPositionWS);
         const float normalDotLightDir = dot(psIn.inNormalWS, surfaceToLightDirection);

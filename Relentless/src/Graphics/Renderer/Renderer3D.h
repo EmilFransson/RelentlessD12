@@ -20,13 +20,8 @@ namespace Relentless
 	struct PerFrameData2
 	{
 		uint32_t cameraDataIndex;
-		uint32_t lightMetaDataIndex;
-	};
-
-	struct LightMetaData
-	{
-		uint32_t directionalLightDataIndex[64];
-		uint32_t pointLightDataIndex[512];
+		uint32_t pointLightStructuredBufferIndex;
+		uint32_t directionalLightStructuredBufferIndex;
 		uint32_t nrOfDirectionalLights;
 		uint32_t nrOfPointLights;
 	};
@@ -49,11 +44,12 @@ namespace Relentless
 
 	class RenderTexture;
 	class PerspectiveCamera;
+	class Scene;
 	class Renderer3D
 	{
 	public:
 		static void Initialize() noexcept;
-		static void Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, EntityManager& entityManager) noexcept;
+		static void Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, EntityManager& entityManager, Scene& scene) noexcept;
 		static void Submit(const entity e) noexcept;
 		static void End(const EntityManager& entityManager) noexcept;
 		static void PrepareBackBuffer() noexcept;
