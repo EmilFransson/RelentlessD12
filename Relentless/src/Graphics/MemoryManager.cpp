@@ -2,6 +2,7 @@
 #include "D3D12Core.h"
 #include "../Core/Window.h"
 #include "Resources/ConstantBuffer.h"
+#include "Resources/AssetManager.h"
 namespace Relentless
 {
 	MemoryManager MemoryManager::s_Instance;
@@ -122,11 +123,28 @@ namespace Relentless
 		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), constantBuffer.m_SizeInBytes);
 		DXCall_STD(constantBuffer.GetInterface()->Unmap(0u, nullptr));
 
-		//auto index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
 		auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
 		
 		auto dstHandle = constantBuffer.m_VisibleHandles[frameIndex].CPUHandle;
 		auto srcHandle = constantBuffer.m_NonVisibleHandle.CPUHandle;
+
+		DXCall_STD(D3D12Core::GetDevice()->CopyDescriptorsSimple(1u, dstHandle, srcHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+	}
+
+	void MemoryManager::UpdateConstantBuffer(size_t id, void* pData) noexcept
+	{
+		RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
+		auto address = m_ConstantBuffers[id]->GetInterface()->GetGPUVirtualAddress();
+
+		constexpr const D3D12_RANGE range = { 0,0 };
+		DXCall(m_ConstantBuffers[id]->GetInterface()->Map(0u, &range, reinterpret_cast<void**>(&address)));
+		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), m_ConstantBuffers[id]->m_SizeInBytes);
+		DXCall_STD(m_ConstantBuffers[id]->GetInterface()->Unmap(0u, nullptr));
+
+		auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+
+		auto dstHandle = m_ConstantBuffers[id]->m_VisibleHandles[frameIndex].CPUHandle;
+		auto srcHandle = m_ConstantBuffers[id]->m_NonVisibleHandle.CPUHandle;
 
 		DXCall_STD(D3D12Core::GetDevice()->CopyDescriptorsSimple(1u, dstHandle, srcHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 	}
@@ -152,5 +170,11 @@ namespace Relentless
 
 		DXCall_STD(D3D12Core::GetDevice()->CopyDescriptorsSimple(1, dstHandle, srcHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 		
+	}
+
+	size_t MemoryManager::CreateConstantBuffer(uint32_t sizeInBytes) noexcept
+	{
+		m_ConstantBuffers.emplace_back(std::make_unique<ConstantBuffer>(sizeInBytes));
+		return m_ConstantBuffers.size() - 1;
 	}
 }

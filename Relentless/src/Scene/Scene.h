@@ -42,6 +42,11 @@ namespace Relentless
 		[[nodiscard]] constexpr const char* GetName() const noexcept { return m_Name; }
 		void SetViewportPanelSize(const ImVec2& viewportPanelSize) noexcept { m_ViewportPanelSize = viewportPanelSize; }
 
+		[[nodiscard]] bool EntityIsDescendant(const entity ancestor, const entity descendant) noexcept;
+		[[nodiscard]] bool EntityIsAncestor(const entity ancestor, const entity descendant) noexcept;
+
+		void ParentEntity(const entity toBecomeChild, const entity toBecomeParent) noexcept;
+
 		[[nodiscard]] LightManager& GetLightManager() noexcept { return m_LightManager; }
 	private:
 		EntityManager m_EntityManager;
@@ -94,7 +99,10 @@ namespace Relentless
 
 		m_EntityManager.Add<MeshFilterComponent>(entity, vbID, ibID);
 		m_EntityManager.Add<ForwardPassComponent>(entity);
-		m_EntityManager.Add<MeshRendererComponent>(entity).Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
+		mrc.Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+		mrc.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
+		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
 
 		return entity;
 	}
@@ -143,7 +151,10 @@ namespace Relentless
 
 		m_EntityManager.Add<MeshFilterComponent>(entity, vbID, ibID);
 		m_EntityManager.Add<ForwardPassComponent>(entity);
-		m_EntityManager.Add<MeshRendererComponent>(entity).Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
+		mrc.Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+		mrc.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
+		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
 
 		return entity;
 	}

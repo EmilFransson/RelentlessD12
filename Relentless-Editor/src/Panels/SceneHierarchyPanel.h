@@ -17,5 +17,6 @@ namespace Relentless
 		Scene* m_pScene;
 		entity m_SelectedEntity;
 		std::function<void(entity)> m_OnEntityDestroyedCallBack;
+		entity m_EntityScheduledForDestruction;
 	};
 }

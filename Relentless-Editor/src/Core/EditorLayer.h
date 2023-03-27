@@ -25,6 +25,8 @@ namespace Relentless
 		void OnSceneViewportChanged() noexcept;
 		void DestroySelectedEntity() noexcept;
 		void CopySelectedEntity() noexcept;
+		[[nodiscard]] DirectX::XMFLOAT3 GetSummedHierarchyTranslation(entity entityID, DirectX::XMFLOAT3 translation) noexcept;
+		[[nodiscard]] uint32_t GetEntityHierarchySize(entity entityID) noexcept;
 	private:
 		ImVec2 m_ViewportPanelSize;
 		bool m_SceneViewportChanged;
@@ -46,5 +48,8 @@ namespace Relentless
 		MetricsPanel m_MetricsPanel;
 
 		Scene m_Scene;
+
+		DirectX::XMFLOAT4X4 m_ManipulateTransform;
+		bool m_IsTransformingWithGizmo = false;
 	};
 }

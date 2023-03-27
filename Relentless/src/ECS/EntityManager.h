@@ -1,967 +1,606 @@
 #pragma once
-#include "Component.h"
-#include "System.h"
-#include <StaticTypeInfo/type_id.h>
+#include "../../vendor/includes/DenseHashMap/dense_hash_map.hpp"
 #include <StaticTypeInfo/type_index.h>
-#include <StaticTypeInfo/type_name.h>
+#include "Component.h"
 
 namespace Relentless
 {
-#define set_internal(ID) (static_cast<SparseSet<ComponentType>*>(m_components.at(ID).get()))
+	using namespace static_type_info;
 
-#if defined RLS_DEBUG
-	#ifndef ECS_DEBUG_OP
-		#define ECS_DEBUG_OP(lambda) lambda();
-	#endif
-	#ifndef ECS_DEBUG_EXPR
-		#define ECS_DEBUG_EXPR(expr) expr
-	#endif
-#else
-	#ifndef ECS_DEBUG_OP
-		#define ECS_DEBUG_OP(lambda) 
-	#endif
-	#ifndef ECS_DEBUG_EXPR
-		#define ECS_DEBUG_EXPR(expr)
-	#endif
-#endif
-
-#if defined NDEBUG
-#ifndef ASSERT
-#define ASSERT(expression, errorString) 
-#endif
-#else
-#ifndef ASSERT
-#define ASSERT(expression, errorString) assert(expression && errorString)
-#endif
-#endif
-
-	#define sti static_type_info
-	
-	struct SparseSetBase;
-
-	template<typename... ComponentType>
-	class Collection;
-
-	class BundleBase;
-	template<typename... ComponentType>
-	class BundleImpl;
-
-	typedef std::unique_ptr<SparseSetBase> ComponentPool;
-
-	//##################### SPARSE SET #####################
-
+	/*! @brief Top most base of sparse set, containing the sparse set array and dense set array. */
 	struct SparseSetBase
 	{
 		SparseSetBase() noexcept = default;
 		virtual ~SparseSetBase() noexcept = default;
-		virtual void DestroyInternal(const entity entityID) noexcept = 0;
 
-		std::vector<entity> sparseArray;
-		std::vector<entity> denseArray;
-		sti::TypeIndex bundle = nullptr;
+		std::vector<entity> SparseArray;
+		std::vector<entity> DenseArray;
+
+		virtual void Release(const uint32_t entityIdentity) noexcept = 0;
 	};
 
+	/*! @brief Templated derived sparse set containing the actual component of the template type. */
 	template<typename ComponentType>
-	struct SparseSet : public SparseSetBase
+	struct Pool : public SparseSetBase
 	{
-		SparseSet() noexcept = default;
-		virtual ~SparseSet() noexcept override final = default;
+		Pool() noexcept = default;
+		virtual ~Pool() noexcept override final = default;
 
-		std::vector<ComponentType> components;
+		std::vector<ComponentType> Components;
+
+		virtual void Release(const uint32_t entityIdentity) noexcept override final
+		{
+			if constexpr (!std::is_empty_v<ComponentType>)
+			{
+				std::swap(Components.back(), Components[entityIdentity]);
+				Components.pop_back();
+			}
+		}
+	};
+
+	/*! @brief Pool alias for sake of brevity. */
+	using ComponentPool = std::unique_ptr<SparseSetBase>;
+
+	/*! @brief Dense map alias for sake of brevity. */
+	template<typename KEY, typename VALUE>
+	using DenseMap = jg::dense_hash_map<KEY, VALUE>;
+
+	/*! @brief TypeIndex alias for sake of brevity. */
+	using TypeIndex = static_type_info::TypeIndex;
+
+	template<typename>
+	struct examine_invocable;
+	template<typename R, typename... Args>
+	struct examine_invocable < std::function<R(Args...)>> {
+		using type = R(Args...);
+	};
+
+	template<typename F>
+	using examine_invocable_t = typename examine_invocable<F>::type;
+
+	template<typename... ComponentTypes>
+	class Collection
+	{
+	public:
+		explicit Collection(const std::tuple<Pool<ComponentTypes>&...>& pools) noexcept
+			: m_ComponentPools{ pools },
+			m_EntityIdentifiers{ &std::get<0>(pools).DenseArray }
+		{
+			std::apply([&](auto&... pool)
+				{
+					((m_EntityIdentifiers = (pool.DenseArray.size() < m_EntityIdentifiers->size()) ? &pool.DenseArray : m_EntityIdentifiers), ...);
+				}, m_ComponentPools);
+		}
+
+		//Currently duplicates work, this should be handled in the future!!
+		template<typename Function>
+		void Do(Function&& invocable) const noexcept
+		{
+			using F = decltype(std::function{ invocable });
+
+			[&] <typename R, typename... Args>(R(*)(Args...)) {
+				if constexpr (sizeof...(Args) == 1 && (std::is_same_v<Args, entity> && ...))
+				{
+					for (int entityIndex = static_cast<int>(m_EntityIdentifiers->size()) - 1; entityIndex >= 0; --entityIndex)
+					{
+						const entity e = (*m_EntityIdentifiers)[entityIndex];
+						const uint32_t entityIdentifier = e >> 12;
+						if (HasAllOf(entityIdentifier))
+						{
+							std::invoke(invocable, e);
+						}
+					}
+				}
+				else
+				{
+					static_assert(!(std::is_empty_v<std::remove_reference_t<Args>> || ...) && "Empty types are not iterated.");
+
+					for (int entityIndex = static_cast<int>(m_EntityIdentifiers->size()) - 1; entityIndex >= 0; --entityIndex)
+					{
+						const entity e = (*m_EntityIdentifiers)[entityIndex];
+						const uint32_t entityIdentifier = e >> 12;
+
+						if (HasAllOf(entityIdentifier))
+						{
+							std::apply(invocable, std::forward_as_tuple(Get<std::remove_reference_t<Args>>(e) ...));
+						}
+					}
+				}
+			}((examine_invocable_t<F> *) nullptr);
+		}
+
 	private:
-		virtual void DestroyInternal(const entity entityID) noexcept override final;
+		template<typename T>
+			requires std::is_same_v<entity, T>
+		inline [[nodiscard]] entity Get(const entity e) const noexcept
+		{
+			return e;
+		}
+
+		template<typename T>
+			requires !std::is_same_v<entity, T>
+		inline [[nodiscard]] T& Get(const entity e) const noexcept
+		{
+			auto& pool = std::get<Pool<std::remove_reference_t<T>>&>(m_ComponentPools);
+			const uint32_t entityIdentifier = e >> 12;
+			return pool.Components[pool.SparseArray[entityIdentifier]];
+		}
+
+		inline [[nodiscard]] bool HasAllOf(const uint32_t entityIdentity) const noexcept
+		{
+			return (Has<ComponentTypes>(entityIdentity, std::get<Pool<ComponentTypes>&>(m_ComponentPools)) && ...);
+		}
+
+		template<typename ComponentType>
+		inline [[nodiscard]] bool Has(const uint32_t entityIdentity, const Pool<ComponentType>& pool) const noexcept
+		{
+			return entityIdentity < pool.SparseArray.size() && pool.SparseArray[entityIdentity] != NULL_ENTITY;
+		}
+
+	private:
+		std::tuple<Pool<ComponentTypes>&...> m_ComponentPools;
+		std::vector<uint32_t>* m_EntityIdentifiers;
 	};
 
 	template<typename ComponentType>
-	void SparseSet<ComponentType>::DestroyInternal(const entity entityID) noexcept
+	class Collection<ComponentType>
 	{
-		std::swap(components.back(), components[sparseArray[entityID]]);
-		components.pop_back();
-	}
+	public:
+		explicit Collection(Pool<ComponentType>& pool) noexcept
+			: m_Pool{ pool }
+		{}
 
-	//##################### ENTITY MANAGER #####################
+		void Do(std::invocable<ComponentType&> auto&& invocable) const noexcept
+		{
+			static_assert(!std::is_empty_v<ComponentType> && "Empty types are not iterated.");
+
+			for (int i{ static_cast<int>(m_Pool.DenseArray.size()) - 1 }; i >= 0; --i)
+				std::invoke(invocable, m_Pool.Components[i]);
+		}
+
+		void Do(std::invocable<entity, ComponentType&> auto&& invocable) const noexcept
+		{
+			static_assert(!std::is_empty_v<ComponentType> && "Empty types are not iterated.");
+
+			for (int i{ static_cast<int>(m_Pool.DenseArray.size()) - 1 }; i >= 0; --i)
+				std::invoke(invocable, m_Pool.DenseArray[i], m_Pool.Components[i]);
+		}
+
+		void Do(std::invocable<entity> auto&& invocable) const noexcept
+		{
+			for (int i{ static_cast<int>(m_Pool.DenseArray.size()) - 1 }; i >= 0; --i)
+				std::invoke(invocable, m_Pool.DenseArray[i]);
+		}
+
+		void Do(std::invocable<void> auto&& invocable) const noexcept
+		{
+			invocable();
+		}
+
+	private:
+		Pool<ComponentType>& m_Pool;
+	};
 
 	class EntityManager
 	{
 	public:
-		entity CreateEntity() noexcept;
-		void DestroyEntity(const entity entityID) noexcept;
-		[[nodiscard]] const std::vector<entity>& GetAllEntities() const noexcept;
-		[[nodiscard]] uint32_t GetNrOfEntities() const noexcept { return MAX_ENTITIES - (uint32_t)m_freeList.size(); }
-		void Reset() noexcept;
-		[[nodiscard]] bool Exists(const entity entityID) const noexcept;
-		[[nodiscard]] const std::unordered_map<sti::TypeIndex, ComponentPool>& GetAllComponentPools() const noexcept { return m_components; }
-
-		template<typename ComponentType, typename ...Args>
-		ComponentType& Add(const entity entityID, Args&& ...args) noexcept;
-
-		template<typename ComponentType, typename ...Args>
-		ComponentType& AddOrReplace(const entity entityID, Args&& ...args) noexcept;
-
-		template<typename ComponentType>
-		void Remove(const entity entityID) noexcept;
-
-		template<typename ComponentType>
-		[[nodiscard]] ComponentType& Get(const entity entityID) const noexcept;
-
-		template<typename... ComponentType>
-		[[nodiscard]] Collection<ComponentType...> Collect() noexcept;
-
-		template<typename ComponentType>
-		[[nodiscard]] bool Has(const entity entityID) const noexcept;
-
-		template<typename... ComponentType>
-		[[nodiscard]] bool HasAllOf(const entity entityID) const noexcept;
-
-		template<typename... ComponentType>
-		[[nodiscard]] bool HasAnyOf(const entity entityID) const noexcept;
-
-		template<typename... ComponentType>
-		[[nodiscard]] BundleImpl<ComponentType...>& Bundle() noexcept;
-
-		void RegisterSystem(std::unique_ptr<ISystem>&& pSystem) noexcept;
-
-		[[nodiscard]] constexpr const std::vector<std::unique_ptr<ISystem>>::const_iterator begin() const { return m_systems.begin(); }
-		[[nodiscard]] constexpr const std::vector<std::unique_ptr<ISystem>>::const_iterator end() const { return m_systems.end(); }
-
-		EntityManager() noexcept;
-		~EntityManager() noexcept = default;
-	private:
-		void Initialize() noexcept;
-
-		[[nodiscard]] bool HasComponentInternal(const sti::TypeIndex componentPoolIndex, const entity entityID) const noexcept;
-		void DestroyComponentInternal(const sti::TypeIndex componentPoolIndex, const entity entityID) noexcept;
-
-		template<typename ComponentType>
-		void ValidateComponentPool() noexcept;
-
-		template<typename ComponentType> 
-		void AddSparseSet() noexcept;
-	public:
-		template<typename ComponentType>
-		SparseSet<ComponentType>* ExpandAsTupleArguments() noexcept;
-	private:
-		template<typename... ComponentType>
-		friend class Collection;
-		template<typename... ComponentType>
-		friend class BundleImpl;
-		friend class ISystem;
-
-		std::vector<entity> m_entities;
-		std::queue<entity> m_freeList;
-		std::unordered_map<sti::TypeIndex ,ComponentPool> m_components;
-		std::unordered_map<sti::TypeIndex, std::unique_ptr<BundleBase>> m_bundles;
-		std::vector<std::unique_ptr<ISystem>> m_systems;
-	};
-
-	template<typename ComponentType>
-	SparseSet<ComponentType>* EntityManager::ExpandAsTupleArguments() noexcept
-	{
-		static constexpr auto componentID = sti::getTypeIndex<ComponentType>();
-		ValidateComponentPool<ComponentType>();
-		
-		return static_cast<SparseSet<ComponentType>*>(m_components.at(componentID).get());
-	}
-
-	template<typename... ComponentType>
-	BundleImpl<ComponentType...>& EntityManager::Bundle() noexcept
-	{
-		static constexpr std::array<sti::TypeIndex, sizeof... (ComponentType)> componentIDs{ sti::getTypeIndex<ComponentType>()... };
-		sti::TypeIndex minComponentID = *std::min_element(std::begin(componentIDs), std::end(componentIDs));
-
-		if (m_bundles[minComponentID] == nullptr)
+		/**
+		 * @brief Constructs and sets up the Entity manager.
+		 * @param size_t An optional initial entity capacity.
+		 */
+		explicit EntityManager(const size_t capacity = 10'000) noexcept
 		{
-			std::tuple<SparseSet<ComponentType>*...> pools = { (ExpandAsTupleArguments<ComponentType>()) ...};
+			m_Entities.reserve(capacity);
+			m_Available = 0u;
+			m_Next = 0u;
+		}
 
-			ECS_DEBUG_EXPR(std::apply([](const auto&... pool) {(ASSERT((pool != nullptr) && pool->bundle == nullptr, "Bundle creation failed."), ...); }, pools););
-			std::apply([&minComponentID](const auto... pool) {((pool->bundle = (sti::TypeIndex)minComponentID), ...); }, pools);
+		/**
+		 * @brief Checks whether any entities are still alive.
+		 * @return The truth condition of whether any entities are alive.
+		 */
+		[[nodiscard]] bool AnyEntitiesExist() const noexcept
+		{
+			return (!(m_Available == m_Entities.size()));
+		}
+
+		/**
+		 * @brief Returns the total number of alive entities.
+		 * @return The number of entities alive.
+		 */
+		[[nodiscard]] size_t GetEntityAliveCount() const noexcept
+		{
+			return (m_Entities.size() - m_Available);
+		}
+
+		/**
+		 * @brief Masks out and returns the version from the entity id.
+		 * @param entity The complete entity id with both identity and version.
+		 * @return The masked out version.
+		 */
+		[[nodiscard]] uint32_t GetVersion(const entity entityID) const noexcept
+		{
+			constexpr const uint32_t VERSION_MASK = 0b00000000000000000000111111111111;
+			return entityID & VERSION_MASK;
+		}
+
+		/**
+		 * @brief Masks out and returns the identity from the entity id.
+		 * @param entity The complete entity id with both identity and version.
+		 * @return The masked out identity.
+		 */
+		[[nodiscard]] inline uint32_t GetIdentity(const entity entityID) const noexcept
+		{
+			return (entityID >> 12);
+		}
+
+		/**
+		 * @brief Determines the existence of a given entity.
+		 * @param entity The complete entity id with both identity and version.
+		 * @return The truth condition of the existence of a specific entity.
+		 */
+		[[nodiscard]] bool Exists(const entity entityID) const noexcept
+		{
+			const auto entityIdentity = GetIdentity(entityID);
+			return (entityIdentity < m_Entities.size() && m_Entities[entityIdentity] == entityID);
+		}
+
+		/**
+		 * @brief Creates and returns a new entity or, if possible, recycles a previously destroyed entity.
+		 * @return The created entity.
+		 */
+		entity CreateEntity() noexcept
+		{
+			return m_Available > 0 ? RecycleEntity() : CreateNewEntity();
+		}
+
+		/**
+		 * @brief Destroys the entity and all of its associated components.
+		 * @param entity The entity to destroy.
+		 */
+		void DestroyEntity(const entity entityID)
+		{
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+			const uint32_t entityToDestroyIdentity = GetIdentity(entityID);
+
+			//Remove all components:
+			for (auto& [typeIndex, pool] : m_Pools)
+			{
+				if (pool && entityToDestroyIdentity < pool->SparseArray.size() && pool->SparseArray[entityToDestroyIdentity] != NULL_ENTITY)
+				{
+					const auto last = GetIdentity(pool->DenseArray.back());
+					const auto denseAndComponentArrayIndex = pool->SparseArray[entityToDestroyIdentity];
+					std::swap(pool->DenseArray.back(), pool->DenseArray[denseAndComponentArrayIndex]);
+					pool->Release(denseAndComponentArrayIndex);
+					std::swap(pool->SparseArray[last], pool->SparseArray[entityToDestroyIdentity]);
+					pool->DenseArray.pop_back();
+					pool->SparseArray[entityToDestroyIdentity] = NULL_ENTITY;
+				}
+			}
+
+			const entity meldedEntity = (m_Next << 12) | (GetVersion(entityID) + 1);
+
+			m_Entities[entityToDestroyIdentity] = meldedEntity;
+			m_Next = entityToDestroyIdentity;
+
+			m_Available++;
+		}
+
+		template<typename ComponentType>
+		requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		inline void ValidatePool() noexcept
+		{
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
+
+			if (!m_Pools[ID].get()) [[unlikely]]
+			{
+				m_Pools[ID] = std::make_unique<Pool<ComponentType>>();
+				m_Pools[ID]->SparseArray.resize(1, NULL_ENTITY);
+			}
+		}
+
+		template<typename ComponentType>
+		requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		inline size_t GetEntityCountForPool() noexcept
+		{
+			ValidatePool<ComponentType>();
 			
-			m_bundles[minComponentID] = (std::unique_ptr<BundleImpl<ComponentType...>>(RLS_NEW BundleImpl<ComponentType...>(this, std::move(pools))));
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
+			return m_Pools[ID]->DenseArray.size();
 		}
-		return *(static_cast<BundleImpl<ComponentType...>*>(m_bundles[minComponentID].get()));
-	}
 
-	template<typename ComponentType, typename ...Args>
-	ComponentType& EntityManager::Add(const entity entityID, Args&& ...args) noexcept
-	{
-		static constexpr auto ComponentID = sti::getTypeIndex<ComponentType>();
-
-		RLS_ASSERT(Exists(entityID), "Entity is invalid");
-		RLS_ASSERT(!Has<ComponentType>(entityID), "Entity already has component!");
-
-		ValidateComponentPool<ComponentType>();
-
-		auto& pool = static_cast<SparseSet<ComponentType>&>(*m_components.at(ComponentID));
-
-		const size_t position = pool.denseArray.size();
-		pool.denseArray.emplace_back(entityID);
-		pool.components.emplace_back(ComponentType(std::forward<Args>(args)...));
-		pool.sparseArray[entityID] = static_cast<entity>(position);
-
-		if (pool.bundle != nullptr)
+		/**
+		 * @brief Creates and adds a new component of type ComponentType with arguments Args for entity.
+		 * @param entity The entity ID to add component for.
+		 * @tparam Args The arguments to construct the component object with.
+		 * @return A reference to the newly created component.
+		 */
+		template<typename ComponentType, typename... Args>
+		requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (!std::is_empty_v<ComponentType>)
+			ComponentType& Add(const entity entityID, Args&&... args) noexcept
 		{
-			auto componentIdx = m_bundles[pool.bundle]->UpdateOnAdd(entityID);
-			if (componentIdx)
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+			RLS_ASSERT(!Has<ComponentType>(entityID), "Entity already has the component type.");
+
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
+
+			Pool<ComponentType>* pPool = static_cast<Pool<ComponentType>*>(m_Pools[ID].get());
+			if (!pPool) [[unlikely]]
 			{
-				return pool.components[*componentIdx];
+				m_Pools[ID] = std::make_unique<Pool<ComponentType>>();
+				pPool = static_cast<Pool<ComponentType>*>(m_Pools[ID].get());
+				pPool->SparseArray.resize(1, NULL_ENTITY);
 			}
-		}
-		return pool.components.back();
-	}
+			Pool<ComponentType>& pool = *pPool;
 
-	template<typename ComponentType, typename ...Args>
-	ComponentType& EntityManager::AddOrReplace(const entity entityID, Args&& ...args) noexcept
-	{
-		static constexpr auto ComponentID = sti::getTypeIndex<ComponentType>();
-		RLS_ASSERT(Exists(entityID), "Entity is invalid");
+			const uint32_t sparseSetPosition = static_cast<uint32_t>(pool.DenseArray.size());
+			const uint32_t entityIdentity = GetIdentity(entityID);
 
-		ValidateComponentPool<ComponentType>();
-		auto& pool = static_cast<SparseSet<ComponentType>&>(*m_components.at(ComponentID));
+			if (pool.SparseArray.size() <= entityIdentity)
+				pool.SparseArray.resize(entityIdentity * 2, NULL_ENTITY);
 
-		if (Has<ComponentType>(entityID))
-		{
-			pool.components[pool.sparseArray[entityID]] = ComponentType(std::forward<Args>(args)...);
-			return pool.components[pool.sparseArray[entityID]];
+			pool.SparseArray[entityIdentity] = sparseSetPosition;
+			pool.DenseArray.emplace_back(entityID);
+			pool.Components.emplace_back(std::forward<Args>(args)...);
+
+			return pool.Components.back();
 		}
 
-
-		const size_t position = pool.denseArray.size();
-		pool.denseArray.emplace_back(entityID);
-		pool.components.emplace_back(ComponentType(std::forward<Args>(args)...));
-		pool.sparseArray[entityID] = static_cast<entity>(position);
-
-		if (pool.bundle != nullptr)
+		template<typename ComponentType, typename... Args>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& std::is_empty_v<ComponentType> && (sizeof...(Args) == 0)
+			void Add(const entity entityID, Args&&... args) noexcept
 		{
-			auto componentIdx = m_bundles[pool.bundle]->UpdateOnAdd(entityID);
-			if (componentIdx)
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+			RLS_ASSERT(!Has<ComponentType>(entityID), "Entity already has the component type.");
+
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
+
+			Pool<ComponentType>* pPool = static_cast<Pool<ComponentType>*>(m_Pools[ID].get());
+			if (!pPool) [[unlikely]]
 			{
-				return pool.components[*componentIdx];
+				m_Pools[ID] = std::make_unique<Pool<ComponentType>>();
+				pPool = static_cast<Pool<ComponentType>*>(m_Pools[ID].get());
+				pPool->SparseArray.resize(1, NULL_ENTITY);
 			}
+			Pool<ComponentType>& pool = *pPool;
+
+			const uint32_t sparseSetPosition = static_cast<uint32_t>(pool.DenseArray.size());
+			const uint32_t entityIdentity = GetIdentity(entityID);
+
+			if (pool.SparseArray.size() <= entityIdentity)
+				pool.SparseArray.resize(entityIdentity * 2, NULL_ENTITY);
+
+			pool.SparseArray[entityIdentity] = sparseSetPosition;
+			pool.DenseArray.emplace_back(entityID);
 		}
-		return pool.components.back();
-	}
 
-	template<typename ComponentType>
-	void EntityManager::Remove(const entity entityID) noexcept
-	{
-		static auto constexpr componentID = sti::getTypeIndex<ComponentType>();
-
-		RLS_ASSERT(Exists(entityID), "Entity is invalid");
-		RLS_ASSERT(Has<ComponentType>(entityID), "Entity does not have that component.");
-		auto& pool = static_cast<SparseSet<ComponentType>&>(*m_components.at(componentID));
-
-		if (pool.bundle != nullptr)
+		template<typename ComponentType, typename... Args>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (!std::is_empty_v<ComponentType>)
+			ComponentType& Replace(const entity entityID, Args&&... args) noexcept
 		{
-			m_bundles[pool.bundle]->UpdateOnRemove(entityID);
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+			RLS_ASSERT(Has<ComponentType>(entityID), "Entity does not have the component type.");
+
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
+
+			Pool<ComponentType>& pool = static_cast<Pool<ComponentType>&>(*m_Pools[ID].get());
+			const uint32_t entityIdentity = GetIdentity(entityID);
+
+			const uint32_t componentIndex = pool.SparseArray[entityIdentity];
+			pool.Components[componentIndex] = ComponentType(std::forward<Args>(args)...);
+
+			return pool.Components[componentIndex];
 		}
 
-		const auto last = pool.denseArray.back();
-		std::swap(pool.denseArray.back(), pool.denseArray[pool.sparseArray[entityID]]);
-		std::swap(pool.components.back(), pool.components[pool.sparseArray[entityID]]);
-		std::swap(pool.sparseArray[last], pool.sparseArray[entityID]);
-		pool.denseArray.pop_back();
-		pool.components.pop_back();
-		pool.sparseArray[entityID] = NULL_ENTITY;
-	}
-
-	template<typename ComponentType>
-	ComponentType& EntityManager::Get(const entity entityID) const noexcept
-	{
-		static auto constexpr componentID = sti::getTypeIndex<ComponentType>();
-		RLS_ASSERT(Exists(entityID), "Entity is invalid");
-		RLS_ASSERT(Has<ComponentType>(entityID), "Entity does not have that component.");
-
-		auto& pool = static_cast<SparseSet<ComponentType>&>(*m_components.at(componentID));
-		return pool.components[pool.sparseArray[entityID]];
-	}
-
-	template<typename... ComponentType>
-	Collection<ComponentType...> EntityManager::Collect() noexcept
-	{
-		return Collection<ComponentType...>( this, { ExpandAsTupleArguments<ComponentType>() ...});
-	}
-
-	template<typename ComponentType> 
-	bool EntityManager::Has(const entity entityID) const noexcept
-	{
-		static auto constexpr componentID = sti::getTypeIndex<ComponentType>();
-		RLS_ASSERT(Exists(entityID), "Entity is invalid");
-
-		const bool componentTypeExists = m_components.contains(componentID);
-		if (!componentTypeExists)
-			return false;
-
-		auto& pool = static_cast<SparseSet<ComponentType>&>(*m_components.at(componentID));
-		
-		return 
-			( entityID < pool.sparseArray.size())
-			&& (pool.sparseArray[entityID] < pool.denseArray.size())
-			&& (pool.sparseArray[entityID] != NULL_ENTITY
-			);
-	}
-
-	template<typename... ComponentType>
-	bool EntityManager::HasAllOf(const entity entityID) const noexcept
-	{
-		return (EntityManager::Has<ComponentType>(entityID) && ...);
-	}
-
-	template<typename... ComponentType>
-	bool EntityManager::HasAnyOf(const entity entityID) const noexcept
-	{
-		return (EntityManager::Has<ComponentType>(entityID) || ...);
-	}
-
-	template<typename ComponentType>
-	void EntityManager::ValidateComponentPool() noexcept
-	{
-		static constexpr auto ComponentID = sti::getTypeIndex<ComponentType>();
-		if (!m_components.contains(ComponentID))
+		template<typename ComponentType, typename... Args>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (!std::is_empty_v<ComponentType>)
+			ComponentType& AddOrReplace(const entity entityID, Args&&... args) noexcept
 		{
-			AddSparseSet<ComponentType>();
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+
+			if (Has<ComponentType>(entityID))
+				return Replace<ComponentType>(entityID, std::forward<Args>(args) ...);
+			else
+				return Add<ComponentType>(entityID, std::forward<Args>(args) ...);
 		}
-	}
 
-	template<typename ComponentType> 
-	void EntityManager::AddSparseSet() noexcept
-	{
-		static constexpr auto ComponentID = sti::getTypeIndex<ComponentType>();
-		m_components[ComponentID] = std::move(std::make_unique<SparseSet<ComponentType>>());
-		auto& pool = static_cast<SparseSet<ComponentType>&>(*m_components.at(ComponentID));
-
-		pool.sparseArray.reserve(MAX_ENTITIES);
-		for (uint32_t i{ 0u }; i < MAX_ENTITIES; i++)
+		template<typename ComponentType, typename... Args>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& std::is_empty_v<ComponentType> && (sizeof...(Args) == 0)
+			void AddOrReplace(const entity entityID, Args&&... args) noexcept
 		{
-			pool.sparseArray.push_back(NULL_ENTITY);
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+
+			if (!Has<ComponentType>(entityID))
+				Add<ComponentType>(entityID);
 		}
 
-		pool.denseArray.reserve(MAX_ENTITIES);
-		pool.components.reserve(MAX_ENTITIES);
-	}
 
-	//##################### COLLECTIONS #####################
+		template<typename ComponentType, typename... ComponentTypes>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (sizeof...(ComponentTypes) == 0)
+			void Remove(const entity entityID) noexcept
+		{
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+			RLS_ASSERT(Has<ComponentType>(entityID), "Entity already has the component type.");
 
-	template<typename... ComponentType>
-	class Collection
-	{
-	public:
-		explicit Collection(EntityManager* mgr, const std::tuple<SparseSet<ComponentType>*...>& pools) noexcept;
-		~Collection() noexcept = default;
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
+			Pool<ComponentType>& pool = static_cast<Pool<ComponentType>&>(*m_Pools[ID].get());
 
-		void Do(std::invocable<ComponentType&...> auto&& func) const noexcept;
-		void Do(std::invocable<entity, ComponentType&...> auto&& func) const noexcept;
+			const uint32_t entityIdentity = GetIdentity(entityID);
+
+			const auto lastEntityIdentifier = pool.DenseArray.back() >> 12;
+			const auto denseAndComponentArrayIndex = pool.SparseArray[entityIdentity];
+			std::swap(pool.DenseArray.back(), pool.DenseArray[denseAndComponentArrayIndex]);
+			if constexpr (!std::is_empty_v<ComponentType>)
+			{
+				std::swap(pool.Components.back(), pool.Components[denseAndComponentArrayIndex]);
+				pool.Components.pop_back();
+			}
+			std::swap(pool.SparseArray[lastEntityIdentifier], pool.SparseArray[entityIdentity]);
+			pool.DenseArray.pop_back();
+			pool.SparseArray[entityIdentity] = NULL_ENTITY;
+		}
+
+		template<typename ComponentType, typename... ComponentTypes>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (sizeof...(ComponentTypes) > 0)
+			void Remove(const entity entityID) noexcept
+		{
+			Remove<ComponentType>(entityID);
+			Remove<ComponentTypes...>(entityID);
+		}
+
+		/**
+		 * @brief Checks whether an entity has a certain component type.
+		 * @param entity The entity ID to verify component type existence for.
+		 * @return A truth condition (bool) depending on component existence.
+		 */
+		template<typename ComponentType>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		[[nodiscard]] bool Has(const entity entityID) noexcept
+		{
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
+
+			const uint32_t entityIdentity = GetIdentity(entityID);
+			const Pool<ComponentType>* pool = static_cast<Pool<ComponentType>*>(m_Pools[ID].get());
+			const std::vector<entity>& sparseArray = pool->SparseArray;
+
+			return (pool && (entityIdentity < sparseArray.size()) && (sparseArray[entityIdentity] != NULL_ENTITY));
+		}
+
+		template<typename... ComponentTypes>
+			requires (std::is_same_v<ComponentTypes, std::decay_t<ComponentTypes>> && ...)
+		[[nodiscard]] bool HasAllOf(const entity entityID) noexcept
+		{
+			return (Has<ComponentTypes>(entityID) && ...);
+		}
+
+		template<typename... ComponentTypes>
+			requires (std::is_same_v<ComponentTypes, std::decay_t<ComponentTypes>> && ...)
+		[[nodiscard]] bool HasAnyOf(const entity entityID) noexcept
+		{
+			return (Has<ComponentTypes>(entityID) || ...);
+		}
+
+		/**
+		 * @brief Returns a single component of type ComponentType for the entity.
+		 * @param entity The entity ID to return the component reference for.
+		 * @return A reference to the component belonging to entity.
+		 */
+		template<typename ComponentType, typename... C1>
+			requires (sizeof...(C1) == 0) && std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (!std::is_empty_v<ComponentType>)
+			[[nodiscard]] ComponentType& Get(const entity entityID) noexcept
+		{
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+			RLS_ASSERT(Has<ComponentType>(entityID), "Entity does not have the component type.");
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
+
+			Pool<ComponentType>& pool = static_cast<Pool<ComponentType>&>(*m_Pools[ID].get());
+			return pool.Components[pool.SparseArray[GetIdentity(entityID)]];
+		}
+
+		/**
+		 * @brief Returns multiple components for the entity.
+		 * @param entity The entity ID to return the component references for.
+		 * @return A tuple containing the component references for all requested components belonging to the entity.
+		 */
+		template<typename ComponentType, typename... ComponentTypes>
+			requires (sizeof... (ComponentTypes) > 0) && std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (std::is_same_v<ComponentTypes, std::decay_t<ComponentTypes>> && ...)
+			&& (!std::is_empty_v<ComponentType>) && (!std::is_empty_v<ComponentTypes> && ...)
+			[[nodiscard]] std::tuple<ComponentType&, ComponentTypes&...> Get(const entity entityID) noexcept
+		{
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+			RLS_ASSERT(Has<ComponentType>(entityID) && (Has<ComponentTypes>(entityID) && ...), "Entity does not have component type(s).");
+
+			return std::forward_as_tuple(Get<ComponentType>(entityID), (Get<ComponentTypes>(entityID)) ...);
+		}
+
+		/**
+		 * @brief Completely resets the EntityManager and all associated data.
+		 */
+		void Reset() noexcept
+		{
+			m_Entities.clear();
+			m_Next = 0u;
+			m_Available = 0u;
+
+			m_Pools.clear();
+		}
+
+		template<typename... ComponentTypes>
+			requires (std::is_same_v<ComponentTypes, std::decay_t<ComponentTypes>> && ...)
+		&& (sizeof...(ComponentTypes) > 1)
+			[[nodiscard]] Collection<ComponentTypes...> Collect() noexcept
+		{
+			return Collection<ComponentTypes...>(std::forward_as_tuple(GetPool<ComponentTypes>() ...));
+		}
+
+		template<typename ComponentType>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		[[nodiscard]] Collection<ComponentType> Collect() noexcept
+		{
+			return Collection<ComponentType>(GetPool<ComponentType>());
+		}
 
 	private:
-		DELETE_COPY_MOVE_CONSTRUCTOR(Collection);
-		friend class EntityManager;
-		std::tuple<SparseSet<ComponentType>*...> m_pools;
-		EntityManager* m_mgr;
-	};
-
-	template<typename... ComponentType>
-	Collection<ComponentType...>::Collection(EntityManager* mgr, const std::tuple<SparseSet<ComponentType>*...>& pools) noexcept
-		: m_mgr{ mgr }, m_pools(std::move(pools))
-	{
-		ECS_DEBUG_EXPR(std::apply([](const auto&... pool) {(ASSERT(pool, "Component type does not exist."), ...); }, m_pools););
-	}
-
-	template<typename... ComponentType>
-	void Collection<ComponentType...>::Do(std::invocable<ComponentType&...> auto&& func) const noexcept
-	{
-		std::vector<entity>* ePointer = &(get<0>(m_pools)->denseArray);
-		std::apply([&ePointer](const auto&... pool)
-			{
-				((ePointer = (pool->denseArray.size() < ePointer->size()) ? &pool->denseArray : ePointer), ...);
-			}, m_pools);
-
-		auto&& EntityHasAllComponents = [&](const entity entityID)
+		template<typename ComponentType>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		[[nodiscard]] Pool<ComponentType>& GetPool() noexcept
 		{
-			bool hasAllComponents = true;
-			std::apply([&](const auto&... pool)
-				{
-					((hasAllComponents &= ((entityID < pool->sparseArray.size())
-						&& (pool->sparseArray[entityID] < pool->denseArray.size())
-						&& (pool->sparseArray[entityID] != NULL_ENTITY))), ...);
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
 
-				}, m_pools);
-			return hasAllComponents;
-		};
+			ValidatePool<ComponentType>();
 
-		for (int i{ (int)ePointer->size() - 1 }; i >= 0; --i)
-		{
-			//m_mgr->HasAllOf<ComponentType...>((*ePointer)[i])
-			if (EntityHasAllComponents((*ePointer)[i]))
-			{
-				//std::apply([&](const auto&... pool)
-				//	{
-				//		func(pool->components[(*ePointer)[i]] ...);
-				//	}, m_pools);
-				func(m_mgr->Get<ComponentType>((*ePointer)[i])...);
-			}
+			return static_cast<Pool<ComponentType>&>(*m_Pools[ID].get());
 		}
-	}
 
-	template<typename... ComponentType>
-	void Collection<ComponentType...>::Do(std::invocable<entity, ComponentType&...> auto&& func) const noexcept
-	{
-		std::vector<entity>* ePointer = &(get<0>(m_pools)->denseArray);
-		std::apply([&ePointer](const auto&... pool)
-			{
-				((ePointer = (pool->denseArray.size() < ePointer->size()) ? &pool->denseArray : ePointer), ...);
-			}, m_pools);
-
-		auto&& EntityHasAllComponents = [&](entity entityID) -> bool
+		/**
+		 * @brief Recycles a previously destroyed entity. Always prioritized over creating a completely new entity.
+		 * @return A recycled entity, corresponding to the latest destroyed entity.
+		*/
+		[[nodiscard]] entity RecycleEntity() noexcept
 		{
-			bool hasAllComponents = true;
-			std::apply([&](const auto&... pool)
-				{
-					((hasAllComponents &= ((entityID < pool->sparseArray.size())
-						&& (pool->sparseArray[entityID] < pool->denseArray.size())
-						&& (pool->sparseArray[entityID] != NULL_ENTITY))), ...);
-				}, m_pools);
-			return hasAllComponents;
-		};
+			const uint32_t nextEntity = m_Entities[m_Next];
+			const uint32_t entityVersion = GetVersion(nextEntity);
+			const entity completeEntityID = ((m_Next << 12) | entityVersion);
 
-		for (int i{ (int)ePointer->size() - 1 }; i >= 0; --i)
-		{
-			//if (m_mgr->HasAllOf<ComponentType...>((*ePointer)[i]))
-			if (EntityHasAllComponents((*ePointer)[i]))
-			{
-				//std::apply([&](const auto&... pool)
-				//	{
-				//		func((*ePointer)[i], pool->components[(*ePointer)[i]] ...);
-				//	}, m_pools);
-				func((*ePointer)[i], m_mgr->Get<ComponentType>((*ePointer)[i])...);
-			}
+			const uint32_t nextEntityIdentity = GetIdentity(nextEntity);
+			m_Entities[m_Next] = completeEntityID;
+			m_Next = nextEntityIdentity;
+
+			m_Available--;
+			return completeEntityID;
 		}
-	}
 
-	//##################### BUNDLES #####################
+		/**
+		 * @brief Creates a completely new entity.
+		 * @return The newly created entity.
+		*/
+		[[nodiscard]] entity CreateNewEntity() noexcept
+		{
+			const uint32_t entityIdentity = m_Next++;
+			const entity completeEntityID = entityIdentity << 12;
+			m_Entities.emplace_back(completeEntityID);
+			return completeEntityID;
+		}
 
-	class BundleBase
-	{
-	public:
-		BundleBase() noexcept = default;
-		virtual ~BundleBase() noexcept = default;
-
-		virtual [[nodiscard]] std::optional<uint32_t> UpdateOnAdd(const entity entityID) noexcept = 0;
-		virtual void UpdateOnRemove(const entity entityID) noexcept = 0;
-		friend ISystem;
-	};
-
-	template<typename... ComponentType>
-	class BundleImpl : public BundleBase
-	{
-	public:
-		explicit BundleImpl(EntityManager* mgr, const std::tuple<SparseSet<ComponentType>*...>& pools) noexcept;
-		virtual ~BundleImpl() noexcept override final = default;
-
-		void Do(std::invocable<ComponentType&...> auto&& func) const noexcept;
-		void Do(std::invocable<entity, ComponentType&...> auto&& func) const noexcept;
-
-		[[nodiscard]] constexpr const std::vector<entity>* GetEntityVectorPointer() const noexcept { return ePointer; }
-		[[nodiscard]] constexpr const int* GetBundleStartPointer() const noexcept { return &m_bundleStart; }
 	private:
-		DELETE_COPY_MOVE_CONSTRUCTOR(BundleImpl);
-		[[nodiscard]] std::optional<uint32_t> UpdateOnAdd(const entity entityID) noexcept override final;
-		virtual void UpdateOnRemove(const entity entityID) noexcept override final;
-	private:
-		friend EntityManager;
-		friend ISystem;
-		EntityManager* m_mgr;
-		std::tuple<SparseSet<ComponentType>*...> m_pools;
-		std::vector<entity>* ePointer;
-		int m_bundleStart;
+		/*! @brief All entities, both alive and destroyed. */
+		std::vector<entity> m_Entities;
+		/*! @brief Number of entities that have been destroyed but not recycled. */
+		std::size_t m_Available;
+		/*! @brief The entity identity next in turn to be recycled. */
+		entity m_Next;
+		/*! @brief The dense hash map indexed by a compile time type hash id. It contains all sparse sets (component pools).*/
+		DenseMap<TypeIndex, ComponentPool> m_Pools;
 	};
-
-	template<typename... ComponentType>
-	BundleImpl<ComponentType...>::BundleImpl(EntityManager* mgr, const std::tuple<SparseSet<ComponentType>*...>& pools) noexcept
-		: m_mgr{ mgr }, m_pools{ std::move(pools) }, m_bundleStart{ -1 }, ePointer{ nullptr }
-	{
-		ECS_DEBUG_EXPR(std::apply([](const auto... pool) {(ASSERT(pool, "Component type does not exist."), ...); }, m_pools);)
-		
-		ePointer = &(get<0>(m_pools)->denseArray);
-		std::apply([&](const auto... pool)
-			{
-				((ePointer = (pool->denseArray.size() < ePointer->size()) ? &pool->denseArray : ePointer), ...);
-			}, m_pools);
-
-		const auto&& myLambda = []<typename ComponentType>(SparseSet<ComponentType>*pool, uint32_t index, int bundleStart)
-		{
-			std::swap(pool->denseArray[index], pool->denseArray[bundleStart + 1]);
-			std::swap(pool->components[index], pool->components[bundleStart + 1]);
-			std::swap(pool->sparseArray[pool->denseArray[index]], pool->sparseArray[pool->denseArray[bundleStart + 1]]);
-		};
-
-		for (size_t i{ 0u }; i < ePointer->size(); ++i)
-		{
-			if ((m_mgr->Has<ComponentType>((*ePointer)[i]) && ...))
-			{
-				std::apply([&](const auto... pool)
-					{
-						(myLambda(pool, pool->sparseArray[(*ePointer)[i]], m_bundleStart), ...);
-					}, m_pools);
-
-				m_bundleStart++;
-			}
-		}
-	}
-
-	template<typename... ComponentType>
-	void BundleImpl<ComponentType...>::Do(std::invocable<ComponentType&...> auto&& func) const noexcept
-	{
-		for (int i{ m_bundleStart }; i >= 0; --i)
-		{
-			func(m_mgr->Get<ComponentType>((*ePointer)[i])...);
-		}
-	}
-
-	template<typename... ComponentType>
-	void BundleImpl<ComponentType...>::Do(std::invocable<entity, ComponentType&...> auto&& func) const noexcept
-	{
-		for (int i{ m_bundleStart }; i >= 0; --i)
-		{
-			func((*ePointer)[i], m_mgr->Get<ComponentType>((*ePointer)[i])...);
-		}
-	}
-
-	template<typename... ComponentType>
-	std::optional<uint32_t> BundleImpl<ComponentType...>::UpdateOnAdd(const entity entityID) noexcept
-	{
-		const auto&& SwapLambda = []<typename ComponentType>(SparseSet<ComponentType>* pool, uint32_t index, int bundleStart)
-		{
-			std::swap(pool->denseArray[index], pool->denseArray[bundleStart + 1]);
-			std::swap(pool->components[index], pool->components[bundleStart + 1]);
-			std::swap(pool->sparseArray[pool->denseArray[index]], pool->sparseArray[pool->denseArray[bundleStart + 1]]);
-		};
-
-		if (m_mgr->HasAllOf<ComponentType...>(entityID))
-		{
-			std::apply([&](const auto... pool)
-				{
-					(SwapLambda(pool, pool->sparseArray[entityID], m_bundleStart), ...);
-				}, m_pools);
-
-			m_bundleStart++;
-			return m_bundleStart;
-		}
-		return std::nullopt;
-	}
-
-	template<typename... ComponentType>
-	void BundleImpl<ComponentType...>::UpdateOnRemove(const entity entityID) noexcept
-	{
-		const auto&& SwapLambda = []<typename ComponentType>(SparseSet<ComponentType>* pool, uint32_t index, int bundleStart)
-		{
-			std::swap(pool->denseArray[index], pool->denseArray[bundleStart]);
-			std::swap(pool->components[index], pool->components[bundleStart]);
-			std::swap(pool->sparseArray[pool->denseArray[index]], pool->sparseArray[pool->denseArray[bundleStart]]);
-		};
-
-		if (m_mgr->HasAllOf<ComponentType...>(entityID))
-		{
-			std::apply([&](const auto... pool)
-				{
-					(SwapLambda(pool, pool->sparseArray[entityID], m_bundleStart), ...);
-				}, m_pools);
-
-			m_bundleStart--;
-		}
-	}
-
-	
 }
-
-//##################### SYSTEMS #####################
-
-	template<typename... ComponentType>
-	struct SystemHelper
-	{
-		SystemHelper() noexcept
-			: m_mgr{ RLS::EntityManager::Get() }, m_pools{ RLS::EntityManager::Get().ExpandAsTupleArguments<ComponentType>() ... } {}
-
-		inline [[nodiscard]] std::vector<RLS::entity>* GetMinimumEntityVector() const
-		{
-			std::vector<RLS::entity>* ePointer = &(get<0>(m_pools)->denseArray);
-			std::apply([&ePointer](const auto&... pool)
-				{
-					((ePointer = (pool->denseArray.size() < ePointer->size()) ? &pool->denseArray : ePointer), ...);
-				}, m_pools);
-
-			return ePointer;
-		}
-		DELETE_COPY_MOVE_CONSTRUCTOR(SystemHelper);
-		RLS::EntityManager& m_mgr;
-		std::tuple<RLS::SparseSet<ComponentType>* ...> m_pools;
-	};
-
-	template<typename... ComponentType>
-	struct CriticalSystemHelper
-	{
-		CriticalSystemHelper() noexcept
-			: m_mgr{ RLS::EntityManager::Get() }
-		{
-			static_assert(sizeof...(ComponentType) > 1);
-			auto& bundle = RLS::EntityManager::Get().Bundle<ComponentType...>();
-			m_ePointer = bundle.GetEntityVectorPointer();
-			m_bundleStart = bundle.GetBundleStartPointer();
-		}
-		DELETE_COPY_MOVE_CONSTRUCTOR(CriticalSystemHelper);
-		RLS::EntityManager& m_mgr;
-		const std::vector<RLS::entity>* m_ePointer;
-		const int* m_bundleStart;
-	};
-
-#if defined RLS_DEBUG																													
-#define SYSTEM_CLASS(...)																								\
-public:																															\
-		SystemHelper<__VA_ARGS__> m_systemHelper;																				\
-		[[nodiscard]] virtual std::string_view GetName() const override															\
-		{																														\
-			constexpr std::string_view s = __FUNCTION__;																		\
-			constexpr std::string_view s2 = s.substr(s.find_first_not_of("DOG::"));												\
-			constexpr size_t lastIndex = s2.find_first_of(":");																	\
-			constexpr std::string_view finalName = s2.substr(0, lastIndex);														\
-			return finalName;																									\
-		}																														\
-		[[nodiscard]] virtual RLS::SystemType GetType() const noexcept															\
-		{																														\
-			return RLS::SystemType::Standard;																						\
-		}																														
-#else																															
-#define SYSTEM_CLASS(...)																									\
-	SystemHelper<__VA_ARGS__> m_systemHelper;
-#endif																															
-
-
-#if defined RLS_DEBUG																													
-#define SYSTEM_CLASS_CRITICAL(...)																								\
-		CriticalSystemHelper<__VA_ARGS__> m_systemHelper;																		\
-		[[nodiscard]] virtual std::string_view GetName() const override															\
-		{																														\
-			constexpr std::string_view s = __FUNCTION__;																		\
-			constexpr std::string_view s2 = s.substr(s.find_first_not_of("DOG::"));												\
-			constexpr size_t lastIndex = s2.find_first_of(":");																	\
-			constexpr std::string_view finalName = s2.substr(0, lastIndex);														\
-			return finalName;																									\
-		}																														\
-		[[nodiscard]] virtual RLS::SystemType GetType() const noexcept															\
-		{																														\
-			return RLS::SystemType::Critical;																						\
-		}
-#else																															
-#define SYSTEM_CLASS_CRITICAL(...)																								\
-	CriticalSystemHelper<__VA_ARGS__> m_systemHelper;
-#endif
-
-	/*ON_CREATE*/
-
-#ifndef ON_CREATE
-#define ON_CREATE(...)																										\
-	void Create() noexcept override final																					\
-	{																														\
-		CreateImpl<__VA_ARGS__>();																							\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void CreateImpl()																										\
-	{																														\
-		auto ePointer = m_systemHelper.GetMinimumEntityVector();															\
-		for (int i{ (int)ePointer->size() - 1 }; i >= 0; --i)																\
-		{																													\
-			if (m_systemHelper.m_mgr.HasAllOf<ComponentType...>((*ePointer)[i]))											\
-			{																												\
-				OnCreate(m_systemHelper.m_mgr.GetComponent<ComponentType>((*ePointer)[i]) ...);								\
-			}																												\
-		}																													\
-	}
-#endif
-
-#ifndef ON_CREATE_ID
-#define ON_CREATE_ID(...)																									\
-	void Create() noexcept override final																					\
-	{																														\																										\
-			CreateImpl<__VA_ARGS__>();																						\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void CreateImpl()																										\
-	{																														\
-		auto ePointer = m_systemHelper.GetMinimumEntityVector();															\
-		for (int i{ (int)ePointer->size() - 1 }; i >= 0; --i)																\
-		{																													\
-			if (m_systemHelper.m_mgr.HasAllOf<ComponentType...>((*ePointer)[i]))											\
-			{																												\
-				OnCreate((*ePointer)[i], m_systemHelper.m_mgr.GetComponent<ComponentType>((*ePointer)[i]) ...);				\
-			}																												\
-		}																													\
-	}
-#endif
-
-#ifndef ON_CREATE_CRITICAL
-#define ON_CREATE_CRITICAL(...)																								\
-	void Create() noexcept override final																					\
-	{																														\
-		CreateImpl<__VA_ARGS__>();																							\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void CreateImpl()																										\
-	{																														\
-		for (int i{*m_systemHelper.m_bundleStart }; i >= 0; --i)															\
-		{																													\
-			OnCreate(m_systemHelper.m_mgr.GetComponent<ComponentType>((*m_systemHelper.m_ePointer)[i])...);					\
-		}																													\
-	}
-#endif
-
-#ifndef ON_CREATE_CRITICAL_ID
-#define ON_CREATE_CRITICAL_ID(...)																							\
-	void Create() noexcept override final																					\
-	{																														\
-		CreateImpl<__VA_ARGS__>();																							\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void CreateImpl()																										\
-	{																														\
-		for (int i{*m_systemHelper.m_bundleStart }; i >= 0; --i)															\
-		{																													\
-			OnCreate((*m_systemHelper.m_ePointer)[i], m_systemHelper.m_mgr.GetComponent<ComponentType>((*m_systemHelper.m_ePointer)[i])...);					\
-		}																													\
-	}
-#endif
-
-	/*ON_EARLY_UPDATE*/
-
-#ifndef ON_EARLY_UPDATE
-#define ON_EARLY_UPDATE(...)																								\
-	void EarlyUpdate() noexcept override final																				\
-	{																														\
-		EarlyUpdateImpl<__VA_ARGS__>();																						\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void EarlyUpdateImpl()																									\
-	{																														\
-		auto ePointer = m_systemHelper.GetMinimumEntityVector();															\
-		for (int i{ (int)ePointer->size() - 1 }; i >= 0; --i)																\
-		{																													\
-			if (m_systemHelper.m_mgr.HasAllOf<ComponentType...>((*ePointer)[i]))											\
-			{																												\
-				OnEarlyUpdate(m_systemHelper.m_mgr.GetComponent<ComponentType>((*ePointer)[i]) ...);						\
-			}																												\
-		}																													\
-	}
-#endif
-
-#ifndef ON_EARLY_UPDATE_ID
-#define ON_EARLY_UPDATE_ID(...)																								\
-	void EarlyUpdate() noexcept override final																				\
-	{																														\
-		EarlyUpdateImpl<__VA_ARGS__>();																						\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void EarlyUpdateImpl()																									\
-	{																														\
-		auto ePointer = m_systemHelper.GetMinimumEntityVector();															\
-		for (int i{ (int)ePointer->size() - 1 }; i >= 0; --i)																\
-		{																													\
-			if (m_systemHelper.m_mgr.HasAllOf<ComponentType...>((*ePointer)[i]))											\
-			{																												\
-				OnEarlyUpdate((*ePointer)[i], m_systemHelper.m_mgr.GetComponent<ComponentType>((*ePointer)[i]) ...);		\
-			}																												\
-		}																													\
-	}
-#endif
-
-#ifndef ON_EARLY_UPDATE_CRITICAL
-#define ON_EARLY_UPDATE_CRITICAL(...)																						\
-	void EarlyUpdate() noexcept override final																				\
-	{																														\
-		EarlyUpdateImpl<__VA_ARGS__>();																						\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void EarlyUpdateImpl()																									\
-	{																														\
-		for (int i{*m_systemHelper.m_bundleStart }; i >= 0; --i)															\
-		{																													\
-			OnEarlyUpdate(m_systemHelper.m_mgr.GetComponent<ComponentType>((*m_systemHelper.m_ePointer)[i])...);			\
-		}																													\
-	}
-#endif
-
-#ifndef ON_EARLY_UPDATE_CRITICAL_ID
-#define ON_EARLY_UPDATE_CRITICAL_ID(...)																					\
-	void EarlyUpdate() noexcept override final																				\
-	{																														\
-		EarlyUpdateImpl<__VA_ARGS__>();																						\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void EarlyUpdateImpl()																									\
-	{																														\
-		for (int i{*m_systemHelper.m_bundleStart }; i >= 0; --i)															\
-		{																													\
-			OnEarlyUpdate((*m_systemHelper.m_ePointer)[i], m_systemHelper.m_mgr.GetComponent<ComponentType>((*m_systemHelper.m_ePointer)[i])...);			\
-		}																													\
-	}
-#endif
-
-	/*ON_UPDATE*/
-
-#ifndef ON_UPDATE
-#define ON_UPDATE(...)																										\
-	void Update() noexcept override final																					\
-	{																														\
-		UpdateImpl<__VA_ARGS__>();																							\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void UpdateImpl()																										\
-	{																														\
-		auto ePointer = m_systemHelper.GetMinimumEntityVector();															\
-		for (int i{ (int)ePointer->size() - 1 }; i >= 0; --i)																\
-		{																													\
-			if (m_systemHelper.m_mgr.HasAllOf<ComponentType...>((*ePointer)[i]))											\
-			{																												\
-				OnUpdate(m_systemHelper.m_mgr.GetComponent<ComponentType>((*ePointer)[i]) ...);								\
-			}																												\
-		}																													\
-	}
-#endif
-
-#ifndef ON_UPDATE_ID
-#define ON_UPDATE_ID(...)																									\
-	void Update() noexcept override final																					\
-	{																														\
-		UpdateImpl<__VA_ARGS__>();																							\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void UpdateImpl()																										\
-	{																														\
-		auto ePointer = m_systemHelper.GetMinimumEntityVector();															\
-		for (int i{ (int)ePointer->size() - 1 }; i >= 0; --i)																\
-		{																													\
-			if (m_systemHelper.m_mgr.HasAllOf<ComponentType...>((*ePointer)[i]))											\
-			{																												\
-				OnUpdate((*ePointer)[i], m_systemHelper.m_mgr.GetComponent<ComponentType>((*ePointer)[i]) ...);				\
-			}																												\
-		}																													\
-	}
-#endif
-
-#ifndef ON_UPDATE_CRITICAL
-#define ON_UPDATE_CRITICAL(...)																								\
-	void Update() noexcept override final																					\
-	{																														\
-		UpdateImpl<__VA_ARGS__>();																							\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void UpdateImpl()																										\
-	{																														\
-		for (int i{*m_systemHelper.m_bundleStart }; i >= 0; --i)															\
-		{																													\
-			OnUpdate(m_systemHelper.m_mgr.GetComponent<ComponentType>((*m_systemHelper.m_ePointer)[i])...);					\
-		}																													\
-	}
-#endif
-
-#ifndef ON_UPDATE_CRITICAL_ID
-#define ON_UPDATE_CRITICAL_ID(...)																							\
-	void Update() noexcept override final																					\
-	{																														\
-		UpdateImpl<__VA_ARGS__>();																							\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void UpdateImpl()																										\
-	{																														\
-		for (int i{*m_systemHelper.m_bundleStart }; i >= 0; --i)															\
-		{																													\
-			OnUpdate((*m_systemHelper.m_ePointer)[i], m_systemHelper.m_mgr.GetComponent<ComponentType>((*m_systemHelper.m_ePointer)[i])...);				\
-		}																													\
-	}
-#endif
-
-	/*ON_LATE_UPDATE*/
-
-#ifndef ON_LATE_UPDATE
-#define ON_LATE_UPDATE(...)																									\
-	void LateUpdate() noexcept override final																				\
-	{																														\
-		LateUpdateImpl<__VA_ARGS__>();																						\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void LateUpdateImpl()																									\
-	{																														\
-		auto ePointer = m_systemHelper.GetMinimumEntityVector();															\
-		for (int i{ (int)ePointer->size() - 1 }; i >= 0; --i)																\
-		{																													\
-			if (m_systemHelper.m_mgr.HasAllOf<ComponentType...>((*ePointer)[i]))											\
-			{																												\
-				OnLateUpdate(m_systemHelper.m_mgr.GetComponent<ComponentType>((*ePointer)[i]) ...);							\
-			}																												\
-		}																													\
-	}
-#endif
-
-#ifndef ON_LATE_UPDATE_ID
-#define ON_LATE_UPDATE_ID(...)																								\
-	void LateUpdate() noexcept override final																				\
-	{																														\
-		LateUpdateImpl<__VA_ARGS__>();																						\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void LateUpdateImpl()																									\
-	{																														\
-		auto ePointer = m_systemHelper.GetMinimumEntityVector();															\
-		for (int i{ (int)ePointer->size() - 1 }; i >= 0; --i)																\
-		{																													\
-			if (m_systemHelper.m_mgr.HasAllOf<ComponentType...>((*ePointer)[i]))											\
-			{																												\
-				OnLateUpdate((*ePointer)[i], m_systemHelper.m_mgr.GetComponent<ComponentType>((*ePointer)[i]) ...);			\
-			}																												\
-		}																													\
-	}
-#endif
-
-#ifndef ON_LATE_UPDATE_CRITICAL
-#define ON_LATE_UPDATE_CRITICAL(...)																						\
-	void LateUpdate() noexcept override final																				\
-	{																														\
-		LateUpdateImpl<__VA_ARGS__>();																						\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void LateUpdateImpl()																									\
-	{																														\
-		for (int i{*m_systemHelper.m_bundleStart }; i >= 0; --i)															\
-		{																													\
-			OnLateUpdate(m_systemHelper.m_mgr.GetComponent<ComponentType>((*m_systemHelper.m_ePointer)[i])...);				\
-		}																													\
-	}
-#endif
-
-#ifndef ON_LATE_UPDATE_CRITICAL_ID
-#define ON_LATE_UPDATE_CRITICAL_ID(...)																						\
-	void LateUpdate() noexcept override final																				\
-	{																														\
-		LateUpdateImpl<__VA_ARGS__>();																						\
-	}																														\
-																															\
-	template<typename... ComponentType>																						\
-	void LateUpdateImpl()																									\
-	{																														\
-		for (int i{*m_systemHelper.m_bundleStart }; i >= 0; --i)															\
-		{																													\
-			OnLateUpdate((*m_systemHelper.m_ePointer)[i], m_systemHelper.m_mgr.GetComponent<ComponentType>((*m_systemHelper.m_ePointer)[i])...);			\
-		}																													\
-	}
-#endif

@@ -4,12 +4,14 @@ namespace Relentless
 {
 	SceneHierarchyPanel::SceneHierarchyPanel() noexcept
 		: m_pScene{ nullptr },
-		  m_SelectedEntity{ NULL_ENTITY }
+		  m_SelectedEntity{ NULL_ENTITY },
+		  m_EntityScheduledForDestruction{ NULL_ENTITY }
 	{}
 
 	void SceneHierarchyPanel::OnImGuiRender() noexcept
 	{
 		RLS_ASSERT(m_pScene, "Scene is nullptr.");
+
 		ImGui::Begin("Scene Hierarchy");
 
 		ImGuiTreeNodeFlags sceneNodeflags = ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_DefaultOpen;
@@ -27,6 +29,9 @@ namespace Relentless
 
 			m_pScene->GetEntityManager().Collect<NameComponent>().Do([this](entity e, NameComponent&)
 				{
+					if (m_pScene->GetEntityManager().Has<IsChildComponent>(e))
+						return;
+
 					DrawEntityNode(e);
 				});
 			ImGui::TreePop();
@@ -102,7 +107,73 @@ namespace Relentless
 			ImGui::EndPopup();
 		}
 
+		//One can drop an entity onto the panel itself to return it to an unparented root state:
+		if (ImGui::IsDragDropActive())
+		{
+			auto panelSize = ImGui::GetWindowSize();
+			auto currentCursorPosition = ImGui::GetCursorPos();
+
+			panelSize.x -= 20;
+			panelSize.y -= (currentCursorPosition.y + 10);
+			ImGui::InvisibleButton("SCENE_HIERARCHY_PANEL_EMPTY_SPACE", panelSize);
+			if (ImGui::BeginDragDropTarget())
+			{
+				if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CHILD_PAYLOAD"))
+				{
+					auto& mgr = m_pScene->GetEntityManager();
+
+					entity entityToOrphan = *(entity*)payLoad->Data;
+					if (mgr.Has<IsChildComponent>(entityToOrphan))
+					{
+						entity parent = mgr.Get<IsChildComponent>(entityToOrphan).Parent;
+						auto& children = mgr.Get<ParentComponent>(parent).Children;
+						for (uint32_t childIndex{ 0u }; childIndex < children.size(); ++childIndex)
+						{
+							if (children[childIndex] == entityToOrphan)
+							{
+								children.erase(children.begin() + childIndex);
+								if (children.empty())
+									mgr.Remove<ParentComponent>(parent);
+
+								break;
+							}
+						}
+						mgr.Remove<IsChildComponent>(entityToOrphan);
+					}
+					mgr.AddOrReplace<RootComponent>(entityToOrphan);
+				}
+				ImGui::EndDragDropTarget();
+			}
+		}
 		ImGui::End();
+
+		//Any deletion of an entity in the scene hierarchy has been deferred until now:
+		if (m_EntityScheduledForDestruction != NULL_ENTITY)
+		{
+			//We need to check if a child of the deleted entity is currently selected, and if so, notify the editor layer,
+			//as that child will get destroyed in the process.
+			if (m_pScene->GetEntityManager().Has<ParentComponent>(m_EntityScheduledForDestruction))
+			{
+				auto& children = m_pScene->GetEntityManager().Get<ParentComponent>(m_EntityScheduledForDestruction).Children;
+				for (auto child : children)
+				{
+					if (child == m_SelectedEntity)
+					{
+						m_OnEntityDestroyedCallBack(child);
+						m_SelectedEntity = NULL_ENTITY;
+						break;
+					}
+				}
+			}
+
+			m_pScene->DestroyEntity(m_EntityScheduledForDestruction);
+			m_OnEntityDestroyedCallBack(m_EntityScheduledForDestruction);
+			if (m_SelectedEntity == m_EntityScheduledForDestruction)
+			{
+				m_SelectedEntity = NULL_ENTITY;
+			}
+			m_EntityScheduledForDestruction = NULL_ENTITY;
+		}
 	}
 
 	void SceneHierarchyPanel::SetActiveScene(Scene* const pScene) noexcept
@@ -114,8 +185,11 @@ namespace Relentless
 	void SceneHierarchyPanel::DrawEntityNode(const entity entityID) noexcept
 	{
 		auto& mgr = m_pScene->GetEntityManager();
-		ImGuiTreeNodeFlags entityNodeflags = ((entityID == m_SelectedEntity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
+
+		ImGuiTreeNodeFlags entityNodeflags = ((entityID == m_SelectedEntity) ? ImGuiTreeNodeFlags_Selected : 0);
+		entityNodeflags |= mgr.Has<ParentComponent>(entityID) ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_Leaf;
 		entityNodeflags |= ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_SpanFullWidth;
+		entityNodeflags |= ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_OpenOnArrow;
 
 		ImGuiStyle* style = &ImGui::GetStyle();
 		style->Alpha = (entityID == m_SelectedEntity) ? 1.0f : 0.5f;
@@ -130,21 +204,74 @@ namespace Relentless
 		{
 			if (ImGui::MenuItem("Delete Entity"))
 			{
-				m_pScene->DestroyEntity(entityID);
-				m_OnEntityDestroyedCallBack(entityID);
-				if (m_SelectedEntity == entityID)
-				{
-					m_SelectedEntity = NULL_ENTITY;
-				}
+				m_EntityScheduledForDestruction = entityID;
 			}
 
 			ImGui::EndPopup();
+		}
+
+		if (ImGui::BeginDragDropSource())
+		{
+			ImGui::SetDragDropPayload("CHILD_PAYLOAD", &entityID, sizeof(entity), ImGuiCond_::ImGuiCond_Once);
+			ImGui::EndDragDropSource();
+		}
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CHILD_PAYLOAD"))
+			{
+				entity toBecomeChild = *(entity*)payLoad->Data;
+				if (entityID != toBecomeChild && !m_pScene->EntityIsDescendant(toBecomeChild, entityID))
+				{
+					m_pScene->ParentEntity(toBecomeChild, entityID);
+
+					//if (mgr.Has<IsChildComponent>(entityToParent))
+					//{
+					//	auto& icc = mgr.Get<IsChildComponent>(entityToParent);
+					//	auto& pc = mgr.Get<ParentComponent>(icc.Parent);
+					//
+					//	for (uint32_t i{ 0u }; i < pc.Children.size(); ++i)
+					//	{
+					//		if (entityToParent == pc.Children[i])
+					//		{
+					//			pc.Children.erase(pc.Children.begin() + i);
+					//			if (pc.Children.empty())
+					//				mgr.Remove<ParentComponent>(icc.Parent);
+					//
+					//			break;
+					//		}
+					//	}
+					//}
+					//auto& icc = mgr.AddOrReplace<IsChildComponent>(entityToParent);
+					//icc.Parent = entityID;
+					//if (mgr.Has<ParentComponent>(entityID))
+					//{
+					//	mgr.Get<ParentComponent>(entityID).Children.push_back(entityToParent);
+					//}
+					//else
+					//{
+					//	mgr.Add<ParentComponent>(entityID).Children.push_back(entityToParent);
+					//}
+					//
+					//if (mgr.Has<RootComponent>(entityToParent))
+					//	mgr.Remove<RootComponent>(entityToParent);
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		if (opened && mgr.Exists(entityID) && mgr.Has<ParentComponent>(entityID))
+		{
+			auto& pc = mgr.Get<ParentComponent>(entityID);
+			for (auto child : pc.Children)
+				DrawEntityNode(child);
 		}
 
 		if (opened)
 			ImGui::TreePop();
 
 		style->Alpha = 1.0f;
+		
+		
 	}
 
 	void SceneHierarchyPanel::SetSelectedEntity(const entity entityID) noexcept

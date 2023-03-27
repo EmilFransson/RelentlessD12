@@ -17,7 +17,7 @@ namespace Relentless
 		uint32_t PostProcessTextureIndex;
 	};
 
-	struct PerFrameData2
+	struct PerFrameDataOpaque
 	{
 		uint32_t cameraDataIndex;
 		uint32_t pointLightStructuredBufferIndex;
@@ -49,9 +49,9 @@ namespace Relentless
 	{
 	public:
 		static void Initialize() noexcept;
-		static void Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, EntityManager& entityManager, Scene& scene) noexcept;
+		static void Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, Scene& scene) noexcept;
 		static void Submit(const entity e) noexcept;
-		static void End(const EntityManager& entityManager) noexcept;
+		static void End(EntityManager& entityManager) noexcept;
 		static void PrepareBackBuffer() noexcept;
 		static void ExecuteCommands() noexcept;
 		static void WaitAndSync() noexcept;

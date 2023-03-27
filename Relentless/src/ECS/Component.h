@@ -5,9 +5,11 @@
 
 namespace Relentless
 {
-	constexpr const uint32_t MAX_ENTITIES = 10'000u;
-	constexpr const uint32_t NULL_ENTITY = MAX_ENTITIES;
-	typedef uint32_t entity;
+	/*! @brief Invalid entity alias. */
+	#define NULL_ENTITY (std::numeric_limits<uint32_t>::max() << 12)
+
+	/*! @brief Opaque entity type. */
+	using entity = uint32_t;
 
 	struct TransformComponent
 	{
@@ -22,6 +24,15 @@ namespace Relentless
 		DirectX::XMFLOAT3 Translation;
 		DirectX::XMFLOAT3 Rotation;
 		DirectX::XMFLOAT3 Scale;
+	};
+
+	struct DirtyTransformComponent
+	{
+		DirtyTransformComponent()
+			: Updates{ D3D12Core::GetNrOfBufferedFrames() }
+		{}
+
+		uint32_t Updates;
 	};
 
 	struct NameComponent
@@ -42,13 +53,21 @@ namespace Relentless
 	struct MeshRendererComponent
 	{
 		MeshRendererComponent()
-			:Color{ 1.0f, 0.0f, 0.0f }
-		{
-			constantBuffer = RLS_NEW ConstantBuffer(sizeof(DirectX::XMFLOAT3));
-		}
+			:Color{ 1.0f, 0.0f, 0.0f },
+			 constantBufferID{ static_cast<size_t>(-1) }
+		{}
 
 		DirectX::XMFLOAT3 Color;
-		ConstantBuffer* constantBuffer;
+		size_t constantBufferID;
+	};
+
+	struct DirtyMeshRendererComponent
+	{
+		DirtyMeshRendererComponent()
+			: Updates{ D3D12Core::GetNrOfBufferedFrames() }
+		{}
+
+		uint32_t Updates;
 	};
 
 	struct ForwardPassComponent
@@ -123,5 +142,34 @@ namespace Relentless
 		float ClippingPlaneFar;
 		DirectX::XMFLOAT4 ClearColor;
 		bool IsMainCamera;
+	};
+
+	struct RootComponent
+	{
+		//ID
+	};
+
+	struct ParentComponent
+	{
+		std::vector<entity> Children;
+	};
+
+	struct IsChildComponent
+	{
+		explicit IsChildComponent() noexcept
+			: Parent{ NULL_ENTITY },
+			LocalTranslation{ 0.0f, 0.0f, 0.0f },
+			LocalRotation{ 0.0f, 0.0f, 0.0f },
+			LocalScale{ 1.0f, 1.0f, 1.0f }
+		{
+			DirectX::XMStoreFloat4x4(&LocalTransform, DirectX::XMMatrixIdentity());
+		} 
+
+		entity Parent;
+
+		DirectX::XMFLOAT4X4 LocalTransform;
+		DirectX::XMFLOAT3 LocalTranslation;
+		DirectX::XMFLOAT3 LocalRotation;
+		DirectX::XMFLOAT3 LocalScale;
 	};
 }

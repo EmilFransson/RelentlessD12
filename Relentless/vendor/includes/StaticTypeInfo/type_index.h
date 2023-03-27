@@ -20,7 +20,7 @@ namespace static_type_info {
   }  // namespace detail
 
   using TypeIndex = decltype(&detail::IDGenerator<void>::id);
-  template <class T> constexpr TypeIndex getTypeIndex() { return &detail::IDGenerator<T>::id; }
+  template <class T> consteval TypeIndex getTypeIndex() { return &detail::IDGenerator<T>::id; }
 
 }  // namespace static_type_info
 

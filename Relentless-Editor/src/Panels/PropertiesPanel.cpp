@@ -89,20 +89,85 @@ namespace Relentless
 		if (opened)
 		{
 			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
-			bool changedValues = DrawVec3Control("Position", tc.Translation, 0.06f);
+			bool changedValues = true;
+			
+			changedValues = DrawVec3Control("Position", tc.Translation, 0.06f);
 			ImGui::Separator();
 			changedValues |= DrawVec3Control("Rotation", tc.Rotation, 0.03f);
 			ImGui::Separator();
 			changedValues |= DrawVec3Control("Scale", tc.Scale, 0.03f, 1.0f, 0.01f);
 			
+
 			if (changedValues)
 			{
-				DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc.Scale))
-					* DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(tc.Rotation.x))
-					* DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(tc.Rotation.y))
-					* DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(tc.Rotation.z))
+				float angleX = DirectX::XMConvertToRadians(tc.Rotation.x);
+				float angleY = DirectX::XMConvertToRadians(tc.Rotation.y);
+				float angleZ = DirectX::XMConvertToRadians(tc.Rotation.z);
+
+				DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc.Scale)) 
+					* DirectX::XMMatrixRotationX(angleX) * DirectX::XMMatrixRotationY(angleY) * DirectX::XMMatrixRotationZ(angleZ) 
 					* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc.Translation));
 				DirectX::XMStoreFloat4x4(&tc.Transform, world);
+
+				if (m_pScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
+				{
+					auto& icc = m_pScene->GetEntityManager().Get<IsChildComponent>(m_SelectedEntity);
+					auto& childTransformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
+					auto& parentTransformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(icc.Parent);
+
+					DirectX::XMMATRIX childWorldMatrix = DirectX::XMLoadFloat4x4(&childTransformComponent.Transform);
+					DirectX::XMMATRIX inverseParentWorldMatrix = DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform));
+					DirectX::XMMATRIX childLocalMatrix = childWorldMatrix * inverseParentWorldMatrix;
+					DirectX::XMStoreFloat4x4(&icc.LocalTransform, childLocalMatrix);
+					ImGuizmo::DecomposeMatrixToComponents
+					(
+						&icc.LocalTransform.m[0][0],
+						&icc.LocalTranslation.x,
+						&icc.LocalRotation.x,
+						&icc.LocalScale.x
+					);
+				}
+
+				if (m_pScene->GetEntityManager().Has<ParentComponent>(m_SelectedEntity))
+				{
+					std::function<void(entity, DirectX::XMFLOAT4X4&)> SceneGraph;
+					SceneGraph = [&](entity entityID, DirectX::XMFLOAT4X4& accumulatedT) 
+					{
+						auto& childComponent = m_pScene->GetEntityManager().Get<IsChildComponent>(entityID);
+						auto& childTransformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(entityID);
+
+						const float angleInRadiansX = DirectX::XMConvertToRadians(childComponent.LocalRotation.x);
+						const float angleInRadiansY = DirectX::XMConvertToRadians(childComponent.LocalRotation.y);
+						const float angleInRadiansZ = DirectX::XMConvertToRadians(childComponent.LocalRotation.z);
+					
+						DirectX::XMMATRIX childLocalTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childComponent.LocalScale))
+							* DirectX::XMMatrixRotationX(angleInRadiansX)
+							* DirectX::XMMatrixRotationY(angleInRadiansY)
+							* DirectX::XMMatrixRotationZ(angleInRadiansZ)
+							* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childComponent.LocalTranslation));
+						DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, childLocalTransform);
+					
+						DirectX::XMMATRIX accumulatedTransformAsXMMatrix = DirectX::XMLoadFloat4x4(&accumulatedT);
+					
+						DirectX::XMStoreFloat4x4(&childTransformComponent.Transform, DirectX::XMMatrixMultiply(childLocalTransform, accumulatedTransformAsXMMatrix));
+						ImGuizmo::DecomposeMatrixToComponents(*childTransformComponent.Transform.m, &childTransformComponent.Translation.x, &childTransformComponent.Rotation.x, &childTransformComponent.Scale.x);
+						//Child is a parent:
+						if (m_pScene->GetEntityManager().Has<ParentComponent>(entityID))
+						{
+							auto& pc = m_pScene->GetEntityManager().Get<ParentComponent>(entityID);
+							for (auto child : pc.Children)
+							{
+								SceneGraph(child, childTransformComponent.Transform);
+							}
+						}
+					};
+					
+					auto& children = m_pScene->GetEntityManager().Get<ParentComponent>(m_SelectedEntity).Children;
+					for (auto child : children)
+					{
+						SceneGraph(child, tc.Transform);
+					}
+				}
 
 				//Temporary for now!
 				if (m_pScene->GetEntityManager().HasAnyOf<DirectionalLightComponent, PointLightComponent>(m_SelectedEntity))
@@ -112,6 +177,29 @@ namespace Relentless
 			}
 			
 			ImGui::TreePop();
+		}
+
+		if (m_pScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
+		{
+			const bool opened = ImGui::TreeNodeEx((void*)typeid(IsChildComponent).hash_code(), flags, "Local Transform");
+			if (opened)
+			{
+				auto& childComponent = m_pScene->GetEntityManager().Get<IsChildComponent>(m_SelectedEntity);
+
+				bool changedValues = true;
+				changedValues = DrawVec3Control("Position", childComponent.LocalTranslation, 0.06f);
+				ImGui::Separator();
+				changedValues |= DrawVec3Control("Rotation", childComponent.LocalRotation, 0.03f);
+				ImGui::Separator();
+				changedValues |= DrawVec3Control("Scale", childComponent.LocalScale, 0.03f, 1.0f, 0.01f);
+
+				if (changedValues)
+				{
+
+				}
+
+				ImGui::TreePop();
+			}
 		}
 
 		DrawComponentNode<DirectionalLightComponent>("Light", [this]()
@@ -197,7 +285,10 @@ namespace Relentless
 		DrawComponentNode<MeshRendererComponent>("Mesh Renderer", [this]()
 			{
 				auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(m_SelectedEntity);
-				ImGui::ColorEdit3("Color", &mrc.Color.x);
+				if (ImGui::ColorEdit3("Color", &mrc.Color.x))
+				{
+					m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+				}
 			});
 
 		DrawComponentNode<CameraComponent>("Camera", [this]()
@@ -224,7 +315,11 @@ namespace Relentless
 			if (ImGui::MenuItem("Mesh Renderer"))
 			{
 				if (!m_pScene->GetEntityManager().Has<MeshRendererComponent>(m_SelectedEntity))
-					m_pScene->GetEntityManager().Add<MeshRendererComponent>(m_SelectedEntity);
+				{
+					auto& mrc = m_pScene->GetEntityManager().Add<MeshRendererComponent>(m_SelectedEntity);
+					mrc.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
+					m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+				}
 				else
 				{
 					alreadyHasComponent = true;
