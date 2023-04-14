@@ -17,6 +17,8 @@ namespace std
 
 namespace Relentless
 {
+	inline static std::mutex g_LoadMutex;
+
 	typedef UUID ResourceID;
 	class AssetManager
 	{
@@ -30,8 +32,9 @@ namespace Relentless
 
 		template<typename AssetType>
 		requires std::is_base_of_v<IResource, AssetType>
-		const ResourceID& Load(const std::string& contextName, void* pSpecification) noexcept
+		const ResourceID& Load(const std::string& contextName, void* pSpecification = nullptr) noexcept
 		{
+			const std::lock_guard<std::mutex> lock(g_LoadMutex);
 			if (!m_PathToResourceIDMap.contains(contextName))
 			{
 				UUID uuID;
@@ -41,7 +44,11 @@ namespace Relentless
 				::UuidCreate(&uuID);
 				#endif
 				m_PathToResourceIDMap[contextName] = uuID;
-				LoadInternal<AssetType>(uuID, pSpecification);
+				if (pSpecification)
+					LoadInternal<AssetType>(uuID, pSpecification);
+				else
+					LoadInternal<AssetType>(uuID, (void*)contextName.c_str());
+
 				MemoryManager::Get().GetUploadBuffer()->Upload();
 			}
 			return m_PathToResourceIDMap[contextName];
@@ -53,6 +60,21 @@ namespace Relentless
 		{
 			RLS_ASSERT(m_Assets.contains(assetID), "Asset has not been loaded.");
 			return static_cast<AssetType*>(m_Assets[assetID].get());
+		}
+
+		[[nodiscard]] bool Exists(const ResourceID& uuID) const noexcept
+		{
+			return m_Assets.contains(uuID);
+		}
+
+		[[nodiscard]] const std::string& GetAssetName(const ResourceID& uuID) const noexcept
+		{
+			RLS_ASSERT(m_Assets.contains(uuID), "Resource does not exist.");
+			for (const auto& [name, ID] : m_PathToResourceIDMap)
+			{
+				if (ID == uuID)
+					return name;
+			}
 		}
 	private:
 		template<typename AssetType>
@@ -75,6 +97,14 @@ namespace Relentless
 			IndexBuffer::Specification* pIndexBufferSpecification = static_cast<IndexBuffer::Specification*>(pSpecification);
 			m_Assets[uuID] = std::move(std::make_shared<IndexBuffer>(pIndexBufferSpecification));
 		}
+
+		template<>
+		void LoadInternal<Texture2D>(const ResourceID& uuID, void* fileName)
+		{
+			RLS_ASSERT(fileName, "FileName is NULL");
+			m_Assets[uuID] = std::move(std::make_shared<Texture2D>((char*)fileName));
+		}
+
 	private:
 		static AssetManager s_instance;
 		std::unordered_map<ResourceID, std::shared_ptr<IResource>> m_Assets;

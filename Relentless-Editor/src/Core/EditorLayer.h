@@ -22,11 +22,12 @@ namespace Relentless
 		virtual void OnUpdate(const float deltaTime) noexcept override final;
 		virtual void OnRender() noexcept override final;
 	private:
+		void LoadStarterMeshes() noexcept;
 		void OnSceneViewportChanged() noexcept;
 		void DestroySelectedEntity() noexcept;
 		void CopySelectedEntity() noexcept;
-		[[nodiscard]] DirectX::XMFLOAT3 GetSummedHierarchyTranslation(entity entityID, DirectX::XMFLOAT3 translation) noexcept;
-		[[nodiscard]] uint32_t GetEntityHierarchySize(entity entityID) noexcept;
+		void ManipulateTransformGizmo() noexcept;
+
 	private:
 		ImVec2 m_ViewportPanelSize;
 		bool m_SceneViewportChanged;

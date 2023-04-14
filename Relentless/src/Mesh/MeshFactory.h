@@ -11,6 +11,11 @@ namespace Relentless
 		std::vector<SimpleVertex> Vertices;
 		std::vector<uint32_t> Indices;
 	};
+	struct Model
+	{
+		std::vector<Mesh> Meshes;
+
+	};
 	class MeshFactory
 	{
 	public:

@@ -5,6 +5,9 @@
 //Logging:
 #include <src/Core/Log.h>
 
+//Utility:
+#include <src/Utility/FileDialogs.h>
+
 //Events:
 #include <src/ImGui/ImguiLayer.h>
 #include <src/EventSystem/Layer.h>

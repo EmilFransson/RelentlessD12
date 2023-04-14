@@ -128,111 +128,7 @@ break;
 
 		if (m_SelectedEntity != NULL_ENTITY && m_CurrentGizmoType != GizmoType::NONE)
 		{
-			ImGuizmo::SetOrthographic(false);
-			ImGuizmo::SetDrawlist();
-			ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
-
-			auto& transformComponent = m_Scene.GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
-			DirectX::XMFLOAT4X4 viewMatrix = m_pEditorCamera->GetViewMatrix();
-			DirectX::XMFLOAT4X4 projectionMatrix = m_pEditorCamera->GetProjectionMatrix();
-
-			static DirectX::XMFLOAT3 snapTranslationScale{ 1.0f, 1.0f, 1.0f };
-			static float snapRotation{ 10.0f };
-			if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
-				ImGuizmo::Manipulate(*viewMatrix.m, *projectionMatrix.m, (ImGuizmo::OPERATION)m_CurrentGizmoType, ImGuizmo::LOCAL, *transformComponent.Transform.m, nullptr, (m_CurrentGizmoType == GizmoType::ROTATE) ? &snapRotation : &snapTranslationScale.x);
-			else
-				ImGuizmo::Manipulate(*viewMatrix.m, *projectionMatrix.m, (ImGuizmo::OPERATION)m_CurrentGizmoType, ImGuizmo::LOCAL, *transformComponent.Transform.m);
-			if (ImGuizmo::IsUsing())
-			{
-				float translation[3] = { 0 };
-				float rotation[3] = { 0 };
-				float scale[3] = { 0 };
-
-				ImGuizmo::DecomposeMatrixToComponents(*transformComponent.Transform.m, translation, rotation, scale);
-				DirectX::XMFLOAT3 rotation2(rotation);
-				DirectX::XMVECTOR deltaRot = DirectX::XMVectorSubtract(DirectX::XMLoadFloat3(&rotation2), DirectX::XMLoadFloat3(&transformComponent.Rotation));
-
-				transformComponent.Translation.x = translation[0];
-				transformComponent.Translation.y = translation[1];
-				transformComponent.Translation.z = translation[2];
-
-				transformComponent.Scale.x = scale[0];
-				transformComponent.Scale.y = scale[1];
-				transformComponent.Scale.z = scale[2];
-
-				DirectX::XMVECTOR transformRotationAsVector = DirectX::XMLoadFloat3(&transformComponent.Rotation);
-				transformRotationAsVector = DirectX::XMVectorAdd(transformRotationAsVector, deltaRot);
-				DirectX::XMStoreFloat3(&transformComponent.Rotation, transformRotationAsVector);
-
-				float angleX = DirectX::XMConvertToRadians(transformComponent.Rotation.x);
-				float angleY = DirectX::XMConvertToRadians(transformComponent.Rotation.y);
-				float angleZ = DirectX::XMConvertToRadians(transformComponent.Rotation.z);
-
-				DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.Scale)) * DirectX::XMMatrixRotationX(angleX) * DirectX::XMMatrixRotationY(angleY) * DirectX::XMMatrixRotationZ(angleZ) * DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.Translation));
-				DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
-
-				if (m_Scene.GetEntityManager().HasAnyOf<DirectionalLightComponent, PointLightComponent>(m_SelectedEntity))
-					m_Scene.GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
-
-				//if (m_Scene.GetEntityManager().Has<ChildComponent>(m_SelectedEntity))
-				//{
-				//	auto& cc = m_Scene.GetEntityManager().Get<ChildComponent>(m_SelectedEntity);
-				//	auto& ptc = m_Scene.GetEntityManager().Get<TransformComponent>(cc.Parent);
-				//
-				//	DirectX::XMMATRIX inverseParentMatrix = DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&ptc.Transform));
-				//	DirectX::XMStoreFloat4x4(&transformComponent.LocalTransform, DirectX::XMMatrixMultiply(world, inverseParentMatrix));
-				//	ImGuizmo::DecomposeMatrixToComponents
-				//	(
-				//		*transformComponent.LocalTransform.m,
-				//		&transformComponent.LocalTranslation.x,
-				//		&transformComponent.LocalRotation.x,
-				//		&transformComponent.LocalScale.x
-				//	);
-				//}
-
-
-
-				//m_Scene.GetEntityManager().Collect<TransformComponent, RootComponent>().Do([&](Relentless::entity entityID, TransformComponent& tc, RootComponent& rc)
-				//	{
-				//		std::function<void(Relentless::entity, DirectX::XMFLOAT4X4&)> SceneGraph;
-				//SceneGraph = [&](Relentless::entity entityID, DirectX::XMFLOAT4X4& accumulatedT)
-				//{
-				//	auto& childTC = m_Scene.GetEntityManager().Get<TransformComponent>(entityID);
-				//
-				//	const float angleInRadiansX = DirectX::XMConvertToRadians(childTC.LocalRotation.x);
-				//	const float angleInRadiansY = DirectX::XMConvertToRadians(childTC.LocalRotation.y);
-				//	const float angleInRadiansZ = DirectX::XMConvertToRadians(childTC.LocalRotation.z);
-				//
-				//	DirectX::XMMATRIX childLocalTransform = //DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childTC.LocalScale))
-				//		//* 
-				//		DirectX::XMMatrixRotationX(angleInRadiansX)
-				//		* DirectX::XMMatrixRotationY(angleInRadiansY)
-				//		* DirectX::XMMatrixRotationZ(angleInRadiansZ)
-				//		* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childTC.LocalTranslation));
-				//	DirectX::XMStoreFloat4x4(&childTC.LocalTransform, childLocalTransform);
-				//
-				//	DirectX::XMMATRIX accumulatedTransformAsXMMatrix = DirectX::XMLoadFloat4x4(&accumulatedT);
-				//
-				//	DirectX::XMStoreFloat4x4(&childTC.Transform, DirectX::XMMatrixMultiply(childLocalTransform, accumulatedTransformAsXMMatrix));
-				//	ImGuizmo::DecomposeMatrixToComponents(*childTC.Transform.m, &childTC.Translation.x, &childTC.Rotation.x, &childTC.Scale.x);
-				//	//Child is a parent:
-				//	if (m_Scene.GetEntityManager().Has<ParentComponent>(entityID))
-				//	{
-				//		auto& pc = m_Scene.GetEntityManager().Get<ParentComponent>(entityID);
-				//		for (auto child : pc.Children)
-				//		{
-				//			SceneGraph(child, childTC.Transform);
-				//		}
-				//	}
-				//};
-				//
-				//for (auto child : rc.Children)
-				//{
-				//	SceneGraph(child, tc.Transform);
-				//}
-				//	});
-
-			}
+			ManipulateTransformGizmo();
 		}
 
 		vMin = ImGui::GetWindowContentRegionMin();
@@ -273,11 +169,24 @@ break;
 		m_MetricsPanel.OnImGuiRender();
 	}
 
+	struct DATA
+	{
+		DATA(const std::string& aa, double bb, double cc, double dd)
+			: a{aa}, b{bb}, c{cc}, d{dd}
+		{
+		}
+
+		std::string a;
+		double b;
+		double c;
+		double d;
+	};
+
 	void EditorLayer::OnAttach() noexcept
 	{
+		LoadStarterMeshes();
 		m_pEditorCamera = std::move(PerspectiveCamera::Create(DirectX::XMVECTORF32{ 5.0f, 5.0f, -5.0f }, static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y)));
 		m_Scene.CreateLight("Directional Light", LightType::Directional);
-
 		{
 			auto ground = m_Scene.CreateShape<Shape::Cube>();
 			m_Scene.GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
@@ -285,22 +194,12 @@ break;
 
 			auto& tc = m_Scene.GetEntityManager().Get<TransformComponent>(ground);
 			tc.Scale = DirectX::XMFLOAT3{ 6.4f, 0.1f, 6.4f };
-			m_Scene.GetEntityManager().Add<DirtyTransformComponent>(ground);
 		}
 
 		{
-			auto cube = m_Scene.CreateShape<Shape::Cube>();
+			auto cube = m_Scene.CreateShape<Shape::Quad>();
 			auto& tc = m_Scene.GetEntityManager().Get<TransformComponent>(cube);
 			tc.Translation = { 0.0f, 0.55f, 0.0f };
-
-			m_Scene.GetEntityManager().Add<DirtyTransformComponent>(cube);
-		}
-
-		{
-			auto cube = m_Scene.CreateShape<Shape::Cube>();
-			m_Scene.GetEntityManager().Get<MeshRendererComponent>(cube).Color = {1.0f, 0.0f, 0.0f};
-			auto& tc = m_Scene.GetEntityManager().Get<TransformComponent>(cube);
-			tc.Translation = { -20.0f, 0.0f, 0.0f };
 		}
 
 		m_SceneHierarchyPanel.SetActiveScene(&m_Scene);
@@ -318,59 +217,6 @@ break;
 		m_PropertiesPanel.SetActiveScene(&m_Scene);
 		MemoryManager::Get().GetUploadBuffer()->Upload();
 		m_Scene.SetViewportPanelSize(m_ViewportPanelSize);
-
-		m_Scene.GetEntityManager().Collect<TransformComponent>().Do([&](entity entityID, TransformComponent& tc)
-			{
-				const float angleInRadiansX = DirectX::XMConvertToRadians(tc.Rotation.x);
-				const float angleInRadiansY = DirectX::XMConvertToRadians(tc.Rotation.y);
-				const float angleInRadiansZ = DirectX::XMConvertToRadians(tc.Rotation.z);
-
-				DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc.Scale))
-					* DirectX::XMMatrixRotationX(angleInRadiansX)
-					* DirectX::XMMatrixRotationY(angleInRadiansY)
-					* DirectX::XMMatrixRotationZ(angleInRadiansZ)
-					* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc.Translation));
-				DirectX::XMStoreFloat4x4(&tc.Transform, world);
-			});
-
-		//m_Scene.GetEntityManager().Collect<TransformComponent, RootComponent>().Do([&](entity entityID, TransformComponent& tc, RootComponent& rc)
-		//	{
-		//		std::function<void(entity, DirectX::XMFLOAT4X4&)> SceneGraph;
-		//		SceneGraph = [&](entity entityID, DirectX::XMFLOAT4X4& accumulatedT) 
-		//		{
-		//			auto& childTC = m_Scene.GetEntityManager().Get<TransformComponent>(entityID);
-		//
-		//			const float angleInRadiansX = DirectX::XMConvertToRadians(childTC.LocalRotation.x);
-		//			const float angleInRadiansY = DirectX::XMConvertToRadians(childTC.LocalRotation.y);
-		//			const float angleInRadiansZ = DirectX::XMConvertToRadians(childTC.LocalRotation.z);
-		//
-		//			DirectX::XMMATRIX childLocalTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childTC.LocalScale))
-		//				* DirectX::XMMatrixRotationX(angleInRadiansX)
-		//				* DirectX::XMMatrixRotationY(angleInRadiansY)
-		//				* DirectX::XMMatrixRotationZ(angleInRadiansZ)
-		//				* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childTC.LocalTranslation));
-		//			DirectX::XMStoreFloat4x4(&childTC.LocalTransform, childLocalTransform);
-		//
-		//			DirectX::XMMATRIX accumulatedTransformAsXMMatrix = DirectX::XMLoadFloat4x4(&accumulatedT);
-		//
-		//			DirectX::XMStoreFloat4x4(&childTC.Transform, DirectX::XMMatrixMultiply(childLocalTransform, accumulatedTransformAsXMMatrix));
-		//			ImGuizmo::DecomposeMatrixToComponents(*childTC.Transform.m, &childTC.Translation.x, &childTC.Rotation.x, &childTC.Scale.x);
-		//			//Child is a parent:
-		//			if (m_Scene.GetEntityManager().Has<ParentComponent>(entityID))
-		//			{
-		//				auto& pc = m_Scene.GetEntityManager().Get<ParentComponent>(entityID);
-		//				for (auto child : pc.Children)
-		//				{
-		//					SceneGraph(child, childTC.Transform);
-		//				}
-		//			}
-		//		};
-		//
-		//		for (auto child : rc.Children)
-		//		{
-		//			SceneGraph(child, tc.Transform);
-		//		}
-		//	});
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -426,6 +272,57 @@ break;
 		Renderer3D::End(m_Scene.GetEntityManager());
 	}
 
+	void EditorLayer::LoadStarterMeshes() noexcept
+	{
+		auto& assetManager = AssetManager::Get();
+		std::vector<std::string> starterMeshes
+		{
+			"Capsule.gltf",
+			"Cone.gltf",
+			"Cylinder.gltf",
+			"IcoSphere.obj",
+			"Plane.gltf",
+			"Quad.gltf",
+			"Sphere.obj",
+			"Torus.obj",
+			"Triangle.gltf",
+			"UtahTeapot.gltf"
+		};
+
+
+		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Meshes/");
+		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMesh)
+			{
+				std::string fullMeshPath(meshPath + std::string(starterMesh));
+				std::string fileName = starterMesh.substr(0, starterMesh.find_first_of("."));
+				if (!assetManager.HasLoaded(fileName + " Vertex Buffer"))
+				{
+					MeshFactory meshFactory;
+					auto& starterMesh = meshFactory.LoadFromFile(fullMeshPath)[0];
+
+					VertexBuffer::Specification vbSpec
+					{
+						.NrOfVertices = (uint32_t)starterMesh.Vertices.size(),
+						.TotalSizeInBytes = (uint32_t)starterMesh.Vertices.size() * sizeof(SimpleVertex),
+						.Stride = sizeof(SimpleVertex),
+						.pBuffer = (void*)starterMesh.Vertices.data(),
+						.Name = fileName + std::string(" Vertex Buffer")
+					};
+
+					IndexBuffer::Specification ibSpec
+					{
+						.NrOfIndices = (uint32_t)starterMesh.Indices.size(),
+						.TotalSizeInBytes = (uint32_t)starterMesh.Indices.size() * sizeof(uint32_t),
+						.Stride = sizeof(uint32_t),
+						.pBuffer = (void*)starterMesh.Indices.data(),
+						.Name = fileName + std::string(" Index Buffer")
+					};
+					AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
+					AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
+				}
+			});
+	}
+
 	void EditorLayer::OnSceneViewportChanged() noexcept
 	{
 		m_ViewportPanelSize.x = std::max(1.0f, m_ViewportPanelSize.x);
@@ -468,7 +365,10 @@ break;
 		if (mgr.Has<MeshFilterComponent>(m_SelectedEntity))
 		{
 			auto& mfc = mgr.Get<MeshFilterComponent>(m_SelectedEntity);
-			mgr.Add<MeshFilterComponent>(newEntity, mfc.VertexBufferID, mfc.IndexBufferID);
+			auto& mfcNew = mgr.Add<MeshFilterComponent>(newEntity);
+
+			mfcNew.VertexBufferID = mfc.VertexBufferID;
+			mfcNew.IndexBufferID = mfc.IndexBufferID;
 		}
 		if (mgr.Has<MeshRendererComponent>(m_SelectedEntity))
 		{
@@ -487,8 +387,6 @@ break;
 			m_Scene.GetLightManager().AllocateDirectionalLight(newEntity);
 			newDlc.Color = dlc.Color;
 			newDlc.Intensity = dlc.Intensity;
-
-			m_Scene.GetEntityManager().Add<DirtyLightComponent>(newEntity);
 		}
 		else if (mgr.Has<PointLightComponent>(m_SelectedEntity))
 		{
@@ -497,8 +395,6 @@ break;
 			m_Scene.GetLightManager().AllocatePointLight(newEntity);
 			newPlc.Color = plc.Color;
 			newPlc.Intensity = plc.Intensity;
-
-			m_Scene.GetEntityManager().Add<DirtyLightComponent>(newEntity);
 		}
 
 		m_SelectedEntity = newEntity;
@@ -506,39 +402,87 @@ break;
 		m_PropertiesPanel.SetSelectedEntity(m_SelectedEntity);
 	}
 
-	DirectX::XMFLOAT3 EditorLayer::GetSummedHierarchyTranslation(entity entityID, DirectX::XMFLOAT3 translation) noexcept
+	void EditorLayer::ManipulateTransformGizmo() noexcept
 	{
-		if (m_Scene.GetEntityManager().Has<ParentComponent>(entityID))
+		ImGuizmo::SetOrthographic(false);
+		ImGuizmo::SetDrawlist();
+		ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
+
+		auto& transformComponent = m_Scene.GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
+
+		static DirectX::XMFLOAT3 snapTranslationScale{ 1.0f, 1.0f, 1.0f };
+		static float snapRotation{ 10.0f };
+
+		DirectX::XMFLOAT4X4 visualizationMatrix = m_Scene.GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Transform;
+		float translationBefore[3]	= { 0.0f };
+		float rotationBefore[3]		= { 0.0f };
+		float scaleBefore[3]		= { 0.0f };
+
+		ImGuizmo::DecomposeMatrixToComponents(*visualizationMatrix.m, translationBefore, rotationBefore, scaleBefore);
+
+		ImGuizmo::MODE mode;
+		if (!m_Scene.GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
+			mode = ImGuizmo::WORLD;
+		else
+			mode = (ImGuizmo::OPERATION)m_CurrentGizmoType == ImGuizmo::OPERATION::SCALE ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
+
+		if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+			ImGuizmo::Manipulate(*m_pEditorCamera->GetViewMatrix().m, *m_pEditorCamera->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m, nullptr, (m_CurrentGizmoType == GizmoType::ROTATE) ? &snapRotation : &snapTranslationScale.x);
+		else
 		{
-			auto& cc = m_Scene.GetEntityManager().Get<ParentComponent>(entityID);
-			
-			for (auto child : cc.Children)
-			{
-				auto tr = GetSummedHierarchyTranslation(child, m_Scene.GetEntityManager().Get<TransformComponent>(child).Translation);
-				translation.x += tr.x;
-				translation.y += tr.y;
-				translation.z += tr.z;
-			}
-			return translation;
+			ImGuizmo::Manipulate(*m_pEditorCamera->GetViewMatrix().m, *m_pEditorCamera->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m);
 		}
-		return m_Scene.GetEntityManager().Get<TransformComponent>(entityID).Translation;
-	}
-
-	uint32_t EditorLayer::GetEntityHierarchySize(entity entityID) noexcept
-	{
-		uint32_t count = 0u;
-		if (m_Scene.GetEntityManager().Has<ParentComponent>(entityID))
+		if (ImGuizmo::IsUsing())
 		{
-			auto& pc = m_Scene.GetEntityManager().Get<ParentComponent>(entityID);
-			count += static_cast<uint32_t>(pc.Children.size());
+			float translationAfter[3]	= { 0.0f };
+			float rotationAfter[3]		= { 0.0f };
+			float scaleAfter[3]			= { 0.0f };
 
-			for (auto child : pc.Children)
+			ImGuizmo::DecomposeMatrixToComponents(*visualizationMatrix.m, translationAfter, rotationAfter, scaleAfter);
+		
+			float translationOffsetX = translationAfter[0] - translationBefore[0];
+			float translationOffsetY = translationAfter[1] - translationBefore[1];
+			float translationOffsetZ = translationAfter[2] - translationBefore[2];
+
+			float rotationOffsetX = rotationAfter[0] - rotationBefore[0];
+			float rotationOffsetY = rotationAfter[1] - rotationBefore[1];
+			float rotationOffsetZ = rotationAfter[2] - rotationBefore[2];
+
+			float scaleOffsetX = scaleAfter[0] - scaleBefore[0];
+			float scaleOffsetY = scaleAfter[1] - scaleBefore[1];
+			float scaleOffsetZ = scaleAfter[2] - scaleBefore[2];
+
+			if (m_Scene.GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
 			{
-				count += GetEntityHierarchySize(child);
-			}
-		}
+				auto& parentScale = m_Scene.GetEntityManager().Get<TransformComponent>(m_Scene.GetEntityManager().Get<IsChildComponent>(m_SelectedEntity).Parent).Scale;
+				
+				translationOffsetX /= parentScale.x;
+				translationOffsetY /= parentScale.y;
+				translationOffsetZ /= parentScale.z;
 
-		//Last child in hierarchy:
-		return count;
+				rotationOffsetX /= parentScale.x;
+				rotationOffsetY /= parentScale.y;
+				rotationOffsetZ /= parentScale.z;
+
+				scaleOffsetX /= parentScale.x;
+				scaleOffsetY /= parentScale.y;
+				scaleOffsetZ /= parentScale.z;
+
+			}
+
+			transformComponent.Translation.x += translationOffsetX;
+			transformComponent.Translation.y += translationOffsetY;
+			transformComponent.Translation.z += translationOffsetZ;
+
+			transformComponent.Scale.x += std::clamp(scaleOffsetX, -0.5f, 0.5f);
+			transformComponent.Scale.y += std::clamp(scaleOffsetY, -0.5f, 0.5f);
+			transformComponent.Scale.z += std::clamp(scaleOffsetZ, -0.5f, 0.5f);
+
+			transformComponent.Rotation.x += rotationOffsetX;
+			transformComponent.Rotation.y += rotationOffsetY;
+			transformComponent.Rotation.z += rotationOffsetZ;
+
+			m_Scene.GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
+		}
 	}
 }

@@ -2,6 +2,10 @@
 #include "../D3D12Core.h"
 #include "..\MemoryManager.h"
 #include "../../Core/Utility.h"
+
+#include "../../../vendor/includes/DirectXTK/WICTextureLoader.h"
+#include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
+
 namespace Relentless
 {
 	Texture::Texture(const RenderTextureSpecification& textureSpecification, const std::string& name) noexcept
@@ -47,7 +51,7 @@ namespace Relentless
 		resourceDescriptor.Format = textureSpecification.Format;
 		resourceDescriptor.SampleDesc = { textureSpecification.MultiSampleCount, 0u };
 		resourceDescriptor.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		resourceDescriptor.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+		resourceDescriptor.Flags = textureSpecification.Flags;
 	
 		m_CurrentState = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
@@ -64,16 +68,19 @@ namespace Relentless
 			D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
 			&resourceDescriptor,
 			m_CurrentState,
-			&clearValue,
+			textureSpecification.Flags  == D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE ? nullptr : &clearValue,
 			IID_PPV_ARGS(&m_pResource)
 		));
 
-		D3D12_RENDER_TARGET_VIEW_DESC renderTargetViewDescriptor = {};
-		renderTargetViewDescriptor.Format = textureSpecification.Format;
-		renderTargetViewDescriptor.ViewDimension = textureSpecification.MultiSampleCount > 1u ? D3D12_RTV_DIMENSION_TEXTURE2DMS : D3D12_RTV_DIMENSION_TEXTURE2D;
+		if ((textureSpecification.Flags & D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) != 0)
+		{
+			D3D12_RENDER_TARGET_VIEW_DESC renderTargetViewDescriptor = {};
+			renderTargetViewDescriptor.Format = textureSpecification.Format;
+			renderTargetViewDescriptor.ViewDimension = textureSpecification.MultiSampleCount > 1u ? D3D12_RTV_DIMENSION_TEXTURE2DMS : D3D12_RTV_DIMENSION_TEXTURE2D;
 
-		m_RTVDescriptorHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::RTV);
-		DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(m_pResource.Get(), &renderTargetViewDescriptor, m_RTVDescriptorHandle.CPUHandle));
+			m_RTVDescriptorHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::RTV);
+			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(m_pResource.Get(), &renderTargetViewDescriptor, m_RTVDescriptorHandle.CPUHandle));
+		}
 	
 		if (textureSpecification.CreateSRV)
 		{
@@ -156,5 +163,48 @@ namespace Relentless
 		textureSpecification.ClearColor.w = DirectX::XMVectorGetW(convertedColor);
 
 		return std::make_shared<ReadbackTexture>(textureSpecification, name);
+	}
+
+	Texture2D::Texture2D(const std::string& fileName) noexcept
+	{
+		DirectX::ResourceUploadBatch resourceUpload(D3D12Core::GetDevice().Get());
+
+		std::filesystem::path fullPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Textures/") + fileName;
+
+		resourceUpload.Begin();
+
+		DXCall(DirectX::CreateWICTextureFromFile(
+			D3D12Core::GetDevice().Get(),
+			resourceUpload, 
+			fullPath.c_str(),
+			&m_pResource, 
+			true)
+		);
+
+		// Upload the resources to the GPU.
+		auto uploadResourcesFinished = resourceUpload.End(D3D12Core::GetCommandQueue().Get());
+
+		// Wait for the upload thread to terminate
+		uploadResourcesFinished.wait();
+
+		auto textureDescriptor = m_pResource->GetDesc();
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDescriptor = {};
+		shaderResourceViewDescriptor.Format = textureDescriptor.Format;
+		shaderResourceViewDescriptor.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		shaderResourceViewDescriptor.Texture2D.MipLevels = textureDescriptor.MipLevels;
+		shaderResourceViewDescriptor.Texture2D.MostDetailedMip = 0;
+		shaderResourceViewDescriptor.Texture2D.ResourceMinLODClamp = 0.0f;
+		shaderResourceViewDescriptor.Texture2D.PlaneSlice = 0u;
+		shaderResourceViewDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+		m_SRVDescriptorHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::SRV);
+		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_SRVDescriptorHandle.CPUHandle));
+		
+	}
+
+	std::shared_ptr<Texture2D> Texture2D::Create(const std::string& fileName) noexcept
+	{
+		return std::make_shared<Texture2D>(fileName);
 	}
 }

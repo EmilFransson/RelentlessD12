@@ -97,84 +97,8 @@ namespace Relentless
 			ImGui::Separator();
 			changedValues |= DrawVec3Control("Scale", tc.Scale, 0.03f, 1.0f, 0.01f);
 			
-
 			if (changedValues)
-			{
-				float angleX = DirectX::XMConvertToRadians(tc.Rotation.x);
-				float angleY = DirectX::XMConvertToRadians(tc.Rotation.y);
-				float angleZ = DirectX::XMConvertToRadians(tc.Rotation.z);
-
-				DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&tc.Scale)) 
-					* DirectX::XMMatrixRotationX(angleX) * DirectX::XMMatrixRotationY(angleY) * DirectX::XMMatrixRotationZ(angleZ) 
-					* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&tc.Translation));
-				DirectX::XMStoreFloat4x4(&tc.Transform, world);
-
-				if (m_pScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
-				{
-					auto& icc = m_pScene->GetEntityManager().Get<IsChildComponent>(m_SelectedEntity);
-					auto& childTransformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
-					auto& parentTransformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(icc.Parent);
-
-					DirectX::XMMATRIX childWorldMatrix = DirectX::XMLoadFloat4x4(&childTransformComponent.Transform);
-					DirectX::XMMATRIX inverseParentWorldMatrix = DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform));
-					DirectX::XMMATRIX childLocalMatrix = childWorldMatrix * inverseParentWorldMatrix;
-					DirectX::XMStoreFloat4x4(&icc.LocalTransform, childLocalMatrix);
-					ImGuizmo::DecomposeMatrixToComponents
-					(
-						&icc.LocalTransform.m[0][0],
-						&icc.LocalTranslation.x,
-						&icc.LocalRotation.x,
-						&icc.LocalScale.x
-					);
-				}
-
-				if (m_pScene->GetEntityManager().Has<ParentComponent>(m_SelectedEntity))
-				{
-					std::function<void(entity, DirectX::XMFLOAT4X4&)> SceneGraph;
-					SceneGraph = [&](entity entityID, DirectX::XMFLOAT4X4& accumulatedT) 
-					{
-						auto& childComponent = m_pScene->GetEntityManager().Get<IsChildComponent>(entityID);
-						auto& childTransformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(entityID);
-
-						const float angleInRadiansX = DirectX::XMConvertToRadians(childComponent.LocalRotation.x);
-						const float angleInRadiansY = DirectX::XMConvertToRadians(childComponent.LocalRotation.y);
-						const float angleInRadiansZ = DirectX::XMConvertToRadians(childComponent.LocalRotation.z);
-					
-						DirectX::XMMATRIX childLocalTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childComponent.LocalScale))
-							* DirectX::XMMatrixRotationX(angleInRadiansX)
-							* DirectX::XMMatrixRotationY(angleInRadiansY)
-							* DirectX::XMMatrixRotationZ(angleInRadiansZ)
-							* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childComponent.LocalTranslation));
-						DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, childLocalTransform);
-					
-						DirectX::XMMATRIX accumulatedTransformAsXMMatrix = DirectX::XMLoadFloat4x4(&accumulatedT);
-					
-						DirectX::XMStoreFloat4x4(&childTransformComponent.Transform, DirectX::XMMatrixMultiply(childLocalTransform, accumulatedTransformAsXMMatrix));
-						ImGuizmo::DecomposeMatrixToComponents(*childTransformComponent.Transform.m, &childTransformComponent.Translation.x, &childTransformComponent.Rotation.x, &childTransformComponent.Scale.x);
-						//Child is a parent:
-						if (m_pScene->GetEntityManager().Has<ParentComponent>(entityID))
-						{
-							auto& pc = m_pScene->GetEntityManager().Get<ParentComponent>(entityID);
-							for (auto child : pc.Children)
-							{
-								SceneGraph(child, childTransformComponent.Transform);
-							}
-						}
-					};
-					
-					auto& children = m_pScene->GetEntityManager().Get<ParentComponent>(m_SelectedEntity).Children;
-					for (auto child : children)
-					{
-						SceneGraph(child, tc.Transform);
-					}
-				}
-
-				//Temporary for now!
-				if (m_pScene->GetEntityManager().HasAnyOf<DirectionalLightComponent, PointLightComponent>(m_SelectedEntity))
-				{
-					m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
-				}
-			}
+				m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
 			
 			ImGui::TreePop();
 		}
@@ -194,9 +118,7 @@ namespace Relentless
 				changedValues |= DrawVec3Control("Scale", childComponent.LocalScale, 0.03f, 1.0f, 0.01f);
 
 				if (changedValues)
-				{
-
-				}
+					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = false;
 
 				ImGui::TreePop();
 			}
@@ -225,7 +147,7 @@ namespace Relentless
 								m_pScene->GetLightManager().AllocatePointLight(m_SelectedEntity);
 								dlc.Color = color;
 								dlc.Intensity = intensity;
-								m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
+								m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 							}
 						}
 						if (isSelected)
@@ -235,10 +157,10 @@ namespace Relentless
 				}
 
 				if (ImGui::ColorEdit3("Color", &lc.Color.x))
-					m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 
 				if (ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, 1.0f))
-					m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 			});
 
 		DrawComponentNode<PointLightComponent>("Light", [&]()
@@ -264,7 +186,7 @@ namespace Relentless
 								m_pScene->GetLightManager().AllocateDirectionalLight(m_SelectedEntity);
 								dlc.Color = color;
 								dlc.Intensity = intensity;
-								m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
+								m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 
 								m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
 							}
@@ -276,10 +198,91 @@ namespace Relentless
 				}
 
 				if (ImGui::ColorEdit3("Color", &lc.Color.x))
-					m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 
 				if (ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, 1.0f))
-					m_pScene->GetEntityManager().AddOrReplace<DirtyLightComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
+			});
+
+		DrawComponentNode<MeshFilterComponent>("Mesh Filter", [this]()
+			{
+				auto& mfc = m_pScene->GetEntityManager().Get<MeshFilterComponent>(m_SelectedEntity);
+				
+				char input[40];
+				if (AssetManager::Get().Exists(mfc.VertexBufferID))
+				{
+					std::string name = AssetManager::Get().GetAssetName(mfc.VertexBufferID);
+					name = name.substr(0, name.find_first_of(" "));
+					std::strcpy(input, name.c_str());
+				}
+				else
+				{
+					std::memset(input, 0, 40);
+				}
+
+				ImGui::Columns(2);
+				ImGui::SetColumnWidth(0, 80);
+				ImGui::Text("Mesh");
+				ImGui::NextColumn();
+
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+
+				const float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+				constexpr float buttonPaddingOffsetX = 3.0f;
+				ImVec2 buttonSize = { lineHeight + buttonPaddingOffsetX, lineHeight };
+
+				ImGui::SameLine(30.0f);
+				
+				float itemWidth = ImGui::CalcItemWidth();
+				ImGui::PushItemWidth(itemWidth);
+				ImGui::InputText("##Mesh", input, 40, ImGuiInputTextFlags_::ImGuiInputTextFlags_ReadOnly);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(itemWidth + buttonSize.x);
+				
+				ImGui::Button("...", buttonSize);
+				if (ImGui::IsItemClicked())
+				{
+					std::filesystem::path filePath = FileDialogs::OpenFile("OBJ File (*.obj)\0*.obj\0");
+
+					ResourceID vbID;
+					ResourceID ibID;
+					if (!AssetManager::Get().HasLoaded(filePath.stem().string() + " Vertex Buffer"))
+					{
+						MeshFactory meshFactory;
+						auto& starterMesh = meshFactory.LoadFromFile(filePath)[0];
+
+						VertexBuffer::Specification vbSpec
+						{
+							.NrOfVertices = (uint32_t)starterMesh.Vertices.size(),
+							.TotalSizeInBytes = (uint32_t)starterMesh.Vertices.size() * sizeof(SimpleVertex),
+							.Stride = sizeof(SimpleVertex),
+							.pBuffer = (void*)starterMesh.Vertices.data(),
+							.Name = filePath.stem().string() + std::string(" Vertex Buffer")
+						};
+
+						IndexBuffer::Specification ibSpec
+						{
+							.NrOfIndices = (uint32_t)starterMesh.Indices.size(),
+							.TotalSizeInBytes = (uint32_t)starterMesh.Indices.size() * sizeof(uint32_t),
+							.Stride = sizeof(uint32_t),
+							.pBuffer = (void*)starterMesh.Indices.data(),
+							.Name = filePath.stem().string() + std::string(" Index Buffer")
+						};
+						vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
+						ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
+					}
+					else
+					{
+						vbID = AssetManager::Get().Load<VertexBuffer>(filePath.stem().string() + std::string(" Vertex Buffer"), nullptr);
+						ibID = AssetManager::Get().Load<IndexBuffer>(filePath.stem().string() + std::string(" Index Buffer"), nullptr);
+					}
+					mfc.VertexBufferID = vbID;
+					mfc.IndexBufferID = ibID;
+				}
+
+				ImGui::PopStyleVar();
+				ImGui::Columns(1);
+
 			});
 
 		DrawComponentNode<MeshRendererComponent>("Mesh Renderer", [this]()
@@ -319,11 +322,25 @@ namespace Relentless
 					auto& mrc = m_pScene->GetEntityManager().Add<MeshRendererComponent>(m_SelectedEntity);
 					mrc.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
 					m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().AddOrReplace<ForwardPassComponent>(m_SelectedEntity);
 				}
 				else
 				{
 					alreadyHasComponent = true;
 					componentString = "MeshRenderer";
+				}
+			}
+			if (ImGui::MenuItem("Mesh Filter"))
+			{
+				if (!m_pScene->GetEntityManager().Has<MeshFilterComponent>(m_SelectedEntity))
+				{
+					m_pScene->GetEntityManager().Add<MeshFilterComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().AddOrReplace<ForwardPassComponent>(m_SelectedEntity);
+				}
+				else
+				{
+					alreadyHasComponent = true;
+					componentString = "MeshFilter";
 				}
 			}
 			if (ImGui::BeginMenu("Light"))

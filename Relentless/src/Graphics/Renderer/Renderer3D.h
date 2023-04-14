@@ -7,11 +7,6 @@ namespace Relentless
 		DirectX::XMFLOAT4X4 VPMatrix;
 	};
 
-	struct World
-	{
-		DirectX::XMFLOAT4X4 WorldMatrix;
-	};
-
 	struct PerFrameData
 	{
 		uint32_t PostProcessTextureIndex;
@@ -28,7 +23,8 @@ namespace Relentless
 
 	struct PerDrawData2
 	{
-		uint32_t colorIndex;
+		uint32_t materialIndex;
+		uint32_t worldMatrixIndex;
 	};
 
 	struct PerDrawData

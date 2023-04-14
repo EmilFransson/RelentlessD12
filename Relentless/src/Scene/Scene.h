@@ -6,7 +6,7 @@
 #include "LightManager.h"
 namespace Relentless
 {
-	enum class Shape : uint8_t { Triangle = 0, Cube, Cylinder, Capsule, Cone, Sphere, Quad, Plane };
+	enum class Shape : uint8_t { Triangle = 0, Cube, Cylinder, Capsule, Cone, Sphere, IcoSphere, Torus, Quad, Plane };
 	enum class Extra : uint8_t { UtahTeapot = 0u };
 
 	class Scene
@@ -97,10 +97,20 @@ namespace Relentless
 
 		auto entity = CreateEntityWithUUID(nameString.c_str());
 
-		m_EntityManager.Add<MeshFilterComponent>(entity, vbID, ibID);
+		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
+		mfc.VertexBufferID = vbID;
+		mfc.IndexBufferID = ibID;
+		
 		m_EntityManager.Add<ForwardPassComponent>(entity);
+		auto& atc = m_EntityManager.Get<AlbedoTextureComponent>(entity);
+		//atc.AlbedoTextureID = AssetManager::Get().Load<Texture2D>("brickwall.jpg");
+		Texture2D* pTex = AssetManager::Get().GetAsset<Texture2D>(atc.AlbedoTextureID);
+		
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
 		mrc.Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+		mrc.UsesAlbedoMap = 0xFFFFFFFF;
+		mrc.AlbedoTextureID = pTex->GetSRVDescriptorHandle().Index;
+
 		mrc.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
 		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
 
@@ -149,7 +159,10 @@ namespace Relentless
 
 		auto entity = CreateEntityWithUUID(nameString.c_str());
 
-		m_EntityManager.Add<MeshFilterComponent>(entity, vbID, ibID);
+		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
+		mfc.VertexBufferID = vbID;
+		mfc.IndexBufferID = ibID;
+
 		m_EntityManager.Add<ForwardPassComponent>(entity);
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
 		mrc.Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
@@ -165,11 +178,11 @@ namespace Relentless
 	{
 		if constexpr (ShapeType == Shape::Triangle)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Triangle.gltf";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Triangle.obj";
 		}
 		else if constexpr (ShapeType == Shape::Cube)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Cube.gltf";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Cube.obj";
 		}
 		else if constexpr (ShapeType == Shape::Cylinder)
 		{
@@ -185,7 +198,15 @@ namespace Relentless
 		}
 		else if constexpr (ShapeType == Shape::Sphere)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Sphere.gltf";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Sphere.obj";
+		}
+		else if constexpr (ShapeType == Shape::IcoSphere)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/IcoSphere.obj";
+		}
+		else if constexpr (ShapeType == Shape::Torus)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Torus.obj";
 		}
 		else if constexpr (ShapeType == Shape::Quad)
 		{

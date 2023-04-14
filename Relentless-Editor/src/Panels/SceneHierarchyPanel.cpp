@@ -68,6 +68,14 @@ namespace Relentless
 				{
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Sphere>();
 				}
+				if (ImGui::MenuItem("IcoSphere"))
+				{
+					m_SelectedEntity = m_pScene->CreateShape<Shape::IcoSphere>();
+				}
+				if (ImGui::MenuItem("Torus"))
+				{
+					m_SelectedEntity = m_pScene->CreateShape<Shape::Torus>();
+				}
 				if (ImGui::MenuItem("Quad"))
 				{
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Quad>();
@@ -223,37 +231,6 @@ namespace Relentless
 				if (entityID != toBecomeChild && !m_pScene->EntityIsDescendant(toBecomeChild, entityID))
 				{
 					m_pScene->ParentEntity(toBecomeChild, entityID);
-
-					//if (mgr.Has<IsChildComponent>(entityToParent))
-					//{
-					//	auto& icc = mgr.Get<IsChildComponent>(entityToParent);
-					//	auto& pc = mgr.Get<ParentComponent>(icc.Parent);
-					//
-					//	for (uint32_t i{ 0u }; i < pc.Children.size(); ++i)
-					//	{
-					//		if (entityToParent == pc.Children[i])
-					//		{
-					//			pc.Children.erase(pc.Children.begin() + i);
-					//			if (pc.Children.empty())
-					//				mgr.Remove<ParentComponent>(icc.Parent);
-					//
-					//			break;
-					//		}
-					//	}
-					//}
-					//auto& icc = mgr.AddOrReplace<IsChildComponent>(entityToParent);
-					//icc.Parent = entityID;
-					//if (mgr.Has<ParentComponent>(entityID))
-					//{
-					//	mgr.Get<ParentComponent>(entityID).Children.push_back(entityToParent);
-					//}
-					//else
-					//{
-					//	mgr.Add<ParentComponent>(entityID).Children.push_back(entityToParent);
-					//}
-					//
-					//if (mgr.Has<RootComponent>(entityToParent))
-					//	mgr.Remove<RootComponent>(entityToParent);
 				}
 			}
 			ImGui::EndDragDropTarget();

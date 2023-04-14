@@ -65,23 +65,26 @@ namespace Relentless
 		textureSpecification.MultiSampleCount = 8u;
 		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
 		textureSpecification.CreateSRV = true;
-		s_RendererData.m_pMSAARenderTexture = std::move(RenderTexture::Create(textureSpecification, "Main MSAA RenderTexture"));
+		s_RendererData.m_pMSAARenderTexture = RenderTexture::Create(textureSpecification, "Main MSAA RenderTexture");
 
 		//Post Process Render Texture:
+		//This render texture is special as we will JUST resolve to it, meaning it does not need a "Is render target flag".
 		textureSpecification.MultiSampleCount = 1u;
 		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
-		s_RendererData.m_pPostProcessRenderTexture = std::move(RenderTexture::Create(textureSpecification, "Post Process RenderTexture"));
+		textureSpecification.Flags = D3D12_RESOURCE_FLAG_NONE;
+		s_RendererData.m_pPostProcessRenderTexture = RenderTexture::Create(textureSpecification, "Post Process RenderTexture");
 
 		//Identifier Render Texture:
 		textureSpecification.MultiSampleCount = 1u;
 		textureSpecification.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 		textureSpecification.CreateSRV = false;
 		textureSpecification.isSRGB = false;
+		textureSpecification.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
 		static constexpr float clearVal = static_cast<float>(NULL_ENTITY);//10'000'000'000;
 
 		textureSpecification.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
-		s_RendererData.m_pIdentifierRenderTexture = std::move(RenderTexture::Create(textureSpecification, "Identifier RenderTexture"));
+		s_RendererData.m_pIdentifierRenderTexture = RenderTexture::Create(textureSpecification, "Identifier RenderTexture");
 
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint = {};
 		UINT numRows{};
@@ -99,10 +102,10 @@ namespace Relentless
 		RBTextureSpecification.Format = textureSpecification.Format;
 		RBTextureSpecification.MultiSampleCount = textureSpecification.MultiSampleCount;
 		RBTextureSpecification.ClearColor = textureSpecification.ClearColor;
-		s_RendererData.m_pIdentifierReadbackTexture = std::move(ReadbackTexture::Create(RBTextureSpecification, "Identifier ReadbackTexture"));
+		s_RendererData.m_pIdentifierReadbackTexture = ReadbackTexture::Create(RBTextureSpecification, "Identifier ReadbackTexture");
 
-		s_RendererData.m_pMSAADepthStencil = std::move(DepthStencil::Create(800u, 600u, 8u, "Main MSAA DepthStencil"));
-		s_RendererData.m_pPickingDepthStencil = std::move(DepthStencil::Create(800u, 600u, 1u, "Picking DepthStencil"));
+		s_RendererData.m_pMSAADepthStencil = DepthStencil::Create(800u, 600u, 8u, "Main MSAA DepthStencil");
+		s_RendererData.m_pPickingDepthStencil = DepthStencil::Create(800u, 600u, 1u, "Picking DepthStencil");
 
 		s_RendererData.viewPort.TopLeftX = 0.0f;
 		s_RendererData.viewPort.TopLeftY = 0.0f;
@@ -160,7 +163,7 @@ namespace Relentless
 		perFrameDataOpaque.nrOfDirectionalLights = static_cast<uint32_t>(scene.GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
 		perFrameDataOpaque.nrOfPointLights = static_cast<uint32_t>(scene.GetEntityManager().GetEntityCountForPool<PointLightComponent>());
 
-		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, (uint32_t)sizeof(PerFrameDataOpaque) / sizeof(uint32_t), &perFrameDataOpaque, 0u));
+		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4, (uint32_t)sizeof(PerFrameDataOpaque) / sizeof(uint32_t), &perFrameDataOpaque, 0u));
 	}
 
 	void Renderer3D::Submit(const entity e) noexcept
@@ -178,23 +181,23 @@ namespace Relentless
 		for (auto e : s_RendererData.m_ForwardPassEntities)
 		{
 			auto& mfc = entityManager.Get<MeshFilterComponent>(e);
-			VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
-			IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
+			if (assetManager.Exists(mfc.VertexBufferID))
+			{
+				VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
+				IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(0u, vb->GetInterface()->GetGPUVirtualAddress()));
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(1u, ib->GetInterface()->GetGPUVirtualAddress()));
+				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(0u, vb->GetInterface()->GetGPUVirtualAddress()));
+				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(1u, ib->GetInterface()->GetGPUVirtualAddress()));
 
-			static World worldMatrixCBuffer;
-			worldMatrixCBuffer.WorldMatrix = entityManager.Get<TransformComponent>(e).Transform;
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3u, 4 * 4, &worldMatrixCBuffer, 0u));
-			static PerDrawData2 perDrawData2;
-			auto& mrc = entityManager.Get<MeshRendererComponent>(e);
+				static PerDrawData2 perDrawData2;
+				auto& mrc = entityManager.Get<MeshRendererComponent>(e);
+				perDrawData2.materialIndex = MemoryManager::Get().GetConstantBuffer(mrc.constantBufferID)->m_VisibleHandles[frameIndex].Index;
+				perDrawData2.worldMatrixIndex = MemoryManager::Get().GetConstantBuffer(entityManager.Get<TransformComponent>(e).ConstantBufferID)->m_VisibleHandles[frameIndex].Index;
 
-			perDrawData2.colorIndex = MemoryManager::Get().GetConstantBuffer(mrc.constantBufferID)->m_VisibleHandles[frameIndex].Index;
-			//perDrawData2.colorIndex = mrc.constantBuffer->m_VisibleHandles[frameIndex].Index;
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4, 1, &perDrawData2, 0u));
+				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3, (uint32_t)sizeof(PerDrawData2) / sizeof(uint32_t), &perDrawData2, 0u));
 
-			RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+				RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+			}
 		}
 
 		//Picking pass:
@@ -212,20 +215,25 @@ namespace Relentless
 		for (auto e : s_RendererData.m_PickingPassEntities)
 		{
 			auto& mfc = entityManager.Get<MeshFilterComponent>(e);
-			VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
-			IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
-			auto& worldMatrix = entityManager.Get<TransformComponent>(e).Transform;
+			if (assetManager.Exists(mfc.VertexBufferID))
+			{
+				VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
+				IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(0u, vb->GetInterface()->GetGPUVirtualAddress()));
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(1u, ib->GetInterface()->GetGPUVirtualAddress()));
-			
-			ID.entityID = e;
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4u, 1u, &ID, 0u));
+				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(0u, vb->GetInterface()->GetGPUVirtualAddress()));
+				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(1u, ib->GetInterface()->GetGPUVirtualAddress()));
 
-			static World worldMatrixCBuffer;
-			worldMatrixCBuffer.WorldMatrix = worldMatrix;
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3u, 4 * 4, &worldMatrixCBuffer, 0u));
-			RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+				ID.entityID = e;
+				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3u, 1u, &ID, 0u));
+
+				static PerDrawData2 perDrawData2;
+				auto& mrc = entityManager.Get<MeshRendererComponent>(e);
+				perDrawData2.materialIndex = MemoryManager::Get().GetConstantBuffer(mrc.constantBufferID)->m_VisibleHandles[frameIndex].Index;
+				perDrawData2.worldMatrixIndex = MemoryManager::Get().GetConstantBuffer(entityManager.Get<TransformComponent>(e).ConstantBufferID)->m_VisibleHandles[frameIndex].Index;
+				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4, (uint32_t)sizeof(PerDrawData2) / sizeof(uint32_t), &perDrawData2, 0u));
+
+				RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+			}
 		}
 		RenderCommand::TransitionResource(s_RendererData.m_pIdentifierRenderTexture, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
@@ -277,7 +285,7 @@ namespace Relentless
 			static PerFrameData textureData;
 			textureData.PostProcessTextureIndex = s_RendererData.m_pPostProcessRenderTexture->GetSRVDescriptorHandle().Index;
 			constexpr uint32_t COUNT = 1u;
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(6, COUNT, &textureData, 0u));
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, COUNT, &textureData, 0u));
 			RenderCommand::DrawInstanced(3u);
 		}
 
@@ -370,13 +378,14 @@ namespace Relentless
 		textureSpecification.MultiSampleCount = 1u;
 		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
 		memoryManager.DestroyDescriptorHandle(s_RendererData.m_pPostProcessRenderTexture->GetSRVDescriptorHandle());
-		memoryManager.DestroyDescriptorHandle(s_RendererData.m_pPostProcessRenderTexture->GetRTVDescriptorHandle());
 		memoryManager.DestroyResource(std::move(s_RendererData.m_pPostProcessRenderTexture));
+		textureSpecification.Flags = D3D12_RESOURCE_FLAG_NONE;
 		s_RendererData.m_pPostProcessRenderTexture = std::move(RenderTexture::Create(textureSpecification, "Post process RenderTexture"));
 
 		textureSpecification.MultiSampleCount = 1u;
 		textureSpecification.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 		textureSpecification.CreateSRV = false;
+		textureSpecification.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 		memoryManager.DestroyDescriptorHandle(s_RendererData.m_pIdentifierRenderTexture->GetRTVDescriptorHandle());
 		memoryManager.DestroyResource(std::move(s_RendererData.m_pIdentifierRenderTexture));
 		
@@ -444,21 +453,13 @@ namespace Relentless
 		vpRootParameterVS.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 		rootParameters.push_back(vpRootParameterVS);
 
-		D3D12_ROOT_PARAMETER worldMatrixRootParameterVS = {};
-		worldMatrixRootParameterVS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		worldMatrixRootParameterVS.Constants.Num32BitValues = 4 * 4;
-		worldMatrixRootParameterVS.Constants.RegisterSpace = 0u;
-		worldMatrixRootParameterVS.Constants.ShaderRegister = 1u;
-		worldMatrixRootParameterVS.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		rootParameters.push_back(worldMatrixRootParameterVS);
-
-		D3D12_ROOT_PARAMETER perDrawPS = {};
-		perDrawPS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		perDrawPS.Constants.Num32BitValues = 1u;
-		perDrawPS.Constants.RegisterSpace = 0u;
-		perDrawPS.Constants.ShaderRegister = 3u;
-		perDrawPS.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-		rootParameters.push_back(perDrawPS);
+		D3D12_ROOT_PARAMETER perDrawAll = {};
+		perDrawAll.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		perDrawAll.Constants.Num32BitValues = sizeof(PerDrawData2) /  sizeof(uint32_t);
+		perDrawAll.Constants.RegisterSpace = 0u;
+		perDrawAll.Constants.ShaderRegister = 3u;
+		perDrawAll.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		rootParameters.push_back(perDrawAll);
 
 		D3D12_ROOT_PARAMETER perFramePS = {};
 		perFramePS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
@@ -468,11 +469,23 @@ namespace Relentless
 		perFramePS.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		rootParameters.push_back(perFramePS);
 
+		D3D12_STATIC_SAMPLER_DESC anisotropicSamplerDescriptor = {};
+		anisotropicSamplerDescriptor.AddressU = anisotropicSamplerDescriptor.AddressV = anisotropicSamplerDescriptor.AddressW = D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		anisotropicSamplerDescriptor.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+		anisotropicSamplerDescriptor.Filter = D3D12_FILTER::D3D12_FILTER_ANISOTROPIC;
+		anisotropicSamplerDescriptor.MaxAnisotropy = 16u;
+		anisotropicSamplerDescriptor.MaxLOD = D3D12_FLOAT32_MAX;
+		anisotropicSamplerDescriptor.MinLOD = 0.0f;
+		anisotropicSamplerDescriptor.MipLODBias = 0;
+		anisotropicSamplerDescriptor.ShaderRegister = 0u;
+		anisotropicSamplerDescriptor.RegisterSpace = 0u;
+		anisotropicSamplerDescriptor.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 		D3D12_ROOT_SIGNATURE_DESC rootSignatureDescriptor = {};
 		rootSignatureDescriptor.NumParameters = static_cast<UINT>(rootParameters.size());
 		rootSignatureDescriptor.pParameters = rootParameters.data();
-		rootSignatureDescriptor.NumStaticSamplers = 0u;
-		rootSignatureDescriptor.pStaticSamplers = nullptr;
+		rootSignatureDescriptor.NumStaticSamplers = 1;
+		rootSignatureDescriptor.pStaticSamplers = &anisotropicSamplerDescriptor;
 		rootSignatureDescriptor.Flags = 
 			  D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS
 			| D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
@@ -551,14 +564,6 @@ namespace Relentless
 		vpRootParameterVS.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 		rootParameters.push_back(vpRootParameterVS);
 
-		D3D12_ROOT_PARAMETER worldMatrixRootParameterVS = {};
-		worldMatrixRootParameterVS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		worldMatrixRootParameterVS.Constants.Num32BitValues = 4 * 4;
-		worldMatrixRootParameterVS.Constants.RegisterSpace = 0u;
-		worldMatrixRootParameterVS.Constants.ShaderRegister = 1u;
-		worldMatrixRootParameterVS.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		rootParameters.push_back(worldMatrixRootParameterVS);
-
 		D3D12_ROOT_PARAMETER textureIndexIdentifierRootParameterPS = {};
 		textureIndexIdentifierRootParameterPS.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
 		textureIndexIdentifierRootParameterPS.Constants.Num32BitValues = 1;
@@ -566,6 +571,14 @@ namespace Relentless
 		textureIndexIdentifierRootParameterPS.Constants.ShaderRegister = 0u;
 		textureIndexIdentifierRootParameterPS.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		rootParameters.push_back(textureIndexIdentifierRootParameterPS);
+
+		D3D12_ROOT_PARAMETER perDrawAll = {};
+		perDrawAll.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		perDrawAll.Constants.Num32BitValues = sizeof(PerDrawData2) / sizeof(uint32_t);
+		perDrawAll.Constants.RegisterSpace = 0u;
+		perDrawAll.Constants.ShaderRegister = 3u;
+		perDrawAll.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		rootParameters.push_back(perDrawAll);
 
 		D3D12_ROOT_SIGNATURE_DESC rootSignatureDescriptor = {};
 		rootSignatureDescriptor.NumParameters = static_cast<UINT>(rootParameters.size());

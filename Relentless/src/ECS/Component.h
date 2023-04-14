@@ -16,7 +16,8 @@ namespace Relentless
 		TransformComponent()
 			: Translation{ 0.0f, 0.0f, 0.0f },
 			  Rotation{ 0.0f, 0.0f, 0.0f },
-			  Scale{ 1.0f, 1.0f, 1.0f }
+			  Scale{ 1.0f, 1.0f, 1.0f },
+			  ConstantBufferID{ static_cast<size_t>(-1) }
 		{
 			DirectX::XMStoreFloat4x4(&Transform, DirectX::XMMatrixIdentity());
 		}
@@ -24,15 +25,19 @@ namespace Relentless
 		DirectX::XMFLOAT3 Translation;
 		DirectX::XMFLOAT3 Rotation;
 		DirectX::XMFLOAT3 Scale;
+
+		size_t ConstantBufferID;
 	};
 
 	struct DirtyTransformComponent
 	{
 		DirtyTransformComponent()
-			: Updates{ D3D12Core::GetNrOfBufferedFrames() }
+			: Updates{ D3D12Core::GetNrOfBufferedFrames() },
+			  AdjustedWorldSpace{true}
 		{}
 
 		uint32_t Updates;
+		bool AdjustedWorldSpace;
 	};
 
 	struct NameComponent
@@ -53,11 +58,16 @@ namespace Relentless
 	struct MeshRendererComponent
 	{
 		MeshRendererComponent()
-			:Color{ 1.0f, 0.0f, 0.0f },
+			:UsesAlbedoMap{0u},
+			 AlbedoTextureID{},
+			 Color{ 1.0f, 1.0f, 1.0f },
 			 constantBufferID{ static_cast<size_t>(-1) }
 		{}
 
 		DirectX::XMFLOAT3 Color;
+		uint32_t UsesAlbedoMap;
+		uint32_t AlbedoTextureID;
+
 		size_t constantBufferID;
 	};
 
@@ -115,15 +125,6 @@ namespace Relentless
 		DirectX::XMFLOAT3 Color;
 	};
 
-	struct DirtyLightComponent
-	{
-		DirtyLightComponent()
-			: Updates{ D3D12Core::GetNrOfBufferedFrames() }
-		{}
-
-		uint32_t Updates;
-	};
-
 	struct CameraComponent
 	{
 		CameraComponent()
@@ -171,5 +172,10 @@ namespace Relentless
 		DirectX::XMFLOAT3 LocalTranslation;
 		DirectX::XMFLOAT3 LocalRotation;
 		DirectX::XMFLOAT3 LocalScale;
+	};
+
+	struct AlbedoTextureComponent
+	{
+		ResourceID AlbedoTextureID;
 	};
 }

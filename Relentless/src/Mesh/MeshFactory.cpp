@@ -12,7 +12,7 @@ namespace Relentless
 
 		Assimp::Importer importer;
 		constexpr const uint32_t flags = aiProcess_ConvertToLeftHanded | aiProcess_GenSmoothNormals | aiProcess_Triangulate
-			| aiProcess_ImproveCacheLocality | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace;
+			| aiProcess_ImproveCacheLocality | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace | aiProcess_GenBoundingBoxes;
 		const aiScene* pScene = importer.ReadFile(filePath.string(), flags);
 		RLS_ASSERT(pScene && !(pScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && pScene->mRootNode, importer.GetErrorString());
 
@@ -71,6 +71,21 @@ namespace Relentless
 			for (uint32_t j{ 0u }; j < face.mNumIndices; ++j)
 				mesh.Indices.push_back(face.mIndices[j]);
 		}
+
+		aiAABB aabb = pMesh->mAABB;
+
+		DirectX::XMFLOAT3 nearBottomLeft = DirectX::XMFLOAT3(aabb.mMin.x, aabb.mMin.y, aabb.mMin.z);
+		DirectX::XMFLOAT3 farTopRight = DirectX::XMFLOAT3(aabb.mMax.x, aabb.mMax.y, aabb.mMax.z);
+
+		DirectX::XMFLOAT3 nearTopLeft = DirectX::XMFLOAT3(nearBottomLeft.x, aabb.mMax.y, nearBottomLeft.z);
+		DirectX::XMFLOAT3 nearTopRight = DirectX::XMFLOAT3(aabb.mMax.x, nearTopLeft.y, nearBottomLeft.z);
+		DirectX::XMFLOAT3 nearBottomRight = DirectX::XMFLOAT3(nearTopRight.x, nearBottomLeft.y, nearBottomLeft.z);
+
+		DirectX::XMFLOAT3 farBottomLeft = DirectX::XMFLOAT3(nearBottomLeft.x, nearBottomLeft.y, farTopRight.z);
+		DirectX::XMFLOAT3 farTopLeft = DirectX::XMFLOAT3(farBottomLeft.x, farTopRight.y, farBottomLeft.z);
+		DirectX::XMFLOAT3 farBottomRight = DirectX::XMFLOAT3(farTopRight.x, farBottomLeft.y, farTopRight.z);
+
+
 		return mesh;
 	}
 }

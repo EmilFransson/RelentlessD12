@@ -21,6 +21,7 @@
 #include <tuple>
 #include <queue>
 #include <algorithm>
+#include <execution>
 #include <functional>
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
@@ -31,6 +32,7 @@
 #define NOMINMAX
 #include <Windows.h>
 #include <Windowsx.h>
+#include <commdlg.h>
 #include <rpc.h>
 #include <wrl/client.h>
 #include <comdef.h>

@@ -1,3 +1,5 @@
+SamplerState anisotropicSampler : register(s0, space0);
+
 struct PS_IN
 {
 	float4 inPositionSS	: SV_Position;
@@ -9,11 +11,14 @@ struct PS_IN
 struct PerDrawData
 {
     uint materialIndex;
+    uint worldMatrixIndex;
 };
 
 struct Material
 {
     float3 color;
+    uint usesAlbedoTexture;
+    uint albedoIndex;
 };
 
 struct PerFrameData
@@ -53,6 +58,13 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
 {
     ConstantBuffer<Material> material                   = ResourceDescriptorHeap[perDrawData.materialIndex];
     ConstantBuffer<Camera> camera                       = ResourceDescriptorHeap[perFrameData.cameraMetaDataIndex];
+
+    float4 albedoTextureColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    if (material.usesAlbedoTexture == 0xFFFFFFFF)
+    {
+        Texture2D albedoTexture = ResourceDescriptorHeap[material.albedoIndex];
+        albedoTextureColor = albedoTexture.Sample(anisotropicSampler, float2(psIn.inTexCoords.x, psIn.inTexCoords.y));
+    }
 
     psIn.inNormalWS = normalize(psIn.inNormalWS);
     const float3 viewDir = normalize(camera.positionWS - psIn.inPositionWS);
@@ -111,6 +123,5 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
 
         }
     }
-        
-    return float4(lightOut + ambientColor, 1.0f);
+    return float4((lightOut + ambientColor) * albedoTextureColor.xyz, 1.0f);
 }
