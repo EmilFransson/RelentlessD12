@@ -70,11 +70,16 @@ namespace Relentless
 		[[nodiscard]] const std::string& GetAssetName(const ResourceID& uuID) const noexcept
 		{
 			RLS_ASSERT(m_Assets.contains(uuID), "Resource does not exist.");
+			const std::string* toReturn{nullptr};
 			for (const auto& [name, ID] : m_PathToResourceIDMap)
 			{
 				if (ID == uuID)
-					return name;
+				{
+					toReturn = &name;
+					break;
+				}
 			}
+			return *toReturn;
 		}
 	private:
 		template<typename AssetType>

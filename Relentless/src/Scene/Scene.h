@@ -4,6 +4,7 @@
 #include "../Mesh/Vertex.h"
 #include "../Mesh/MeshFactory.h"
 #include "LightManager.h"
+#include "../Graphics/Renderer/Camera/PerspectiveCamera.h"
 namespace Relentless
 {
 	enum class Shape : uint8_t { Triangle = 0, Cube, Cylinder, Capsule, Cone, Sphere, IcoSphere, Torus, Quad, Plane };
@@ -40,7 +41,14 @@ namespace Relentless
 		void DestroyEntity(const entity entityHandle) noexcept;
 		[[nodiscard]] EntityManager& GetEntityManager() noexcept { return m_EntityManager; }
 		[[nodiscard]] constexpr const char* GetName() const noexcept { return m_Name; }
-		void SetViewportPanelSize(const ImVec2& viewportPanelSize) noexcept { m_ViewportPanelSize = viewportPanelSize; }
+		void SetViewportPanelSize(const ImVec2& viewportPanelSize) noexcept 
+		{ 
+			m_ViewportPanelSize = viewportPanelSize;
+			m_Viewport.Width = m_ViewportPanelSize.x;
+			m_Viewport.Height = m_ViewportPanelSize.y;
+			m_ScissorRect.right = static_cast<LONG>(m_ViewportPanelSize.x);
+			m_ScissorRect.bottom = static_cast<LONG>(m_ViewportPanelSize.y);
+		}
 
 		[[nodiscard]] bool EntityIsDescendant(const entity ancestor, const entity descendant) noexcept;
 		[[nodiscard]] bool EntityIsAncestor(const entity ancestor, const entity descendant) noexcept;
@@ -48,11 +56,17 @@ namespace Relentless
 		void ParentEntity(const entity toBecomeChild, const entity toBecomeParent) noexcept;
 
 		[[nodiscard]] LightManager& GetLightManager() noexcept { return m_LightManager; }
+		[[nodiscard]] const D3D12_VIEWPORT& GetViewport() const noexcept { return m_Viewport; }
+		[[nodiscard]] const RECT& GetScissorRect() const noexcept { return m_ScissorRect; }
+		[[nodiscard]] const std::shared_ptr<PerspectiveCamera>& GetEditorCamera() const noexcept { return m_pEditorCamera; }
 	private:
 		EntityManager m_EntityManager;
 		LightManager m_LightManager;
 		const char* m_Name;
 		ImVec2 m_ViewportPanelSize;
+		D3D12_VIEWPORT m_Viewport;
+		RECT m_ScissorRect;
+		std::shared_ptr<PerspectiveCamera> m_pEditorCamera{ nullptr };
 	};
 
 	template<auto ShapeType>
@@ -102,14 +116,9 @@ namespace Relentless
 		mfc.IndexBufferID = ibID;
 		
 		m_EntityManager.Add<ForwardPassComponent>(entity);
-		auto& atc = m_EntityManager.Get<AlbedoTextureComponent>(entity);
-		//atc.AlbedoTextureID = AssetManager::Get().Load<Texture2D>("brickwall.jpg");
-		Texture2D* pTex = AssetManager::Get().GetAsset<Texture2D>(atc.AlbedoTextureID);
 		
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
 		mrc.Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-		mrc.UsesAlbedoMap = 0xFFFFFFFF;
-		mrc.AlbedoTextureID = pTex->GetSRVDescriptorHandle().Index;
 
 		mrc.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
 		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);

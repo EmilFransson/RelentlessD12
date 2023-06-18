@@ -121,8 +121,51 @@ namespace Relentless
 		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootSignature(pRootSignature.Get()));
 	}
 
+	void RenderCommand::SetDescriptorHeap(const std::unique_ptr<DescriptorHeap>& pDescriptorHeap) noexcept
+	{
+		DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1u, pDescriptorHeap->GetDescriptorHeapInterface().GetAddressOf()));
+	}
+
+
 	void RenderCommand::DrawInstanced(const uint32_t vertexCount) noexcept
 	{
 		DXCall_STD(D3D12Core::GetCommandList()->DrawInstanced(vertexCount, 1u, 0u, 0u));
+	}
+
+	void RenderCommand::DrawInstanced(const uint32_t vertexCount, const uint32_t instanceCount) noexcept
+	{
+		DXCall_STD(D3D12Core::GetCommandList()->DrawInstanced(vertexCount, instanceCount, 0u, 0u));
+	}
+
+	//Debatable whether this should possibly transition as well...
+	void RenderCommand::CopyTextureToTexture(const std::shared_ptr<Texture>& pSrcTexture, const std::shared_ptr<Texture>& pDstTexture) noexcept
+	{
+		RLS_ASSERT(pSrcTexture && pDstTexture, "Texture(s) invalid.");
+
+		if (pSrcTexture->GetCurrentState() != D3D12_RESOURCE_STATE_COPY_SOURCE)
+		{
+			TransitionResource(pSrcTexture, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		}
+		if (pDstTexture->GetCurrentState() != D3D12_RESOURCE_STATE_COPY_DEST)
+		{
+			TransitionResource(pDstTexture, D3D12_RESOURCE_STATE_COPY_DEST);
+		}
+
+		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint = {};
+		auto desc = pSrcTexture->GetInterface()->GetDesc();
+
+		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, nullptr, nullptr, nullptr));
+
+		D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
+		dstLocation.pResource = pDstTexture->GetInterface().Get();
+		dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		dstLocation.PlacedFootprint = footPrint;
+
+		D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
+		srcLocation.pResource = pSrcTexture->GetInterface().Get();
+		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		srcLocation.SubresourceIndex = 0u;
+
+		DXCall_STD(D3D12Core::GetCommandList()->CopyTextureRegion(&dstLocation, 0u, 0u, 0u, &srcLocation, nullptr));
 	}
 }

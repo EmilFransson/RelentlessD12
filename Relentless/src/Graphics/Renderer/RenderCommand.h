@@ -2,6 +2,7 @@
 namespace Relentless
 {
 	class IResource;
+	class DescriptorHeap;
 	class Texture;
 	class RenderTexture;
 	class DepthStencil;
@@ -22,7 +23,10 @@ namespace Relentless
 		static void SetTopology(const D3D12_PRIMITIVE_TOPOLOGY topology) noexcept;
 		static void SetPipelineState(const Microsoft::WRL::ComPtr<ID3D12PipelineState>& pPipelineState) noexcept;
 		static void SetRootSignature(const Microsoft::WRL::ComPtr<ID3D12RootSignature>& pRootSignature) noexcept;
+		static void SetDescriptorHeap(const std::unique_ptr<DescriptorHeap>& pDescriptorHeap) noexcept;
 		static void DrawInstanced(const uint32_t vertexCount) noexcept;
+		static void DrawInstanced(const uint32_t vertexCount, const uint32_t instanceCount) noexcept;
+		static void CopyTextureToTexture(const std::shared_ptr<Texture>& pSrcTexture, const std::shared_ptr<Texture>& pDstTexture) noexcept;
 	private:
 		RenderCommand() noexcept = delete;
 		~RenderCommand() noexcept = default;

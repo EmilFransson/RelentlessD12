@@ -38,9 +38,15 @@ namespace Relentless
 		uint32_t entityID;
 	};
 
+	struct EditorGridInstanceDataSBIndex
+	{
+		uint32_t Index;
+	};
+
 	class RenderTexture;
 	class PerspectiveCamera;
 	class Scene;
+	class EditorGrid;
 	class Renderer3D
 	{
 	public:
@@ -48,17 +54,15 @@ namespace Relentless
 		static void Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, Scene& scene) noexcept;
 		static void Submit(const entity e) noexcept;
 		static void End(EntityManager& entityManager) noexcept;
+		static void SubmitEditorGrid(EditorGrid* pEditorGrid) noexcept;
 		static void PrepareBackBuffer() noexcept;
 		static void ExecuteCommands() noexcept;
 		static void WaitAndSync() noexcept;
 		static void WaitForGPU() noexcept;
 		static void OnShutDown() noexcept;
-		static [[nodiscard]] const std::shared_ptr<RenderTexture>& GetViewportTexture() noexcept;
 		static void OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept;
 		static void CreateMainRootSignature() noexcept;
 		static void CreatePickingRootSignature() noexcept;
-		static void CreateMainPipelineState() noexcept;
-		static void CreatePickingPipelineState() noexcept;
 		static [[nodiscard]] entity GetHoveredEntity(const uint32_t x, const uint32_t y) noexcept;
 	private:
 		Renderer3D() noexcept = delete;

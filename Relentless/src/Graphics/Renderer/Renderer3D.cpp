@@ -10,6 +10,7 @@
 #include "../Shaders/ShaderLibrary.h"
 #include "../Resources/AssetManager.h"
 #include "../../Scene/Scene.h"
+#include "RenderPass.h"
 
 namespace Relentless
 {
@@ -19,25 +20,17 @@ namespace Relentless
 		Microsoft::WRL::ComPtr<ID3D12Fence1> pFence{nullptr};
 		HANDLE fenceEvent{ nullptr };
 		std::unique_ptr<uint64_t[]> pFenceValues{ nullptr };
+
 		uint32_t currentFrameIndex{0u};
-		std::shared_ptr<RenderTexture> m_pMSAARenderTexture{ nullptr };
-		std::shared_ptr<RenderTexture> m_pPostProcessRenderTexture{ nullptr };
-		std::shared_ptr<RenderTexture> m_pIdentifierRenderTexture{ nullptr };
+
 		std::shared_ptr<ReadbackTexture> m_pIdentifierReadbackTexture{ nullptr };
 
-		std::shared_ptr<DepthStencil> m_pMSAADepthStencil{ nullptr };
-		std::shared_ptr<DepthStencil> m_pPickingDepthStencil{ nullptr };
 		D3D12_VIEWPORT viewPort{};
 		RECT scissorRect{};
+
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> pRootSignature{ nullptr };
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> pPickingRootSignature{ nullptr };
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> pPostProcessRootSignature{ nullptr };
-		Microsoft::WRL::ComPtr<ID3D12PipelineState> pPipelineState{ nullptr };
-		Microsoft::WRL::ComPtr<ID3D12PipelineState> pPostProcessPipelineState{ nullptr };
-		Microsoft::WRL::ComPtr<ID3D12PipelineState> pPickingPipelineState{ nullptr };
-
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescriptor{};
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC pickingPsoDescriptor{};
 
 		ShaderLibrary m_ShaderLibrary;
 
@@ -46,74 +39,43 @@ namespace Relentless
 
 		uint32_t totalBytes;
 		entity hoveredEntity { NULL_ENTITY };
+
+		EditorGrid* pEditorGrid{ nullptr };
+
+		std::shared_ptr<Pipeline> MainPipeline{ nullptr };
+		std::shared_ptr<Pipeline> PickingPipeline{ nullptr };
+		std::shared_ptr<Pipeline> CompositePipeline{ nullptr };
+
 	};
 	static Renderer3dData s_RendererData = {};
 	
 	void Renderer3D::Initialize() noexcept
 	{
-		s_RendererData.pFenceValues = std::move(std::make_unique<uint64_t[]>(D3D12Core::GetNrOfBufferedFrames()));
-
+		//Fence:
+		s_RendererData.pFenceValues = std::make_unique<uint64_t[]>(D3D12Core::GetNrOfBufferedFrames());
 		DXCall(D3D12Core::GetDevice()->CreateFence(0u, D3D12_FENCE_FLAGS::D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&s_RendererData.pFence)));
 		s_RendererData.pFenceValues[s_RendererData.currentFrameIndex]++;
 		s_RendererData.fenceEvent = ::CreateEvent(nullptr, false, false, nullptr);
 		RLS_ASSERT(s_RendererData.fenceEvent, "Fence event creation failed.");
 
-		RenderTextureSpecification textureSpecification = {};
-		textureSpecification.Width = 800u;
-		textureSpecification.Height = 600u;
-		textureSpecification.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-		textureSpecification.MultiSampleCount = 8u;
-		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
-		textureSpecification.CreateSRV = true;
-		s_RendererData.m_pMSAARenderTexture = RenderTexture::Create(textureSpecification, "Main MSAA RenderTexture");
-
-		//Post Process Render Texture:
-		//This render texture is special as we will JUST resolve to it, meaning it does not need a "Is render target flag".
-		textureSpecification.MultiSampleCount = 1u;
-		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
-		textureSpecification.Flags = D3D12_RESOURCE_FLAG_NONE;
-		s_RendererData.m_pPostProcessRenderTexture = RenderTexture::Create(textureSpecification, "Post Process RenderTexture");
-
-		//Identifier Render Texture:
-		textureSpecification.MultiSampleCount = 1u;
-		textureSpecification.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-		textureSpecification.CreateSRV = false;
-		textureSpecification.isSRGB = false;
-		textureSpecification.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
-		static constexpr float clearVal = static_cast<float>(NULL_ENTITY);//10'000'000'000;
-
-		textureSpecification.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
-		s_RendererData.m_pIdentifierRenderTexture = RenderTexture::Create(textureSpecification, "Identifier RenderTexture");
-
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint = {};
-		UINT numRows{};
-		UINT64 rowSizeInBytes{};
-		UINT64 totalBytes{};
-
-		auto desc = s_RendererData.m_pIdentifierRenderTexture->GetInterface()->GetDesc();
-
-		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, &numRows, &rowSizeInBytes, &totalBytes));
-
 		//Identifier Readback Texture:
 		ReadbackTextureSpecification RBTextureSpecification = {};
-		RBTextureSpecification.Width = static_cast<uint32_t>(totalBytes);
+		RBTextureSpecification.Width = 1996672; //Placeholder
 		RBTextureSpecification.Height = 1u;
-		RBTextureSpecification.Format = textureSpecification.Format;
-		RBTextureSpecification.MultiSampleCount = textureSpecification.MultiSampleCount;
-		RBTextureSpecification.ClearColor = textureSpecification.ClearColor;
+		RBTextureSpecification.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+		RBTextureSpecification.MultiSampleCount = 1u;
+		RBTextureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
 		s_RendererData.m_pIdentifierReadbackTexture = ReadbackTexture::Create(RBTextureSpecification, "Identifier ReadbackTexture");
 
-		s_RendererData.m_pMSAADepthStencil = DepthStencil::Create(800u, 600u, 8u, "Main MSAA DepthStencil");
-		s_RendererData.m_pPickingDepthStencil = DepthStencil::Create(800u, 600u, 1u, "Picking DepthStencil");
-
+		//Viewport:
 		s_RendererData.viewPort.TopLeftX = 0.0f;
 		s_RendererData.viewPort.TopLeftY = 0.0f;
 		s_RendererData.viewPort.Width = 800.0f;
 		s_RendererData.viewPort.Height = 600.0f;
 		s_RendererData.viewPort.MinDepth = 0.0f;
 		s_RendererData.viewPort.MaxDepth = 1.0f;
-
+		
+		//ScissorRect:
 		s_RendererData.scissorRect.left = 0u;
 		s_RendererData.scissorRect.top = 0u;
 		s_RendererData.scissorRect.right = static_cast<LONG>(s_RendererData.viewPort.Width);
@@ -122,9 +84,65 @@ namespace Relentless
 		s_RendererData.m_ShaderLibrary.Initialize();
 		
 		CreateMainRootSignature();
-		CreateMainPipelineState();
 		CreatePickingRootSignature();
-		CreatePickingPipelineState();
+
+		//MSAA Geometry:
+		{
+			FrameBufferSpecification frameBufferSpecification{};
+			frameBufferSpecification.DebugName = "Main MSAA Framebuffer";
+			frameBufferSpecification.Attachments = { TextureFormat::RGBA32F, TextureFormat::Depth };
+			frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
+			frameBufferSpecification.MSAA = { true, 8u, 0u };
+			frameBufferSpecification.Transfer = true;
+
+			PipelineSpecification pipelineSpecification{};
+			pipelineSpecification.DebugName = "Main Pipeline";
+			pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("VertexShader");
+			pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PixelShader");
+			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.pRootSignature = s_RendererData.pRootSignature;
+
+			s_RendererData.MainPipeline = Pipeline::Create(pipelineSpecification);
+		}
+
+		//Picking:
+		{
+			FrameBufferSpecification frameBufferSpecification{};
+			frameBufferSpecification.DebugName = "Picking Framebuffer";
+			frameBufferSpecification.Attachments = { TextureFormat::R32UINT, TextureFormat::Depth };
+			static constexpr float clearVal = static_cast<float>(NULL_ENTITY);
+			frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
+			frameBufferSpecification.IsSRGB = false;
+
+			PipelineSpecification pipelineSpecification{};
+			pipelineSpecification.DebugName = "Picking Pipeline";
+			pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("VertexShader");
+			pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PickingPixelShader");
+			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.pRootSignature = s_RendererData.pPickingRootSignature;
+
+			s_RendererData.PickingPipeline = Pipeline::Create(pipelineSpecification);
+		}
+
+		//Composite
+		{
+			FrameBufferSpecification frameBufferSpecification{};
+			frameBufferSpecification.DebugName = "Composite Framebuffer";
+			frameBufferSpecification.Attachments = { TextureFormat::RGBA32F };
+			frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
+			frameBufferSpecification.Transfer = true;
+			frameBufferSpecification.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+			PipelineSpecification pipelineSpecification{};
+			pipelineSpecification.DebugName = "Composite Pipeline";
+			pipelineSpecification.DepthWrite = false;
+			pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("FullScreenTriVertexShader");
+			pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PostProcessPixelShader");
+			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.pRootSignature = s_RendererData.pPostProcessRootSignature;
+
+			s_RendererData.CompositePipeline = Pipeline::Create(pipelineSpecification);
+		}
 
 		Renderer3D::ExecuteCommands();
 		Renderer3D::WaitForGPU();
@@ -133,6 +151,8 @@ namespace Relentless
 
 	void Renderer3D::Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, Scene& scene) noexcept
 	{
+		PROFILE_FUNC;
+
 		s_RendererData.m_ForwardPassEntities.clear();
 		s_RendererData.m_PickingPassEntities.clear();
 
@@ -140,13 +160,18 @@ namespace Relentless
 
 		RenderCommand::SetViewport(s_RendererData.viewPort);
 		RenderCommand::SetScissorRect(s_RendererData.scissorRect);
-		RenderCommand::TransitionResource(s_RendererData.m_pMSAARenderTexture, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		RenderCommand::ClearRenderTarget(s_RendererData.m_pMSAARenderTexture->GetRTVDescriptorHandle().CPUHandle, s_RendererData.m_pMSAARenderTexture->GetClearColor());
-		RenderCommand::ClearDepthStencil(s_RendererData.m_pMSAADepthStencil);
-		RenderCommand::SetRenderTarget(s_RendererData.m_pMSAARenderTexture, s_RendererData.m_pMSAADepthStencil);
+
+		auto& pMainRT = s_RendererData.MainPipeline->GetFrameBuffer()->GetColorBuffer();
+		auto& pMainDS = s_RendererData.MainPipeline->GetFrameBuffer()->GetDepthBuffer();
+
+		RenderCommand::TransitionResource(pMainRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		RenderCommand::ClearRenderTarget(pMainRT->GetRTVDescriptorHandle().CPUHandle, pMainRT->GetClearColor());
+		RenderCommand::ClearDepthStencil(pMainDS);
+		RenderCommand::SetRenderTarget(pMainRT, pMainDS);
+		
 		DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
-		RenderCommand::SetRootSignature(s_RendererData.pRootSignature);
-		RenderCommand::SetPipelineState(s_RendererData.pPipelineState);
+		RenderCommand::SetRootSignature(s_RendererData.MainPipeline->GetRootSig());
+		RenderCommand::SetPipelineState(s_RendererData.MainPipeline->GetInterface2());
 		RenderCommand::SetTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		static VP vpMatrixCBuffer;
@@ -168,15 +193,20 @@ namespace Relentless
 
 	void Renderer3D::Submit(const entity e) noexcept
 	{
+		PROFILE_FUNC;
+		
 		s_RendererData.m_ForwardPassEntities.push_back(e);
 		s_RendererData.m_PickingPassEntities.push_back(e);
 	}
 
 	void Renderer3D::End(EntityManager& entityManager) noexcept
 	{
+		PROFILE_FUNC;
+
 		AssetManager& assetManager = AssetManager::Get();
 		auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
 
+		static PerDrawData2 perDrawData2;
 		//Forward pass:
 		for (auto e : s_RendererData.m_ForwardPassEntities)
 		{
@@ -189,7 +219,6 @@ namespace Relentless
 				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(0u, vb->GetInterface()->GetGPUVirtualAddress()));
 				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(1u, ib->GetInterface()->GetGPUVirtualAddress()));
 
-				static PerDrawData2 perDrawData2;
 				auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 				perDrawData2.materialIndex = MemoryManager::Get().GetConstantBuffer(mrc.constantBufferID)->m_VisibleHandles[frameIndex].Index;
 				perDrawData2.worldMatrixIndex = MemoryManager::Get().GetConstantBuffer(entityManager.Get<TransformComponent>(e).ConstantBufferID)->m_VisibleHandles[frameIndex].Index;
@@ -203,12 +232,16 @@ namespace Relentless
 		//Picking pass:
 		//States:
 		{
-			RenderCommand::TransitionResource(s_RendererData.m_pIdentifierRenderTexture, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			RenderCommand::ClearRenderTarget(s_RendererData.m_pIdentifierRenderTexture->GetRTVDescriptorHandle().CPUHandle, s_RendererData.m_pIdentifierRenderTexture->GetClearColor());
-			RenderCommand::ClearDepthStencil(s_RendererData.m_pPickingDepthStencil);
-			RenderCommand::SetRootSignature(s_RendererData.pPickingRootSignature);
-			RenderCommand::SetPipelineState(s_RendererData.pPickingPipelineState);
-			RenderCommand::SetRenderTarget(s_RendererData.m_pIdentifierRenderTexture, s_RendererData.m_pPickingDepthStencil);
+			auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
+			auto& pPickingDS = s_RendererData.PickingPipeline->GetFrameBuffer()->GetDepthBuffer();
+
+			RenderCommand::TransitionResource(pPickingRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			RenderCommand::ClearRenderTarget(pPickingRT->GetRTVDescriptorHandle().CPUHandle, pPickingRT->GetClearColor());
+			RenderCommand::ClearDepthStencil(pPickingDS);
+
+			RenderCommand::SetRootSignature(s_RendererData.PickingPipeline->GetRootSig());
+			RenderCommand::SetPipelineState(s_RendererData.PickingPipeline->GetInterface2());
+			RenderCommand::SetRenderTarget(pPickingRT, pPickingDS);
 		}
 		static Identifier ID;
 
@@ -226,7 +259,6 @@ namespace Relentless
 				ID.entityID = e;
 				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3u, 1u, &ID, 0u));
 
-				static PerDrawData2 perDrawData2;
 				auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 				perDrawData2.materialIndex = MemoryManager::Get().GetConstantBuffer(mrc.constantBufferID)->m_VisibleHandles[frameIndex].Index;
 				perDrawData2.worldMatrixIndex = MemoryManager::Get().GetConstantBuffer(entityManager.Get<TransformComponent>(e).ConstantBufferID)->m_VisibleHandles[frameIndex].Index;
@@ -235,16 +267,15 @@ namespace Relentless
 				RenderCommand::DrawInstanced(ib->GetNrOfIndices());
 			}
 		}
-		RenderCommand::TransitionResource(s_RendererData.m_pIdentifierRenderTexture, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		
+		auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
+		RenderCommand::TransitionResource(pPickingRT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint = {};
-		UINT numRows{};
-		UINT64 rowSizeInBytes{};
 		UINT64 totalBytes{};
+		auto desc = pPickingRT->GetInterface()->GetDesc();
 
-		auto desc = s_RendererData.m_pIdentifierRenderTexture->GetInterface()->GetDesc();
-
-		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, &numRows, &rowSizeInBytes, &totalBytes));
+		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, nullptr, nullptr, &totalBytes));
 
 		D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
 		dstLocation.pResource = s_RendererData.m_pIdentifierReadbackTexture->GetInterface().Get();
@@ -252,7 +283,7 @@ namespace Relentless
 		dstLocation.PlacedFootprint = footPrint;
 
 		D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
-		srcLocation.pResource = s_RendererData.m_pIdentifierRenderTexture->GetInterface().Get();
+		srcLocation.pResource = pPickingRT->GetInterface().Get();
 		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 		srcLocation.SubresourceIndex = 0u;
 
@@ -261,41 +292,52 @@ namespace Relentless
 
 		//MSAA Resolve:
 		{
-			RenderCommand::TransitionResource(s_RendererData.m_pMSAARenderTexture, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-			RenderCommand::TransitionResource(s_RendererData.m_pPostProcessRenderTexture, D3D12_RESOURCE_STATE_RESOLVE_DEST);
-			RenderCommand::ResolveMSAA(s_RendererData.m_pMSAARenderTexture, s_RendererData.m_pPostProcessRenderTexture);
+			auto& pMainRT = s_RendererData.MainPipeline->GetFrameBuffer()->GetColorBuffer();
+			auto& compositeRT = s_RendererData.CompositePipeline->GetFrameBuffer()->GetColorBuffer();
+
+			RenderCommand::TransitionResource(pMainRT, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+			RenderCommand::TransitionResource(compositeRT, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+			RenderCommand::ResolveMSAA(pMainRT, compositeRT);
 		}
 
 		//Set post process render texture as pixel shader resource and UI-texture as render target:
 		{
-			RenderCommand::TransitionResource(s_RendererData.m_pPostProcessRenderTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			auto& compositeRT = s_RendererData.CompositePipeline->GetFrameBuffer()->GetColorBuffer();
+
+			RenderCommand::TransitionResource(compositeRT, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			RenderCommand::TransitionResource(ImguiLayer::GetUITexture(), D3D12_RESOURCE_STATE_RENDER_TARGET);
 			RenderCommand::SetRenderTarget(ImguiLayer::GetUITexture(), nullptr);
 		}
 
 		//Set necessary d3d12 states:
 		{
-			DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
-			RenderCommand::SetRootSignature(s_RendererData.pPostProcessRootSignature);
-			RenderCommand::SetPipelineState(s_RendererData.pPostProcessPipelineState);
+			//DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+			RenderCommand::SetRootSignature(s_RendererData.CompositePipeline->GetRootSig());
+			RenderCommand::SetPipelineState(s_RendererData.CompositePipeline->GetInterface2());
 		}
 
 		//Post process:
 		{
 			static PerFrameData textureData;
-			textureData.PostProcessTextureIndex = s_RendererData.m_pPostProcessRenderTexture->GetSRVDescriptorHandle().Index;
-			constexpr uint32_t COUNT = 1u;
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, COUNT, &textureData, 0u));
+			auto& compositeRT = s_RendererData.CompositePipeline->GetFrameBuffer()->GetColorBuffer();
+			textureData.PostProcessTextureIndex = compositeRT->GetSRVDescriptorHandle().Index;
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, 1u, &textureData, 0u));
 			RenderCommand::DrawInstanced(3u);
 		}
 
 		//Set UI-texture as pixel shader resource and prepare back buffer as render target for imgui:
 		{
-			RenderCommand::TransitionResource(ImguiLayer::GetUITexture(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			BackBuffer backBuffer = Window::GetCurrentBackBuffer();
 			RenderCommand::TransitionResource(backBuffer.pBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			RenderCommand::TransitionResource(ImguiLayer::GetUITexture(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			RenderCommand::SetRenderTarget(backBuffer);
 		}
+	}
+
+	void Renderer3D::SubmitEditorGrid(EditorGrid* pEditorGrid) noexcept
+	{
+		RLS_ASSERT(pEditorGrid, "EditorGrid pointer is null.");
+		s_RendererData.pEditorGrid = pEditorGrid;
 	}
 
 	void Renderer3D::PrepareBackBuffer() noexcept
@@ -307,6 +349,8 @@ namespace Relentless
 
 	void Renderer3D::ExecuteCommands() noexcept
 	{
+		PROFILE_FUNC;
+
 		auto pCommandList{ D3D12Core::GetCommandList() };
 		DXCall(pCommandList->Close());
 		ID3D12CommandList* pCommandLists[] = { pCommandList.Get() };
@@ -315,12 +359,11 @@ namespace Relentless
 
 	void Renderer3D::WaitAndSync() noexcept
 	{
+		PROFILE_FUNC;
+
 		// Schedule a Signal command in the queue.
 		const UINT64 currentFenceValue = s_RendererData.pFenceValues[s_RendererData.currentFrameIndex];
 		DXCall(D3D12Core::GetCommandQueue()->Signal(s_RendererData.pFence.Get(), currentFenceValue));
-
-		// Update the frame index.
-		//s_RendererData.currentFrameIndex = Window::GetCurrentBackbufferIndex();
 
 		s_RendererData.currentFrameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
 
@@ -353,80 +396,34 @@ namespace Relentless
 		WaitForGPU();
 	}
 
-	const std::shared_ptr<RenderTexture>& Renderer3D::GetViewportTexture() noexcept
-	{
-		return s_RendererData.m_pMSAARenderTexture;
-	}
-
 	void Renderer3D::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
 	{
+ 		s_RendererData.MainPipeline->GetFrameBuffer()->Resize(width, height);
+		s_RendererData.PickingPipeline->GetFrameBuffer()->Resize(width, height);
+		s_RendererData.CompositePipeline->GetFrameBuffer()->Resize(width, height);
+
 		MemoryManager& memoryManager = MemoryManager::Get();
 
-		RenderTextureSpecification textureSpecification = {};
-		textureSpecification.Width = width;
-		textureSpecification.Height = height;
-		textureSpecification.Format = s_RendererData.m_pMSAARenderTexture->GetFormat();
-		textureSpecification.MultiSampleCount = s_RendererData.m_pMSAARenderTexture->GetMultiSampleCount();
-		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
-		textureSpecification.CreateSRV = true;
-		
-		memoryManager.DestroyDescriptorHandle(s_RendererData.m_pMSAARenderTexture->GetSRVDescriptorHandle());
-		memoryManager.DestroyDescriptorHandle(s_RendererData.m_pMSAARenderTexture->GetRTVDescriptorHandle());
-		memoryManager.DestroyResource(std::move(s_RendererData.m_pMSAARenderTexture));
-		s_RendererData.m_pMSAARenderTexture = std::move(RenderTexture::Create(textureSpecification, "Main MSAA RenderTexture"));
-
-		textureSpecification.MultiSampleCount = 1u;
-		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
-		memoryManager.DestroyDescriptorHandle(s_RendererData.m_pPostProcessRenderTexture->GetSRVDescriptorHandle());
-		memoryManager.DestroyResource(std::move(s_RendererData.m_pPostProcessRenderTexture));
-		textureSpecification.Flags = D3D12_RESOURCE_FLAG_NONE;
-		s_RendererData.m_pPostProcessRenderTexture = std::move(RenderTexture::Create(textureSpecification, "Post process RenderTexture"));
-
-		textureSpecification.MultiSampleCount = 1u;
-		textureSpecification.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-		textureSpecification.CreateSRV = false;
-		textureSpecification.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-		memoryManager.DestroyDescriptorHandle(s_RendererData.m_pIdentifierRenderTexture->GetRTVDescriptorHandle());
-		memoryManager.DestroyResource(std::move(s_RendererData.m_pIdentifierRenderTexture));
-		
-		static constexpr float clearVal = static_cast<float>(NULL_ENTITY);//10'000'000'000;
-
-		textureSpecification.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
-		textureSpecification.isSRGB = false;
-		s_RendererData.m_pIdentifierRenderTexture = std::move(RenderTexture::Create(textureSpecification, "Identifier RenderTexture"));
-
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint = {};
-		UINT numRows{};
-		UINT64 rowSizeInBytes{};
+		auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
+		auto desc = pPickingRT->GetInterface()->GetDesc();
 		UINT64 totalBytes{};
-
-		auto desc = s_RendererData.m_pIdentifierRenderTexture->GetInterface()->GetDesc();
-
-		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, &numRows, &rowSizeInBytes, &totalBytes));
+		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, nullptr, nullptr, nullptr, &totalBytes));
 
 		ReadbackTextureSpecification RBTextureSpecification = {};
 		RBTextureSpecification.Width = static_cast<uint32_t>(totalBytes);
 		RBTextureSpecification.Height = 1u;
-		RBTextureSpecification.Format = textureSpecification.Format;
-		RBTextureSpecification.MultiSampleCount = textureSpecification.MultiSampleCount;
-		RBTextureSpecification.ClearColor = textureSpecification.ClearColor;
+		RBTextureSpecification.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+		RBTextureSpecification.MultiSampleCount = 1u;
+		static constexpr float clearVal = static_cast<float>(NULL_ENTITY);
+		RBTextureSpecification.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
 		memoryManager.DestroyResource(std::move(s_RendererData.m_pIdentifierReadbackTexture));
-		s_RendererData.m_pIdentifierReadbackTexture = std::move(ReadbackTexture::Create(RBTextureSpecification, "Identifier ReadbackTexture"));
-
-		memoryManager.DestroyDescriptorHandle(s_RendererData.m_pMSAADepthStencil->GetDSVDescriptorHandle());
-		memoryManager.DestroyResource(std::move(s_RendererData.m_pMSAADepthStencil));
-		s_RendererData.m_pMSAADepthStencil = std::move(DepthStencil::Create(width, height, s_RendererData.m_pMSAARenderTexture->GetMultiSampleCount(), "Main MSAA DepthStencil"));
-
-		memoryManager.DestroyDescriptorHandle(s_RendererData.m_pPickingDepthStencil->GetDSVDescriptorHandle());
-		memoryManager.DestroyResource(std::move(s_RendererData.m_pPickingDepthStencil));
-		s_RendererData.m_pPickingDepthStencil = std::move(DepthStencil::Create(width, height, 1, "Picking DepthStencil"));
+		s_RendererData.m_pIdentifierReadbackTexture = ReadbackTexture::Create(RBTextureSpecification, "Identifier ReadbackTexture");
 
 		s_RendererData.viewPort.Width = static_cast<float>(width);
 		s_RendererData.viewPort.Height = static_cast<float>(height);
-
-		s_RendererData.scissorRect.right = static_cast<LONG>(s_RendererData.viewPort.Width);
-		s_RendererData.scissorRect.bottom = static_cast<LONG>(s_RendererData.viewPort.Height);
-	}
+		s_RendererData.scissorRect.right = static_cast<LONG>(width);
+		s_RendererData.scissorRect.bottom = static_cast<LONG>(height);
+ 	}
 
 	void Renderer3D::CreateMainRootSignature() noexcept
 	{
@@ -604,191 +601,9 @@ namespace Relentless
 			IID_PPV_ARGS(&s_RendererData.pPickingRootSignature)
 		));
 	}
-	
-	void Renderer3D::CreateMainPipelineState() noexcept
-	{
-		//We need a rasterizer descriptor:
-		D3D12_RASTERIZER_DESC rasterizerDescriptor = {};
-		rasterizerDescriptor.FillMode = D3D12_FILL_MODE_SOLID;
-		rasterizerDescriptor.CullMode = D3D12_CULL_MODE_BACK;
-		rasterizerDescriptor.FrontCounterClockwise = FALSE;
-		rasterizerDescriptor.DepthBias = 0;
-		rasterizerDescriptor.DepthBiasClamp = 0.0f;
-		rasterizerDescriptor.SlopeScaledDepthBias = 0.0f;
-		rasterizerDescriptor.DepthClipEnable = TRUE;
-		rasterizerDescriptor.MultisampleEnable = TRUE;
-		rasterizerDescriptor.AntialiasedLineEnable = TRUE;
-		rasterizerDescriptor.ForcedSampleCount = 0u;
-		rasterizerDescriptor.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-
-		//We also need a blend descriptor:
-		D3D12_RENDER_TARGET_BLEND_DESC blendDescriptor = {};
-		blendDescriptor.BlendEnable = FALSE;
-		blendDescriptor.LogicOpEnable = FALSE;
-		blendDescriptor.SrcBlend = D3D12_BLEND_ONE;
-		blendDescriptor.DestBlend = D3D12_BLEND_ZERO;
-		blendDescriptor.BlendOp = D3D12_BLEND_OP_ADD;
-		blendDescriptor.SrcBlendAlpha = D3D12_BLEND_ONE;
-		blendDescriptor.DestBlendAlpha = D3D12_BLEND_ZERO;
-		blendDescriptor.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-		blendDescriptor.LogicOp = D3D12_LOGIC_OP_NOOP;
-		blendDescriptor.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-		//And a depth stencil descriptor:
-		D3D12_DEPTH_STENCIL_DESC depthStencilDescriptor = {};
-		depthStencilDescriptor.DepthEnable = TRUE;
-		depthStencilDescriptor.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		depthStencilDescriptor.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		depthStencilDescriptor.StencilEnable = FALSE;
-		depthStencilDescriptor.StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;
-		depthStencilDescriptor.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
-		depthStencilDescriptor.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.BackFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-		depthStencilDescriptor.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-
-		//We also need a Stream Output Descriptor:
-		D3D12_STREAM_OUTPUT_DESC streamOutputDescriptor = {};
-		streamOutputDescriptor.pSODeclaration = nullptr;
-		streamOutputDescriptor.NumEntries = 0u;
-		streamOutputDescriptor.pBufferStrides = nullptr;
-		streamOutputDescriptor.NumStrides = 0u;
-		streamOutputDescriptor.RasterizedStream = 0u;
-
-		//We now create the Graphics Pipe line state, the PSO:
-		std::array<DXGI_FORMAT, 1> rtvFormats = { DXGI_FORMAT_R32G32B32A32_FLOAT };
-		s_RendererData.psoDescriptor.pRootSignature = s_RendererData.pRootSignature.Get();
-		s_RendererData.psoDescriptor.VS.pShaderBytecode = s_RendererData.m_ShaderLibrary.Get("VertexShader")->GetBuffer()->GetBufferPointer();
-		s_RendererData.psoDescriptor.VS.BytecodeLength = s_RendererData.m_ShaderLibrary.Get("VertexShader")->GetBuffer()->GetBufferSize();
-		s_RendererData.psoDescriptor.PS.pShaderBytecode = s_RendererData.m_ShaderLibrary.Get("PixelShader")->GetBuffer()->GetBufferPointer();
-		s_RendererData.psoDescriptor.PS.BytecodeLength = s_RendererData.m_ShaderLibrary.Get("PixelShader")->GetBuffer()->GetBufferSize();
-
-		s_RendererData.psoDescriptor.SampleMask = UINT_MAX;
-		s_RendererData.psoDescriptor.RasterizerState = rasterizerDescriptor;
-		s_RendererData.psoDescriptor.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		s_RendererData.psoDescriptor.NumRenderTargets = static_cast<UINT>(rtvFormats.size());
-
-		s_RendererData.psoDescriptor.BlendState.AlphaToCoverageEnable = false;
-		s_RendererData.psoDescriptor.BlendState.IndependentBlendEnable = false;
-		s_RendererData.psoDescriptor.RTVFormats[0] = rtvFormats[0];
-		s_RendererData.psoDescriptor.BlendState.RenderTarget[0] = blendDescriptor;
-
-		s_RendererData.psoDescriptor.SampleDesc.Count = 8u;
-		s_RendererData.psoDescriptor.SampleDesc.Quality = 0u;
-		s_RendererData.psoDescriptor.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-		s_RendererData.psoDescriptor.DepthStencilState = depthStencilDescriptor;
-		s_RendererData.psoDescriptor.StreamOutput = streamOutputDescriptor;
-		s_RendererData.psoDescriptor.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-
-		DXCall(D3D12Core::GetDevice()->CreateGraphicsPipelineState(&s_RendererData.psoDescriptor, IID_PPV_ARGS(&s_RendererData.pPipelineState)));
-	
-		//POST PROCESS!
-		s_RendererData.psoDescriptor.pRootSignature = s_RendererData.pPostProcessRootSignature.Get();
-
-		s_RendererData.psoDescriptor.VS.pShaderBytecode = s_RendererData.m_ShaderLibrary.Get("FullScreenTriVertexShader")->GetBuffer()->GetBufferPointer();
-		s_RendererData.psoDescriptor.VS.BytecodeLength = s_RendererData.m_ShaderLibrary.Get("FullScreenTriVertexShader")->GetBuffer()->GetBufferSize();
-		s_RendererData.psoDescriptor.PS.pShaderBytecode = s_RendererData.m_ShaderLibrary.Get("PostProcessPixelShader")->GetBuffer()->GetBufferPointer();
-		s_RendererData.psoDescriptor.PS.BytecodeLength = s_RendererData.m_ShaderLibrary.Get("PostProcessPixelShader")->GetBuffer()->GetBufferSize();
-
-		rasterizerDescriptor.MultisampleEnable = FALSE;
-		rasterizerDescriptor.AntialiasedLineEnable = FALSE;
-		depthStencilDescriptor.DepthEnable = FALSE;
-
-		s_RendererData.psoDescriptor.SampleDesc.Count = 1u;
-		s_RendererData.psoDescriptor.DepthStencilState = depthStencilDescriptor;
-
-		DXCall(D3D12Core::GetDevice()->CreateGraphicsPipelineState(&s_RendererData.psoDescriptor, IID_PPV_ARGS(&s_RendererData.pPostProcessPipelineState)));
-	}
-
-	void Renderer3D::CreatePickingPipelineState() noexcept
-	{
-		//We need a rasterizer descriptor:
-		D3D12_RASTERIZER_DESC rasterizerDescriptor = {};
-		rasterizerDescriptor.FillMode = D3D12_FILL_MODE_SOLID;
-		rasterizerDescriptor.CullMode = D3D12_CULL_MODE_BACK;
-		rasterizerDescriptor.FrontCounterClockwise = FALSE;
-		rasterizerDescriptor.DepthBias = 0;
-		rasterizerDescriptor.DepthBiasClamp = 0.0f;
-		rasterizerDescriptor.SlopeScaledDepthBias = 0.0f;
-		rasterizerDescriptor.DepthClipEnable = TRUE;
-		rasterizerDescriptor.MultisampleEnable = TRUE;
-		rasterizerDescriptor.AntialiasedLineEnable = TRUE;
-		rasterizerDescriptor.ForcedSampleCount = 0u;
-		rasterizerDescriptor.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-
-		//We also need a blend descriptor:
-		D3D12_RENDER_TARGET_BLEND_DESC blendDescriptor = {};
-		blendDescriptor.BlendEnable = FALSE;
-		blendDescriptor.LogicOpEnable = FALSE;
-		blendDescriptor.SrcBlend = D3D12_BLEND_ONE;
-		blendDescriptor.DestBlend = D3D12_BLEND_ZERO;
-		blendDescriptor.BlendOp = D3D12_BLEND_OP_ADD;
-		blendDescriptor.SrcBlendAlpha = D3D12_BLEND_ONE;
-		blendDescriptor.DestBlendAlpha = D3D12_BLEND_ZERO;
-		blendDescriptor.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-		blendDescriptor.LogicOp = D3D12_LOGIC_OP_NOOP;
-		blendDescriptor.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-		//And a depth stencil descriptor:
-		D3D12_DEPTH_STENCIL_DESC depthStencilDescriptor = {};
-		depthStencilDescriptor.DepthEnable = TRUE;
-		depthStencilDescriptor.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		depthStencilDescriptor.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		depthStencilDescriptor.StencilEnable = FALSE;
-		depthStencilDescriptor.StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;
-		depthStencilDescriptor.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
-		depthStencilDescriptor.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.BackFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
-		depthStencilDescriptor.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-		depthStencilDescriptor.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-
-		//We also need a Stream Output Descriptor:
-		D3D12_STREAM_OUTPUT_DESC streamOutputDescriptor = {};
-		streamOutputDescriptor.pSODeclaration = nullptr;
-		streamOutputDescriptor.NumEntries = 0u;
-		streamOutputDescriptor.pBufferStrides = nullptr;
-		streamOutputDescriptor.NumStrides = 0u;
-		streamOutputDescriptor.RasterizedStream = 0u;
-
-		//We now create the Graphics Pipe line state, the PSO:
-		std::array<DXGI_FORMAT, 1> rtvFormats = { DXGI_FORMAT_R32_UINT };
-		s_RendererData.pickingPsoDescriptor.pRootSignature = s_RendererData.pPickingRootSignature.Get();
-		s_RendererData.pickingPsoDescriptor.VS.pShaderBytecode = s_RendererData.m_ShaderLibrary.Get("VertexShader")->GetBuffer()->GetBufferPointer();
-		s_RendererData.pickingPsoDescriptor.VS.BytecodeLength = s_RendererData.m_ShaderLibrary.Get("VertexShader")->GetBuffer()->GetBufferSize();
-		s_RendererData.pickingPsoDescriptor.PS.pShaderBytecode = s_RendererData.m_ShaderLibrary.Get("PickingPixelShader")->GetBuffer()->GetBufferPointer();
-		s_RendererData.pickingPsoDescriptor.PS.BytecodeLength = s_RendererData.m_ShaderLibrary.Get("PickingPixelShader")->GetBuffer()->GetBufferSize();
-
-		s_RendererData.pickingPsoDescriptor.SampleMask = UINT_MAX;
-		s_RendererData.pickingPsoDescriptor.RasterizerState = rasterizerDescriptor;
-		s_RendererData.pickingPsoDescriptor.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		s_RendererData.pickingPsoDescriptor.NumRenderTargets = static_cast<UINT>(rtvFormats.size());
-
-		s_RendererData.pickingPsoDescriptor.BlendState.AlphaToCoverageEnable = false;
-		s_RendererData.pickingPsoDescriptor.BlendState.IndependentBlendEnable = false;
-		s_RendererData.pickingPsoDescriptor.RTVFormats[0] = rtvFormats[0];
-		s_RendererData.pickingPsoDescriptor.BlendState.RenderTarget[0] = blendDescriptor;
-
-		s_RendererData.pickingPsoDescriptor.SampleDesc.Count = 1u;
-		s_RendererData.pickingPsoDescriptor.SampleDesc.Quality = 0u;
-		s_RendererData.pickingPsoDescriptor.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-		s_RendererData.pickingPsoDescriptor.DepthStencilState = depthStencilDescriptor;
-		s_RendererData.pickingPsoDescriptor.StreamOutput = streamOutputDescriptor;
-		s_RendererData.pickingPsoDescriptor.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-
-		DXCall(D3D12Core::GetDevice()->CreateGraphicsPipelineState(&s_RendererData.pickingPsoDescriptor, IID_PPV_ARGS(&s_RendererData.pPickingPipelineState)));
-	}
 
 	entity Renderer3D::GetHoveredEntity(const uint32_t x, const uint32_t y) noexcept
 	{
-			//WaitForGPU();
 			D3D12_RANGE readBackBufferRange{ 0, s_RendererData.totalBytes };
 			uint32_t* pReadBackBufferData{};
 			DXCall(s_RendererData.m_pIdentifierReadbackTexture->GetInterface()->Map
@@ -798,9 +613,10 @@ namespace Relentless
 				reinterpret_cast<void**>(&pReadBackBufferData)
 			));
 
-			auto desc = s_RendererData.m_pIdentifierRenderTexture->GetInterface()->GetDesc();
+			auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
+			auto desc = pPickingRT->GetInterface()->GetDesc();
+			
 			D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint{};
-
 			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, nullptr, nullptr, nullptr));
 			const uint32_t index = (y * (footPrint.Footprint.RowPitch / 4)) + x;
 			const uint32_t indexExpressedAsBytes = index * 4;

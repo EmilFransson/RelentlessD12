@@ -20,7 +20,7 @@ namespace Relentless
 		{
 			const bool isNavigatingScene = (m_HoveringSceneViewport && Mouse::IsButtonPressed(RLS_BUTTON::Right));
 			if (isNavigatingScene)
-				m_pEditorCamera->OnMouseMove();
+				m_pScene->GetEditorCamera()->OnMouseMove();
 			event.StopPropagation();
 			break;
 		}
@@ -96,6 +96,9 @@ break;
 
 	void EditorLayer::OnImGuiRender() noexcept
 	{
+		PROFILE_FUNC;
+
+
 		auto pUITextureHandle = ImguiLayer::GetUITextureGPUHandle();
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
@@ -148,9 +151,9 @@ break;
 		ImGui::Text("Hovered entity:");
 		ImGui::SameLine();
 
-		if (m_HoveredEntity != NULL_ENTITY && m_Scene.GetEntityManager().Exists(m_HoveredEntity))
+		if (m_HoveredEntity != NULL_ENTITY && m_pScene->GetEntityManager().Exists(m_HoveredEntity))
 		{
-			ImGui::Text("%s (%d)", m_Scene.GetEntityManager().Get<NameComponent>(m_HoveredEntity).Name.c_str(), (m_HoveredEntity >> 12));
+			ImGui::Text("%s (%d)", m_pScene->GetEntityManager().Get<NameComponent>(m_HoveredEntity).Name.c_str(), (m_HoveredEntity >> 12));
 		}
 		else
 		{
@@ -158,7 +161,7 @@ break;
 		}
 		ImGui::Text("Selected entity:");
 		ImGui::SameLine();
-		m_SelectedEntity == NULL_ENTITY ? ImGui::Text("None") : ImGui::Text("%s (%d)", m_Scene.GetEntityManager().Get<NameComponent>(m_SelectedEntity).Name.c_str(), (m_SelectedEntity >> 12));
+		m_SelectedEntity == NULL_ENTITY ? ImGui::Text("None") : ImGui::Text("%s (%d)", m_pScene->GetEntityManager().Get<NameComponent>(m_SelectedEntity).Name.c_str(), (m_SelectedEntity >> 12));
 		ImGui::SameLine();
 
 		ImGui::End();
@@ -169,40 +172,14 @@ break;
 		m_MetricsPanel.OnImGuiRender();
 	}
 
-	struct DATA
-	{
-		DATA(const std::string& aa, double bb, double cc, double dd)
-			: a{aa}, b{bb}, c{cc}, d{dd}
-		{
-		}
-
-		std::string a;
-		double b;
-		double c;
-		double d;
-	};
-
 	void EditorLayer::OnAttach() noexcept
 	{
 		LoadStarterMeshes();
-		m_pEditorCamera = std::move(PerspectiveCamera::Create(DirectX::XMVECTORF32{ 5.0f, 5.0f, -5.0f }, static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y)));
-		m_Scene.CreateLight("Directional Light", LightType::Directional);
-		{
-			auto ground = m_Scene.CreateShape<Shape::Cube>();
-			m_Scene.GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
-			m_Scene.GetEntityManager().Get<MeshRendererComponent>(ground).Color = { 42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f };
+		CreateStartScene();
+		m_pSceneRenderer = std::make_unique<SceneRenderer>(m_pScene);
 
-			auto& tc = m_Scene.GetEntityManager().Get<TransformComponent>(ground);
-			tc.Scale = DirectX::XMFLOAT3{ 6.4f, 0.1f, 6.4f };
-		}
-
-		{
-			auto cube = m_Scene.CreateShape<Shape::Quad>();
-			auto& tc = m_Scene.GetEntityManager().Get<TransformComponent>(cube);
-			tc.Translation = { 0.0f, 0.55f, 0.0f };
-		}
-
-		m_SceneHierarchyPanel.SetActiveScene(&m_Scene);
+		m_PropertiesPanel.SetActiveScene(m_pScene.get());
+		m_SceneHierarchyPanel.SetActiveScene(m_pScene.get());
 		m_SceneHierarchyPanel.SetOnEntityDestroyFunction([this](entity entityID)
 			{
 				if (entityID == m_SelectedEntity)
@@ -214,13 +191,15 @@ break;
 					m_HoveredEntity = NULL_ENTITY;
 			});
 
-		m_PropertiesPanel.SetActiveScene(&m_Scene);
 		MemoryManager::Get().GetUploadBuffer()->Upload();
-		m_Scene.SetViewportPanelSize(m_ViewportPanelSize);
+		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
 	{
+		PROFILE_FUNC;
+
+
 		if (!m_SceneViewportChanged)
 		{
 			if (m_HoveringSceneViewport)
@@ -234,7 +213,7 @@ break;
 				x -= static_cast<uint32_t>((sceneViewPortWindowPosition.x - clientRect.left));
 				y -= static_cast<uint32_t>((sceneViewPortWindowPosition.y - clientRect.top));
 
-				m_HoveredEntity = Renderer3D::GetHoveredEntity(x, y);
+				m_HoveredEntity = m_pSceneRenderer->GetHoveredEntity(x, y);
 			}
 			else
 				m_HoveredEntity = NULL_ENTITY;
@@ -253,23 +232,22 @@ break;
 				||  Keyboard::IsKeyPressed(RLS_KEY::Q)
 				||  Keyboard::IsKeyPressed(RLS_KEY::E)))
 		{
-			m_pEditorCamera->Update(deltaTime);
+			m_pScene->GetEditorCamera()->Update(deltaTime);
 		}
 
-		auto& cb = *m_pEditorCamera->m_pConstantBuffer;
-		MemoryManager::Get().UpdateConstantBuffer(cb, &m_pEditorCamera->GetPosition());
+		auto& cb = *m_pScene->GetEditorCamera()->m_pConstantBuffer;
+		MemoryManager::Get().UpdateConstantBuffer(cb, &m_pScene->GetEditorCamera()->GetPosition());
 
-		m_Scene.OnUpdate();
+		m_pScene->OnUpdate();
 	}
 
 	void EditorLayer::OnRender() noexcept
 	{
-		Renderer3D::Begin(m_pEditorCamera, m_Scene);
-		m_Scene.GetEntityManager().Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([](entity id)
-			{
-				Renderer3D::Submit(id);
-			});
-		Renderer3D::End(m_Scene.GetEntityManager());
+		PROFILE_FUNC;
+
+		m_pSceneRenderer->Begin();
+		m_pSceneRenderer->IssueRenderPasses();
+		m_pSceneRenderer->End();
 	}
 
 	void EditorLayer::LoadStarterMeshes() noexcept
@@ -291,10 +269,10 @@ break;
 
 
 		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Meshes/");
-		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMesh)
+		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
 			{
-				std::string fullMeshPath(meshPath + std::string(starterMesh));
-				std::string fileName = starterMesh.substr(0, starterMesh.find_first_of("."));
+				std::string fullMeshPath(meshPath + std::string(starterMeshName));
+				std::string fileName = starterMeshName.substr(0, starterMeshName.find_first_of("."));
 				if (!assetManager.HasLoaded(fileName + " Vertex Buffer"))
 				{
 					MeshFactory meshFactory;
@@ -323,14 +301,36 @@ break;
 			});
 	}
 
+	void EditorLayer::CreateStartScene() noexcept
+	{
+		m_pScene = std::make_shared<Scene>();
+
+		m_pScene->CreateLight("Directional Light", LightType::Directional);
+		
+		{
+			auto ground = m_pScene->CreateShape<Shape::Cube>();
+			m_pScene->GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
+			m_pScene->GetEntityManager().Get<MeshRendererComponent>(ground).Color = { 42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f };
+
+			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(ground);
+			tc.Scale = DirectX::XMFLOAT3{ 6.4f, 0.1f, 6.4f };
+		}
+
+		{
+			auto cube = m_pScene->CreateShape<Shape::Cube>();
+			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(cube);
+			tc.Translation = { 0.0f, 0.55f, 0.0f };
+		}
+	}
+
 	void EditorLayer::OnSceneViewportChanged() noexcept
 	{
 		m_ViewportPanelSize.x = std::max(1.0f, m_ViewportPanelSize.x);
 		m_ViewportPanelSize.y = std::max(1.0f, m_ViewportPanelSize.y);
-		m_Scene.SetViewportPanelSize(m_ViewportPanelSize);
+		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
 
-		m_pEditorCamera->RecalculateProjectionMatrix(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
-		Renderer3D::OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
+		m_pScene->GetEditorCamera()->RecalculateProjectionMatrix(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
+		m_pSceneRenderer->OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		ImguiLayer::OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		m_SceneViewportChanged = false;
 	}
@@ -340,7 +340,7 @@ break;
 		if (m_SelectedEntity == NULL_ENTITY)
 			return;
 
-		m_Scene.DestroyEntity(m_SelectedEntity);
+		m_pScene->DestroyEntity(m_SelectedEntity);
 		m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
 		m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
 		m_SelectedEntity = NULL_ENTITY;
@@ -353,8 +353,8 @@ break;
 		if (m_SelectedEntity == NULL_ENTITY)
 			return;
 
-		auto& mgr = m_Scene.GetEntityManager();
-		auto newEntity = m_Scene.CreateEntityWithUUID(mgr.Get<NameComponent>(m_SelectedEntity).Name.c_str());
+		auto& mgr = m_pScene->GetEntityManager();
+		auto newEntity = m_pScene->CreateEntityWithUUID(mgr.Get<NameComponent>(m_SelectedEntity).Name.c_str());
 		auto& tc1 = mgr.Get<TransformComponent>(m_SelectedEntity);
 		auto& tc2 = mgr.Get<TransformComponent>(newEntity);
 		tc2.Translation = tc1.Translation;
@@ -364,19 +364,27 @@ break;
 
 		if (mgr.Has<MeshFilterComponent>(m_SelectedEntity))
 		{
-			auto& mfc = mgr.Get<MeshFilterComponent>(m_SelectedEntity);
 			auto& mfcNew = mgr.Add<MeshFilterComponent>(newEntity);
+			auto& mfc = mgr.Get<MeshFilterComponent>(m_SelectedEntity);
 
 			mfcNew.VertexBufferID = mfc.VertexBufferID;
 			mfcNew.IndexBufferID = mfc.IndexBufferID;
 		}
 		if (mgr.Has<MeshRendererComponent>(m_SelectedEntity))
 		{
-			mgr.Add<DirtyMeshRendererComponent>(newEntity);
 			auto& mrcNew = mgr.Add<MeshRendererComponent>(newEntity);
 			mrcNew.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
 			auto& mrc = mgr.Get<MeshRendererComponent>(m_SelectedEntity);
 			mrcNew.Color = mrc.Color;
+
+			if (mrc.UsesAlbedoMap == 0xFFFFFFFF)
+			{
+				mrcNew.UsesAlbedoMap = mrc.UsesAlbedoMap;
+				mrcNew.AlbedoTextureID = mrc.AlbedoTextureID;
+
+				mgr.Add<AlbedoTextureComponent>(newEntity).AlbedoTextureID = mgr.Get<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID;
+			}
+			mgr.Add<DirtyMeshRendererComponent>(newEntity);
 		}
 		if (mgr.Has<ForwardPassComponent>(m_SelectedEntity))
 			mgr.Add<ForwardPassComponent>(newEntity);
@@ -384,7 +392,7 @@ break;
 		{
 			auto& newDlc = mgr.Add<DirectionalLightComponent>(newEntity);
 			auto& dlc = mgr.Get<DirectionalLightComponent>(m_SelectedEntity);
-			m_Scene.GetLightManager().AllocateDirectionalLight(newEntity);
+			m_pScene->GetLightManager().AllocateDirectionalLight(newEntity);
 			newDlc.Color = dlc.Color;
 			newDlc.Intensity = dlc.Intensity;
 		}
@@ -392,7 +400,7 @@ break;
 		{
 			auto& newPlc = mgr.Add<PointLightComponent>(newEntity);
 			auto& plc = mgr.Get<PointLightComponent>(m_SelectedEntity);
-			m_Scene.GetLightManager().AllocatePointLight(newEntity);
+			m_pScene->GetLightManager().AllocatePointLight(newEntity);
 			newPlc.Color = plc.Color;
 			newPlc.Intensity = plc.Intensity;
 		}
@@ -408,12 +416,12 @@ break;
 		ImGuizmo::SetDrawlist();
 		ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 
-		auto& transformComponent = m_Scene.GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
+		auto& transformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
 
 		static DirectX::XMFLOAT3 snapTranslationScale{ 1.0f, 1.0f, 1.0f };
 		static float snapRotation{ 10.0f };
 
-		DirectX::XMFLOAT4X4 visualizationMatrix = m_Scene.GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Transform;
+		DirectX::XMFLOAT4X4 visualizationMatrix = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Transform;
 		float translationBefore[3]	= { 0.0f };
 		float rotationBefore[3]		= { 0.0f };
 		float scaleBefore[3]		= { 0.0f };
@@ -421,16 +429,16 @@ break;
 		ImGuizmo::DecomposeMatrixToComponents(*visualizationMatrix.m, translationBefore, rotationBefore, scaleBefore);
 
 		ImGuizmo::MODE mode;
-		if (!m_Scene.GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
+		if (!m_pScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
 			mode = ImGuizmo::WORLD;
 		else
 			mode = (ImGuizmo::OPERATION)m_CurrentGizmoType == ImGuizmo::OPERATION::SCALE ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
 
 		if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
-			ImGuizmo::Manipulate(*m_pEditorCamera->GetViewMatrix().m, *m_pEditorCamera->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m, nullptr, (m_CurrentGizmoType == GizmoType::ROTATE) ? &snapRotation : &snapTranslationScale.x);
+			ImGuizmo::Manipulate(*m_pScene->GetEditorCamera()->GetViewMatrix().m, *m_pScene->GetEditorCamera()->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m, nullptr, (m_CurrentGizmoType == GizmoType::ROTATE) ? &snapRotation : &snapTranslationScale.x);
 		else
 		{
-			ImGuizmo::Manipulate(*m_pEditorCamera->GetViewMatrix().m, *m_pEditorCamera->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m);
+			ImGuizmo::Manipulate(*m_pScene->GetEditorCamera()->GetViewMatrix().m, *m_pScene->GetEditorCamera()->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m);
 		}
 		if (ImGuizmo::IsUsing())
 		{
@@ -452,9 +460,9 @@ break;
 			float scaleOffsetY = scaleAfter[1] - scaleBefore[1];
 			float scaleOffsetZ = scaleAfter[2] - scaleBefore[2];
 
-			if (m_Scene.GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
+			if (m_pScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
 			{
-				auto& parentScale = m_Scene.GetEntityManager().Get<TransformComponent>(m_Scene.GetEntityManager().Get<IsChildComponent>(m_SelectedEntity).Parent).Scale;
+				auto& parentScale = m_pScene->GetEntityManager().Get<TransformComponent>(m_pScene->GetEntityManager().Get<IsChildComponent>(m_SelectedEntity).Parent).Scale;
 				
 				translationOffsetX /= parentScale.x;
 				translationOffsetY /= parentScale.y;
@@ -482,7 +490,7 @@ break;
 			transformComponent.Rotation.y += rotationOffsetY;
 			transformComponent.Rotation.z += rotationOffsetZ;
 
-			m_Scene.GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
+			m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
 		}
 	}
 }

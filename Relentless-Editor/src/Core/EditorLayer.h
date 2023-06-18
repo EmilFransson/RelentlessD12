@@ -1,10 +1,10 @@
 #pragma once
 #include <Relentless.h>
+#include "EditorGrid.h"
 #include "../Panels/SceneHierarchyPanel.h"
 #include "../Panels/PropertiesPanel.h"
 #include "../Panels/ContentBrowserPanel.h"
 #include "../Panels/MetricsPanel.h"
-
 
 namespace Relentless
 {
@@ -23,6 +23,7 @@ namespace Relentless
 		virtual void OnRender() noexcept override final;
 	private:
 		void LoadStarterMeshes() noexcept;
+		void CreateStartScene() noexcept;
 		void OnSceneViewportChanged() noexcept;
 		void DestroySelectedEntity() noexcept;
 		void CopySelectedEntity() noexcept;
@@ -32,7 +33,6 @@ namespace Relentless
 		ImVec2 m_ViewportPanelSize;
 		bool m_SceneViewportChanged;
 		bool m_HoveringSceneViewport;
-		std::shared_ptr<PerspectiveCamera> m_pEditorCamera;
 		ImVec2 vMin;
 		ImVec2 vMax;
 
@@ -48,9 +48,11 @@ namespace Relentless
 		ContentBrowserPanel m_ContentBrowserPanel;
 		MetricsPanel m_MetricsPanel;
 
-		Scene m_Scene;
+		std::shared_ptr<Scene> m_pScene;
 
 		DirectX::XMFLOAT4X4 m_ManipulateTransform;
 		bool m_IsTransformingWithGizmo = false;
+
+		std::unique_ptr<SceneRenderer> m_pSceneRenderer;
 	};
 }

@@ -17,10 +17,10 @@ namespace Relentless
 }
 
 #ifndef NAME_D12_OBJECT
-#define NAME_D12_OBJECT(obj, name) DXCall(obj->SetName(name)); 
+	#define NAME_D12_OBJECT(obj, name) DXCall(obj->SetName(name)); 
 #endif //NAME_D12_OBJECT
 #ifndef NAME_D12_OBJECT_INDEXED
-#define NAME_D12_OBJECT_INDEXED(obj, name, index)	\
+	#define NAME_D12_OBJECT_INDEXED(obj, name, index)	\
 			{	\
 				std::wstring finalName = std::wstring(name) + std::wstring(L"[") + std::to_wstring(index) + std::wstring(L"]");	\
 				DXCall(obj->SetName(finalName.c_str()));	\

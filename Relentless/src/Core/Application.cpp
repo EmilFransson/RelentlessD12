@@ -3,7 +3,7 @@
 #include "../Graphics/D3D12Core.h"
 #include "../EventSystem/LayerStack.h"
 #include "../EventSystem/EventBus.h"
-#include "../Graphics/Renderer/Renderer3D.h"
+#include "../Graphics/Renderer/MasterRenderer.h"
 #include "../Graphics/MemoryManager.h"
 #include "Timer.h"
 #include "../Input/Mouse.h"
@@ -17,31 +17,42 @@ namespace Relentless
 
 	void Application::Run() noexcept
 	{
-		Renderer3D::ExecuteCommands();
-		Renderer3D::WaitForGPU();
+		MasterRenderer::ExecuteCommands();
+		MasterRenderer::WaitForGPU();
 		while (m_IsRunning)
 		{
+			PROFILE_FUNC;
+
 			Timer::Update();
 			
 			MemoryManager::Get().PerformDeferredDeletion();
 
-			for (auto& pLayer : LayerStack::Get())
 			{
-				pLayer->OnUpdate(Timer::GetDeltaTime());
-				pLayer->OnRender();
+				PROFILE_SCOPE("Application::Run::OnUpdateAndRender");
+
+				for (auto& pLayer : LayerStack::Get())
+				{
+					pLayer->OnUpdate(Timer::GetDeltaTime());
+					pLayer->OnRender();
+				}
 			}
 
-			ImguiLayer::BeginFrame();
-			for (auto& pLayer : LayerStack::Get())
-				pLayer->OnImGuiRender();
-			ImguiLayer::EndFrame();
+			{
+				PROFILE_SCOPE("Application::Run::OnImGuiRender");
 
-			Renderer3D::PrepareBackBuffer();
-			Renderer3D::ExecuteCommands();
+				ImguiLayer::BeginFrame();
+				for (auto& pLayer : LayerStack::Get())
+					pLayer->OnImGuiRender();
+				ImguiLayer::EndFrame();
+			}
+
+			MasterRenderer::PrepareBackBuffer();
+			MasterRenderer::ExecuteCommands();
 
 			Window::Present();
 
-			Renderer3D::WaitAndSync();
+			MasterRenderer::WaitAndSync();
+
 			Mouse::Reset();
 
 			Window::OnUpdate();
@@ -72,7 +83,7 @@ namespace Relentless
 			if (!IsInitialized())
 				return;
 
-			Renderer3D::WaitForGPU();
+			MasterRenderer::WaitForGPU();
 			Window::Resize();
 			break;
 		}
@@ -108,7 +119,7 @@ namespace Relentless
 		}
 
 		Window::Initialize(m_ApplicationSpecification.Name, windowWidth, windowHeight);
-		Renderer3D::Initialize();
+		MasterRenderer::Initialize();
 		PushOverlay(&m_ImGuiLayer);
 
 		m_IsRunning = true;
@@ -124,7 +135,7 @@ namespace Relentless
 		outFile << Window::GetHeight();
 		outFile.close();
 
-		Renderer3D::OnShutDown();
+		MasterRenderer::OnShutDown();
 
 		m_IsRunning = false;
 	}

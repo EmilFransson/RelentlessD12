@@ -151,7 +151,7 @@ namespace Relentless
 			IID_PPV_ARGS(&m_pResource)
 		));
 
-		RLS_CORE_INFO("Created Render Texture '{0}' of size [width, height]=[{1},{2}]", m_Name, textureSpecification.Width, 1);
+		RLS_CORE_INFO("Created Render Texture '{0}' of size [width, height]=[{1},{2}]", m_Name, textureSpecification.Width, textureSpecification.Height);
 	}
 
 	std::shared_ptr<ReadbackTexture> ReadbackTexture::Create(ReadbackTextureSpecification& textureSpecification, const std::string& name) noexcept
@@ -170,6 +170,7 @@ namespace Relentless
 		DirectX::ResourceUploadBatch resourceUpload(D3D12Core::GetDevice().Get());
 
 		std::filesystem::path fullPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Textures/") + fileName;
+		m_Name = fullPath.stem().string();
 
 		resourceUpload.Begin();
 
@@ -201,6 +202,8 @@ namespace Relentless
 		m_SRVDescriptorHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::SRV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_SRVDescriptorHandle.CPUHandle));
 		
+		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(m_Name).c_str());
+		RLS_CORE_INFO("Created Texture2D '{0}' of size [width, height]=[{1},{2}]", m_Name, textureDescriptor.Width, textureDescriptor.Height);
 	}
 
 	std::shared_ptr<Texture2D> Texture2D::Create(const std::string& fileName) noexcept

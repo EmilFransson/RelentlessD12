@@ -3,10 +3,28 @@ namespace Relentless
 {
 	Scene::Scene(const char* name) noexcept
 		: m_Name{ name }
-	{}
+	{
+		m_pEditorCamera = PerspectiveCamera::Create(DirectX::XMVECTORF32{ 5.0f, 5.0f, -5.0f }, static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
+
+		//Viewport:
+		m_Viewport.TopLeftX = 0.0f;
+		m_Viewport.TopLeftY = 0.0f;
+		m_Viewport.Width = 800.0f;
+		m_Viewport.Height = 600.0f;
+		m_Viewport.MinDepth = 0.0f;
+		m_Viewport.MaxDepth = 1.0f;
+
+		//ScissorRect:
+		m_ScissorRect.left = 0u;
+		m_ScissorRect.top = 0u;
+		m_ScissorRect.right = static_cast<LONG>(m_Viewport.Width);
+		m_ScissorRect.bottom = static_cast<LONG>(m_Viewport.Height);
+	}
 
 	void Scene::OnUpdate() noexcept
 	{
+		PROFILE_FUNC;
+
 		/*TRANSFORMS*/
 		m_EntityManager.Collect<TransformComponent, DirtyTransformComponent>().Do([&](entity entityHandle, TransformComponent& transformComponent, DirtyTransformComponent& dirty)
 			{
@@ -175,8 +193,6 @@ namespace Relentless
 		m_EntityManager.Add<NameComponent>(entity, name);
 		m_EntityManager.Add<IDComponent>(entity);
 		m_EntityManager.Add<RootComponent>(entity);
-		m_EntityManager.Add<AlbedoTextureComponent>(entity, AssetManager::Get().Load<Texture2D>("brickwall.jpg"));
-
 
 		return entity;
 	}

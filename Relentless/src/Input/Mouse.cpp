@@ -136,8 +136,8 @@ namespace Relentless
 		::GetWindowRect(::GetActiveWindow(), &rect);
 		constexpr const float horizontalPadding = 8.0f;
 		constexpr const float verticalPadding = 31.0f;
-		s_currentMouseCoords.x += (rect.left + horizontalPadding);
-		s_currentMouseCoords.y += (rect.top + verticalPadding);
+		s_currentMouseCoords.x += static_cast<uint32_t>(rect.left + horizontalPadding);
+		s_currentMouseCoords.y += static_cast<uint32_t>(rect.top + verticalPadding);
 		::SetCursorPos(s_currentMouseCoords.x, s_currentMouseCoords.y);
 	}
 

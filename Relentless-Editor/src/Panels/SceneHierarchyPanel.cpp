@@ -10,6 +10,8 @@ namespace Relentless
 
 	void SceneHierarchyPanel::OnImGuiRender() noexcept
 	{
+		PROFILE_FUNC;
+
 		RLS_ASSERT(m_pScene, "Scene is nullptr.");
 
 		ImGui::Begin("Scene Hierarchy");

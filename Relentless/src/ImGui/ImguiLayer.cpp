@@ -4,15 +4,11 @@
 #include "../Graphics/MemoryManager.h"
 namespace Relentless
 {
-	std::unique_ptr<DescriptorHeap> ImguiLayer::m_pDescriptorHeap{ nullptr };
-	D3D12_CPU_DESCRIPTOR_HANDLE ImguiLayer::my_texture_srv_cpu_handle{ };
-	D3D12_GPU_DESCRIPTOR_HANDLE ImguiLayer::my_texture_srv_gpu_handle{ };
 	std::shared_ptr<RenderTexture> ImguiLayer::m_pUITexture{ nullptr };
 
 	ImguiLayer::ImguiLayer() noexcept
 		:Layer("ImGuiLayer")
-	{
-	}
+	{}
 
 	ImguiLayer::~ImguiLayer() noexcept
 	{
@@ -85,7 +81,8 @@ namespace Relentless
 	void ImguiLayer::EndFrame() noexcept
 	{
 		ImGui::Render();
-		DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1, m_pDescriptorHeap->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3D12Core::GetCommandList().Get());
 		
 		ImGuiIO& io = ImGui::GetIO();
@@ -154,35 +151,16 @@ namespace Relentless
 		colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
 		colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
 
-		m_pDescriptorHeap = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2u, true));
-		
-		//Descriptor heap handles:
-		UINT handle_increment = D3D12Core::GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		int descriptor_index = 1; // The descriptor table index to use (not normally a hard-coded constant, but in this case we'll assume we have slot 1 reserved for us)
-		my_texture_srv_cpu_handle = m_pDescriptorHeap->GetCPUStartHandle();
-		my_texture_srv_cpu_handle.ptr += (handle_increment * descriptor_index);
-		my_texture_srv_gpu_handle = m_pDescriptorHeap->GetGPUStartHandle();
-		my_texture_srv_gpu_handle.ptr += (handle_increment * descriptor_index);
-
 		//UI TEXTURE
 		RenderTextureSpecification textureSpecification = {};
 		textureSpecification.Width = 800u;
 		textureSpecification.Height = 600u;
 		textureSpecification.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 		textureSpecification.MultiSampleCount = 1u;
-		textureSpecification.CreateSRV = false;
+		textureSpecification.CreateSRV = true;
 		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Brown.f);
 
 		m_pUITexture = std::move(RenderTexture::Create(textureSpecification, "Main UI RenderTexture"));
-
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = m_pUITexture->GetFormat();
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = 1u;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		
-		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pUITexture->GetInterface().Get(), &srvDesc, my_texture_srv_cpu_handle));
 
 		ImGui_ImplWin32_Init(::GetActiveWindow());
 		ImGui_ImplDX12_Init
@@ -190,10 +168,11 @@ namespace Relentless
 			D3D12Core::GetDevice().Get(),
 			D3D12Core::GetNrOfBufferedFrames(),
 			DXGI_FORMAT_R10G10B10A2_UNORM,
-			m_pDescriptorHeap->GetDescriptorHeapInterface().Get(),
-			m_pDescriptorHeap->GetCPUStartHandle(),
-			m_pDescriptorHeap->GetGPUStartHandle()
+			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().Get(),
+			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetCPUStartHandle(),
+			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetGPUStartHandle()
 		);
+
 	}
 
 	void ImguiLayer::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
@@ -203,7 +182,7 @@ namespace Relentless
 		textureSpecification.Height = height;
 		textureSpecification.Format = m_pUITexture->GetFormat();
 		textureSpecification.MultiSampleCount = 1u;
-		textureSpecification.CreateSRV = false;
+		textureSpecification.CreateSRV = true;
 		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Brown);
 		
 		//MOVE TO Renderer3D:
@@ -211,13 +190,5 @@ namespace Relentless
 		MemoryManager::Get().DestroyResource(std::move(m_pUITexture));
 
 		m_pUITexture = std::move(RenderTexture::Create(textureSpecification, "Main UI Texture"));
-
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = m_pUITexture->GetFormat();
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = 1u;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pUITexture->GetInterface().Get(), &srvDesc, my_texture_srv_cpu_handle));
 	}
 }

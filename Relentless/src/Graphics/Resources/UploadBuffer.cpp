@@ -1,6 +1,6 @@
 #include "UploadBuffer.h"
 #include "../D3D12Core.h"
-#include "../Renderer/Renderer3D.h"
+#include "../Renderer/MasterRenderer.h"
 #include "../Renderer/RenderCommand.h"
 namespace Relentless
 {
@@ -87,9 +87,13 @@ namespace Relentless
 		m_MappedPtr -= offset;
 		m_CurrentSize = 0u;
 
-		Renderer3D::ExecuteCommands();
-		Renderer3D::WaitForGPU();
-		RenderCommand::ResetFrameCommandUnits(0u);
+		//Renderer3D::ExecuteCommands();
+		//Renderer3D::WaitForGPU();
+		//RenderCommand::ResetFrameCommandUnits(0u);
+
+		MasterRenderer::ExecuteCommands();
+		MasterRenderer::WaitForGPU();
+		MasterRenderer::ResetFrameCommandUnits(0u);
 	}
 
 	void UploadBuffer::Copy(const uint64_t size, void* pSrc, IResource* pDst, const D3D12_RESOURCE_STATES stateAfterCopy) noexcept

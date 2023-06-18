@@ -8,6 +8,8 @@ namespace Relentless
 
 	void PropertiesPanel::OnImGuiRender() noexcept
 	{
+		PROFILE_FUNC;
+
 		ImGui::Begin("Properties");
 		if (m_SelectedEntity != NULL_ENTITY)
 		{
@@ -85,8 +87,8 @@ namespace Relentless
 		ImGui::Separator();
 		
 		constexpr const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowItemOverlap;
-		const bool opened = ImGui::TreeNodeEx((void*)typeid(TransformComponent).hash_code(), flags, "Transform");
-		if (opened)
+		const bool openedTC = ImGui::TreeNodeEx((void*)typeid(TransformComponent).hash_code(), flags, "Transform");
+		if (openedTC)
 		{
 			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
 			bool changedValues = true;
@@ -213,7 +215,7 @@ namespace Relentless
 				{
 					std::string name = AssetManager::Get().GetAssetName(mfc.VertexBufferID);
 					name = name.substr(0, name.find_first_of(" "));
-					std::strcpy(input, name.c_str());
+					strcpy_s(input, sizeof(input), name.c_str());
 				}
 				else
 				{
@@ -292,6 +294,60 @@ namespace Relentless
 				{
 					m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
 				}
+				ImGui::Separator();
+
+				constexpr const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen;
+				const bool opened = ImGui::TreeNodeEx("Albedo", flags, "Albedo");
+
+				if (opened)
+				{
+					static bool useAlbedo = true;
+					if (m_pScene->GetEntityManager().Has<AlbedoTextureComponent>(m_SelectedEntity)
+						&& AssetManager::Get().Exists(m_pScene->GetEntityManager().Get<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID))
+					{
+						ResourceID& albedoTextureResourceID = m_pScene->GetEntityManager().Get<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID;
+						Texture2D* pAlbedoTexture = AssetManager::Get().GetAsset<Texture2D>(albedoTextureResourceID);
+						ImGui::ImageButton((ImTextureID)pAlbedoTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(100.0f, 100.0f), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+
+						ImGui::Text("     Use");
+						ImGui::SameLine();
+						if (ImGui::Checkbox("##UseAlbedoCheckbox", &useAlbedo))
+						{
+							if (useAlbedo == true)
+							{
+								mrc.UsesAlbedoMap = 0xFFFFFFFF;
+							}
+							else
+							{
+								mrc.UsesAlbedoMap = 0x00000000;
+							}
+							m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+						}
+					}
+					else
+					{
+						static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+						static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
+						ImGui::ColorButton("##MyColor", buttonColor, buttonFlags, ImVec2(100.0f, 100.0f));
+						if (ImGui::BeginDragDropTarget())
+						{
+							if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
+							{
+								const char* path = (const char*)payLoad->Data;
+								ResourceID textureResourceID = AssetManager::Get().Load<Texture2D>(path);
+								m_pScene->GetEntityManager().Add<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID = textureResourceID;
+								mrc.UsesAlbedoMap = 0xFFFFFFFF;
+								mrc.AlbedoTextureID = AssetManager::Get().GetAsset<Texture2D>(textureResourceID)->GetSRVDescriptorHandle().Index;
+								m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+
+							}
+							ImGui::EndDragDropTarget();
+						}
+					}
+
+					ImGui::TreePop();
+				}
+
 			});
 
 		DrawComponentNode<CameraComponent>("Camera", [this]()
@@ -352,6 +408,7 @@ namespace Relentless
 					{
 						m_pScene->GetEntityManager().Add<DirectionalLightComponent>(m_SelectedEntity);
 						m_pScene->GetLightManager().AllocateDirectionalLight(m_SelectedEntity);
+						m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 					}
 					else
 					{
@@ -366,6 +423,7 @@ namespace Relentless
 					{
 						m_pScene->GetEntityManager().Add<PointLightComponent>(m_SelectedEntity);
 						m_pScene->GetLightManager().AllocatePointLight(m_SelectedEntity);
+						m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 					}
 					else
 					{

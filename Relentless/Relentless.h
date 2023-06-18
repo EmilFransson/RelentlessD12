@@ -1,6 +1,9 @@
 #pragma once
+
+//Core:
 #include <src/Core/Application.h>
 #include <src/Core/Core.h>
+#include <src/Core/Timer.h>
 
 //Logging:
 #include <src/Core/Log.h>
@@ -14,13 +17,14 @@
 #include <src/EventSystem/IEvent.h>
 #include <src/EventSystem/KeyboardEvents.h>
 
-//Core:
-#include <src/Graphics/MemoryManager.h>
-
 //Graphics:
 #include <src/Graphics/D3D12Core.h>
 #include <src/Graphics/Renderer/RenderCommand.h>
+#include <src/Graphics/Renderer/RenderUtility.h>
 #include <src/Graphics/Renderer/Renderer3D.h>
+#include <src/Graphics/Renderer/MasterRenderer.h>
+#include <src/Graphics/Renderer/SceneRenderer.h>
+#include <src/Graphics/MemoryManager.h>
 
 //Resources
 #include <src/Graphics/Resources/Texture.h>

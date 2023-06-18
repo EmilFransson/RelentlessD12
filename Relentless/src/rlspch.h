@@ -46,6 +46,7 @@
 
 //Relentless-specific files:
 #include "Core/Log.h"
+#include "Core/Profiler.h"
 #include "Core/Core.h"
 #include "Core/Utility.h"
 #include "Graphics/D3D12Debug.h"

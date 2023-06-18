@@ -19,6 +19,7 @@ namespace Relentless
 		static std::chrono::steady_clock::time_point m_PreviousTimePoint;
 		static std::chrono::steady_clock::time_point m_CurrentTimePoint;
 		static float m_ElapsedTime;
+		static float m_ElapsedApplicationTime;
 		static uint32_t m_FramesPerSecond;
 		static uint32_t m_FramesPerSecondCounter;
 	};
