@@ -2,6 +2,7 @@
 #include "Properties.h"
 #include "../Shaders/Shader.h"
 #include "FrameBuffer.h"
+#include "../Shaders/ShaderReflector.h"
 namespace Relentless
 {
 	struct PipelineSpecification
@@ -14,7 +15,7 @@ namespace Relentless
 		bool DepthWrite{ true };
 		FillMode FillMode{ FillMode::Solid };
 		Topology Topology{ Topology::Triangle };
-		Microsoft::WRL::ComPtr<ID3D12RootSignature> pRootSignature{nullptr};
+		bool blend{false};
 	};
 
 	class Pipeline
@@ -25,11 +26,13 @@ namespace Relentless
 		[[nodiscard]] static std::shared_ptr<Pipeline> Create(const PipelineSpecification& specification) noexcept;
 		[[nodiscard]] ID3D12PipelineState* GetInterface() const noexcept { return m_pPSO.Get(); }
 		[[nodiscard]] const Microsoft::WRL::ComPtr<ID3D12PipelineState>& GetInterface2() const noexcept { return m_pPSO; }
-		[[nodiscard]] const Microsoft::WRL::ComPtr<ID3D12RootSignature>& GetRootSig() const noexcept { return m_Specification.pRootSignature; }
-		[[nodiscard]] FrameBuffer* GetFrameBuffer() const noexcept { return m_Specification.pFrameBuffer.get(); }
+		[[nodiscard]] const Microsoft::WRL::ComPtr<ID3D12RootSignature>& GetRootSig() const noexcept { return m_ReflectionResult.pRootSignature; }
+		[[nodiscard]] std::shared_ptr<FrameBuffer> GetFrameBuffer() const noexcept { return m_Specification.pFrameBuffer; }
 		[[nodiscard]] const PipelineSpecification& GetSpecification() const noexcept { return m_Specification; }
+		[[nodiscard]] const ReflectionResult& GetShaderReflectionResults() const noexcept { return m_ReflectionResult; }
 	private:
 		PipelineSpecification m_Specification;
 		Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pPSO;
+		ReflectionResult m_ReflectionResult;
 	};
 }

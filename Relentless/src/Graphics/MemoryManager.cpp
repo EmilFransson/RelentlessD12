@@ -168,7 +168,25 @@ namespace Relentless
 		auto srcHandle = structuredBuffer.m_NonVisibleHandle.CPUHandle;
 
 		DXCall_STD(D3D12Core::GetDevice()->CopyDescriptorsSimple(1, dstHandle, srcHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
-		
+	}
+
+	void MemoryManager::UpdateStructuredBuffer(const StructuredBuffer& structuredBuffer, void* pData, uint32_t index, uint32_t frameIndex) noexcept
+	{
+		RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
+		RLS_ASSERT(index < structuredBuffer.m_Capacity, "Capacity reached.");
+
+		auto address = structuredBuffer.GetInterface()->GetGPUVirtualAddress();
+
+		constexpr const D3D12_RANGE range = { 0,0 };
+		DXCall(structuredBuffer.GetInterface()->Map(0u, &range, reinterpret_cast<void**>(&address)));
+		address += (index * structuredBuffer.m_ByteStride);
+		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), structuredBuffer.m_ByteStride);
+		DXCall_STD(structuredBuffer.GetInterface()->Unmap(0u, nullptr));
+
+		auto dstHandle = structuredBuffer.m_VisibleHandles[frameIndex].CPUHandle;
+		auto srcHandle = structuredBuffer.m_NonVisibleHandle.CPUHandle;
+
+		DXCall_STD(D3D12Core::GetDevice()->CopyDescriptorsSimple(1, dstHandle, srcHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 	}
 
 	size_t MemoryManager::CreateConstantBuffer(uint32_t sizeInBytes) noexcept
@@ -176,4 +194,11 @@ namespace Relentless
 		m_ConstantBuffers.emplace_back(std::make_unique<ConstantBuffer>(sizeInBytes));
 		return m_ConstantBuffers.size() - 1;
 	}
+
+	uint32_t MemoryManager::GetCBDescriptorIndex(const size_t constantBufferHandle) noexcept
+	{
+		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
+		return GetConstantBuffer(constantBufferHandle)->m_VisibleHandles[frameIndex].Index;
+	}
+
 }

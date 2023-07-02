@@ -41,49 +41,64 @@ namespace Relentless
 
 		if (ImGui::BeginPopupContextWindow(0, 1, false /*over items*/))
 		{
+			bool createdNewEntity = false;
+
 			if (ImGui::MenuItem("Create Empty"))
+			{
+				createdNewEntity = true;
 				m_SelectedEntity = m_pScene->CreateEntity("Entity");
+			}
 
 			if (ImGui::BeginMenu("Shapes"))
 			{
 				if (ImGui::MenuItem("Triangle"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Triangle>();
 				}
 				if (ImGui::MenuItem("Cube"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Cube>();
 				}
 				if (ImGui::MenuItem("Cylinder"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Cylinder>();
 				}
 				if (ImGui::MenuItem("Capsule"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Capsule>();
 				}
 				if (ImGui::MenuItem("Cone"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Cone>();
 				}
 				if (ImGui::MenuItem("Sphere"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Sphere>();
 				}
 				if (ImGui::MenuItem("IcoSphere"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateShape<Shape::IcoSphere>();
 				}
 				if (ImGui::MenuItem("Torus"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Torus>();
 				}
-				if (ImGui::MenuItem("Quad"))
+				if ( ImGui::MenuItem("Quad"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Quad>();
 				}
 				if (ImGui::MenuItem("Plane"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateShape<Shape::Plane>();
 				}
 				ImGui::EndMenu();
@@ -93,6 +108,7 @@ namespace Relentless
 			{
 				if (ImGui::MenuItem("Utah Teapot"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateExtra<Extra::UtahTeapot>();
 				}
 				ImGui::EndMenu();
@@ -102,17 +118,27 @@ namespace Relentless
 			{
 				if (ImGui::MenuItem("Directional Light"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateLight("Directional Light", LightType::Directional);
 				}
 				if (ImGui::MenuItem("Point Light"))
 				{
+					createdNewEntity = true;
 					m_SelectedEntity = m_pScene->CreateLight("Point Light", LightType::Point);
 				}
 				ImGui::EndMenu();
 			}
 
 			if (ImGui::MenuItem("Camera"))
+			{
+				createdNewEntity = true;
 				m_SelectedEntity = m_pScene->CreateCamera("Camera");
+			}
+
+			if (createdNewEntity)
+			{
+				m_OnEntityCreatedCallBack(m_SelectedEntity);
+			}
 
 			ImGui::EndPopup();
 		}
@@ -208,7 +234,10 @@ namespace Relentless
 
 		bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entityID, entityNodeflags, nc.Name.c_str());
 		if (ImGui::IsItemClicked())
+		{
 			m_SelectedEntity = entityID;
+			m_OnEntitySelectedCallBack(m_SelectedEntity);
+		}
 
 		if (ImGui::BeginPopupContextItem())
 		{
@@ -261,5 +290,15 @@ namespace Relentless
 	void SceneHierarchyPanel::SetOnEntityDestroyFunction(std::function<void(entity id)> callBackFunction) noexcept
 	{
 		m_OnEntityDestroyedCallBack = callBackFunction;
+	}
+
+	void SceneHierarchyPanel::SetOnEntityCreatedFunction(std::function<void(entity id)> callBackFunction) noexcept
+	{
+		m_OnEntityCreatedCallBack = callBackFunction;
+	}
+
+	void SceneHierarchyPanel::SetOnEntitySelectedFunction(std::function<void(entity id)> callBackFunction) noexcept
+	{
+		m_OnEntitySelectedCallBack = callBackFunction;
 	}
 }

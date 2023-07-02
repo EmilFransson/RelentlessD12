@@ -3,6 +3,7 @@
 #include "Resources/Texture.h"
 #include "Resources/UploadBuffer.h"
 #include "Resources/StructuredBuffer.h"
+#include "Renderer/MasterRenderer.h"
 namespace Relentless
 {
 	class ConstantBuffer;
@@ -20,8 +21,10 @@ namespace Relentless
 		void UpdateConstantBuffer(const ConstantBuffer& constantBuffer, void* pData) noexcept;
 		void UpdateConstantBuffer(size_t id, void* pData) noexcept;
 		void UpdateStructuredBuffer(const StructuredBuffer& structuredBuffer, void* pData, uint32_t index) noexcept;
+		void UpdateStructuredBuffer(const StructuredBuffer& structuredBuffer, void* pData, uint32_t index, uint32_t frameIndex) noexcept;
 		[[nodiscard]] size_t CreateConstantBuffer(uint32_t sizeInBytes) noexcept;
-		[[nodiscard]] std::unique_ptr<ConstantBuffer>& GetConstantBuffer(size_t ID)  noexcept { return m_ConstantBuffers[ID]; }
+		[[nodiscard]] std::unique_ptr<ConstantBuffer>& GetConstantBuffer(size_t ID) noexcept { return m_ConstantBuffers[ID]; }
+		[[nodiscard]] uint32_t GetCBDescriptorIndex(const size_t constantBufferHandle) noexcept;
 	private:
 		MemoryManager() noexcept = default;
 		~MemoryManager() noexcept = default;

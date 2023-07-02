@@ -141,8 +141,6 @@ namespace Relentless
 				MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
 			});
 
-
-
 		/*MATERIALS*/
 		m_EntityManager.Collect<MeshRendererComponent, DirtyMeshRendererComponent>().Do([&](entity entityID, MeshRendererComponent& mrc, DirtyMeshRendererComponent& dirty)
 			{
@@ -168,6 +166,7 @@ namespace Relentless
 				lc.Position = tc.Translation;
 				m_LightManager.UpdatePointLight(lc, entityID);
 			});
+
 
 		/****Clean up****/
 		m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)

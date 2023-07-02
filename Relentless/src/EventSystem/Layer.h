@@ -11,6 +11,7 @@ namespace Relentless
 		virtual void OnDetach() {}
 		virtual void OnUpdate(const float) {}
 		virtual void OnRender() {}
+		virtual void OnPostRender() {}
 		virtual void OnImGuiRender() {}
 		virtual void OnEvent(IEvent&) {}
 		[[nodiscard]] constexpr const std::string& GetName() const noexcept { return m_name; }

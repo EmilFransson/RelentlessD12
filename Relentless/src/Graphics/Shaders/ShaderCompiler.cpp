@@ -45,11 +45,13 @@ namespace Relentless
 		DXCall(pCompileResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&pErrorBlob), nullptr));
 		if (pErrorBlob && pErrorBlob->GetStringLength() > 0)
 		{
+			RLS_CORE_CRITICAL("{}", (char*)pErrorBlob->GetBufferPointer());
 			RLS_ASSERT(false, (char*)pErrorBlob->GetBufferPointer());
 		}
 #endif
 
 		RLS_CORE_INFO("Compiled shader: '{0}'", fileName);
+
 		return std::make_shared<Shader>(shaderType, fileName.substr(0, fileName.find_first_of(".")), std::move(pShaderBlob));
 	}
 }

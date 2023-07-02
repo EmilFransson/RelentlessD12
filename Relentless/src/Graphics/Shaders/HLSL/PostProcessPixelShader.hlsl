@@ -1,4 +1,4 @@
-SamplerState pointSampler : register(s0, space0);
+SamplerState sampler_LINEAR : register(s0, space0);
 
 float3 LinearToSRGB(float3 color)
 {
@@ -32,8 +32,7 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
 {
     Texture2D hdrTexture = ResourceDescriptorHeap[TextureData.hdrTextureIndex];
     
-    float4 hdrTextureColor = hdrTexture.Sample(pointSampler, float2(psIn.inTexCoords.x, psIn.inTexCoords.y));
-    //return hdrTextureColor;
+    float4 hdrTextureColor = hdrTexture.Sample(sampler_LINEAR, float2(psIn.inTexCoords.x, psIn.inTexCoords.y));
     float3 sdr = ToneMapACES(hdrTextureColor.xyz);
     float3 sRGB = LinearToSRGB(sdr);
     return float4(sRGB, hdrTextureColor.a);

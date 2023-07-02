@@ -1,6 +1,5 @@
 #pragma once
 #include <Relentless.h>
-#include "EditorGrid.h"
 #include "../Panels/SceneHierarchyPanel.h"
 #include "../Panels/PropertiesPanel.h"
 #include "../Panels/ContentBrowserPanel.h"
@@ -21,6 +20,7 @@ namespace Relentless
 		virtual void OnDetach() noexcept override final{};
 		virtual void OnUpdate(const float deltaTime) noexcept override final;
 		virtual void OnRender() noexcept override final;
+		virtual void OnPostRender() noexcept override final;
 	private:
 		void LoadStarterMeshes() noexcept;
 		void CreateStartScene() noexcept;
@@ -36,9 +36,6 @@ namespace Relentless
 		ImVec2 vMin;
 		ImVec2 vMax;
 
-		ImVec2 sceneViewPortStartPosition;
-		ImVec2 sceneViewPortWindowPosition;
-
 		entity m_HoveredEntity;
 		entity m_SelectedEntity;
 		GizmoType m_CurrentGizmoType;
@@ -49,9 +46,6 @@ namespace Relentless
 		MetricsPanel m_MetricsPanel;
 
 		std::shared_ptr<Scene> m_pScene;
-
-		DirectX::XMFLOAT4X4 m_ManipulateTransform;
-		bool m_IsTransformingWithGizmo = false;
 
 		std::unique_ptr<SceneRenderer> m_pSceneRenderer;
 	};

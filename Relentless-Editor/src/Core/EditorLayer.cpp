@@ -51,17 +51,25 @@ namespace Relentless
 			if (!m_HoveringSceneViewport)
 				return;
 
-			if (ImGuizmo::IsOver())
+			if (ImGuizmo::IsUsing())
 				return;
 
 			if (m_HoveredEntity == NULL_ENTITY)
 			{
+				if (m_SelectedEntity != NULL_ENTITY)
+				{
+					m_pScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+				}
 				m_SelectedEntity = NULL_ENTITY;
 				m_CurrentGizmoType = GizmoType::NONE;
 			}
 			else
 			{
+				if (m_SelectedEntity != NULL_ENTITY)
+					m_pScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+
 				m_SelectedEntity = m_HoveredEntity;
+				m_pScene->GetEntityManager().Add<SelectedInEditorComponent>(m_SelectedEntity);
 				m_CurrentGizmoType = GizmoType::TRANSLATE;
 			}
 			m_SceneHierarchyPanel.SetSelectedEntity(m_SelectedEntity);
@@ -71,25 +79,25 @@ namespace Relentless
 		}
 		case EventType::KeyPressedEvent:
 		{
-const bool isNavigatingScene = m_HoveringSceneViewport && Mouse::IsButtonPressed(RLS_BUTTON::Right);
-if (!isNavigatingScene)
-{
-	RLS_KEY key = EVENT(KeyPressedEvent).key;
-	if (key == RLS_KEY::Q)
-		m_CurrentGizmoType = GizmoType::NONE;
-	else if (key == RLS_KEY::W)
-		m_CurrentGizmoType = (GizmoType)ImGuizmo::TRANSLATE;
-	else if (key == RLS_KEY::E)
-		m_CurrentGizmoType = (GizmoType)ImGuizmo::ROTATE;
-	else if (key == RLS_KEY::R)
-		m_CurrentGizmoType = (GizmoType)ImGuizmo::SCALE;
-	else if (key == RLS_KEY::D && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
-		CopySelectedEntity();
-	else if (key == RLS_KEY::Delete)
-		DestroySelectedEntity();
-}
-event.StopPropagation();
-break;
+			const bool isNavigatingScene = m_HoveringSceneViewport && Mouse::IsButtonPressed(RLS_BUTTON::Right);
+			if (!isNavigatingScene)
+			{
+				RLS_KEY key = EVENT(KeyPressedEvent).key;
+				if (key == RLS_KEY::Q)
+					m_CurrentGizmoType = GizmoType::NONE;
+				else if (key == RLS_KEY::W)
+					m_CurrentGizmoType = (GizmoType)ImGuizmo::TRANSLATE;
+				else if (key == RLS_KEY::E)
+					m_CurrentGizmoType = (GizmoType)ImGuizmo::ROTATE;
+				else if (key == RLS_KEY::R)
+					m_CurrentGizmoType = (GizmoType)ImGuizmo::SCALE;
+				else if (key == RLS_KEY::D && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+					CopySelectedEntity();
+				else if (key == RLS_KEY::Delete)
+					DestroySelectedEntity();
+			}
+			event.StopPropagation();
+			break;
 		}
 		}
 	}
@@ -97,13 +105,24 @@ break;
 	void EditorLayer::OnImGuiRender() noexcept
 	{
 		PROFILE_FUNC;
-
-
-		auto pUITextureHandle = ImguiLayer::GetUITextureGPUHandle();
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-
 		ImGui::Begin("Scene", NULL);
-		sceneViewPortStartPosition = ImGui::GetCursorStartPos();
+
+		vMin = ImGui::GetWindowContentRegionMin();
+		vMax = ImGui::GetWindowContentRegionMax();
+		vMin.x += ImGui::GetWindowPos().x;
+		vMin.y += ImGui::GetWindowPos().y;
+		vMax.x += ImGui::GetWindowPos().x;
+		vMax.y += ImGui::GetWindowPos().y;
+
+		m_HoveringSceneViewport = ImGui::IsWindowHovered();
+
+		constexpr float toolBarPadding = 24.0f;
+		ImVec2 mousePosition = ImGui::GetMousePos();
+		ImVec2 windowPosition = ImGui::GetWindowPos();
+		ImVec2 mousePositionInSceneClientArea = ImVec2(mousePosition.x - windowPosition.x, mousePosition.y - windowPosition.y - toolBarPadding);
+		m_pScene->SetMousePosition(mousePositionInSceneClientArea);
+
 		if (m_ViewportPanelSize.x != ImGui::GetContentRegionAvail().x || m_ViewportPanelSize.y != ImGui::GetContentRegionAvail().y)
 		{
 			//Verify values are valid (as is not the case when shutting down the program!)
@@ -115,34 +134,24 @@ break;
 			}
 		}
 
+		auto pUITextureHandle = ImguiLayer::GetUITextureGPUHandle();
+		auto ppp = MasterRenderer::GetFrameBuffer()->GetOutput(0)->GetSRVDescriptorHandle().GPUHandle;
+		//ImGui::Image
+		//(
+		//	(ImTextureID)pUITextureHandle.ptr,
+		//	ImVec2(m_ViewportPanelSize.x, m_ViewportPanelSize.y)
+		//);
+		
 		ImGui::Image
 		(
-			(ImTextureID)pUITextureHandle.ptr,
+			(ImTextureID)ppp.ptr,
 			ImVec2(m_ViewportPanelSize.x, m_ViewportPanelSize.y)
 		);
-
-		auto entity = m_SceneHierarchyPanel.GetSelectedEntity();
-		if (entity != NULL_ENTITY && entity != m_SelectedEntity)
-		{
-			m_SelectedEntity = entity;
-			m_PropertiesPanel.SetSelectedEntity(m_SelectedEntity);
-			m_CurrentGizmoType = GizmoType::TRANSLATE;
-		}
 
 		if (m_SelectedEntity != NULL_ENTITY && m_CurrentGizmoType != GizmoType::NONE)
 		{
 			ManipulateTransformGizmo();
 		}
-
-		vMin = ImGui::GetWindowContentRegionMin();
-		vMax = ImGui::GetWindowContentRegionMax();
-		vMin.x += ImGui::GetWindowPos().x;
-		vMin.y += ImGui::GetWindowPos().y;
-		vMax.x += ImGui::GetWindowPos().x;
-		vMax.y += ImGui::GetWindowPos().y;
-
-		sceneViewPortWindowPosition = ImGui::GetWindowPos();
-		m_HoveringSceneViewport = ImGui::IsWindowHovered();
 
 		ImGui::End();
 		ImGui::PopStyleVar();
@@ -180,6 +189,8 @@ break;
 
 		m_PropertiesPanel.SetActiveScene(m_pScene.get());
 		m_SceneHierarchyPanel.SetActiveScene(m_pScene.get());
+
+		//TODO: Collapse into one switch-case-callback-function
 		m_SceneHierarchyPanel.SetOnEntityDestroyFunction([this](entity entityID)
 			{
 				if (entityID == m_SelectedEntity)
@@ -190,6 +201,36 @@ break;
 				if (entityID == m_HoveredEntity)
 					m_HoveredEntity = NULL_ENTITY;
 			});
+		m_SceneHierarchyPanel.SetOnEntityCreatedFunction([this](entity entityID)
+			{
+				if (m_SelectedEntity != NULL_ENTITY)
+				{
+					m_pScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+				}
+				m_pScene->GetEntityManager().Add<SelectedInEditorComponent>(entityID);
+				m_PropertiesPanel.SetSelectedEntity(entityID);
+				m_SelectedEntity = entityID;
+
+				if (m_CurrentGizmoType == GizmoType::NONE)
+				{
+					m_CurrentGizmoType = GizmoType::TRANSLATE;
+				}
+			});
+		m_SceneHierarchyPanel.SetOnEntitySelectedFunction([this](entity entityID)
+			{
+				if (m_SelectedEntity != NULL_ENTITY)
+				{
+					m_pScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+				}
+				m_pScene->GetEntityManager().Add<SelectedInEditorComponent>(entityID);
+				m_PropertiesPanel.SetSelectedEntity(entityID);
+				m_SelectedEntity = entityID;
+
+				if (m_CurrentGizmoType == GizmoType::NONE)
+				{
+					m_CurrentGizmoType = GizmoType::TRANSLATE;
+				}
+			});
 
 		MemoryManager::Get().GetUploadBuffer()->Upload();
 		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
@@ -198,26 +239,6 @@ break;
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
 	{
 		PROFILE_FUNC;
-
-
-		if (!m_SceneViewportChanged)
-		{
-			if (m_HoveringSceneViewport)
-			{
-				auto& clientRect = Window::GetClientRect();
-				auto [x, y] = Mouse::GetCoordinates();
-
-				y -= static_cast<uint32_t>(sceneViewPortStartPosition.y);
-				x -= static_cast<uint32_t>(sceneViewPortStartPosition.x);
-
-				x -= static_cast<uint32_t>((sceneViewPortWindowPosition.x - clientRect.left));
-				y -= static_cast<uint32_t>((sceneViewPortWindowPosition.y - clientRect.top));
-
-				m_HoveredEntity = m_pSceneRenderer->GetHoveredEntity(x, y);
-			}
-			else
-				m_HoveredEntity = NULL_ENTITY;
-		}
 
 		if (m_SceneViewportChanged)
 			OnSceneViewportChanged();
@@ -248,6 +269,19 @@ break;
 		m_pSceneRenderer->Begin();
 		m_pSceneRenderer->IssueRenderPasses();
 		m_pSceneRenderer->End();
+	}
+
+	//NOT CURRENTLY CORRECT ACTUALLY:
+	//YES THE GPU HAS STARTED HOWEVER WE DO NOT KNOW WHETHER IT IS FINISHED AT ALL 
+	//WITH RENDERING THIS FRAME (SEE Application.cpp for more details)
+	void EditorLayer::OnPostRender() noexcept
+	{
+		if (m_HoveringSceneViewport)
+		{
+			m_HoveredEntity = m_pSceneRenderer->GetHoveredEntity();
+		}
+		else
+			m_HoveredEntity = NULL_ENTITY;
 	}
 
 	void EditorLayer::LoadStarterMeshes() noexcept
@@ -404,6 +438,9 @@ break;
 			newPlc.Color = plc.Color;
 			newPlc.Intensity = plc.Intensity;
 		}
+
+		mgr.Remove<SelectedInEditorComponent>(m_SelectedEntity);
+		mgr.AddOrReplace<SelectedInEditorComponent>(newEntity);
 
 		m_SelectedEntity = newEntity;
 		m_SceneHierarchyPanel.SetSelectedEntity(m_SelectedEntity);

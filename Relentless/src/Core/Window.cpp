@@ -103,6 +103,7 @@ namespace Relentless
 #endif
 
 		m_IsVisible = ::ShowWindow(m_WindowHandle, SW_SHOWNORMAL);
+		::UpdateWindow(m_WindowHandle);
 	}
 
 	void Window::OnUpdate()

@@ -4,6 +4,8 @@
 #include "../Shaders/ShaderLibrary.h"
 #include "RenderPass.h"
 #include "../../Core/Window.h"
+#include "../Resources/Buffer.h"
+#include "FrameBuffer.h"
 namespace Relentless
 {
 	struct MasterRendererData
@@ -16,6 +18,13 @@ namespace Relentless
 		uint32_t currentFrameIndex{ 0u };
 
 		ShaderLibrary Shaderlibrary;
+
+		Microsoft::WRL::ComPtr<ID3D12QueryHeap> m_pQueryHeap{ nullptr };
+		std::shared_ptr<ReadBackBuffer> m_pQueryResultBuffer{ nullptr };
+		UINT NrOfQueries{ 2 };
+		UINT64 GPUFrequency{ 0 };
+
+		std::shared_ptr<FrameBuffer> m_pCompositeFrameBuffer{ nullptr };
 	};
 
 	static MasterRendererData s_Data = {};
@@ -31,6 +40,37 @@ namespace Relentless
 		RLS_ASSERT(s_Data.fenceEvent, "Fence event creation failed.");
 
 		s_Data.Shaderlibrary.Initialize();
+
+		D3D12_QUERY_HEAP_DESC HeapDesc = {};
+		HeapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+		HeapDesc.Count = s_Data.NrOfQueries;
+		HeapDesc.NodeMask = 0;
+
+		DXCall(D3D12Core::GetDevice()->CreateQueryHeap(&HeapDesc,  IID_PPV_ARGS(&s_Data.m_pQueryHeap)));
+
+		DXCall(D3D12Core::GetCommandQueue()->GetTimestampFrequency(&s_Data.GPUFrequency));
+
+		s_Data.m_pQueryResultBuffer = ReadBackBuffer::Create(s_Data.NrOfQueries * sizeof(UINT64), "QueryResult Readback Buffer");
+	
+		//Final composite frame buffer:
+		{
+			ColorAttachment colorAttachment;
+			colorAttachment.Format = TextureFormat::RGBA32F;
+			colorAttachment.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
+			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
+			colorAttachment.Transfer = true;
+
+			FrameBufferSpecification fbSpec;
+			fbSpec.DebugName = "Final Composite FrameBuffer";
+			fbSpec.Width = 800u;
+			fbSpec.Height = 600u;
+			fbSpec.MSAA = { false, 1u, 0u };
+			fbSpec.ShouldResize = true;
+			fbSpec.Attachments.ColorAttachments = { colorAttachment };
+
+			s_Data.m_pCompositeFrameBuffer = FrameBuffer::Create(fbSpec);
+		}
+		
 	}
 
 	ShaderLibrary& MasterRenderer::GetShaderLibrary() noexcept
@@ -67,6 +107,18 @@ namespace Relentless
 
 		// Set the fence value for the next frame.
 		s_Data.pFenceValues[s_Data.currentFrameIndex] = currentFenceValue + 1;
+
+		UINT64* pTimestamps = nullptr;
+
+		D3D12_RANGE readRange = { 0, s_Data.NrOfQueries * sizeof(UINT64) };
+		DXCall(s_Data.m_pQueryResultBuffer->GetInterface()->Map(0, &readRange, reinterpret_cast<void**>(&pTimestamps)));
+
+		//UINT64 startTime = pTimestamps[0];
+		//UINT64 endTime = pTimestamps[1];
+
+		//double TimeInMs = (((double)endTime - (double)startTime) / (double)s_Data.GPUFrequency) * 1000.0f;
+		//std::cout << "Time in MS: " << std::to_string(TimeInMs) << "\n";
+		DXCall_STD(s_Data.m_pQueryResultBuffer->GetInterface()->Unmap(0, nullptr));
 	}
 
 	void MasterRenderer::WaitForGPU() noexcept
@@ -100,6 +152,20 @@ namespace Relentless
 		return (D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames());
 	}
 
+	void MasterRenderer::Begin() noexcept
+	{
+		ResetFrameCommandUnits(GetCurrentFrameIndex());
+		DXCall_STD(D3D12Core::GetCommandList()->EndQuery(s_Data.m_pQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0));
+	}
+
+	void MasterRenderer::End() noexcept
+	{
+		DXCall_STD(D3D12Core::GetCommandList()->EndQuery(s_Data.m_pQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 1));
+
+		// Resolve the query data
+		DXCall_STD(D3D12Core::GetCommandList()->ResolveQueryData(s_Data.m_pQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0, s_Data.NrOfQueries, s_Data.m_pQueryResultBuffer->GetInterface().Get(), 0));
+	}
+
 	static D3D_PRIMITIVE_TOPOLOGY RLSTopologyToD3D12Topology(RLS::Topology topology) noexcept
 	{
 		switch (topology)
@@ -123,34 +189,22 @@ namespace Relentless
 	{
 		auto& pPipeline = pRenderPass->GetPipeline();
 		auto& pipelineSpecification = pPipeline->GetSpecification();
-		FrameBuffer* pFrameBuffer = pPipeline->GetFrameBuffer();
-		auto& frameBufferSpecification = pFrameBuffer->GetSpecification();
+		auto pFrameBuffer = pPipeline->GetFrameBuffer();
+		auto pColorOutput = pFrameBuffer->GetOutput(0);
 
-		auto& pColorOutput = pPipeline->GetFrameBuffer()->GetColorBuffer();
-
-		//If transfer this means that it would have been set to another state to facilitate that.
-		if (frameBufferSpecification.Transfer)
-		{
+		if (pColorOutput->GetCurrentState() != D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET)
 			RenderCommand::TransitionResource(pColorOutput, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		}
 
-		//Here we should always check attachment operations and act on them accordingly!! (which we aren't)
-		RenderCommand::ClearRenderTarget(pColorOutput->GetRTVDescriptorHandle().CPUHandle, pColorOutput->GetClearColor());
-		
-		if (pipelineSpecification.DepthWrite)
-		{
-			auto& pDepthOutput = pPipeline->GetFrameBuffer()->GetDepthBuffer();
-			RenderCommand::ClearDepthStencil(pDepthOutput);
-			RenderCommand::SetRenderTarget(pColorOutput, pDepthOutput);
-		}
-		else
-		{
-			RenderCommand::SetRenderTarget(pColorOutput, nullptr);
-		}
+		DXCall_STD(D3D12Core::GetCommandList()->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), pipelineSpecification.DepthWrite ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE));
 
 		RenderCommand::SetRootSignature(pPipeline->GetRootSig());
 		RenderCommand::SetPipelineState(pPipeline->GetInterface2());
 		RenderCommand::SetTopology(RLSTopologyToD3D12Topology(pipelineSpecification.Topology));
+	}
+
+	void MasterRenderer::EndRenderPass() noexcept
+	{
+		DXCall_STD(D3D12Core::GetCommandList()->EndRenderPass());
 	}
 
 	void MasterRenderer::PrepareBackBuffer() noexcept
@@ -158,5 +212,15 @@ namespace Relentless
 		//Transition the back buffer back to present state now that is is finished:
 		BackBuffer& backBuffer{ Window::GetCurrentBackBuffer() };
 		RenderCommand::TransitionResource(backBuffer.pBackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	}
+
+	const std::shared_ptr<FrameBuffer> MasterRenderer::GetFrameBuffer() noexcept
+	{
+		return s_Data.m_pCompositeFrameBuffer;
+	}
+
+	void MasterRenderer::Resize(const uint32_t width, const uint32_t height) noexcept
+	{
+		s_Data.m_pCompositeFrameBuffer->Resize(width, height);
 	}
 }

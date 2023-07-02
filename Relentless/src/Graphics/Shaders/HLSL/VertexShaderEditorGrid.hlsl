@@ -10,10 +10,10 @@ struct VS_OUT
     float3 outColor         : COLOR;
 };
 
-struct PerDrawData
+struct BatchData
 {
-    uint materialIndex;
-    uint worldMatrixIndex;
+    uint worldMatrixIndex1;
+    uint worldMatrixIndex2;
 };
 
 struct VPConstantBuffer
@@ -40,9 +40,8 @@ struct InstanceDataSBIndex
 };
 
 ConstantBuffer<VPConstantBuffer> vpConstantBuffer : register(b0, space0);
-ConstantBuffer<PerDrawData> perDrawData : register(b3, space0);
-
-ConstantBuffer<InstanceDataSBIndex> instanceDataSBIndex : register(b0, space1);
+ConstantBuffer<BatchData> batchData : register(b2, space0);
+ConstantBuffer<InstanceDataSBIndex> instanceDataSBIndex : register(b3, space0);
 
 StructuredBuffer<Vertex> vertices : register(t0, space0);
 
@@ -51,16 +50,26 @@ VS_OUT vs_main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
     VS_OUT vsOut = (VS_OUT)0;
     Vertex input = vertices[vertexID];
 
-    ConstantBuffer<Transform> transform = ResourceDescriptorHeap[perDrawData.worldMatrixIndex];
-    
     //Instancing shenaningans:
     StructuredBuffer<InstanceData> instanceDataSB = ResourceDescriptorHeap[instanceDataSBIndex.Index];
     InstanceData instanceData = instanceDataSB[instanceID];
     input.inPositionLS += instanceData.Position;
 
-    matrix wvp = mul(vpConstantBuffer.VPMatrix, transform.worldMatrix);
+    matrix worldMatrix;
+    if (instanceID > 399)
+    {
+        ConstantBuffer<Transform> transform = ResourceDescriptorHeap[batchData.worldMatrixIndex2];
+        worldMatrix = transform.worldMatrix;
+    }
+    else
+    {
+        ConstantBuffer<Transform> transform = ResourceDescriptorHeap[batchData.worldMatrixIndex1];
+        worldMatrix = transform.worldMatrix;
+    }
+
+    matrix wvp = mul(vpConstantBuffer.VPMatrix, worldMatrix);
     vsOut.outPositionCS = mul(wvp, float4(input.inPositionLS, 1.0f));
-    vsOut.outPositionWS = mul(transform.worldMatrix, float4(input.inPositionLS, 1.0f)).xyz;
+    vsOut.outPositionWS = mul(worldMatrix, float4(input.inPositionLS, 1.0f)).xyz;
     vsOut.outColor = instanceData.Color;
 
     return vsOut;

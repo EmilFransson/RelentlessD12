@@ -1,4 +1,4 @@
-SamplerState anisotropicSampler : register(s0, space0);
+SamplerState sampler_ANISOTROPIC : register(s0, space0);
 
 struct PS_IN
 {
@@ -54,16 +54,18 @@ ConstantBuffer<PerFrameData> perFrameData : register(b4, space0);
 
 static const float3 ambientLight = float3(0.065f, 0.065f, 0.065f);
 
+static const uint USES_TEXTURE = 0xffffffff;
+
 float4 ps_main(in PS_IN psIn) : SV_TARGET
 {
     ConstantBuffer<Material> material                   = ResourceDescriptorHeap[perDrawData.materialIndex];
     ConstantBuffer<Camera> camera                       = ResourceDescriptorHeap[perFrameData.cameraMetaDataIndex];
 
     float4 albedoTextureColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
-    if (material.usesAlbedoTexture == 0xFFFFFFFF)
+    if (material.usesAlbedoTexture == USES_TEXTURE)
     {
         Texture2D albedoTexture = ResourceDescriptorHeap[material.albedoIndex];
-        albedoTextureColor = albedoTexture.Sample(anisotropicSampler, float2(psIn.inTexCoords.x, psIn.inTexCoords.y));
+        albedoTextureColor = albedoTexture.Sample(sampler_ANISOTROPIC, float2(psIn.inTexCoords.x, psIn.inTexCoords.y));
     }
 
     psIn.inNormalWS = normalize(psIn.inNormalWS);
@@ -120,8 +122,8 @@ float4 ps_main(in PS_IN psIn) : SV_TARGET
         else
         {
             lightOut += finalDiffuseColor;
-
         }
     }
+
     return float4((lightOut + ambientColor) * albedoTextureColor.xyz, 1.0f);
 }

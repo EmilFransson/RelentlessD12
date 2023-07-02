@@ -12,6 +12,7 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::PIXEL, "PickingPixelShader.hlsl"));
 		Add(Shader::Create(ShaderType::VERTEX, "VertexShaderEditorGrid.hlsl"));
 		Add(Shader::Create(ShaderType::PIXEL, "PixelShaderEditorGrid.hlsl"));
+		Add(Shader::Create(ShaderType::PIXEL, "PixelShaderOrangeOutput.hlsl"));
 
 	}
 

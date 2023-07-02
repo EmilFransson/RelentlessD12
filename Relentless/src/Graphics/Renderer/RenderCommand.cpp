@@ -1,6 +1,7 @@
 #include "RenderCommand.h"
 #include "../D3D12Core.h"
 #include "../Resources/Texture.h"
+#include "../Resources/Buffer.h"
 #include "../Resources/DepthStencil.h"
 #include "../../Core/Window.h"
 namespace Relentless
@@ -126,12 +127,6 @@ namespace Relentless
 		DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1u, pDescriptorHeap->GetDescriptorHeapInterface().GetAddressOf()));
 	}
 
-
-	void RenderCommand::DrawInstanced(const uint32_t vertexCount) noexcept
-	{
-		DXCall_STD(D3D12Core::GetCommandList()->DrawInstanced(vertexCount, 1u, 0u, 0u));
-	}
-
 	void RenderCommand::DrawInstanced(const uint32_t vertexCount, const uint32_t instanceCount) noexcept
 	{
 		DXCall_STD(D3D12Core::GetCommandList()->DrawInstanced(vertexCount, instanceCount, 0u, 0u));
@@ -156,16 +151,56 @@ namespace Relentless
 
 		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, nullptr, nullptr, nullptr));
 
+		D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
+		srcLocation.pResource = pSrcTexture->GetInterface().Get();
+		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		srcLocation.SubresourceIndex = 0u;
+
 		D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
 		dstLocation.pResource = pDstTexture->GetInterface().Get();
 		dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 		dstLocation.PlacedFootprint = footPrint;
+
+		DXCall_STD(D3D12Core::GetCommandList()->CopyTextureRegion(&dstLocation, 0u, 0u, 0u, &srcLocation, nullptr));
+	}
+
+	void RenderCommand::CopyTexelToBuffer(const std::shared_ptr<Texture>& pSrcTexture, const std::shared_ptr<ReadBackBuffer>& pDstBuffer, uint32_t x, uint32_t y, uint32_t texelSize) noexcept
+	{
+		RLS_ASSERT(pSrcTexture && pDstBuffer, "One or more resource is invalid.");
+		RLS_ASSERT(!(texelSize > pDstBuffer->GetSize()), "Memory size to copy to buffer exceeds buffer capacity.");
+
+		if (pSrcTexture->GetCurrentState() != D3D12_RESOURCE_STATE_COPY_SOURCE)
+		{
+			TransitionResource(pSrcTexture, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		}
+		if (pDstBuffer->GetCurrentState() != D3D12_RESOURCE_STATE_COPY_DEST)
+		{
+			TransitionResource(pDstBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
+		}
 
 		D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
 		srcLocation.pResource = pSrcTexture->GetInterface().Get();
 		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 		srcLocation.SubresourceIndex = 0u;
 
-		DXCall_STD(D3D12Core::GetCommandList()->CopyTextureRegion(&dstLocation, 0u, 0u, 0u, &srcLocation, nullptr));
+		D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
+		dstLocation.pResource = pDstBuffer->GetInterface().Get();
+		dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		dstLocation.PlacedFootprint.Offset = 0;
+		dstLocation.PlacedFootprint.Footprint.Format = pSrcTexture->GetFormat();
+		dstLocation.PlacedFootprint.Footprint.Width = 1;
+		dstLocation.PlacedFootprint.Footprint.Height = 1;
+		dstLocation.PlacedFootprint.Footprint.Depth = 1;
+		dstLocation.PlacedFootprint.Footprint.RowPitch = texelSize;
+
+		D3D12_BOX areaToCopy{};
+		areaToCopy.left = x;
+		areaToCopy.right = x + 1;
+		areaToCopy.top = y;
+		areaToCopy.bottom = y + 1;
+		areaToCopy.front = 0;
+		areaToCopy.back = 1;
+
+		DXCall_STD(D3D12Core::GetCommandList()->CopyTextureRegion(&dstLocation, 0u, 0u, 0u, &srcLocation, &areaToCopy));
 	}
 }

@@ -2,11 +2,45 @@
 #include "..\D3D12Core.h"
 namespace Relentless
 {
+
+	[[nodiscard]] static D3D12_COMPARISON_FUNC RLSComparisonFuncToD3D12ComparisonFunc(DepthComparisonFunction depthComparisonFunction) noexcept
+	{
+		switch (depthComparisonFunction)
+		{
+		case DepthComparisonFunction::LESS:
+			return D3D12_COMPARISON_FUNC_LESS;
+			break;
+		case DepthComparisonFunction::LESS_EQUAL:
+			return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+			break;
+		case DepthComparisonFunction::GREATER:
+			return D3D12_COMPARISON_FUNC_GREATER;
+			break;
+		case DepthComparisonFunction::GREATER_EQUAL:
+			return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+			break;
+		case DepthComparisonFunction::EQUAL:
+			return D3D12_COMPARISON_FUNC_EQUAL;
+			break;
+		case DepthComparisonFunction::NOT_EQUAL:
+			return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+			break;
+		case DepthComparisonFunction::NEVER:
+			return D3D12_COMPARISON_FUNC_NEVER;
+			break;
+		case DepthComparisonFunction::ALWAYS:
+			return D3D12_COMPARISON_FUNC_ALWAYS;
+			break;
+		}
+
+		RLS_ASSERT(false, "Unknown comparison function type encountered");
+		return D3D12_COMPARISON_FUNC_NEVER;
+	}
+
 	Pipeline::Pipeline(const PipelineSpecification& specification) noexcept
 		: m_Specification{specification}
 	{
 		RLS_ASSERT(specification.pVertexShader, "No valid Vertex Shader present in Pipeline Specification.");
-		RLS_ASSERT(specification.pRootSignature, "No valid Root Signature present in Pipeline Specification.");
 
 		const FrameBufferSpecification& frameBufferSpecification = specification.pFrameBuffer->GetSpecification();
 
@@ -37,6 +71,21 @@ namespace Relentless
 		blendDescriptor.LogicOp = D3D12_LOGIC_OP_NOOP;
 		blendDescriptor.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
+		//Temp:
+		if (specification.blend)
+		{
+			blendDescriptor.BlendEnable = TRUE;
+			blendDescriptor.LogicOpEnable = FALSE;
+			blendDescriptor.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+			blendDescriptor.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+			blendDescriptor.BlendOp = D3D12_BLEND_OP_ADD;
+			blendDescriptor.SrcBlendAlpha = D3D12_BLEND_ONE;
+			blendDescriptor.DestBlendAlpha = D3D12_BLEND_ONE;
+			blendDescriptor.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+			blendDescriptor.LogicOp = D3D12_LOGIC_OP_NOOP; 
+			blendDescriptor.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+		}
+
 		//We also need a Stream Output Descriptor:
 		D3D12_STREAM_OUTPUT_DESC streamOutputDescriptor = {};
 		streamOutputDescriptor.pSODeclaration = nullptr;
@@ -47,9 +96,9 @@ namespace Relentless
 
 		//And a depth stencil descriptor:
 		D3D12_DEPTH_STENCIL_DESC depthStencilDescriptor = {};
-		depthStencilDescriptor.DepthEnable = specification.DepthWrite ? TRUE : FALSE;
-		depthStencilDescriptor.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		depthStencilDescriptor.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		depthStencilDescriptor.DepthEnable = frameBufferSpecification.Attachments.DepthAttachment.Format == TextureFormat::Depth ? TRUE : FALSE;
+		depthStencilDescriptor.DepthWriteMask = specification.DepthWrite ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+		depthStencilDescriptor.DepthFunc = RLSComparisonFuncToD3D12ComparisonFunc(frameBufferSpecification.DepthComparisonFunction);
 		depthStencilDescriptor.StencilEnable = FALSE;
 		depthStencilDescriptor.StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;
 		depthStencilDescriptor.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
@@ -69,7 +118,7 @@ namespace Relentless
 		psoDescriptor.PS.BytecodeLength = specification.pPixelShader ? specification.pPixelShader->GetBuffer()->GetBufferSize() : 0u;
 		psoDescriptor.RasterizerState = rasterizerDescriptor;
 		
-		std::array<DXGI_FORMAT, 1> rtvFormats = { RLSTextureFormatToDXGITextureFormat(frameBufferSpecification.Attachments.ColorAttachment) };
+		std::array<DXGI_FORMAT, 1> rtvFormats = { RLSTextureFormatToDXGITextureFormat(frameBufferSpecification.Attachments.ColorAttachments[0].Format)};
 		psoDescriptor.BlendState.AlphaToCoverageEnable = false;
 		psoDescriptor.BlendState.IndependentBlendEnable = false;
 		psoDescriptor.RTVFormats[0] = rtvFormats[0];
@@ -85,7 +134,8 @@ namespace Relentless
 		psoDescriptor.DepthStencilState = depthStencilDescriptor;
 		psoDescriptor.DSVFormat = DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT;
 		psoDescriptor.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-		psoDescriptor.pRootSignature = specification.pRootSignature.Get();
+		m_ReflectionResult = ShaderReflector::Reflect(specification.pVertexShader, specification.pPixelShader);
+		psoDescriptor.pRootSignature = m_ReflectionResult.pRootSignature.Get();
 
 		DXCall(D3D12Core::GetDevice()->CreateGraphicsPipelineState(&psoDescriptor, IID_PPV_ARGS(&m_pPSO)));
 		NAME_D12_OBJECT(m_pPSO, ConvertStringToWstring(specification.DebugName).c_str());

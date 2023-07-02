@@ -1,7 +1,7 @@
 #pragma once
 namespace Relentless
 {
-	enum class ShaderType : uint8_t { VERTEX, PIXEL };
+	enum class ShaderType : uint8_t { VERTEX = 0u, PIXEL };
 
 	class Shader
 	{

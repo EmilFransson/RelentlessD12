@@ -12,15 +12,11 @@ namespace Relentless
 
 	struct RenderTextureSpecification : public TextureSpecification
 	{
+		DXGI_FORMAT Format;
 		uint8_t MultiSampleCount;
 		bool CreateSRV;
 		bool isSRGB{true};
 		D3D12_RESOURCE_FLAGS Flags = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-	};
-
-	struct ReadbackTextureSpecification : public TextureSpecification
-	{
-		uint8_t MultiSampleCount;
 	};
 
 	class Texture : public IResource
@@ -35,7 +31,6 @@ namespace Relentless
 		[[nodiscard]] constexpr const DescriptorHandle& GetSRVDescriptorHandle() const noexcept { return m_SRVDescriptorHandle; }
 	protected:
 		Texture(const RenderTextureSpecification& textureSpecification, const std::string& name = "?") noexcept;
-		Texture(const ReadbackTextureSpecification& textureSpecification, const std::string& name = "?") noexcept;
 		Texture() noexcept = default;
 		virtual ~Texture() noexcept override = default;
 	protected:
@@ -57,16 +52,6 @@ namespace Relentless
 		[[nodiscard]] constexpr const DescriptorHandle& GetRTVDescriptorHandle() const noexcept { return m_RTVDescriptorHandle; }
 	private:
 		DescriptorHandle m_RTVDescriptorHandle;
-	};
-
-	class ReadbackTexture : public Texture
-	{
-	public:
-		ReadbackTexture(const ReadbackTextureSpecification& textureSpecification, const std::string& name = "?") noexcept;
-		virtual ~ReadbackTexture() noexcept override final = default;
-		[[nodiscard]] static std::shared_ptr<ReadbackTexture> Create(ReadbackTextureSpecification& textureSpecification, const std::string& name = "?") noexcept;
-	private:
-
 	};
 
 	class Texture2D : public Texture 

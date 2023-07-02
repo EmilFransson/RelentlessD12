@@ -59,11 +59,15 @@ namespace Relentless
 		[[nodiscard]] const D3D12_VIEWPORT& GetViewport() const noexcept { return m_Viewport; }
 		[[nodiscard]] const RECT& GetScissorRect() const noexcept { return m_ScissorRect; }
 		[[nodiscard]] const std::shared_ptr<PerspectiveCamera>& GetEditorCamera() const noexcept { return m_pEditorCamera; }
+
+		void SetMousePosition(const ImVec2& newMousePosition) noexcept { m_MousePosition = newMousePosition; }
+		[[nodiscard]] const ImVec2& GetMousePosition() const noexcept { return m_MousePosition; }
 	private:
 		EntityManager m_EntityManager;
 		LightManager m_LightManager;
 		const char* m_Name;
 		ImVec2 m_ViewportPanelSize;
+		ImVec2 m_MousePosition;
 		D3D12_VIEWPORT m_Viewport;
 		RECT m_ScissorRect;
 		std::shared_ptr<PerspectiveCamera> m_pEditorCamera{ nullptr };

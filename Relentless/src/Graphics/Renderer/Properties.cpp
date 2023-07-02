@@ -16,4 +16,20 @@ namespace Relentless
 		RLS_ASSERT(false, "Unsupported texture format encountered.");
 		return DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
 	}
+
+	D3D12_ROOT_PARAMETER_TYPE HLSLParameterTypeToD3D12RootParameterType(D3D_SHADER_INPUT_TYPE inputType) noexcept
+	{
+		switch (inputType)
+		{
+		case D3D_SHADER_INPUT_TYPE::D3D_SIT_CBUFFER:
+			return D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+			break;
+		case D3D_SHADER_INPUT_TYPE::D3D_SIT_STRUCTURED:
+			return D3D12_ROOT_PARAMETER_TYPE_SRV;
+			break;
+		}
+
+		RLS_ASSERT(false, "Unknown shader type encountered.");
+		return D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+	}
 }

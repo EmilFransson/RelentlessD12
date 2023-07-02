@@ -18,16 +18,6 @@ namespace Relentless
 		  m_SRVDescriptorHandle{}
 	{}
 
-	Texture::Texture(const ReadbackTextureSpecification& textureSpecification, const std::string& name) noexcept
-		:m_Width{ textureSpecification.Width },
-		m_Height{ textureSpecification.Height },
-		m_Format{ textureSpecification.Format },
-		m_ClearColor{ textureSpecification.ClearColor },
-		m_MSAACount{ textureSpecification.MultiSampleCount },
-		IResource(name),
-		m_SRVDescriptorHandle{}
-	{}
-
 	RenderTexture::RenderTexture(const RenderTextureSpecification& textureSpecification, const std::string& name) noexcept
 		: Texture(textureSpecification, name),
 		  m_RTVDescriptorHandle{}
@@ -109,60 +99,6 @@ namespace Relentless
 		}
 
 		return std::make_shared<RenderTexture>(textureSpecification, name);
-	}
-
-	/*READBACK TEXTURE*/
-
-	ReadbackTexture::ReadbackTexture(const ReadbackTextureSpecification& textureSpecification, const std::string& name) noexcept
-		: Texture(textureSpecification, name)
-	{
-		RLS_ASSERT(textureSpecification.Width > 0 && textureSpecification.Height > 0, "Texture dimension is not valid.");
-
-		D3D12_HEAP_PROPERTIES heapProperties{};
-		heapProperties.Type = D3D12_HEAP_TYPE_READBACK;
-		heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		heapProperties.CreationNodeMask = 0u;
-		heapProperties.VisibleNodeMask = 0u;
-		
-		D3D12_RESOURCE_DESC resourceDescriptor{};
-		resourceDescriptor.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resourceDescriptor.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-		auto newWidth = textureSpecification.Width;
-		newWidth += D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT - newWidth % D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-		resourceDescriptor.Width = newWidth;
-		resourceDescriptor.Height = 1;
-		resourceDescriptor.DepthOrArraySize = 1u;
-		resourceDescriptor.MipLevels = 1u;
-		resourceDescriptor.Format = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
-		resourceDescriptor.SampleDesc = { 1, 0u };
-		resourceDescriptor.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		resourceDescriptor.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-		m_CurrentState = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST;
-
-		DXCall(D3D12Core::GetDevice()->CreateCommittedResource
-		(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDescriptor,
-			m_CurrentState,
-			nullptr,
-			IID_PPV_ARGS(&m_pResource)
-		));
-
-		RLS_CORE_INFO("Created Render Texture '{0}' of size [width, height]=[{1},{2}]", m_Name, textureSpecification.Width, textureSpecification.Height);
-	}
-
-	std::shared_ptr<ReadbackTexture> ReadbackTexture::Create(ReadbackTextureSpecification& textureSpecification, const std::string& name) noexcept
-	{
-		DirectX::XMVECTOR convertedColor = DirectX::XMColorSRGBToRGB(DirectX::XMLoadFloat4(&textureSpecification.ClearColor));
-		textureSpecification.ClearColor.x = DirectX::XMVectorGetX(convertedColor);
-		textureSpecification.ClearColor.y = DirectX::XMVectorGetY(convertedColor);
-		textureSpecification.ClearColor.z = DirectX::XMVectorGetZ(convertedColor);
-		textureSpecification.ClearColor.w = DirectX::XMVectorGetW(convertedColor);
-
-		return std::make_shared<ReadbackTexture>(textureSpecification, name);
 	}
 
 	Texture2D::Texture2D(const std::string& fileName) noexcept

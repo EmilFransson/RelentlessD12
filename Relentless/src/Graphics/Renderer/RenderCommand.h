@@ -5,6 +5,7 @@ namespace Relentless
 	class DescriptorHeap;
 	class Texture;
 	class RenderTexture;
+	class ReadBackBuffer;
 	class DepthStencil;
 	struct BackBuffer;
 	class RenderCommand
@@ -24,9 +25,9 @@ namespace Relentless
 		static void SetPipelineState(const Microsoft::WRL::ComPtr<ID3D12PipelineState>& pPipelineState) noexcept;
 		static void SetRootSignature(const Microsoft::WRL::ComPtr<ID3D12RootSignature>& pRootSignature) noexcept;
 		static void SetDescriptorHeap(const std::unique_ptr<DescriptorHeap>& pDescriptorHeap) noexcept;
-		static void DrawInstanced(const uint32_t vertexCount) noexcept;
-		static void DrawInstanced(const uint32_t vertexCount, const uint32_t instanceCount) noexcept;
+		static void DrawInstanced(const uint32_t vertexCount, const uint32_t instanceCount = 1u) noexcept;
 		static void CopyTextureToTexture(const std::shared_ptr<Texture>& pSrcTexture, const std::shared_ptr<Texture>& pDstTexture) noexcept;
+		static void CopyTexelToBuffer(const std::shared_ptr<Texture>& pSrcTexture, const std::shared_ptr<ReadBackBuffer>& pDstTexture, uint32_t x, uint32_t y, uint32_t texelSize) noexcept;
 	private:
 		RenderCommand() noexcept = delete;
 		~RenderCommand() noexcept = default;

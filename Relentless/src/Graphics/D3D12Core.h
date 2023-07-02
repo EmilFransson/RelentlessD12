@@ -9,7 +9,7 @@ namespace Relentless
 		[[nodiscard]] static constexpr Microsoft::WRL::ComPtr<ID3D12Device9>& GetDevice() noexcept { return m_pDevice; }
 		[[nodiscard]] static constexpr Microsoft::WRL::ComPtr<ID3D12CommandQueue>& GetCommandQueue() noexcept { return m_DirectCommandInterface.GetCommandQueue(); }
 		[[nodiscard]] static constexpr Microsoft::WRL::ComPtr<ID3D12CommandAllocator>& GetCommandAllocator(const uint32_t index) noexcept { return m_DirectCommandInterface.GetCommandAllocator(index); }
-		[[nodiscard]] static constexpr Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>& GetCommandList() noexcept { return m_DirectCommandInterface.GetCommandList(); }
+		[[nodiscard]] static constexpr Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4>& GetCommandList() noexcept { return m_DirectCommandInterface.GetCommandList(); }
 		[[nodiscard]] static constexpr Microsoft::WRL::ComPtr<IDXGIFactory7>& GetFactory() noexcept { return m_pFactory; }
 		[[nodiscard]] static constexpr uint8_t GetNrOfBufferedFrames() noexcept { return m_NrOfBufferedFrames; }
 		[[nodiscard]] static constexpr uint32_t GetCurrentFrame() noexcept { return m_CurrentFrame; }

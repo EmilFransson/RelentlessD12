@@ -308,6 +308,22 @@ namespace Relentless
 						ResourceID& albedoTextureResourceID = m_pScene->GetEntityManager().Get<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID;
 						Texture2D* pAlbedoTexture = AssetManager::Get().GetAsset<Texture2D>(albedoTextureResourceID);
 						ImGui::ImageButton((ImTextureID)pAlbedoTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(100.0f, 100.0f), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+						if (ImGui::BeginDragDropTarget())
+						{
+							if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
+							{
+								const char* path = (const char*)payLoad->Data;
+								ResourceID textureResourceID = AssetManager::Get().Load<Texture2D>(path);
+								m_pScene->GetEntityManager().AddOrReplace<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID = textureResourceID;
+								mrc.UsesAlbedoMap = 0xFFFFFFFF;
+								mrc.AlbedoTextureID = AssetManager::Get().GetAsset<Texture2D>(textureResourceID)->GetSRVDescriptorHandle().Index;
+								m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+
+							}
+							ImGui::EndDragDropTarget();
+						}
+
+
 
 						ImGui::Text("     Use");
 						ImGui::SameLine();

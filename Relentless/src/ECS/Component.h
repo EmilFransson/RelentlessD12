@@ -178,4 +178,9 @@ namespace Relentless
 	{
 		ResourceID AlbedoTextureID;
 	};
+
+	struct SelectedInEditorComponent
+	{
+		//ID
+	};
 }

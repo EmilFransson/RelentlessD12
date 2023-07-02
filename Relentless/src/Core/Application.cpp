@@ -49,9 +49,14 @@ namespace Relentless
 			MasterRenderer::PrepareBackBuffer();
 			MasterRenderer::ExecuteCommands();
 
-			Window::Present();
 
+			Window::Present();
 			MasterRenderer::WaitAndSync();
+
+			for (auto& pLayer : LayerStack::Get())
+			{
+				pLayer->OnPostRender();
+			}
 
 			Mouse::Reset();
 

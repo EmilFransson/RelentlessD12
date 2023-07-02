@@ -426,7 +426,7 @@ namespace Relentless
 			void Remove(const entity entityID) noexcept
 		{
 			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
-			RLS_ASSERT(Has<ComponentType>(entityID), "Entity already has the component type.");
+			RLS_ASSERT(Has<ComponentType>(entityID), "Entity does not have the component type.");
 
 			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
 			Pool<ComponentType>& pool = static_cast<Pool<ComponentType>&>(*m_Pools[ID].get());

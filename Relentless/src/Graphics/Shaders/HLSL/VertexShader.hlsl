@@ -13,6 +13,14 @@ struct VS_OUT
     float2 outTexCoords		: TEXCOORDS;
 };
 
+StructuredBuffer<Vertex> vertices : register(t0, space0);
+StructuredBuffer<unsigned int> indices: register(t1, space0);
+
+struct Transform
+{
+    matrix worldMatrix;
+};
+
 struct PerDrawData
 {
     uint materialIndex;
@@ -21,19 +29,11 @@ struct PerDrawData
 
 struct VPConstantBuffer
 {
-	matrix VPMatrix;
-};
-
-struct Transform
-{
-    matrix worldMatrix;
+    matrix VPMatrix;
 };
 
 ConstantBuffer<VPConstantBuffer> vpConstantBuffer : register(b0, space0);
 ConstantBuffer<PerDrawData> perDrawData : register(b3, space0);
-
-StructuredBuffer<Vertex> vertices : register(t0, space0);
-StructuredBuffer<unsigned int> indices: register(t1, space0);
 
 VS_OUT vs_main(uint vertexID : SV_VertexID)
 {

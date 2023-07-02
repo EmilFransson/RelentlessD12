@@ -23,8 +23,6 @@ namespace Relentless
 
 		uint32_t currentFrameIndex{0u};
 
-		std::shared_ptr<ReadbackTexture> m_pIdentifierReadbackTexture{ nullptr };
-
 		D3D12_VIEWPORT viewPort{};
 		RECT scissorRect{};
 
@@ -58,15 +56,6 @@ namespace Relentless
 		s_RendererData.fenceEvent = ::CreateEvent(nullptr, false, false, nullptr);
 		RLS_ASSERT(s_RendererData.fenceEvent, "Fence event creation failed.");
 
-		//Identifier Readback Texture:
-		ReadbackTextureSpecification RBTextureSpecification = {};
-		RBTextureSpecification.Width = 1996672; //Placeholder
-		RBTextureSpecification.Height = 1u;
-		RBTextureSpecification.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-		RBTextureSpecification.MultiSampleCount = 1u;
-		RBTextureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
-		s_RendererData.m_pIdentifierReadbackTexture = ReadbackTexture::Create(RBTextureSpecification, "Identifier ReadbackTexture");
-
 		//Viewport:
 		s_RendererData.viewPort.TopLeftX = 0.0f;
 		s_RendererData.viewPort.TopLeftY = 0.0f;
@@ -87,66 +76,63 @@ namespace Relentless
 		CreatePickingRootSignature();
 
 		//MSAA Geometry:
-		{
-			FrameBufferSpecification frameBufferSpecification{};
-			frameBufferSpecification.DebugName = "Main MSAA Framebuffer";
-			frameBufferSpecification.Attachments = { TextureFormat::RGBA32F, TextureFormat::Depth };
-			frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
-			frameBufferSpecification.MSAA = { true, 8u, 0u };
-			frameBufferSpecification.Transfer = true;
-
-			PipelineSpecification pipelineSpecification{};
-			pipelineSpecification.DebugName = "Main Pipeline";
-			pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("VertexShader");
-			pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PixelShader");
-			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
-			pipelineSpecification.pRootSignature = s_RendererData.pRootSignature;
-
-			s_RendererData.MainPipeline = Pipeline::Create(pipelineSpecification);
-		}
-
-		//Picking:
-		{
-			FrameBufferSpecification frameBufferSpecification{};
-			frameBufferSpecification.DebugName = "Picking Framebuffer";
-			frameBufferSpecification.Attachments = { TextureFormat::R32UINT, TextureFormat::Depth };
-			static constexpr float clearVal = static_cast<float>(NULL_ENTITY);
-			frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
-			frameBufferSpecification.IsSRGB = false;
-
-			PipelineSpecification pipelineSpecification{};
-			pipelineSpecification.DebugName = "Picking Pipeline";
-			pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("VertexShader");
-			pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PickingPixelShader");
-			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
-			pipelineSpecification.pRootSignature = s_RendererData.pPickingRootSignature;
-
-			s_RendererData.PickingPipeline = Pipeline::Create(pipelineSpecification);
-		}
-
-		//Composite
-		{
-			FrameBufferSpecification frameBufferSpecification{};
-			frameBufferSpecification.DebugName = "Composite Framebuffer";
-			frameBufferSpecification.Attachments = { TextureFormat::RGBA32F };
-			frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
-			frameBufferSpecification.Transfer = true;
-			frameBufferSpecification.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-			PipelineSpecification pipelineSpecification{};
-			pipelineSpecification.DebugName = "Composite Pipeline";
-			pipelineSpecification.DepthWrite = false;
-			pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("FullScreenTriVertexShader");
-			pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PostProcessPixelShader");
-			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
-			pipelineSpecification.pRootSignature = s_RendererData.pPostProcessRootSignature;
-
-			s_RendererData.CompositePipeline = Pipeline::Create(pipelineSpecification);
-		}
-
-		Renderer3D::ExecuteCommands();
-		Renderer3D::WaitForGPU();
-		RenderCommand::ResetFrameCommandUnits(0u); //TO BE CHANGED! UPLOAD BUFFER SHOULD UPLOAD EVERYTHING SEQUENTIALLY!
+		//{
+		//	FrameBufferSpecification frameBufferSpecification{};
+		//	frameBufferSpecification.DebugName = "Main MSAA Framebuffer";
+		//	frameBufferSpecification.Attachments = { TextureFormat::RGBA32F, TextureFormat::Depth };
+		//	frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
+		//	frameBufferSpecification.MSAA = { true, 8u, 0u };
+		//	frameBufferSpecification.Transfer = true;
+		//
+		//	PipelineSpecification pipelineSpecification{};
+		//	pipelineSpecification.DebugName = "Main Pipeline";
+		//	pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("VertexShader");
+		//	pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PixelShader");
+		//	pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+		//
+		//	s_RendererData.MainPipeline = Pipeline::Create(pipelineSpecification);
+		//}
+		//
+		////Picking:
+		//{
+		//	FrameBufferSpecification frameBufferSpecification{};
+		//	frameBufferSpecification.DebugName = "Picking Framebuffer";
+		//	frameBufferSpecification.Attachments = { TextureFormat::R32UINT, TextureFormat::Depth };
+		//	static constexpr float clearVal = static_cast<float>(NULL_ENTITY);
+		//	frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
+		//	frameBufferSpecification.IsSRGB = false;
+		//
+		//	PipelineSpecification pipelineSpecification{};
+		//	pipelineSpecification.DebugName = "Picking Pipeline";
+		//	pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("VertexShader");
+		//	pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PickingPixelShader");
+		//	pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+		//
+		//	s_RendererData.PickingPipeline = Pipeline::Create(pipelineSpecification);
+		//}
+		//
+		////Composite
+		//{
+		//	FrameBufferSpecification frameBufferSpecification{};
+		//	frameBufferSpecification.DebugName = "Composite Framebuffer";
+		//	frameBufferSpecification.Attachments = { TextureFormat::RGBA32F };
+		//	frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
+		//	frameBufferSpecification.Transfer = true;
+		//	frameBufferSpecification.Flags = D3D12_RESOURCE_FLAG_NONE;
+		//
+		//	PipelineSpecification pipelineSpecification{};
+		//	pipelineSpecification.DebugName = "Composite Pipeline";
+		//	pipelineSpecification.DepthWrite = false;
+		//	pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("FullScreenTriVertexShader");
+		//	pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PostProcessPixelShader");
+		//	pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+		//
+		//	s_RendererData.CompositePipeline = Pipeline::Create(pipelineSpecification);
+		//}
+		//
+		//Renderer3D::ExecuteCommands();
+		//Renderer3D::WaitForGPU();
+		//RenderCommand::ResetFrameCommandUnits(0u); //TO BE CHANGED! UPLOAD BUFFER SHOULD UPLOAD EVERYTHING SEQUENTIALLY!
 	}
 
 	void Renderer3D::Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, Scene& scene) noexcept
@@ -161,13 +147,13 @@ namespace Relentless
 		RenderCommand::SetViewport(s_RendererData.viewPort);
 		RenderCommand::SetScissorRect(s_RendererData.scissorRect);
 
-		auto& pMainRT = s_RendererData.MainPipeline->GetFrameBuffer()->GetColorBuffer();
-		auto& pMainDS = s_RendererData.MainPipeline->GetFrameBuffer()->GetDepthBuffer();
+		//auto& pMainRT = s_RendererData.MainPipeline->GetFrameBuffer()->GetColorBuffer();
+		//auto& pMainDS = s_RendererData.MainPipeline->GetFrameBuffer()->GetDepthBuffer();
 
-		RenderCommand::TransitionResource(pMainRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		RenderCommand::ClearRenderTarget(pMainRT->GetRTVDescriptorHandle().CPUHandle, pMainRT->GetClearColor());
-		RenderCommand::ClearDepthStencil(pMainDS);
-		RenderCommand::SetRenderTarget(pMainRT, pMainDS);
+		//RenderCommand::TransitionResource(pMainRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		//RenderCommand::ClearRenderTarget(pMainRT->GetRTVDescriptorHandle().CPUHandle, pMainRT->GetClearColor());
+		//RenderCommand::ClearDepthStencil(pMainDS);
+		//RenderCommand::SetRenderTarget(pMainRT, pMainDS);
 		
 		DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		RenderCommand::SetRootSignature(s_RendererData.MainPipeline->GetRootSig());
@@ -232,16 +218,16 @@ namespace Relentless
 		//Picking pass:
 		//States:
 		{
-			auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
-			auto& pPickingDS = s_RendererData.PickingPipeline->GetFrameBuffer()->GetDepthBuffer();
-
-			RenderCommand::TransitionResource(pPickingRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			RenderCommand::ClearRenderTarget(pPickingRT->GetRTVDescriptorHandle().CPUHandle, pPickingRT->GetClearColor());
-			RenderCommand::ClearDepthStencil(pPickingDS);
+			//auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
+			//auto& pPickingDS = s_RendererData.PickingPipeline->GetFrameBuffer()->GetDepthBuffer();
+			//
+			//RenderCommand::TransitionResource(pPickingRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			//RenderCommand::ClearRenderTarget(pPickingRT->GetRTVDescriptorHandle().CPUHandle, pPickingRT->GetClearColor());
+			//RenderCommand::ClearDepthStencil(pPickingDS);
 
 			RenderCommand::SetRootSignature(s_RendererData.PickingPipeline->GetRootSig());
 			RenderCommand::SetPipelineState(s_RendererData.PickingPipeline->GetInterface2());
-			RenderCommand::SetRenderTarget(pPickingRT, pPickingDS);
+			//RenderCommand::SetRenderTarget(pPickingRT, pPickingDS);
 		}
 		static Identifier ID;
 
@@ -268,45 +254,45 @@ namespace Relentless
 			}
 		}
 		
-		auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
-		RenderCommand::TransitionResource(pPickingRT, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		//auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
+		//RenderCommand::TransitionResource(pPickingRT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint = {};
-		UINT64 totalBytes{};
-		auto desc = pPickingRT->GetInterface()->GetDesc();
+		//D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint = {};
+		//UINT64 totalBytes{};
+		//auto desc = pPickingRT->GetInterface()->GetDesc();
 
-		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, nullptr, nullptr, &totalBytes));
-
-		D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
-		dstLocation.pResource = s_RendererData.m_pIdentifierReadbackTexture->GetInterface().Get();
-		dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-		dstLocation.PlacedFootprint = footPrint;
-
-		D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
-		srcLocation.pResource = pPickingRT->GetInterface().Get();
-		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		srcLocation.SubresourceIndex = 0u;
-
-		DXCall_STD(D3D12Core::GetCommandList()->CopyTextureRegion(&dstLocation, 0u, 0u ,0u, &srcLocation, nullptr));
-		s_RendererData.totalBytes = static_cast<uint32_t>(totalBytes);
+		//DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, nullptr, nullptr, &totalBytes));
+		//
+		//D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
+		//dstLocation.pResource = s_RendererData.m_pIdentifierReadbackTexture->GetInterface().Get();
+		//dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		//dstLocation.PlacedFootprint = footPrint;
+		//
+		//D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
+		//srcLocation.pResource = pPickingRT->GetInterface().Get();
+		//srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		//srcLocation.SubresourceIndex = 0u;
+		//
+		//DXCall_STD(D3D12Core::GetCommandList()->CopyTextureRegion(&dstLocation, 0u, 0u ,0u, &srcLocation, nullptr));
+		//s_RendererData.totalBytes = static_cast<uint32_t>(totalBytes);
 
 		//MSAA Resolve:
 		{
-			auto& pMainRT = s_RendererData.MainPipeline->GetFrameBuffer()->GetColorBuffer();
-			auto& compositeRT = s_RendererData.CompositePipeline->GetFrameBuffer()->GetColorBuffer();
+			//auto& pMainRT = s_RendererData.MainPipeline->GetFrameBuffer()->GetColorBuffer();
+			//auto& compositeRT = s_RendererData.CompositePipeline->GetFrameBuffer()->GetColorBuffer();
 
-			RenderCommand::TransitionResource(pMainRT, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-			RenderCommand::TransitionResource(compositeRT, D3D12_RESOURCE_STATE_RESOLVE_DEST);
-			RenderCommand::ResolveMSAA(pMainRT, compositeRT);
+			//RenderCommand::TransitionResource(pMainRT, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+			//RenderCommand::TransitionResource(compositeRT, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+			//RenderCommand::ResolveMSAA(pMainRT, compositeRT);
 		}
 
 		//Set post process render texture as pixel shader resource and UI-texture as render target:
 		{
-			auto& compositeRT = s_RendererData.CompositePipeline->GetFrameBuffer()->GetColorBuffer();
-
-			RenderCommand::TransitionResource(compositeRT, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-			RenderCommand::TransitionResource(ImguiLayer::GetUITexture(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-			RenderCommand::SetRenderTarget(ImguiLayer::GetUITexture(), nullptr);
+			//auto& compositeRT = s_RendererData.CompositePipeline->GetFrameBuffer()->GetColorBuffer();
+			//
+			//RenderCommand::TransitionResource(compositeRT, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			//RenderCommand::TransitionResource(ImguiLayer::GetUITexture(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+			//RenderCommand::SetRenderTarget(ImguiLayer::GetUITexture(), nullptr);
 		}
 
 		//Set necessary d3d12 states:
@@ -318,11 +304,11 @@ namespace Relentless
 
 		//Post process:
 		{
-			static PerFrameData textureData;
-			auto& compositeRT = s_RendererData.CompositePipeline->GetFrameBuffer()->GetColorBuffer();
-			textureData.PostProcessTextureIndex = compositeRT->GetSRVDescriptorHandle().Index;
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, 1u, &textureData, 0u));
-			RenderCommand::DrawInstanced(3u);
+			//static PerFrameData textureData;
+			//auto& compositeRT = s_RendererData.CompositePipeline->GetFrameBuffer()->GetColorBuffer();
+			//textureData.PostProcessTextureIndex = compositeRT->GetSRVDescriptorHandle().Index;
+			//DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(5, 1u, &textureData, 0u));
+			//RenderCommand::DrawInstanced(3u);
 		}
 
 		//Set UI-texture as pixel shader resource and prepare back buffer as render target for imgui:
@@ -402,22 +388,13 @@ namespace Relentless
 		s_RendererData.PickingPipeline->GetFrameBuffer()->Resize(width, height);
 		s_RendererData.CompositePipeline->GetFrameBuffer()->Resize(width, height);
 
-		MemoryManager& memoryManager = MemoryManager::Get();
+		//MemoryManager& memoryManager = MemoryManager::Get();
 
-		auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
-		auto desc = pPickingRT->GetInterface()->GetDesc();
-		UINT64 totalBytes{};
-		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, nullptr, nullptr, nullptr, &totalBytes));
+		//auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
+		//auto desc = pPickingRT->GetInterface()->GetDesc();
+		//UINT64 totalBytes{};
+		//DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, nullptr, nullptr, nullptr, &totalBytes));
 
-		ReadbackTextureSpecification RBTextureSpecification = {};
-		RBTextureSpecification.Width = static_cast<uint32_t>(totalBytes);
-		RBTextureSpecification.Height = 1u;
-		RBTextureSpecification.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-		RBTextureSpecification.MultiSampleCount = 1u;
-		static constexpr float clearVal = static_cast<float>(NULL_ENTITY);
-		RBTextureSpecification.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
-		memoryManager.DestroyResource(std::move(s_RendererData.m_pIdentifierReadbackTexture));
-		s_RendererData.m_pIdentifierReadbackTexture = ReadbackTexture::Create(RBTextureSpecification, "Identifier ReadbackTexture");
 
 		s_RendererData.viewPort.Width = static_cast<float>(width);
 		s_RendererData.viewPort.Height = static_cast<float>(height);
@@ -602,37 +579,8 @@ namespace Relentless
 		));
 	}
 
-	entity Renderer3D::GetHoveredEntity(const uint32_t x, const uint32_t y) noexcept
+	entity Renderer3D::GetHoveredEntity([[maybe_unused]] const uint32_t x, [[maybe_unused]] const uint32_t y) noexcept
 	{
-			D3D12_RANGE readBackBufferRange{ 0, s_RendererData.totalBytes };
-			uint32_t* pReadBackBufferData{};
-			DXCall(s_RendererData.m_pIdentifierReadbackTexture->GetInterface()->Map
-			(
-				0u,
-				&readBackBufferRange,
-				reinterpret_cast<void**>(&pReadBackBufferData)
-			));
-
-			auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
-			auto desc = pPickingRT->GetInterface()->GetDesc();
-			
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint{};
-			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, nullptr, nullptr, nullptr));
-			const uint32_t index = (y * (footPrint.Footprint.RowPitch / 4)) + x;
-			const uint32_t indexExpressedAsBytes = index * 4;
-
-			bool outsideOfViewport = indexExpressedAsBytes > s_RendererData.totalBytes;
-			if (outsideOfViewport)
-				return NULL_ENTITY;
-
-			s_RendererData.hoveredEntity = pReadBackBufferData[index];
-
-			D3D12_RANGE emptyRange{ 0, 0 };
-			DXCall_STD(s_RendererData.m_pIdentifierReadbackTexture->GetInterface()->Unmap
-			(
-				0,
-				&emptyRange
-			));
-		return s_RendererData.hoveredEntity;
+		return 0;
 	}
 }

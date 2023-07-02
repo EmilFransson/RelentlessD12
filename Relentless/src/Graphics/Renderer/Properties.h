@@ -9,12 +9,6 @@ namespace Relentless
 		Depth
 	};
 
-	struct Attachments
-	{
-		TextureFormat ColorAttachment{ TextureFormat::None };
-		TextureFormat DepthAttachment{ TextureFormat::None };
-	};
-
 	struct MSAASpecification
 	{
 		bool Enabled{ false };
@@ -37,4 +31,5 @@ namespace Relentless
 	};
 
 	DXGI_FORMAT RLSTextureFormatToDXGITextureFormat(TextureFormat format) noexcept;
+	D3D12_ROOT_PARAMETER_TYPE HLSLParameterTypeToD3D12RootParameterType(D3D_SHADER_INPUT_TYPE inputType) noexcept;
 }
