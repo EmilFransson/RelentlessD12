@@ -8,26 +8,19 @@ namespace Relentless
 	{
 		for (uint32_t i{0u}; i < specification.Attachments.ColorAttachments.size(); ++i)
 		{
-			//We already have an output, meaning it is dependent on another framebuffer from which it originally stems. 
+			RLS_ASSERT(specification.Attachments.ColorAttachments[i].Format != TextureFormat::None, "Attachment format is invalid.");
+
 			if (specification.Attachments.ColorAttachments[i].Output)
 			{
+				//We already have an output, meaning it is dependent on another framebuffer from which it originally stems. 
 				RLS_ASSERT(specification.Attachments.ColorAttachments[i].pOutputDependency, "Frame buffer dependency is invalid for color attachment.");
 
 				//Update attachment details with information given through the already created Color Output:
 				m_Specification.Attachments.ColorAttachments[i].ClearColor = specification.Attachments.ColorAttachments[i].Output->GetClearColor();
 				m_Specification.Width = specification.Attachments.ColorAttachments[i].Output->GetWidth();
 				m_Specification.Height = specification.Attachments.ColorAttachments[i].Output->GetHeight();
-				m_Specification.MSAA.Count = specification.Attachments.ColorAttachments[i].Output->GetMultiSampleCount();
-				m_Specification.MSAA.Quality = 0u;
-				m_Specification.MSAA.Enabled = m_Specification.MSAA.Count > 1 ? true : false;
+				m_Specification.MSAASamples = specification.Attachments.ColorAttachments[i].Output->GetMultiSampleCount();
 
-				continue;
-			}
-
-			// We do not have an output already, and also we would NOT like to create one,
-			// as no format has been set.
-			if (specification.Attachments.ColorAttachments[i].Format == TextureFormat::None)
-			{
 				continue;
 			}
 
@@ -47,7 +40,7 @@ namespace Relentless
 			rtSpec.Width = specification.Width;
 			rtSpec.Height = specification.Height;
 			rtSpec.Format = RLSTextureFormatToDXGITextureFormat(specification.Attachments.ColorAttachments[i].Format);
-			rtSpec.MultiSampleCount = specification.MSAA.Count;
+			rtSpec.MultiSampleCount = specification.MSAASamples;
 			rtSpec.Flags = specification.Attachments.ColorAttachments[i].Flags;
 			rtSpec.isSRGB = false; //Handled by frame buffer
 
@@ -69,7 +62,7 @@ namespace Relentless
 		RLS_ASSERT(specification.Attachments.DepthAttachment.Format == TextureFormat::Depth, "Invalid depth attachment format.");
 		
 		//By this point we know a depth output should be created:
-		m_Specification.Attachments.DepthAttachment.Output = DepthStencil::Create(specification.Width, specification.Height, specification.MSAA.Count, specification.DebugName + " - DepthStencil");
+		m_Specification.Attachments.DepthAttachment.Output = DepthStencil::Create(specification.Width, specification.Height, specification.MSAASamples, specification.DebugName + " - DepthStencil");
 	}
 
 	std::shared_ptr<FrameBuffer> FrameBuffer::Create(const FrameBufferSpecification& specification) noexcept
@@ -81,58 +74,86 @@ namespace Relentless
 	{
 		if (m_Specification.ShouldResize)
 		{
+			m_Specification.Width = width;
+			m_Specification.Height = height;
+
 			auto& memoryManager = MemoryManager::Get();
-			if (m_Specification.Attachments.ColorAttachments[0].Format != TextureFormat::None)
+			for (uint32_t i{ 0u }; i < m_Specification.Attachments.ColorAttachments.size(); ++i)
 			{
-				if ((m_Specification.Attachments.ColorAttachments[0].Flags & D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) != 0)
+				if (m_Specification.Attachments.ColorAttachments[i].Format != TextureFormat::None)
 				{
-					memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.ColorAttachments[0].Output->GetRTVDescriptorHandle());
-				}
-				if (m_Specification.Attachments.ColorAttachments[0].Transfer)
-				{
-					memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.ColorAttachments[0].Output->GetSRVDescriptorHandle());
-				}
-				memoryManager.DestroyResource(std::move(m_Specification.Attachments.ColorAttachments[0].Output));
+					if ((m_Specification.Attachments.ColorAttachments[i].Flags & D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) != 0)
+					{
+						memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.ColorAttachments[i].Output->GetRTVDescriptorHandle());
+					}
+					if (m_Specification.Attachments.ColorAttachments[i].Transfer)
+					{
+						memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.ColorAttachments[i].Output->GetSRVDescriptorHandle());
+					}
+					memoryManager.DestroyResource(std::move(m_Specification.Attachments.ColorAttachments[i].Output));
 
-				RenderTextureSpecification rtSpec{};
-				rtSpec.ClearColor = m_Specification.Attachments.ColorAttachments[0].ClearColor;
-				rtSpec.CreateSRV = m_Specification.Attachments.ColorAttachments[0].Transfer ? true : false;
-				rtSpec.Width = width;
-				rtSpec.Height = height;
-				rtSpec.Format = RLSTextureFormatToDXGITextureFormat(m_Specification.Attachments.ColorAttachments[0].Format);
-				rtSpec.MultiSampleCount = m_Specification.MSAA.Count;
-				rtSpec.Flags = m_Specification.Attachments.ColorAttachments[0].Flags;
-				rtSpec.isSRGB = m_Specification.Attachments.ColorAttachments[0].IsSRGB;
+					RenderTextureSpecification rtSpec{};
+					rtSpec.ClearColor = m_Specification.Attachments.ColorAttachments[i].ClearColor;
+					rtSpec.CreateSRV = m_Specification.Attachments.ColorAttachments[i].Transfer ? true : false;
+					rtSpec.Width = width;
+					rtSpec.Height = height;
+					rtSpec.Format = RLSTextureFormatToDXGITextureFormat(m_Specification.Attachments.ColorAttachments[i].Format);
+					rtSpec.MultiSampleCount = m_Specification.MSAASamples;
+					rtSpec.Flags = m_Specification.Attachments.ColorAttachments[i].Flags;
+					rtSpec.isSRGB = m_Specification.Attachments.ColorAttachments[i].IsSRGB;
 
-				m_Specification.Attachments.ColorAttachments[0].Output = RenderTexture::Create(rtSpec, m_Specification.DebugName + " - RenderTexture[" + std::to_string(0) + "]");
+					m_Specification.Attachments.ColorAttachments[i].Output = RenderTexture::Create(rtSpec, m_Specification.DebugName + " - RenderTexture[" + std::to_string(i) + "]");
+				}
 			}
 
 			if (m_Specification.Attachments.DepthAttachment.Format != TextureFormat::None)
 			{
 				memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.DepthAttachment.Output->GetDSVDescriptorHandle());
 				memoryManager.DestroyResource(std::move(m_Specification.Attachments.DepthAttachment.Output));
-				m_Specification.Attachments.DepthAttachment.Output = DepthStencil::Create(width, height, m_Specification.MSAA.Count, m_Specification.DebugName + " - DepthStencil");
+				m_Specification.Attachments.DepthAttachment.Output = DepthStencil::Create(width, height, m_Specification.MSAASamples, m_Specification.DebugName + " - DepthStencil");
 			}
-
-			m_Specification.Width = width;
-			m_Specification.Height = height;
 		}
 		else
 		{
-			if (m_Specification.Attachments.ColorAttachments[0].pOutputDependency)
-			{
-				auto colorDependency = m_Specification.Attachments.ColorAttachments[0].pOutputDependency->GetOutput(0);
-				m_Specification.Attachments.ColorAttachments[0].Output = colorDependency;
-
-			}
-			if (m_Specification.Attachments.DepthAttachment.pOutputDependency)
-			{
-				auto depthDependency = m_Specification.Attachments.DepthAttachment.pOutputDependency->GetDepthOutput();
-				m_Specification.Attachments.DepthAttachment.Output= depthDependency;
-			}
-
-			m_Specification.Width = width;
-			m_Specification.Height = height;
+			SynchronizeDependencies();
 		}
 	}
+
+	void FrameBuffer::OnMSAAReconfiguration(uint8_t nrOfSamples) noexcept
+	{
+		m_Specification.MSAASamples = nrOfSamples;
+		Resize(m_Specification.Width, m_Specification.Height);
+	}
+
+	void FrameBuffer::SynchronizeDependencies() noexcept
+	{
+		for (uint32_t i{ 0u }; i < m_Specification.Attachments.ColorAttachments.size(); ++i)
+		{
+			if (m_Specification.Attachments.ColorAttachments[i].pOutputDependency)
+			{
+				m_Specification.Attachments.ColorAttachments[i].Output = m_Specification.Attachments.ColorAttachments[i].pOutputDependency->GetOutput(i);
+			}
+		}
+		if (m_Specification.Attachments.DepthAttachment.pOutputDependency)
+		{
+			m_Specification.Attachments.DepthAttachment.Output = m_Specification.Attachments.DepthAttachment.pOutputDependency->GetDepthOutput();;
+		}
+
+		//Just update the dimensions according to output in slot 0.
+		m_Specification.Width = m_Specification.Attachments.ColorAttachments[0].Output->GetWidth();
+		m_Specification.Height = m_Specification.Attachments.ColorAttachments[0].Output->GetHeight();
+	}
+
+	void FrameBuffer::SetOutputDependency(std::shared_ptr<FrameBuffer> dependency, uint32_t outputSlot) noexcept
+	{
+		RLS_ASSERT(!(outputSlot > m_Specification.Attachments.ColorAttachments.size()), "Output dependency slot is invalid.");
+
+		m_Specification.Attachments.ColorAttachments[outputSlot].pOutputDependency = dependency;
+	}
+
+	void FrameBuffer::SetDepthDependency(std::shared_ptr<FrameBuffer> dependency) noexcept
+	{
+		m_Specification.Attachments.DepthAttachment.pOutputDependency = dependency;
+	}
+
 }

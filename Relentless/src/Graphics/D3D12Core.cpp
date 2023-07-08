@@ -4,7 +4,7 @@ namespace Relentless
 	Microsoft::WRL::ComPtr<ID3D12Device9> D3D12Core::m_pDevice{ nullptr };
 	Microsoft::WRL::ComPtr<IDXGIFactory7> D3D12Core::m_pFactory{nullptr};
 	D3D12Command D3D12Core::m_DirectCommandInterface{};
-	uint8_t D3D12Core::m_NrOfBufferedFrames{ 2u };
+	uint8_t D3D12Core::m_NrOfBufferedFrames{ 3u };
 	uint32_t D3D12Core::m_CurrentFrame{ 0u };
 	bool D3D12Core::m_IsInitialized{ false };
 #if defined(RLS_DEBUG)

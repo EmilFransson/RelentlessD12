@@ -161,7 +161,7 @@ namespace Relentless
 				if (ImGui::ColorEdit3("Color", &lc.Color.x))
 					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 
-				if (ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, 1.0f))
+				if (ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, FLT_MAX))
 					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 			});
 
@@ -202,7 +202,7 @@ namespace Relentless
 				if (ImGui::ColorEdit3("Color", &lc.Color.x))
 					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 
-				if (ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, 1.0f))
+				if (ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, FLT_MAX))
 					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 			});
 
@@ -290,80 +290,141 @@ namespace Relentless
 		DrawComponentNode<MeshRendererComponent>("Mesh Renderer", [this]()
 			{
 				auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(m_SelectedEntity);
-				if (ImGui::ColorEdit3("Color", &mrc.Color.x))
+				if (mrc.MaterialHandle != NULL_RESOURCEID)
 				{
-					m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-				}
-				ImGui::Separator();
+					Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
 
-				constexpr const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen;
-				const bool opened = ImGui::TreeNodeEx("Albedo", flags, "Albedo");
-
-				if (opened)
-				{
-					static bool useAlbedo = true;
-					if (m_pScene->GetEntityManager().Has<AlbedoTextureComponent>(m_SelectedEntity)
-						&& AssetManager::Get().Exists(m_pScene->GetEntityManager().Get<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID))
+					if (ImGui::ColorEdit3("Color", &material.m_AlbedoColor.x, ImGuiColorEditFlags_NoInputs))
 					{
-						ResourceID& albedoTextureResourceID = m_pScene->GetEntityManager().Get<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID;
-						Texture2D* pAlbedoTexture = AssetManager::Get().GetAsset<Texture2D>(albedoTextureResourceID);
-						ImGui::ImageButton((ImTextureID)pAlbedoTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(100.0f, 100.0f), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-						if (ImGui::BeginDragDropTarget())
-						{
-							if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
-							{
-								const char* path = (const char*)payLoad->Data;
-								ResourceID textureResourceID = AssetManager::Get().Load<Texture2D>(path);
-								m_pScene->GetEntityManager().AddOrReplace<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID = textureResourceID;
-								mrc.UsesAlbedoMap = 0xFFFFFFFF;
-								mrc.AlbedoTextureID = AssetManager::Get().GetAsset<Texture2D>(textureResourceID)->GetSRVDescriptorHandle().Index;
-								m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-
-							}
-							ImGui::EndDragDropTarget();
-						}
-
-
-
-						ImGui::Text("     Use");
-						ImGui::SameLine();
-						if (ImGui::Checkbox("##UseAlbedoCheckbox", &useAlbedo))
-						{
-							if (useAlbedo == true)
-							{
-								mrc.UsesAlbedoMap = 0xFFFFFFFF;
-							}
-							else
-							{
-								mrc.UsesAlbedoMap = 0x00000000;
-							}
-							m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-						}
+						m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
 					}
-					else
+					if (ImGui::DragFloat("Metallic", &material.m_Metallic, 0.05f, 0.0f, 1.0f))
 					{
-						static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-						static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
-						ImGui::ColorButton("##MyColor", buttonColor, buttonFlags, ImVec2(100.0f, 100.0f));
-						if (ImGui::BeginDragDropTarget())
-						{
-							if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
-							{
-								const char* path = (const char*)payLoad->Data;
-								ResourceID textureResourceID = AssetManager::Get().Load<Texture2D>(path);
-								m_pScene->GetEntityManager().Add<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID = textureResourceID;
-								mrc.UsesAlbedoMap = 0xFFFFFFFF;
-								mrc.AlbedoTextureID = AssetManager::Get().GetAsset<Texture2D>(textureResourceID)->GetSRVDescriptorHandle().Index;
-								m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-
-							}
-							ImGui::EndDragDropTarget();
-						}
+						m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+					}
+					if (ImGui::DragFloat("Roughness", &material.m_Roughness, 0.05f, 0.0f, 1.0f))
+					{
+						m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
 					}
 
-					ImGui::TreePop();
+					ImGui::Separator();
+
+					constexpr const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen;
+					const bool opened = ImGui::TreeNodeEx("Albedo", flags, "Albedo");
+
+					if (opened)
+					{
+						if (material.HasAlbedoTexture())
+						{
+							Texture2D* pAlbedoTexture = material.GetAlbedoTexture();
+							ImGui::ImageButton((ImTextureID)pAlbedoTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(100.0f, 100.0f), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+							if (ImGui::BeginDragDropTarget())
+							{
+								if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
+								{
+									const char* path = (const char*)payLoad->Data;
+									material.SetAlbedoTexture(AssetManager::Get().Load<Texture2D>(path));
+									m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+								}
+								ImGui::EndDragDropTarget();
+							}
+
+							ImGui::Text("     Use");
+							ImGui::SameLine();
+
+							bool useAlbedo = material.ShouldUseAlbedoTexture();
+							if (ImGui::Checkbox("##UseAlbedoCheckbox", &useAlbedo))
+							{
+								material.ToggleAlbedoTextureUsage();
+								m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+							}
+						}
+						else
+						{
+							static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+							static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
+							ImGui::ColorButton("##MyColor", buttonColor, buttonFlags, ImVec2(100.0f, 100.0f));
+							if (ImGui::BeginDragDropTarget())
+							{
+								if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
+								{
+									const char* path = (const char*)payLoad->Data;
+									material.SetAlbedoTexture(AssetManager::Get().Load<Texture2D>(path));
+									m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+								}
+								ImGui::EndDragDropTarget();
+							}
+						}
+
+						ImGui::TreePop();
+
+						ImGui::Separator();
+					}
+
+					const bool opened2 = ImGui::TreeNodeEx("NormalMap", flags, "NormalMap");
+
+					if (opened2)
+					{
+						if (material.HasNormalMap())
+						{
+							Texture2D* pNormalMap = material.GetNormalMap();
+							ImGui::ImageButton((ImTextureID)pNormalMap->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(100.0f, 100.0f), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+							if (ImGui::BeginDragDropTarget())
+							{
+								if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
+								{
+									const char* path = (const char*)payLoad->Data;
+									material.SetNormalMap(AssetManager::Get().Load<Texture2D>(path));
+									m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+								}
+								ImGui::EndDragDropTarget();
+							}
+
+							ImGui::Text("     Use");
+							ImGui::SameLine();
+
+							bool useNormalMap = material.ShouldUseNormalMap();;
+							if (ImGui::Checkbox("##UseNormalMapCheckbox", &useNormalMap))
+							{
+								material.ToggleNormalMapUsage();
+								m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+							}
+						}
+						else
+						{
+							static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+							static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
+							ImGui::ColorButton("##MyColor2", buttonColor, buttonFlags, ImVec2(100.0f, 100.0f));
+							if (ImGui::BeginDragDropTarget())
+							{
+								if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
+								{
+									const char* path = (const char*)payLoad->Data;
+									material.SetNormalMap(AssetManager::Get().Load<Texture2D>(path));
+									m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+								}
+								ImGui::EndDragDropTarget();
+							}
+						}
+
+						ImGui::TreePop();
+
+						ImGui::Separator();
+					}
 				}
 
+				//if (ImGui::ColorEdit3("Color", &mrc.Color.x))
+				//{
+				//	m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+				//}
+				//if (ImGui::DragFloat("Metallic", &mrc.Metallic, 0.05f, 0.0f, 1.0f))
+				//{
+				//	m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+				//}
+				//if (ImGui::DragFloat("Roughness", &mrc.Roughness, 0.05f, 0.0f, 1.0f))
+				//{
+				//	m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+				//}
 			});
 
 		DrawComponentNode<CameraComponent>("Camera", [this]()
@@ -391,8 +452,8 @@ namespace Relentless
 			{
 				if (!m_pScene->GetEntityManager().Has<MeshRendererComponent>(m_SelectedEntity))
 				{
-					auto& mrc = m_pScene->GetEntityManager().Add<MeshRendererComponent>(m_SelectedEntity);
-					mrc.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
+					m_pScene->GetEntityManager().Add<MeshRendererComponent>(m_SelectedEntity);
+					//mrc.MaterialHandle = AssetManager::Get().Create<Material>("");
 					m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
 					m_pScene->GetEntityManager().AddOrReplace<ForwardPassComponent>(m_SelectedEntity);
 				}
@@ -540,7 +601,10 @@ namespace Relentless
 		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_ButtonActive, ImVec4(0.8f, 0.1f, 0.15f, 1.0f));
 		ImGui::PushFont(pFont);
 		if (ImGui::Button("X", buttonSize))
+		{
 			values.x = resetValue;
+			changedValues = true;
+		}
 		ImGui::PopFont();
 		ImGui::PopStyleColor(3);
 
@@ -554,7 +618,10 @@ namespace Relentless
 		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_ButtonActive, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
 		ImGui::PushFont(pFont);
 		if (ImGui::Button("Y", buttonSize))
+		{
 			values.y = resetValue;
+			changedValues = true;
+		}
 		ImGui::PopFont();
 		ImGui::PopStyleColor(3);
 
@@ -568,7 +635,10 @@ namespace Relentless
 		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_ButtonActive, ImVec4(0.1f, 0.25f, 0.8f, 1.0f));
 		ImGui::PushFont(pFont);
 		if (ImGui::Button("Z", buttonSize))
+		{
 			values.z = resetValue;
+			changedValues = true;
+		}
 		ImGui::PopFont();
 		ImGui::PopStyleColor(3);
 

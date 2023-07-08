@@ -1,7 +1,7 @@
 #Root/Relentless-Editor
 set(SourceFiles 
 		"src/Core/RelentlessEditorApp.cpp" "src/Core/EditorLayer.h" "src/Core/EditorLayer.cpp"
- "src/Panels/SceneHierarchyPanel.h" "src/Panels/SceneHierarchyPanel.cpp" "src/Panels/MetricsPanel.h" "src/Panels/MetricsPanel.cpp" "src/Panels/PropertiesPanel.h" "src/Panels/PropertiesPanel.cpp" "src/Panels/ContentBrowserPanel.h" "src/Panels/ContentBrowserPanel.cpp"  )
+ "src/Panels/SceneHierarchyPanel.h" "src/Panels/SceneHierarchyPanel.cpp" "src/Panels/MetricsPanel.h" "src/Panels/MetricsPanel.cpp" "src/Panels/PropertiesPanel.h" "src/Panels/PropertiesPanel.cpp" "src/Panels/ContentBrowserPanel.h" "src/Panels/ContentBrowserPanel.cpp"   "src/Panels/SceneRendererPanel.h" "src/Panels/SceneRendererPanel.cpp")
 		
 set(ExecutableName "Relentless-Editor")
 set (ExternalIncludePath "${CMAKE_SOURCE_DIR}/Relentless-Editor/vendor/includes/")

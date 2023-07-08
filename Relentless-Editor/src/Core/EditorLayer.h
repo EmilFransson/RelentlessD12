@@ -4,6 +4,7 @@
 #include "../Panels/PropertiesPanel.h"
 #include "../Panels/ContentBrowserPanel.h"
 #include "../Panels/MetricsPanel.h"
+#include "../Panels/SceneRendererPanel.h"
 
 namespace Relentless
 {
@@ -30,9 +31,9 @@ namespace Relentless
 		void ManipulateTransformGizmo() noexcept;
 
 	private:
-		ImVec2 m_ViewportPanelSize;
 		bool m_SceneViewportChanged;
 		bool m_HoveringSceneViewport;
+		ImVec2 m_ViewportPanelSize;
 		ImVec2 vMin;
 		ImVec2 vMax;
 
@@ -44,9 +45,11 @@ namespace Relentless
 		PropertiesPanel m_PropertiesPanel;
 		ContentBrowserPanel m_ContentBrowserPanel;
 		MetricsPanel m_MetricsPanel;
+		SceneRendererPanel m_SceneRendererPanel;
 
 		std::shared_ptr<Scene> m_pScene;
-
-		std::unique_ptr<SceneRenderer> m_pSceneRenderer;
+		std::shared_ptr<SceneRenderer> m_pSceneRenderer;
+	
+		std::queue<std::function<void()>> m_DeferredFunctions;
 	};
 }

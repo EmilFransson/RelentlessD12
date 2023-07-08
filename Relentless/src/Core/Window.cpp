@@ -24,10 +24,11 @@ namespace Relentless
 	MSG Window::m_WindowMessage = { 0 };
 	BOOL Window::m_IsVisible = 0;
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> Window::m_pSwapChain{ nullptr };
-	uint8_t Window::m_NrOfBackBuffers{ 2u };
+	uint8_t Window::m_NrOfBackBuffers{ 3u };
 	std::vector<BackBuffer> Window::m_BackBuffers;
 	bool Window::m_IsResizing{ false };
 	bool Window::m_IsFullScreen{ false };
+	bool Window::m_IsVsyncing{ false };
 
 	void Window::Initialize(const std::string& windowTitle, const uint32_t width, const uint32_t height)
 	{
@@ -122,8 +123,8 @@ namespace Relentless
 
 	void Window::Present() noexcept
 	{
-		UINT presentFlags = !m_IsFullScreen ? DXGI_PRESENT_ALLOW_TEARING : 0;
-		DXCall(m_pSwapChain->Present(0u, presentFlags));
+		UINT presentFlags = (!m_IsFullScreen && !m_IsVsyncing) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+		DXCall(m_pSwapChain->Present(m_IsVsyncing, presentFlags));
 	}
 
 	void Window::ToggleFullScreen() noexcept
@@ -321,6 +322,11 @@ namespace Relentless
 
 		Finalize();
 		RLS_CORE_INFO("Resized window with [width, height]=[{0},{1}]", m_Width, m_Height);
+	}
+
+	void Window::ToggleVSync() noexcept
+	{
+		m_IsVsyncing = !m_IsVsyncing;
 	}
 
 	void Window::Finalize() noexcept

@@ -134,17 +134,10 @@ namespace Relentless
 			}
 		}
 
-		auto pUITextureHandle = ImguiLayer::GetUITextureGPUHandle();
-		auto ppp = MasterRenderer::GetFrameBuffer()->GetOutput(0)->GetSRVDescriptorHandle().GPUHandle;
-		//ImGui::Image
-		//(
-		//	(ImTextureID)pUITextureHandle.ptr,
-		//	ImVec2(m_ViewportPanelSize.x, m_ViewportPanelSize.y)
-		//);
-		
+		auto UITextureHandle = MasterRenderer::GetFrameBuffer()->GetOutput(0)->GetSRVDescriptorHandle().GPUHandle;
 		ImGui::Image
 		(
-			(ImTextureID)ppp.ptr,
+			(ImTextureID)UITextureHandle.ptr,
 			ImVec2(m_ViewportPanelSize.x, m_ViewportPanelSize.y)
 		);
 
@@ -159,6 +152,8 @@ namespace Relentless
 		ImGui::Begin("Stats");
 		ImGui::Text("Hovered entity:");
 		ImGui::SameLine();
+
+		
 
 		if (m_HoveredEntity != NULL_ENTITY && m_pScene->GetEntityManager().Exists(m_HoveredEntity))
 		{
@@ -176,6 +171,7 @@ namespace Relentless
 		ImGui::End();
 
 		m_SceneHierarchyPanel.OnImGuiRender();
+		m_SceneRendererPanel.OnImGuiRender();
 		m_PropertiesPanel.OnImGuiRender();
 		m_ContentBrowserPanel.OnImGuiRender();
 		m_MetricsPanel.OnImGuiRender();
@@ -185,10 +181,11 @@ namespace Relentless
 	{
 		LoadStarterMeshes();
 		CreateStartScene();
-		m_pSceneRenderer = std::make_unique<SceneRenderer>(m_pScene);
+		m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pScene);
 
 		m_PropertiesPanel.SetActiveScene(m_pScene.get());
 		m_SceneHierarchyPanel.SetActiveScene(m_pScene.get());
+		m_SceneRendererPanel.SetActiveRenderer(m_pSceneRenderer);
 
 		//TODO: Collapse into one switch-case-callback-function
 		m_SceneHierarchyPanel.SetOnEntityDestroyFunction([this](entity entityID)
@@ -282,6 +279,8 @@ namespace Relentless
 		}
 		else
 			m_HoveredEntity = NULL_ENTITY;
+
+		m_SceneRendererPanel.OnPostRender();
 	}
 
 	void EditorLayer::LoadStarterMeshes() noexcept
@@ -344,7 +343,8 @@ namespace Relentless
 		{
 			auto ground = m_pScene->CreateShape<Shape::Cube>();
 			m_pScene->GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
-			m_pScene->GetEntityManager().Get<MeshRendererComponent>(ground).Color = { 42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f };
+			Material& material = AssetManager::Get().Get<Material>(m_pScene->GetEntityManager().Get<MeshRendererComponent>(ground).MaterialHandle);
+			material.m_AlbedoColor = { 42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f };
 
 			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(ground);
 			tc.Scale = DirectX::XMFLOAT3{ 6.4f, 0.1f, 6.4f };
@@ -365,7 +365,6 @@ namespace Relentless
 
 		m_pScene->GetEditorCamera()->RecalculateProjectionMatrix(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		m_pSceneRenderer->OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
-		ImguiLayer::OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		m_SceneViewportChanged = false;
 	}
 
@@ -407,17 +406,8 @@ namespace Relentless
 		if (mgr.Has<MeshRendererComponent>(m_SelectedEntity))
 		{
 			auto& mrcNew = mgr.Add<MeshRendererComponent>(newEntity);
-			mrcNew.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
 			auto& mrc = mgr.Get<MeshRendererComponent>(m_SelectedEntity);
-			mrcNew.Color = mrc.Color;
-
-			if (mrc.UsesAlbedoMap == 0xFFFFFFFF)
-			{
-				mrcNew.UsesAlbedoMap = mrc.UsesAlbedoMap;
-				mrcNew.AlbedoTextureID = mrc.AlbedoTextureID;
-
-				mgr.Add<AlbedoTextureComponent>(newEntity).AlbedoTextureID = mgr.Get<AlbedoTextureComponent>(m_SelectedEntity).AlbedoTextureID;
-			}
+			mrcNew.MaterialHandle = mrc.MaterialHandle;
 			mgr.Add<DirtyMeshRendererComponent>(newEntity);
 		}
 		if (mgr.Has<ForwardPassComponent>(m_SelectedEntity))

@@ -44,6 +44,7 @@ namespace Relentless
 		RLS_ASSERT(pMesh->HasPositions(), "Mesh contains no position data.");
 		RLS_ASSERT(pMesh->HasFaces(), "Mesh contains no faces data.");
 		RLS_ASSERT(pMesh->HasNormals(), "Mesh contains no normal data.");
+		RLS_ASSERT(pMesh->HasTangentsAndBitangents(), "Mesh contains no tangent and/or bitangent data.");
 		RLS_ASSERT(pMesh->HasTextureCoords(0u), "Mesh contains no texture coordinate data.")
 
 		Mesh mesh;
@@ -59,6 +60,14 @@ namespace Relentless
 			vertex.Normal.x = pMesh->mNormals[i].x;
 			vertex.Normal.y = pMesh->mNormals[i].y;
 			vertex.Normal.z = pMesh->mNormals[i].z;
+
+			vertex.Tangent.x = pMesh->mTangents[i].x;
+			vertex.Tangent.y = pMesh->mTangents[i].y;
+			vertex.Tangent.z = pMesh->mTangents[i].z;
+
+			vertex.BiTangent.x = pMesh->mBitangents[i].x;
+			vertex.BiTangent.y = pMesh->mBitangents[i].y;
+			vertex.BiTangent.z = pMesh->mBitangents[i].z;
 
 			vertex.TextureCoords.x = pMesh->mTextureCoords[0][i].x;
 			vertex.TextureCoords.y = pMesh->mTextureCoords[0][i].y;

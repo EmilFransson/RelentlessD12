@@ -32,13 +32,14 @@ namespace Relentless
 			frameBufferSpecification.DebugName = "Geometry Framebuffer";
 			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
-			frameBufferSpecification.MSAA = { true, 8u, 0u };
+			frameBufferSpecification.MSAASamples = 8u;
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Geometry Pipeline";
 			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShader");
+			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PBRPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.MSAAEligible = true;
 
 			RenderPassSpecification renderpassDescriptor{};
 			renderpassDescriptor.DebugName = "Geometry Pass";
@@ -47,11 +48,46 @@ namespace Relentless
 			m_GeometryRenderPass = RenderPass::Create(renderpassDescriptor);
 		}
 
-		//Wireframe Render pass:
+		//Combined Geometry and Picking Render pass:
 		{
 			ColorAttachment colorAttachment;
 			colorAttachment.Format = TextureFormat::RGBA32F;
 			colorAttachment.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
+			colorAttachment.Transfer = true;
+
+			ColorAttachment colorAttachment2;
+			colorAttachment2.Format = TextureFormat::R32UINT;
+			static constexpr float clearVal = static_cast<float>(NULL_ENTITY);
+			colorAttachment2.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
+			colorAttachment2.Transfer = true;
+			colorAttachment2.IsSRGB = false;
+
+			DepthAttachment depthAttachment;
+			depthAttachment.Format = TextureFormat::Depth;
+
+			FrameBufferSpecification frameBufferSpecification{};
+			frameBufferSpecification.DebugName = "GeometryAndPicking Framebuffer";
+			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment, colorAttachment2 };
+			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
+
+			PipelineSpecification pipelineSpecification{};
+			pipelineSpecification.DebugName = "GeometryAndPicking Pipeline";
+			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("GeometryAndPickingPixelShader");
+			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.MSAAEligible = false;
+
+			RenderPassSpecification renderpassDescriptor{};
+			renderpassDescriptor.DebugName = "GeometryAndPicking Pass";
+			renderpassDescriptor.RenderPipeline = Pipeline::Create(pipelineSpecification);
+
+			m_CombinedGeometryAndPickingPass = RenderPass::Create(renderpassDescriptor);
+		}
+
+		//Wireframe Render pass:
+		{
+			ColorAttachment colorAttachment;
+			colorAttachment.Format = TextureFormat::RGBA32F;
 			colorAttachment.Transfer = true;
 			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
 			colorAttachment.Output = m_GeometryRenderPass->GetOutput(0);
@@ -77,6 +113,7 @@ namespace Relentless
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.FillMode = FillMode::Wireframe;
 			pipelineSpecification.BackfaceCulling = false;
+			pipelineSpecification.MSAAEligible = true;
 
 			RenderPassSpecification renderpassDescriptor{};
 			renderpassDescriptor.DebugName = "Wireframe Pass";
@@ -107,6 +144,7 @@ namespace Relentless
 			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
 			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PickingPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.MSAAEligible = false;
 
 			RenderPassSpecification renderpassDescriptor{};
 			renderpassDescriptor.DebugName = "Picking Pass";
@@ -119,8 +157,9 @@ namespace Relentless
 		{
 			ColorAttachment colorAttachment;
 			colorAttachment.Format = TextureFormat::RGBA32F;
-			colorAttachment.Transfer = true;
 			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
+			colorAttachment.Transfer = true;
+			colorAttachment.Blend = true;
 			colorAttachment.Output = m_GeometryRenderPass->GetOutput(0);
 			colorAttachment.pOutputDependency = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer();
 
@@ -134,7 +173,7 @@ namespace Relentless
 			frameBufferSpecification.DebugName = "Editor Grid Framebuffer";
 			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
-			frameBufferSpecification.MSAA = { true, 8u, 0u };
+			frameBufferSpecification.MSAASamples = 8u;
 			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::LESS_EQUAL;
 			frameBufferSpecification.ShouldResize = false;
 
@@ -144,7 +183,7 @@ namespace Relentless
 			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderEditorGrid");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.Topology = Topology::Line;
-			pipelineSpecification.blend = true;
+			pipelineSpecification.MSAAEligible = true;
 
 			RenderPassSpecification renderpassDescriptor{};
 			renderpassDescriptor.DebugName = "Editor Grid Pass";
@@ -173,6 +212,7 @@ namespace Relentless
 			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("FullScreenTriVertexShader");
 			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PostProcessPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.MSAAEligible = false;
 
 			RenderPassSpecification renderpassDescriptor{};
 			renderpassDescriptor.DebugName = "Composite Pass";
@@ -228,7 +268,6 @@ namespace Relentless
 			m_EditorGridTransformComponent2.ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT4X4));
 		}
 		
-
 		RenderTextureSpecification resolveRTSpec{};
 		resolveRTSpec.MultiSampleCount = 1u;
 		resolveRTSpec.CreateSRV = true;
@@ -259,15 +298,22 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
-		GeometryPass();
+		if (m_Options.MSAASamples > 1)
+		{
+			GeometryPass();
+			PickingPass();
+		}
+		else
+		{
+			CombinedGeometryAndPickingPass();
+		}
 		EditorGridPass();
 		WireframePass();
-		PickingPass();
 
-		//MSAA Resolve:
+		if (m_Options.MSAASamples > 1)
 		{
+			//MSAA Resolve:
 			auto pGeometryPassColorOutput = m_GeometryRenderPass->GetOutput(0);
-
 			RenderCommand::TransitionResource(pGeometryPassColorOutput, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
 			RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_RESOLVE_DEST);
 			RenderCommand::ResolveMSAA(pGeometryPassColorOutput, m_pResolvedTexture);
@@ -329,7 +375,9 @@ namespace Relentless
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, ib->GetInterface()->GetGPUVirtualAddress()));
 		
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					m_PerDrawData.materialIndex = memoryManager.GetCBDescriptorIndex(mrc.constantBufferID);
+					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
+					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
+					
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 		
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
@@ -377,7 +425,8 @@ namespace Relentless
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, ib->GetInterface()->GetGPUVirtualAddress()));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					m_PerDrawData.materialIndex = memoryManager.GetCBDescriptorIndex(mrc.constantBufferID);
+					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
+					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
@@ -469,7 +518,8 @@ namespace Relentless
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					m_PerDrawData.materialIndex = memoryManager.GetCBDescriptorIndex(mrc.constantBufferID);
+					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
+					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
 
@@ -486,7 +536,6 @@ namespace Relentless
 		{
 			RenderCommand::CopyTexelToBuffer(m_GeometryPickingRenderPass->GetOutput(0), m_pIdentifierReadbackBuffer, static_cast<uint32_t>(mousePos.x), static_cast<uint32_t>(mousePos.y), sizeof(uint32_t));
 		}
-
 	}
 
 	void SceneRenderer::CompositePass() noexcept
@@ -495,10 +544,18 @@ namespace Relentless
 
 		MasterRenderer::BeginRenderPass(m_CompositeRenderPass);
 
-		RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		auto textureDataIndex = m_CompositeRenderPass->GetInputSlot("TextureData");
-		m_CompositeData.PostProcessTextureIndex = m_pResolvedTexture->GetSRVDescriptorHandle().Index;
+		if (m_Options.MSAASamples > 1)
+		{
+			RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			m_CompositeData.PostProcessTextureIndex = m_pResolvedTexture->GetSRVDescriptorHandle().Index;
+		}
+		else
+		{
+			RenderCommand::TransitionResource(m_CombinedGeometryAndPickingPass->GetOutput(0), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			m_CompositeData.PostProcessTextureIndex = m_CombinedGeometryAndPickingPass->GetOutput(0)->GetSRVDescriptorHandle().Index;
+		}
 		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(textureDataIndex, 1u, &m_CompositeData, 0u));
 
 		RenderCommand::DrawInstanced(3u);
@@ -506,10 +563,77 @@ namespace Relentless
 		MasterRenderer::EndRenderPass();
 	}
 
+	void SceneRenderer::CombinedGeometryAndPickingPass() noexcept
+	{
+		PROFILE_FUNC;
+
+		MasterRenderer::BeginRenderPass(m_CombinedGeometryAndPickingPass);
+
+		MemoryManager& memoryManager = MemoryManager::Get();
+
+		//Terrible and wrong for runtime:
+		//Camera:
+		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
+		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
+		m_CombinedGeometryAndPickingPass->Upload("vpConstantBuffer", &m_VPData);
+
+		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
+
+		m_PerFrameOpaqueGeometryData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
+		m_PerFrameOpaqueGeometryData.pointLightStructuredBufferIndex = m_pScene->GetLightManager().GetPointLights()->m_VisibleHandles[frameIndex].Index;
+		m_PerFrameOpaqueGeometryData.directionalLightStructuredBufferIndex = m_pScene->GetLightManager().GetDirectionalLights()->m_VisibleHandles[frameIndex].Index;
+		m_PerFrameOpaqueGeometryData.nrOfDirectionalLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
+		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
+		m_CombinedGeometryAndPickingPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
+
+		EntityManager& entityManager = m_pScene->GetEntityManager();
+		AssetManager& assetManager = AssetManager::Get();
+
+		auto verticesIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("vertices");
+		auto indicesIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("indices");
+		auto perDrawIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("perDrawData");
+		auto identifierIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("Identifier");
+
+		entityManager.Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
+			{
+				if (assetManager.Exists(mfc.VertexBufferID))
+				{
+					VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
+					IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
+
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, vb->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, ib->GetInterface()->GetGPUVirtualAddress()));
+
+					m_PickingData.entityID = e;
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
+
+					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
+					const Material material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
+					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
+					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
+
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+
+					RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+				}
+			});
+		
+		MasterRenderer::EndRenderPass();
+
+		auto mousePos = m_pScene->GetMousePosition();
+		if (mousePos.x > 0.0f
+			&& (uint32_t)mousePos.x < m_CombinedGeometryAndPickingPass->GetOutput(0)->GetWidth()
+			&& mousePos.y > 0.0f && (uint32_t)mousePos.y < m_CombinedGeometryAndPickingPass->GetOutput(0)->GetHeight())
+		{
+			RenderCommand::CopyTexelToBuffer(m_CombinedGeometryAndPickingPass->GetOutput(1), m_pIdentifierReadbackBuffer, static_cast<uint32_t>(mousePos.x), static_cast<uint32_t>(mousePos.y), sizeof(uint32_t));
+		}
+	}
+
 	void SceneRenderer::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
 	{
 		MasterRenderer::Resize(width, height);
 		m_GeometryRenderPass->Resize(width, height);
+		m_CombinedGeometryAndPickingPass->Resize(width, height);
 		m_WireFrameRenderPass->Resize(width, height);
 		m_EditorGridRenderPass->Resize(width, height);
 		m_GeometryPickingRenderPass->Resize(width, height);
@@ -524,6 +648,37 @@ namespace Relentless
 		resolveRTSpec.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 
 		m_pResolvedTexture = RenderTexture::Create(resolveRTSpec, "MSAA Resolve RenderTexture");
+	}
+
+	void SceneRenderer::SetMSAASamples(const uint8_t samples) noexcept
+	{
+		if (samples != m_Options.MSAASamples)
+		{
+			MasterRenderer::WaitAndSyncAllFramesInFlight();
+			if (samples == 1)
+			{
+				m_EditorGridRenderPass->GetPipeline()->GetFrameBuffer()->SetOutputDependency(m_CombinedGeometryAndPickingPass->GetPipeline()->GetFrameBuffer(), 0);
+				m_EditorGridRenderPass->GetPipeline()->GetFrameBuffer()->SetDepthDependency(m_CombinedGeometryAndPickingPass->GetPipeline()->GetFrameBuffer());
+				m_WireFrameRenderPass->GetPipeline()->GetFrameBuffer()->SetOutputDependency(m_CombinedGeometryAndPickingPass->GetPipeline()->GetFrameBuffer(), 0);
+				m_WireFrameRenderPass->GetPipeline()->GetFrameBuffer()->SetDepthDependency(m_CombinedGeometryAndPickingPass->GetPipeline()->GetFrameBuffer());
+			}
+			else if (m_Options.MSAASamples == 1)
+			{
+				m_EditorGridRenderPass->GetPipeline()->GetFrameBuffer()->SetOutputDependency(m_GeometryRenderPass->GetPipeline()->GetFrameBuffer(), 0);
+				m_EditorGridRenderPass->GetPipeline()->GetFrameBuffer()->SetDepthDependency(m_GeometryRenderPass->GetPipeline()->GetFrameBuffer());
+				m_WireFrameRenderPass->GetPipeline()->GetFrameBuffer()->SetOutputDependency(m_GeometryRenderPass->GetPipeline()->GetFrameBuffer(), 0);
+				m_WireFrameRenderPass->GetPipeline()->GetFrameBuffer()->SetDepthDependency(m_GeometryRenderPass->GetPipeline()->GetFrameBuffer());
+			}
+
+			m_Options.MSAASamples = samples;
+
+			m_GeometryRenderPass->OnMSAAReconfiguration(samples);
+			m_CombinedGeometryAndPickingPass->OnMSAAReconfiguration(samples);
+			m_WireFrameRenderPass->OnMSAAReconfiguration(samples);
+			m_GeometryPickingRenderPass->OnMSAAReconfiguration(samples);
+			m_EditorGridRenderPass->OnMSAAReconfiguration(samples);
+			m_CompositeRenderPass->OnMSAAReconfiguration(samples);
+		}
 	}
 
 	//entity SceneRenderer::GetHoveredEntity(const uint32_t x, const uint32_t y) noexcept

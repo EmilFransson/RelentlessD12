@@ -138,4 +138,48 @@ namespace Relentless
 		}
 	}
 
+	void RenderPass::OnMSAAReconfiguration(uint8_t samples) noexcept
+	{
+		m_RenderPassSpecification.RenderPipeline->OnMSAAReconfiguration(samples);
+
+		m_RenderTargets.clear();
+
+		auto fbSpec = m_RenderPassSpecification.RenderPipeline->GetFrameBuffer()->GetSpecification();
+		for (auto& outputAttachment : fbSpec.Attachments.ColorAttachments)
+		{
+			D3D12_RENDER_PASS_BEGINNING_ACCESS beginningAccess{};
+			beginningAccess.Clear.ClearValue.Color[0] = outputAttachment.ClearColor.x;
+			beginningAccess.Clear.ClearValue.Color[1] = outputAttachment.ClearColor.y;
+			beginningAccess.Clear.ClearValue.Color[2] = outputAttachment.ClearColor.z;
+			beginningAccess.Clear.ClearValue.Color[3] = outputAttachment.ClearColor.w;
+			beginningAccess.Clear.ClearValue.Format = RLSTextureFormatToDXGITextureFormat(outputAttachment.Format);
+			beginningAccess.Type = RLSOperatorToD3D12Operator(outputAttachment.OperatorOnLoad);
+
+			D3D12_RENDER_PASS_ENDING_ACCESS endingAccess{};
+			endingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE::D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+			D3D12_RENDER_PASS_RENDER_TARGET_DESC rtDesc{};
+			rtDesc.cpuDescriptor = outputAttachment.Output->GetRTVDescriptorHandle().CPUHandle;
+			rtDesc.BeginningAccess = beginningAccess;
+			rtDesc.EndingAccess = endingAccess;
+
+			m_RenderTargets.push_back(rtDesc);
+		}
+
+		if (fbSpec.Attachments.DepthAttachment.Output)
+		{
+			D3D12_RENDER_PASS_BEGINNING_ACCESS beginningAccess{};
+			beginningAccess.Clear.ClearValue.Color[0] = 1.0f;
+			beginningAccess.Clear.ClearValue.Color[1] = 1.0f;
+			beginningAccess.Clear.ClearValue.Color[2] = 1.0f;
+			beginningAccess.Clear.ClearValue.Color[3] = 1.0f;
+			beginningAccess.Clear.ClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+			beginningAccess.Type = RLSOperatorToD3D12Operator(fbSpec.Attachments.DepthAttachment.OperatorOnLoad);
+
+			m_DepthTarget.cpuDescriptor = fbSpec.Attachments.DepthAttachment.Output->GetDSVDescriptorHandle().CPUHandle;
+			m_DepthTarget.DepthBeginningAccess = beginningAccess;
+			m_DepthTarget.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE::D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+		}
+
+	}
 }

@@ -92,6 +92,7 @@ namespace Relentless
 				{
 					samplers.push_back(reflectionData);
 					reflectionDataVectors[i].erase(reflectionDataVectors[i].begin() + j);
+					j--;
 					continue;
 				}
 
@@ -149,7 +150,7 @@ namespace Relentless
 			else if (samplerDescriptor.Filter == D3D12_FILTER_MIN_MAG_MIP_LINEAR)
 			{
 				samplerDescriptor.MaxAnisotropy = 0;
-				samplerDescriptor.AddressU = samplerDescriptor.AddressV = samplerDescriptor.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+				samplerDescriptor.AddressU = samplerDescriptor.AddressV = samplerDescriptor.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 
 			}
 			staticSamplerDescriptors.push_back(samplerDescriptor);

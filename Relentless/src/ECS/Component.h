@@ -2,6 +2,7 @@
 #include "../Graphics/Resources/AssetManager.h"
 #include "../Graphics/Resources/ConstantBuffer.h"
 #include "../Graphics/D3D12Core.h"
+#include "../Graphics/Resources/Material.h"
 
 namespace Relentless
 {
@@ -58,17 +59,9 @@ namespace Relentless
 	struct MeshRendererComponent
 	{
 		MeshRendererComponent()
-			:UsesAlbedoMap{0u},
-			 AlbedoTextureID{},
-			 Color{ 1.0f, 1.0f, 1.0f },
-			 constantBufferID{ static_cast<size_t>(-1) }
+			: MaterialHandle{ NULL_RESOURCEID }
 		{}
-
-		DirectX::XMFLOAT3 Color;
-		uint32_t UsesAlbedoMap;
-		uint32_t AlbedoTextureID;
-
-		size_t constantBufferID;
+		MaterialHandle MaterialHandle;
 	};
 
 	struct DirtyMeshRendererComponent

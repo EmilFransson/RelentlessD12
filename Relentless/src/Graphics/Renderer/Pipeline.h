@@ -13,9 +13,9 @@ namespace Relentless
 		std::shared_ptr<FrameBuffer> pFrameBuffer{ nullptr };
 		bool BackfaceCulling{ true };
 		bool DepthWrite{ true };
+		bool MSAAEligible{ false };
 		FillMode FillMode{ FillMode::Solid };
 		Topology Topology{ Topology::Triangle };
-		bool blend{false};
 	};
 
 	class Pipeline
@@ -30,6 +30,9 @@ namespace Relentless
 		[[nodiscard]] std::shared_ptr<FrameBuffer> GetFrameBuffer() const noexcept { return m_Specification.pFrameBuffer; }
 		[[nodiscard]] const PipelineSpecification& GetSpecification() const noexcept { return m_Specification; }
 		[[nodiscard]] const ReflectionResult& GetShaderReflectionResults() const noexcept { return m_ReflectionResult; }
+		void OnMSAAReconfiguration(uint8_t nrOfSamples) noexcept;
+	private:
+		void Initialize(const PipelineSpecification& specification) noexcept;
 	private:
 		PipelineSpecification m_Specification;
 		Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pPSO;

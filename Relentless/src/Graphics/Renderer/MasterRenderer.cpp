@@ -56,7 +56,6 @@ namespace Relentless
 		{
 			ColorAttachment colorAttachment;
 			colorAttachment.Format = TextureFormat::RGBA32F;
-			colorAttachment.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
 			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
 			colorAttachment.Transfer = true;
 
@@ -64,8 +63,6 @@ namespace Relentless
 			fbSpec.DebugName = "Final Composite FrameBuffer";
 			fbSpec.Width = 800u;
 			fbSpec.Height = 600u;
-			fbSpec.MSAA = { false, 1u, 0u };
-			fbSpec.ShouldResize = true;
 			fbSpec.Attachments.ColorAttachments = { colorAttachment };
 
 			s_Data.m_pCompositeFrameBuffer = FrameBuffer::Create(fbSpec);
@@ -113,12 +110,32 @@ namespace Relentless
 		D3D12_RANGE readRange = { 0, s_Data.NrOfQueries * sizeof(UINT64) };
 		DXCall(s_Data.m_pQueryResultBuffer->GetInterface()->Map(0, &readRange, reinterpret_cast<void**>(&pTimestamps)));
 
-		//UINT64 startTime = pTimestamps[0];
-		//UINT64 endTime = pTimestamps[1];
+		UINT64 startTime = pTimestamps[0];
+		UINT64 endTime = pTimestamps[1];
 
-		//double TimeInMs = (((double)endTime - (double)startTime) / (double)s_Data.GPUFrequency) * 1000.0f;
-		//std::cout << "Time in MS: " << std::to_string(TimeInMs) << "\n";
+		double TimeInMs = (((double)endTime - (double)startTime) / (double)s_Data.GPUFrequency) * 1000.0f;
+		std::cout << "Time in MS: " << std::to_string(TimeInMs) << "\n";
 		DXCall_STD(s_Data.m_pQueryResultBuffer->GetInterface()->Unmap(0, nullptr));
+	}
+
+	void MasterRenderer::WaitAndSyncAllFramesInFlight() noexcept
+	{
+		auto WaitForPreviousFrame = [&](UINT frameIndex) {
+			const UINT64 currentFenceValue = s_Data.pFenceValues[frameIndex];
+			DXCall(D3D12Core::GetCommandQueue()->Signal(s_Data.pFence.Get(), currentFenceValue));
+			s_Data.pFenceValues[frameIndex] = currentFenceValue + 1;
+
+			// If the next frame is not ready to be rendered yet, wait until the fence to complete.
+			if (s_Data.pFence->GetCompletedValue() < currentFenceValue) {
+				DXCall(s_Data.pFence->SetEventOnCompletion(currentFenceValue, s_Data.fenceEvent));
+				WaitForSingleObject(s_Data.fenceEvent, INFINITE);
+			}
+		};
+
+		for (uint32_t i{ 0u }; i < D3D12Core::GetNrOfBufferedFrames(); ++i)
+		{
+			WaitForPreviousFrame(i);
+		}
 	}
 
 	void MasterRenderer::WaitForGPU() noexcept
@@ -190,10 +207,13 @@ namespace Relentless
 		auto& pPipeline = pRenderPass->GetPipeline();
 		auto& pipelineSpecification = pPipeline->GetSpecification();
 		auto pFrameBuffer = pPipeline->GetFrameBuffer();
-		auto pColorOutput = pFrameBuffer->GetOutput(0);
+		auto& outputs = pFrameBuffer->GetSpecification().Attachments.ColorAttachments;
 
-		if (pColorOutput->GetCurrentState() != D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET)
-			RenderCommand::TransitionResource(pColorOutput, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		for (uint32_t i{ 0u }; i < outputs.size(); ++i)
+		{
+			if (outputs[i].Output->GetCurrentState() != D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET)
+				RenderCommand::TransitionResource(outputs[i].Output, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		}
 
 		DXCall_STD(D3D12Core::GetCommandList()->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), pipelineSpecification.DepthWrite ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE));
 

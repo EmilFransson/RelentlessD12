@@ -21,14 +21,8 @@ namespace Relentless
 		static void BeginFrame() noexcept;
 		static void EndFrame() noexcept;
 		virtual void OnImGuiRender() noexcept override final;
-		static constexpr const std::shared_ptr<RenderTexture>& GetUITexture() noexcept { return m_pUITexture; }
-		static constexpr D3D12_CPU_DESCRIPTOR_HANDLE GetUITextureCPUHandle() noexcept { return m_pUITexture->GetSRVDescriptorHandle().CPUHandle; }
-		static constexpr D3D12_GPU_DESCRIPTOR_HANDLE GetUITextureGPUHandle() noexcept { return m_pUITexture->GetSRVDescriptorHandle().GPUHandle; }
-		static void OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept;
 	private:
 		virtual void OnAttach() override final;
 		virtual void OnEvent(IEvent&) noexcept override final{};
-	private:
-		static std::shared_ptr<RenderTexture> m_pUITexture;
 	};
 }

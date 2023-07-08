@@ -4,6 +4,11 @@
 #include "../Resources/Buffer.h"
 namespace Relentless
 {
+	struct Options
+	{
+		uint8_t MSAASamples{ 8u };
+	};
+
 	class SceneRenderer
 	{
 	public:
@@ -14,14 +19,18 @@ namespace Relentless
 		void IssueRenderPasses() noexcept;
 		void End() noexcept;
 		void OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept;
+		void SetMSAASamples(const uint8_t samples) noexcept;
 		entity GetHoveredEntity() noexcept;
+		const Options& GetOptions() const noexcept { return m_Options; }
 	private:
 		void GeometryPass() noexcept;
 		void EditorGridPass() noexcept;
 		void WireframePass() noexcept;
 		void PickingPass() noexcept;
 		void CompositePass() noexcept;
+		void CombinedGeometryAndPickingPass() noexcept;
 	private:
+		Options m_Options;
 		std::shared_ptr<Scene> m_pScene;
 
 		struct VP
@@ -75,6 +84,7 @@ namespace Relentless
 		std::shared_ptr<RenderPass> m_CompositeRenderPass;
 		std::shared_ptr<RenderPass> m_WireFrameRenderPass;
 		std::shared_ptr<RenderPass> m_EditorGridRenderPass;
+		std::shared_ptr<RenderPass> m_CombinedGeometryAndPickingPass;
 
 		std::shared_ptr<ReadBackBuffer> m_pIdentifierReadbackBuffer{ nullptr };
 		std::shared_ptr<RenderTexture> m_pResolvedTexture{ nullptr };

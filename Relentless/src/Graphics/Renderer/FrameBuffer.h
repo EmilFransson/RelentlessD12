@@ -32,6 +32,7 @@ namespace Relentless
 		OperatorOnLoad OperatorOnLoad{ OperatorOnLoad::Clear };
 		bool Transfer{ false };
 		bool IsSRGB{ true };
+		bool Blend{ false };
 		D3D12_RESOURCE_FLAGS Flags{ D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET };
 		std::shared_ptr<FrameBuffer> pOutputDependency{ nullptr };
 	};
@@ -55,7 +56,7 @@ namespace Relentless
 		std::string DebugName = "?";
 		uint32_t Width{800u};
 		uint32_t Height{600u};
-		MSAASpecification MSAA{};
+		uint8_t MSAASamples{1u};
 		Attachments Attachments{};
 		DepthComparisonFunction DepthComparisonFunction{ DepthComparisonFunction::LESS_EQUAL };
 		bool ShouldResize{ true };
@@ -71,6 +72,10 @@ namespace Relentless
 		void Resize(uint32_t width, uint32_t height) noexcept;
 		[[nodiscard]] std::shared_ptr<RenderTexture> GetOutput(const uint32_t outputIndex) const noexcept { return m_Specification.Attachments.ColorAttachments[outputIndex].Output; }
 		[[nodiscard]] std::shared_ptr<DepthStencil> GetDepthOutput() const noexcept { return m_Specification.Attachments.DepthAttachment.Output; }
+		void OnMSAAReconfiguration(uint8_t nrOfSamples) noexcept; //TODO: Have private, make pipeline friend.
+		void SynchronizeDependencies() noexcept;
+		void SetOutputDependency(std::shared_ptr<FrameBuffer> dependency, uint32_t outputSlot) noexcept;
+		void SetDepthDependency(std::shared_ptr<FrameBuffer> dependency) noexcept;
 	private:
 		FrameBufferSpecification m_Specification;
 	};

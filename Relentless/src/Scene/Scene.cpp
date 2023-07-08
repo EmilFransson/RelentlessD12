@@ -144,8 +144,8 @@ namespace Relentless
 		/*MATERIALS*/
 		m_EntityManager.Collect<MeshRendererComponent, DirtyMeshRendererComponent>().Do([&](entity entityID, MeshRendererComponent& mrc, DirtyMeshRendererComponent& dirty)
 			{
-				MemoryManager::Get().UpdateConstantBuffer(mrc.constantBufferID, &mrc.Color);
-				
+				Material::UploadToGPU(mrc.MaterialHandle);
+
 				dirty.Updates--;
 				if (dirty.Updates == 0u)
 					m_EntityManager.Remove<DirtyMeshRendererComponent>(entityID);

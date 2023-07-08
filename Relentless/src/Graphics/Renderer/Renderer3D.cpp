@@ -189,31 +189,31 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
-		AssetManager& assetManager = AssetManager::Get();
-		auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
-
-		static PerDrawData2 perDrawData2;
-		//Forward pass:
-		for (auto e : s_RendererData.m_ForwardPassEntities)
-		{
-			auto& mfc = entityManager.Get<MeshFilterComponent>(e);
-			if (assetManager.Exists(mfc.VertexBufferID))
-			{
-				VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
-				IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
-
-				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(0u, vb->GetInterface()->GetGPUVirtualAddress()));
-				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(1u, ib->GetInterface()->GetGPUVirtualAddress()));
-
-				auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-				perDrawData2.materialIndex = MemoryManager::Get().GetConstantBuffer(mrc.constantBufferID)->m_VisibleHandles[frameIndex].Index;
-				perDrawData2.worldMatrixIndex = MemoryManager::Get().GetConstantBuffer(entityManager.Get<TransformComponent>(e).ConstantBufferID)->m_VisibleHandles[frameIndex].Index;
-
-				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3, (uint32_t)sizeof(PerDrawData2) / sizeof(uint32_t), &perDrawData2, 0u));
-
-				RenderCommand::DrawInstanced(ib->GetNrOfIndices());
-			}
-		}
+		//AssetManager& assetManager = AssetManager::Get();
+		//auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+		//
+		//static PerDrawData2 perDrawData2;
+		////Forward pass:
+		//for (auto e : s_RendererData.m_ForwardPassEntities)
+		//{
+		//	auto& mfc = entityManager.Get<MeshFilterComponent>(e);
+		//	if (assetManager.Exists(mfc.VertexBufferID))
+		//	{
+		//		VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
+		//		IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
+		//
+		//		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(0u, vb->GetInterface()->GetGPUVirtualAddress()));
+		//		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(1u, ib->GetInterface()->GetGPUVirtualAddress()));
+		//
+		//		auto& mrc = entityManager.Get<MeshRendererComponent>(e);
+		//		perDrawData2.materialIndex = MemoryManager::Get().GetConstantBuffer(mrc.constantBufferID)->m_VisibleHandles[frameIndex].Index;
+		//		perDrawData2.worldMatrixIndex = MemoryManager::Get().GetConstantBuffer(entityManager.Get<TransformComponent>(e).ConstantBufferID)->m_VisibleHandles[frameIndex].Index;
+		//
+		//		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3, (uint32_t)sizeof(PerDrawData2) / sizeof(uint32_t), &perDrawData2, 0u));
+		//
+		//		RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+		//	}
+		//}
 
 		//Picking pass:
 		//States:
@@ -231,28 +231,28 @@ namespace Relentless
 		}
 		static Identifier ID;
 
-		for (auto e : s_RendererData.m_PickingPassEntities)
-		{
-			auto& mfc = entityManager.Get<MeshFilterComponent>(e);
-			if (assetManager.Exists(mfc.VertexBufferID))
-			{
-				VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
-				IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
-
-				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(0u, vb->GetInterface()->GetGPUVirtualAddress()));
-				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(1u, ib->GetInterface()->GetGPUVirtualAddress()));
-
-				ID.entityID = e;
-				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3u, 1u, &ID, 0u));
-
-				auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-				perDrawData2.materialIndex = MemoryManager::Get().GetConstantBuffer(mrc.constantBufferID)->m_VisibleHandles[frameIndex].Index;
-				perDrawData2.worldMatrixIndex = MemoryManager::Get().GetConstantBuffer(entityManager.Get<TransformComponent>(e).ConstantBufferID)->m_VisibleHandles[frameIndex].Index;
-				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4, (uint32_t)sizeof(PerDrawData2) / sizeof(uint32_t), &perDrawData2, 0u));
-
-				RenderCommand::DrawInstanced(ib->GetNrOfIndices());
-			}
-		}
+		//for (auto e : s_RendererData.m_PickingPassEntities)
+		//{
+		//	auto& mfc = entityManager.Get<MeshFilterComponent>(e);
+		//	if (assetManager.Exists(mfc.VertexBufferID))
+		//	{
+		//		VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
+		//		IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
+		//
+		//		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(0u, vb->GetInterface()->GetGPUVirtualAddress()));
+		//		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(1u, ib->GetInterface()->GetGPUVirtualAddress()));
+		//
+		//		ID.entityID = e;
+		//		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(3u, 1u, &ID, 0u));
+		//
+		//		auto& mrc = entityManager.Get<MeshRendererComponent>(e);
+		//		perDrawData2.materialIndex = MemoryManager::Get().GetConstantBuffer(mrc.constantBufferID)->m_VisibleHandles[frameIndex].Index;
+		//		perDrawData2.worldMatrixIndex = MemoryManager::Get().GetConstantBuffer(entityManager.Get<TransformComponent>(e).ConstantBufferID)->m_VisibleHandles[frameIndex].Index;
+		//		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4, (uint32_t)sizeof(PerDrawData2) / sizeof(uint32_t), &perDrawData2, 0u));
+		//
+		//		RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+		//	}
+		//}
 		
 		//auto& pPickingRT = s_RendererData.PickingPipeline->GetFrameBuffer()->GetColorBuffer();
 		//RenderCommand::TransitionResource(pPickingRT, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -313,10 +313,10 @@ namespace Relentless
 
 		//Set UI-texture as pixel shader resource and prepare back buffer as render target for imgui:
 		{
-			BackBuffer backBuffer = Window::GetCurrentBackBuffer();
-			RenderCommand::TransitionResource(backBuffer.pBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			RenderCommand::TransitionResource(ImguiLayer::GetUITexture(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-			RenderCommand::SetRenderTarget(backBuffer);
+			//BackBuffer backBuffer = Window::GetCurrentBackBuffer();
+			//RenderCommand::TransitionResource(backBuffer.pBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			//RenderCommand::TransitionResource(ImguiLayer::GetUITexture(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			//RenderCommand::SetRenderTarget(backBuffer);
 		}
 	}
 

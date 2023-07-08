@@ -2,6 +2,8 @@ struct Vertex
 {
 	float3 inPositionLS;
     float3 inNormalLS;
+    float3 inTangentLS;
+    float3 inBiTangentLS;
     float2 inTexCoords;
 };
 
@@ -10,6 +12,8 @@ struct VS_OUT
 	float4 outPositionCS	: SV_Position;
     float3 outPositionWS    : POSITIONWS;
     float3 outNormalWS		: NORMALWS;
+    float3 outTangentWS     : TANGENTWS;
+    float3 outBiTangentWS   : BITANGENTWS;
     float2 outTexCoords		: TEXCOORDS;
 };
 
@@ -46,6 +50,8 @@ VS_OUT vs_main(uint vertexID : SV_VertexID)
     vsOut.outPositionCS = mul(wvp, float4(input.inPositionLS, 1.0f));
     vsOut.outPositionWS = mul(transform.worldMatrix, float4(input.inPositionLS, 1.0f)).xyz;
     vsOut.outNormalWS = mul(transform.worldMatrix, float4(input.inNormalLS, 0.0f)).xyz;
+    vsOut.outTangentWS = mul(transform.worldMatrix, float4(input.inTangentLS, 0.0f)).xyz;
+    vsOut.outBiTangentWS = mul(transform.worldMatrix, float4(input.inBiTangentLS, 0.0f)).xyz;
     vsOut.outTexCoords = input.inTexCoords;
 	return vsOut;
 }

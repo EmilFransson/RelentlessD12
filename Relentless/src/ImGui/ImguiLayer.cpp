@@ -4,8 +4,6 @@
 #include "../Graphics/MemoryManager.h"
 namespace Relentless
 {
-	std::shared_ptr<RenderTexture> ImguiLayer::m_pUITexture{ nullptr };
-
 	ImguiLayer::ImguiLayer() noexcept
 		:Layer("ImGuiLayer")
 	{}
@@ -151,17 +149,6 @@ namespace Relentless
 		colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
 		colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
 
-		//UI TEXTURE
-		RenderTextureSpecification textureSpecification = {};
-		textureSpecification.Width = 800u;
-		textureSpecification.Height = 600u;
-		textureSpecification.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-		textureSpecification.MultiSampleCount = 1u;
-		textureSpecification.CreateSRV = true;
-		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Brown.f);
-
-		m_pUITexture = std::move(RenderTexture::Create(textureSpecification, "Main UI RenderTexture"));
-
 		ImGui_ImplWin32_Init(::GetActiveWindow());
 		ImGui_ImplDX12_Init
 		(
@@ -173,22 +160,5 @@ namespace Relentless
 			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetGPUStartHandle()
 		);
 
-	}
-
-	void ImguiLayer::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
-	{
-		RenderTextureSpecification textureSpecification = {};
-		textureSpecification.Width = width;
-		textureSpecification.Height = height;
-		textureSpecification.Format = m_pUITexture->GetFormat();
-		textureSpecification.MultiSampleCount = 1u;
-		textureSpecification.CreateSRV = true;
-		textureSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Brown);
-		
-		//MOVE TO Renderer3D:
-
-		MemoryManager::Get().DestroyResource(std::move(m_pUITexture));
-
-		m_pUITexture = std::move(RenderTexture::Create(textureSpecification, "Main UI Texture"));
 	}
 }

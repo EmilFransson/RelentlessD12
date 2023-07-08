@@ -122,9 +122,7 @@ namespace Relentless
 		m_EntityManager.Add<ForwardPassComponent>(entity);
 		
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
-		mrc.Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-
-		mrc.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
+		mrc.MaterialHandle = AssetManager::Get().Create<Material>("Some Material");
 		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
 
 		return entity;
@@ -178,8 +176,7 @@ namespace Relentless
 
 		m_EntityManager.Add<ForwardPassComponent>(entity);
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
-		mrc.Color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-		mrc.constantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(MeshRendererComponent) - sizeof(uint32_t));
+		mrc.MaterialHandle = AssetManager::Get().Create<Material>("Some Material");
 		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
 
 		return entity;

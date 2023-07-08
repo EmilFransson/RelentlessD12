@@ -2,7 +2,6 @@
 #include "..\D3D12Core.h"
 namespace Relentless
 {
-
 	[[nodiscard]] static D3D12_COMPARISON_FUNC RLSComparisonFuncToD3D12ComparisonFunc(DepthComparisonFunction depthComparisonFunction) noexcept
 	{
 		switch (depthComparisonFunction)
@@ -41,7 +40,16 @@ namespace Relentless
 		: m_Specification{specification}
 	{
 		RLS_ASSERT(specification.pVertexShader, "No valid Vertex Shader present in Pipeline Specification.");
+		Initialize(specification);
+	}
 
+	std::shared_ptr<Pipeline> Pipeline::Create(const PipelineSpecification& specification) noexcept
+	{
+		return std::make_shared<Pipeline>(specification);
+	}
+
+	void Pipeline::Initialize(const PipelineSpecification& specification) noexcept
+	{
 		const FrameBufferSpecification& frameBufferSpecification = specification.pFrameBuffer->GetSpecification();
 
 		//We need a rasterizer descriptor:
@@ -53,38 +61,10 @@ namespace Relentless
 		rasterizerDescriptor.DepthBiasClamp = 0.0f;
 		rasterizerDescriptor.SlopeScaledDepthBias = 0.0f;
 		rasterizerDescriptor.DepthClipEnable = TRUE;
-		rasterizerDescriptor.MultisampleEnable = frameBufferSpecification.MSAA.Enabled ? TRUE : FALSE;
-		rasterizerDescriptor.AntialiasedLineEnable = frameBufferSpecification.MSAA.Enabled ? TRUE : FALSE;
+		rasterizerDescriptor.MultisampleEnable = frameBufferSpecification.MSAASamples > 1 ? TRUE : FALSE;
+		rasterizerDescriptor.AntialiasedLineEnable = frameBufferSpecification.MSAASamples > 1 ? TRUE : FALSE;
 		rasterizerDescriptor.ForcedSampleCount = 0u;
 		rasterizerDescriptor.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-
-		//We also need a blend descriptor:
-		D3D12_RENDER_TARGET_BLEND_DESC blendDescriptor = {};
-		blendDescriptor.BlendEnable = FALSE;
-		blendDescriptor.LogicOpEnable = FALSE;
-		blendDescriptor.SrcBlend = D3D12_BLEND_ONE;
-		blendDescriptor.DestBlend = D3D12_BLEND_ZERO;
-		blendDescriptor.BlendOp = D3D12_BLEND_OP_ADD;
-		blendDescriptor.SrcBlendAlpha = D3D12_BLEND_ONE;
-		blendDescriptor.DestBlendAlpha = D3D12_BLEND_ZERO;
-		blendDescriptor.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-		blendDescriptor.LogicOp = D3D12_LOGIC_OP_NOOP;
-		blendDescriptor.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-		//Temp:
-		if (specification.blend)
-		{
-			blendDescriptor.BlendEnable = TRUE;
-			blendDescriptor.LogicOpEnable = FALSE;
-			blendDescriptor.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-			blendDescriptor.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-			blendDescriptor.BlendOp = D3D12_BLEND_OP_ADD;
-			blendDescriptor.SrcBlendAlpha = D3D12_BLEND_ONE;
-			blendDescriptor.DestBlendAlpha = D3D12_BLEND_ONE;
-			blendDescriptor.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-			blendDescriptor.LogicOp = D3D12_LOGIC_OP_NOOP; 
-			blendDescriptor.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-		}
 
 		//We also need a Stream Output Descriptor:
 		D3D12_STREAM_OUTPUT_DESC streamOutputDescriptor = {};
@@ -117,19 +97,54 @@ namespace Relentless
 		psoDescriptor.PS.pShaderBytecode = specification.pPixelShader ? specification.pPixelShader->GetBuffer()->GetBufferPointer() : nullptr;
 		psoDescriptor.PS.BytecodeLength = specification.pPixelShader ? specification.pPixelShader->GetBuffer()->GetBufferSize() : 0u;
 		psoDescriptor.RasterizerState = rasterizerDescriptor;
-		
-		std::array<DXGI_FORMAT, 1> rtvFormats = { RLSTextureFormatToDXGITextureFormat(frameBufferSpecification.Attachments.ColorAttachments[0].Format)};
+
+		for (uint32_t i{ 0u }; i < frameBufferSpecification.Attachments.ColorAttachments.size(); ++i)
+		{
+			psoDescriptor.RTVFormats[i] = RLSTextureFormatToDXGITextureFormat(frameBufferSpecification.Attachments.ColorAttachments[i].Format);
+
+			if (frameBufferSpecification.Attachments.ColorAttachments[i].Blend)
+			{
+				D3D12_RENDER_TARGET_BLEND_DESC blendDescriptor = {};
+				blendDescriptor.BlendEnable = TRUE;
+				blendDescriptor.LogicOpEnable = FALSE;
+				blendDescriptor.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+				blendDescriptor.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+				blendDescriptor.BlendOp = D3D12_BLEND_OP_ADD;
+				blendDescriptor.SrcBlendAlpha = D3D12_BLEND_ONE;
+				blendDescriptor.DestBlendAlpha = D3D12_BLEND_ONE;
+				blendDescriptor.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+				blendDescriptor.LogicOp = D3D12_LOGIC_OP_NOOP;
+				blendDescriptor.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+				psoDescriptor.BlendState.RenderTarget[i] = blendDescriptor;
+			}
+			else
+			{
+				D3D12_RENDER_TARGET_BLEND_DESC blendDescriptor = {};
+				blendDescriptor.BlendEnable = FALSE;
+				blendDescriptor.LogicOpEnable = FALSE;
+				blendDescriptor.SrcBlend = D3D12_BLEND_ONE;
+				blendDescriptor.DestBlend = D3D12_BLEND_ZERO;
+				blendDescriptor.BlendOp = D3D12_BLEND_OP_ADD;
+				blendDescriptor.SrcBlendAlpha = D3D12_BLEND_ONE;
+				blendDescriptor.DestBlendAlpha = D3D12_BLEND_ZERO;
+				blendDescriptor.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+				blendDescriptor.LogicOp = D3D12_LOGIC_OP_NOOP;
+				blendDescriptor.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+				psoDescriptor.BlendState.RenderTarget[i] = blendDescriptor;
+			}
+		}
+
 		psoDescriptor.BlendState.AlphaToCoverageEnable = false;
 		psoDescriptor.BlendState.IndependentBlendEnable = false;
-		psoDescriptor.RTVFormats[0] = rtvFormats[0];
-		psoDescriptor.BlendState.RenderTarget[0] = blendDescriptor;
-		psoDescriptor.NumRenderTargets = static_cast<UINT>(rtvFormats.size());
+		psoDescriptor.NumRenderTargets = static_cast<UINT>(frameBufferSpecification.Attachments.ColorAttachments.size());
 		psoDescriptor.SampleMask = UINT_MAX;
 		psoDescriptor.PrimitiveTopologyType = (specification.Topology == Topology::Triangle) ? D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE
 			: (specification.Topology == Topology::Line) ? D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE : D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 
-		psoDescriptor.SampleDesc.Quality = frameBufferSpecification.MSAA.Quality;
-		psoDescriptor.SampleDesc.Count = frameBufferSpecification.MSAA.Count;
+		psoDescriptor.SampleDesc.Quality = 0u;
+		psoDescriptor.SampleDesc.Count = frameBufferSpecification.MSAASamples;
 		psoDescriptor.StreamOutput = streamOutputDescriptor;
 		psoDescriptor.DepthStencilState = depthStencilDescriptor;
 		psoDescriptor.DSVFormat = DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT;
@@ -141,8 +156,16 @@ namespace Relentless
 		NAME_D12_OBJECT(m_pPSO, ConvertStringToWstring(specification.DebugName).c_str());
 	}
 
-	std::shared_ptr<Pipeline> Pipeline::Create(const PipelineSpecification& specification) noexcept
+	void Pipeline::OnMSAAReconfiguration(uint8_t nrOfSamples) noexcept
 	{
-		return std::make_shared<Pipeline>(specification);
+		if (m_Specification.MSAAEligible)
+		{
+			m_Specification.pFrameBuffer->OnMSAAReconfiguration(nrOfSamples);
+			Initialize(m_Specification);
+		}
+		else 
+		{
+			m_Specification.pFrameBuffer->SynchronizeDependencies();
+		}
 	}
 }

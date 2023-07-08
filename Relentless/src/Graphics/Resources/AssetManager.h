@@ -2,24 +2,24 @@
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
 #include "../MemoryManager.h"
-namespace std
-{
-	template<>
-	struct hash<UUID>
-	{
-		std::size_t operator()(const UUID& gUid) const
-		{
-			const uint64_t* half = reinterpret_cast<const uint64_t*>(&gUid);
-			return half[0] ^ half[1];
-		}
-	};
-}
+#include "Material.h"
+//namespace std
+//{
+//	template<>
+//	struct hash<UUID>
+//	{
+//		std::size_t operator()(const UUID& gUid) const
+//		{
+//			const uint64_t* half = reinterpret_cast<const uint64_t*>(&gUid);
+//			return half[0] ^ half[1];
+//		}
+//	};
+//}
 
 namespace Relentless
 {
 	inline static std::mutex g_LoadMutex;
 
-	typedef UUID ResourceID;
 	class AssetManager
 	{
 	public:
@@ -29,6 +29,24 @@ namespace Relentless
 		[[nodiscard]] static constexpr AssetManager& Get() noexcept { return s_instance; }
 
 		[[nodiscard]] bool HasLoaded(const std::string& assetPath) const noexcept;
+
+		template<typename AssetType>
+		void Upload(const ResourceID& resourceID) noexcept
+		{
+			if constexpr (std::is_same_v<AssetType, Material>)
+			{
+				m_MaterialManager.Upload(resourceID);
+			}
+		}
+
+		template<typename AssetType>
+		__forceinline [[nodiscard]] const ResourceID Create(const std::string& assetName, const AssetType& assetType = AssetType())
+		{
+			if constexpr (std::is_same_v<AssetType, Material>)
+			{
+				return m_MaterialManager.Create(assetName, assetType);
+			}
+		}
 
 		template<typename AssetType>
 		requires std::is_base_of_v<IResource, AssetType>
@@ -55,8 +73,17 @@ namespace Relentless
 		}
 
 		template<typename AssetType>
+		[[nodiscard]] AssetType& Get(const ResourceID assetID) noexcept
+		{
+			if constexpr (std::is_same_v<AssetType, Material>)
+			{
+				return m_MaterialManager.Get(assetID);
+			}
+		}
+
+		template<typename AssetType>
 		requires std::is_base_of_v<IResource, AssetType>
-		[[nodiscard]] AssetType* GetAsset(const ResourceID assetID) noexcept
+		[[nodiscard]] AssetType* GetAsset(const ResourceID& assetID) noexcept
 		{
 			RLS_ASSERT(m_Assets.contains(assetID), "Asset has not been loaded.");
 			return static_cast<AssetType*>(m_Assets[assetID].get());
@@ -114,5 +141,6 @@ namespace Relentless
 		static AssetManager s_instance;
 		std::unordered_map<ResourceID, std::shared_ptr<IResource>> m_Assets;
 		std::unordered_map<std::string, ResourceID> m_PathToResourceIDMap;
+		MaterialManager m_MaterialManager;
 	};
 }

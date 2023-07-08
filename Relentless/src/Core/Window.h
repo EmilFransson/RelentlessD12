@@ -28,6 +28,8 @@ namespace Relentless
 		[[nodiscard]] static uint32_t GetCurrentBackbufferIndex() noexcept { return m_pSwapChain->GetCurrentBackBufferIndex(); }
 		[[nodiscard]] static BackBuffer& GetCurrentBackBuffer() noexcept { return GetBackBuffers()[GetCurrentBackbufferIndex()]; }
 		static void Resize() noexcept;
+		static void ToggleVSync() noexcept;
+		[[nodiscard]] static bool IsVSyncing() noexcept { return m_IsVsyncing; }
 	private:
 		static void ToggleFullScreen() noexcept;
 		static LRESULT HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
@@ -50,5 +52,6 @@ namespace Relentless
 		static std::vector<BackBuffer> m_BackBuffers;
 		static bool m_IsResizing;
 		static bool m_IsFullScreen;
+		static bool m_IsVsyncing;
 	};
 }

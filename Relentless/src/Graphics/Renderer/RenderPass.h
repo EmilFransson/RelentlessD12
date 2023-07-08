@@ -31,6 +31,7 @@ namespace Relentless
 		[[nodiscard]] const std::vector<D3D12_RENDER_PASS_RENDER_TARGET_DESC>& GetAllOutputs() const noexcept { return m_RenderTargets; }
 		[[nodiscard]] const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC& GetDepthOutput2() const noexcept { return m_DepthTarget; }
 		void Resize(const uint32_t width, const uint32_t height) noexcept;
+		void OnMSAAReconfiguration(uint8_t samples) noexcept;
 	private:
 		RenderPassSpecification m_RenderPassSpecification;
 		std::unordered_map<std::string, ShaderDetails> m_InputNameToInputDetails;
