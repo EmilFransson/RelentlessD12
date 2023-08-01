@@ -18,6 +18,7 @@ namespace Relentless
 		void PerformDeferredDeletion() noexcept;
 		[[nodiscard]] constexpr const std::unique_ptr<UploadBuffer>& GetUploadBuffer() const { return m_pUploadBuffer; }
 		[[nodiscard]] constexpr const std::unique_ptr<DescriptorHeap>& GetShaderBindableDescriptorHeap() const { return m_pShaderBindablesDescriptorHeap; }
+		[[nodiscard]] constexpr const std::unique_ptr<DescriptorHeap>& GetRTVDescriptorHeap() const { return m_pRTVDescriptorHeap; }
 		void UpdateConstantBuffer(const ConstantBuffer& constantBuffer, void* pData) noexcept;
 		void UpdateConstantBuffer(size_t id, void* pData) noexcept;
 		void UpdateStructuredBuffer(const StructuredBuffer& structuredBuffer, void* pData, uint32_t index) noexcept;

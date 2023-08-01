@@ -33,6 +33,7 @@ namespace Relentless
 		bool Transfer{ false };
 		bool IsSRGB{ true };
 		bool Blend{ false };
+		bool ShouldResize{ true };
 		D3D12_RESOURCE_FLAGS Flags{ D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET };
 		std::shared_ptr<FrameBuffer> pOutputDependency{ nullptr };
 	};
@@ -43,6 +44,8 @@ namespace Relentless
 		TextureFormat Format { TextureFormat::None };
 		OperatorOnLoad OperatorOnLoad{ OperatorOnLoad::Clear };
 		std::shared_ptr<FrameBuffer> pOutputDependency{ nullptr };
+		bool ShouldResize{ true };
+		bool Transfer{ false };
 	};
 
 	struct Attachments

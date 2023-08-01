@@ -9,7 +9,15 @@ namespace Relentless
 		  m_HoveringSceneViewport{ false },
 		  m_HoveredEntity{ NULL_ENTITY },
 		  m_SelectedEntity{ NULL_ENTITY },
-		  m_CurrentGizmoType{ GizmoType::NONE }
+		  m_CurrentGizmoType{ GizmoType::NONE },
+		  m_DisplaySceneHierarchyPanel{ true },
+		  m_DisplayContentBrowserPanel{ true },
+		  m_DisplayPropertiesPanel{ true },
+		  m_DisplayInspectorPanel{false},
+		  m_DisplayMetricsPanel{ true },
+		  m_DisplaySceneRendererPanel{ true },
+		  m_DisplayStatisticsPanel{ true },
+		  m_ImmersiveModeEnabled{ false }
 	{}
 
 	void EditorLayer::OnEvent(IEvent& event) noexcept
@@ -95,6 +103,11 @@ namespace Relentless
 					CopySelectedEntity();
 				else if (key == RLS_KEY::Delete)
 					DestroySelectedEntity();
+				else if (key == RLS_KEY::I)
+				{
+					if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+						m_ImmersiveModeEnabled = !m_ImmersiveModeEnabled;
+				}
 			}
 			event.StopPropagation();
 			break;
@@ -105,8 +118,51 @@ namespace Relentless
 	void EditorLayer::OnImGuiRender() noexcept
 	{
 		PROFILE_FUNC;
+
+
+		if (!m_ImmersiveModeEnabled)
+		{
+			if (ImGui::BeginMainMenuBar())
+			{
+				if (ImGui::BeginMenu("File"))
+				{
+					//TODO: Make it so the application can be exited here!
+					ImGui::EndMenu();
+				}
+				if (ImGui::BeginMenu("View"))
+				{
+					ImGui::MenuItem("Scene Hierarchy Panel", nullptr, &m_DisplaySceneHierarchyPanel);
+					ImGui::MenuItem("Content Browser Panel", nullptr, &m_DisplayContentBrowserPanel);
+					ImGui::MenuItem("Properties Panel", nullptr, &m_DisplayPropertiesPanel);
+					ImGui::MenuItem("Inspector Panel", nullptr, &m_DisplayInspectorPanel);
+					ImGui::MenuItem("Metrics Panel", nullptr, &m_DisplayMetricsPanel);
+					ImGui::MenuItem("Scene Renderer Panel", nullptr, &m_DisplaySceneRendererPanel);
+					ImGui::MenuItem("Statistics Panel", nullptr, &m_DisplayStatisticsPanel);
+
+					ImGui::MenuItem("Immersive Mode", "Ctrl + i", &m_ImmersiveModeEnabled);
+					if (ImGui::MenuItem("Full Screen", "Alt + Enter", Window::IsFullScreen()))
+					{
+						Window::PrepareForFullScreenToggling(!Window::IsFullScreen());
+					}
+
+					ImGui::EndMenu();
+				}
+
+				ImGui::EndMainMenuBar();
+			}
+		}
+
+		ImGuiWindowClass window_class;
+		window_class.DockNodeFlagsOverrideSet = m_ImmersiveModeEnabled ? ImGuiDockNodeFlags_NoTabBar : 0;
+		ImGui::SetNextWindowClass(&window_class);
+
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("Scene", NULL);
+		ImGui::Begin("Scene");
+
+		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
+		{
+			m_DisplayInspectorPanel = false;
+		}
 
 		vMin = ImGui::GetWindowContentRegionMin();
 		vMax = ImGui::GetWindowContentRegionMax();
@@ -117,7 +173,7 @@ namespace Relentless
 
 		m_HoveringSceneViewport = ImGui::IsWindowHovered();
 
-		constexpr float toolBarPadding = 24.0f;
+		const float toolBarPadding = m_ImmersiveModeEnabled ? 0 : 24.0f;
 		ImVec2 mousePosition = ImGui::GetMousePos();
 		ImVec2 windowPosition = ImGui::GetWindowPos();
 		ImVec2 mousePositionInSceneClientArea = ImVec2(mousePosition.x - windowPosition.x, mousePosition.y - windowPosition.y - toolBarPadding);
@@ -149,32 +205,33 @@ namespace Relentless
 		ImGui::End();
 		ImGui::PopStyleVar();
 
-		ImGui::Begin("Stats");
-		ImGui::Text("Hovered entity:");
-		ImGui::SameLine();
-
-		
-
-		if (m_HoveredEntity != NULL_ENTITY && m_pScene->GetEntityManager().Exists(m_HoveredEntity))
+		if (m_DisplayStatisticsPanel && !m_ImmersiveModeEnabled)
 		{
-			ImGui::Text("%s (%d)", m_pScene->GetEntityManager().Get<NameComponent>(m_HoveredEntity).Name.c_str(), (m_HoveredEntity >> 12));
-		}
-		else
-		{
-			ImGui::Text("None");
-		}
-		ImGui::Text("Selected entity:");
-		ImGui::SameLine();
-		m_SelectedEntity == NULL_ENTITY ? ImGui::Text("None") : ImGui::Text("%s (%d)", m_pScene->GetEntityManager().Get<NameComponent>(m_SelectedEntity).Name.c_str(), (m_SelectedEntity >> 12));
-		ImGui::SameLine();
+			ImGui::Begin("Stats");
+			ImGui::Text("Hovered entity:");
+			ImGui::SameLine();
 
-		ImGui::End();
+			if (m_HoveredEntity != NULL_ENTITY && m_pScene->GetEntityManager().Exists(m_HoveredEntity))
+			{
+				ImGui::Text("%s (%d)", m_pScene->GetEntityManager().Get<NameComponent>(m_HoveredEntity).Name.c_str(), (m_HoveredEntity >> 12));
+			}
+			else
+			{
+				ImGui::Text("None");
+			}
+			ImGui::Text("Selected entity:");
+			ImGui::SameLine();
+			m_SelectedEntity == NULL_ENTITY ? ImGui::Text("None") : ImGui::Text("%s (%d)", m_pScene->GetEntityManager().Get<NameComponent>(m_SelectedEntity).Name.c_str(), (m_SelectedEntity >> 12));
+			
+			ImGui::End();
+		}
 
-		m_SceneHierarchyPanel.OnImGuiRender();
-		m_SceneRendererPanel.OnImGuiRender();
-		m_PropertiesPanel.OnImGuiRender();
-		m_ContentBrowserPanel.OnImGuiRender();
-		m_MetricsPanel.OnImGuiRender();
+		m_SceneHierarchyPanel.OnImGuiRender(m_DisplaySceneHierarchyPanel && !m_ImmersiveModeEnabled);
+		m_InspectorPanel.OnImGuiRender(m_DisplayInspectorPanel && !m_ImmersiveModeEnabled);
+		m_SceneRendererPanel.OnImGuiRender(m_DisplaySceneRendererPanel && !m_ImmersiveModeEnabled);
+		m_PropertiesPanel.OnImGuiRender(m_DisplayPropertiesPanel && !m_ImmersiveModeEnabled);
+		m_ContentBrowserPanel.OnImGuiRender(m_DisplayContentBrowserPanel && !m_ImmersiveModeEnabled);
+		m_MetricsPanel.OnImGuiRender(m_DisplayMetricsPanel && !m_ImmersiveModeEnabled);
 	}
 
 	void EditorLayer::OnAttach() noexcept
@@ -229,8 +286,29 @@ namespace Relentless
 				}
 			});
 
+		m_PropertiesPanel.SetOnMaterialSelectedCallback([this](const MaterialHandle& materialHandle)
+			{
+				m_InspectorPanel.SetContext(materialHandle, InspectedAssetType::MATERIAL);
+				m_DisplayInspectorPanel = true;
+			});
+
+		m_ContentBrowserPanel.SetOnAssetSelectedCallback([this](const ResourceID& resourceID, const InspectedAssetType inspectedAssetType)
+			{
+				m_InspectorPanel.SetContext(resourceID, inspectedAssetType);
+				if (inspectedAssetType == InspectedAssetType::NONE)
+				{
+					m_DisplayInspectorPanel = false;
+				}
+				else
+				{
+					m_DisplayInspectorPanel = true;
+				}
+			});
+
 		MemoryManager::Get().GetUploadBuffer()->Upload();
 		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
+
+		//SceneSerializer::Serialize(m_pScene, "Example.Relentless");
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept

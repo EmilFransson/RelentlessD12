@@ -9,6 +9,8 @@ namespace Relentless
 	std::vector<Mesh>& MeshFactory::LoadFromFile(const std::filesystem::path& filePath) noexcept
 	{
 		meshes.clear();
+		headDone = false;
+		nrOfMeshes = 0u;
 
 		Assimp::Importer importer;
 		constexpr const uint32_t flags = (uint32_t)(aiProcess_ConvertToLeftHanded | aiProcess_GenSmoothNormals | aiProcess_Triangulate
@@ -16,25 +18,60 @@ namespace Relentless
 		const aiScene* pScene = importer.ReadFile(filePath.string(), flags);
 		RLS_ASSERT(pScene && !(pScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && pScene->mRootNode, importer.GetErrorString());
 
-		ProcessNode(pScene->mRootNode, pScene);
+		Model model;
+		model.NrOfMeshes = nrOfMeshes;
+		model.Name = pScene->GetShortFilename(filePath.string().c_str());
+
+		ProcessNode(pScene->mRootNode, pScene, model.Meshes);
 
 		//At this point all the model's meshes have been loaded into the vector.
 		return meshes;
 	}
 
-	void MeshFactory::ProcessNode(aiNode* pNode, const aiScene* pScene) noexcept
+	[[nodiscard]] Model MeshFactory::LoadModelFromFile(const std::filesystem::path& filePath) noexcept
+	{
+		meshes.clear();
+		headDone = false;
+		nrOfMeshes = 0u;
+
+		Assimp::Importer importer;
+		constexpr const uint32_t flags = (uint32_t)(aiProcess_ConvertToLeftHanded | aiProcess_GenSmoothNormals | aiProcess_Triangulate
+			| aiProcess_ImproveCacheLocality | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace | aiProcess_GenBoundingBoxes);
+		const aiScene* pScene = importer.ReadFile(filePath.string(), flags);
+		RLS_ASSERT(pScene && !(pScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && pScene->mRootNode, importer.GetErrorString());
+
+		Model model;
+		model.NrOfMeshes = nrOfMeshes;
+		model.Name = pScene->GetShortFilename(filePath.string().c_str());
+
+		ProcessNode(pScene->mRootNode, pScene, model.Meshes);
+
+		//At this point all the model's meshes have been loaded into the vector.
+		return model;
+	}
+
+	void MeshFactory::ProcessNode(aiNode* pNode, const aiScene* pScene, std::vector<Mesh>& meshes2) noexcept
 	{
 		RLS_ASSERT(pNode && pScene, "Assimp data is invalid.");
 
+		bool added = false;
 		for (uint32_t i{ 0u }; i < pNode->mNumMeshes; ++i)
 		{
 			aiMesh* pMesh = pScene->mMeshes[pNode->mMeshes[i]];
 			meshes.push_back(ProcessMesh(pMesh, pScene));
+			meshes2.push_back(ProcessMesh(pMesh, pScene));
+			nrOfMeshes++;
+			added = true;
 		}
 
 		for (uint32_t i{ 0u }; i < pNode->mNumChildren; ++i)
 		{
-			ProcessNode(pNode->mChildren[i], pScene);
+			if (added)
+				ProcessNode(pNode->mChildren[i], pScene, meshes2[meshes2.size() - 1].SubMeshes);
+			else
+			{
+				ProcessNode(pNode->mChildren[i], pScene, meshes2);
+			}
 		}
 	}
 
@@ -94,7 +131,7 @@ namespace Relentless
 		DirectX::XMFLOAT3 farTopLeft = DirectX::XMFLOAT3(farBottomLeft.x, farTopRight.y, farBottomLeft.z);
 		DirectX::XMFLOAT3 farBottomRight = DirectX::XMFLOAT3(farTopRight.x, farBottomLeft.y, farTopRight.z);
 
-
+		mesh.Name = std::string(pMesh->mName.C_Str());
 		return mesh;
 	}
 }

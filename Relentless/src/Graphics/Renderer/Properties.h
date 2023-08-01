@@ -6,7 +6,8 @@ namespace Relentless
 		None = 0u,
 		RGBA32F,
 		R32UINT,
-		Depth
+		Depth,
+		R32TYPELESS
 	};
 
 	struct MSAASpecification

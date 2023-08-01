@@ -113,8 +113,8 @@ namespace Relentless
 		UINT64 startTime = pTimestamps[0];
 		UINT64 endTime = pTimestamps[1];
 
-		double TimeInMs = (((double)endTime - (double)startTime) / (double)s_Data.GPUFrequency) * 1000.0f;
-		std::cout << "Time in MS: " << std::to_string(TimeInMs) << "\n";
+		//double TimeInMs = (((double)endTime - (double)startTime) / (double)s_Data.GPUFrequency) * 1000.0f;
+		//std::cout << "Time in MS: " << std::to_string(TimeInMs) << "\n";
 		DXCall_STD(s_Data.m_pQueryResultBuffer->GetInterface()->Unmap(0, nullptr));
 	}
 
@@ -208,13 +208,21 @@ namespace Relentless
 		auto& pipelineSpecification = pPipeline->GetSpecification();
 		auto pFrameBuffer = pPipeline->GetFrameBuffer();
 		auto& outputs = pFrameBuffer->GetSpecification().Attachments.ColorAttachments;
+		auto& depthOutput = pFrameBuffer->GetSpecification().Attachments.DepthAttachment;
 
 		for (uint32_t i{ 0u }; i < outputs.size(); ++i)
 		{
-			if (outputs[i].Output->GetCurrentState() != D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET)
+			if (outputs[i].Output->GetCurrentState() != D3D12_RESOURCE_STATE_RENDER_TARGET)
 				RenderCommand::TransitionResource(outputs[i].Output, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		}
+		if (depthOutput.Output)
+		{
+			if (depthOutput.Output->GetCurrentState() != D3D12_RESOURCE_STATE_DEPTH_WRITE)
+				RenderCommand::TransitionResource(depthOutput.Output, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		}
+		
 
+		
 		DXCall_STD(D3D12Core::GetCommandList()->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), pipelineSpecification.DepthWrite ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE));
 
 		RenderCommand::SetRootSignature(pPipeline->GetRootSig());

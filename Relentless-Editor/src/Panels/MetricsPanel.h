@@ -7,6 +7,6 @@ namespace Relentless
 	public:
 		explicit MetricsPanel() noexcept = default;
 		~MetricsPanel() noexcept = default;
-		void OnImGuiRender() noexcept;
+		void OnImGuiRender(const bool show) noexcept;
 	};
 }

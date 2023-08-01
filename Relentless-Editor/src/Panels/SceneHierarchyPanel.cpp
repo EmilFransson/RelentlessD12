@@ -8,8 +8,11 @@ namespace Relentless
 		  m_EntityScheduledForDestruction{ NULL_ENTITY }
 	{}
 
-	void SceneHierarchyPanel::OnImGuiRender() noexcept
+	void SceneHierarchyPanel::OnImGuiRender(const bool show) noexcept
 	{
+		if (!show)
+			return;
+
 		PROFILE_FUNC;
 
 		RLS_ASSERT(m_pScene, "Scene is nullptr.");

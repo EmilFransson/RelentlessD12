@@ -71,6 +71,7 @@ namespace Relentless
 		D3D12_VIEWPORT m_Viewport;
 		RECT m_ScissorRect;
 		std::shared_ptr<PerspectiveCamera> m_pEditorCamera{ nullptr };
+		friend class SceneSerializer;
 	};
 
 	template<auto ShapeType>

@@ -60,5 +60,6 @@ namespace Relentless
 		explicit Texture2D(const std::string& fileName) noexcept;
 		virtual ~Texture2D() noexcept override final = default;
 		[[nodiscard]] static std::shared_ptr<Texture2D> Create(const std::string& fileName) noexcept;
+		[[nodiscard]] static std::shared_ptr<Texture2D> CreateFromPath(const std::filesystem::path& filePath) noexcept;
 	};
 }

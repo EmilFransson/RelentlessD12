@@ -30,6 +30,8 @@ namespace Relentless
 
 		[[nodiscard]] bool HasLoaded(const std::string& assetPath) const noexcept;
 
+		[[nodiscard]] MaterialManager& GetMaterialManager() noexcept { return m_MaterialManager; }
+
 		template<typename AssetType>
 		void Upload(const ResourceID& resourceID) noexcept
 		{

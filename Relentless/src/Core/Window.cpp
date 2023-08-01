@@ -29,6 +29,7 @@ namespace Relentless
 	bool Window::m_IsResizing{ false };
 	bool Window::m_IsFullScreen{ false };
 	bool Window::m_IsVsyncing{ false };
+	bool Window::m_ShouldToggleFullScreen{ false };
 
 	void Window::Initialize(const std::string& windowTitle, const uint32_t width, const uint32_t height)
 	{
@@ -109,6 +110,12 @@ namespace Relentless
 
 	void Window::OnUpdate()
 	{
+		if (m_ShouldToggleFullScreen)
+		{
+			ToggleFullScreen();
+			m_ShouldToggleFullScreen = false;
+		}
+
 		while (::PeekMessage(&m_WindowMessage, nullptr, 0u, 0u, PM_REMOVE))
 		{
 			::TranslateMessage(&m_WindowMessage);
@@ -144,6 +151,8 @@ namespace Relentless
 				SWP_FRAMECHANGED | SWP_NOACTIVATE);
 
 			::ShowWindow(m_WindowHandle, SW_NORMAL);
+
+			m_pSwapChain->SetFullscreenState(false, nullptr);
 		}
 		else
 		{
@@ -173,6 +182,7 @@ namespace Relentless
 
 
 			::ShowWindow(m_WindowHandle, SW_MAXIMIZE);
+			m_pSwapChain->SetFullscreenState(true, nullptr);
 		}
 
 		m_IsFullScreen = !m_IsFullScreen;

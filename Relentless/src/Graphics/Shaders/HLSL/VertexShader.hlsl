@@ -1,3 +1,5 @@
+SamplerState sampler_LINEAR : register(s1, space0);
+
 struct Vertex
 {
 	float3 inPositionLS;
@@ -36,8 +38,35 @@ struct VPConstantBuffer
     matrix VPMatrix;
 };
 
+struct Material
+{
+    float3 color;
+    float metallic;
+
+    float3 emissionColor;
+    float emissionIntensity;
+
+    float roughness;
+    uint albedoIndex;
+    uint metallicIndex;
+    uint roughnessIndex;
+
+    uint normalIndex;
+    uint heightMapIndex;
+    uint ambientOcclusionIndex;
+    uint emissionIndex;
+
+    float2 tilingFactor;
+    float2 offset;
+
+    float heightScale;
+    float aoScale;
+};
+
 ConstantBuffer<VPConstantBuffer> vpConstantBuffer : register(b0, space0);
 ConstantBuffer<PerDrawData> perDrawData : register(b3, space0);
+
+static const uint NO_USE = 0xFFFFFFFF;
 
 VS_OUT vs_main(uint vertexID : SV_VertexID)
 {
@@ -45,13 +74,24 @@ VS_OUT vs_main(uint vertexID : SV_VertexID)
 	Vertex input = vertices[indices[vertexID]];
 
     ConstantBuffer<Transform> transform = ResourceDescriptorHeap[perDrawData.worldMatrixIndex];
+    ConstantBuffer<Material> material = ResourceDescriptorHeap[perDrawData.materialIndex];
 	
+    float2 adjustedTexCoords = (input.inTexCoords * material.tilingFactor) + material.offset;
+
+    float3 positionLS = input.inPositionLS;
+    if (material.heightMapIndex != NO_USE)
+    {
+        Texture2D heightMap = ResourceDescriptorHeap[material.heightMapIndex];
+        float height = heightMap.SampleLevel(sampler_LINEAR, adjustedTexCoords, 0).r;
+        positionLS += input.inNormalLS * height * material.heightScale;
+    }
+
     matrix wvp = mul(vpConstantBuffer.VPMatrix, transform.worldMatrix);
-    vsOut.outPositionCS = mul(wvp, float4(input.inPositionLS, 1.0f));
-    vsOut.outPositionWS = mul(transform.worldMatrix, float4(input.inPositionLS, 1.0f)).xyz;
+    vsOut.outPositionCS = mul(wvp, float4(positionLS, 1.0f));
+    vsOut.outPositionWS = mul(transform.worldMatrix, float4(positionLS, 1.0f)).xyz;
     vsOut.outNormalWS = mul(transform.worldMatrix, float4(input.inNormalLS, 0.0f)).xyz;
     vsOut.outTangentWS = mul(transform.worldMatrix, float4(input.inTangentLS, 0.0f)).xyz;
     vsOut.outBiTangentWS = mul(transform.worldMatrix, float4(input.inBiTangentLS, 0.0f)).xyz;
-    vsOut.outTexCoords = input.inTexCoords;
+    vsOut.outTexCoords = adjustedTexCoords;
 	return vsOut;
 }

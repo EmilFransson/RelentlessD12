@@ -59,10 +59,16 @@ namespace Relentless
 			return;
 		}
 		
-		RLS_ASSERT(specification.Attachments.DepthAttachment.Format == TextureFormat::Depth, "Invalid depth attachment format.");
+		//RLS_ASSERT(specification.Attachments.DepthAttachment.Format == TextureFormat::Depth, "Invalid depth attachment format.");
 		
 		//By this point we know a depth output should be created:
-		m_Specification.Attachments.DepthAttachment.Output = DepthStencil::Create(specification.Width, specification.Height, specification.MSAASamples, specification.DebugName + " - DepthStencil");
+		DepthStencilSpecification depthStencilSpecification;
+		depthStencilSpecification.Width = specification.Width;
+		depthStencilSpecification.Height = specification.Height;
+		depthStencilSpecification.Format = specification.Attachments.DepthAttachment.Format == TextureFormat::Depth ? DXGI_FORMAT_D32_FLOAT : DXGI_FORMAT_R32_TYPELESS;
+		depthStencilSpecification.Samples = specification.MSAASamples;
+		depthStencilSpecification.CreateSRV = specification.Attachments.DepthAttachment.Transfer ? true : false;
+		m_Specification.Attachments.DepthAttachment.Output = DepthStencil::Create(depthStencilSpecification, specification.DebugName + " - DepthStencil");
 	}
 
 	std::shared_ptr<FrameBuffer> FrameBuffer::Create(const FrameBufferSpecification& specification) noexcept
@@ -72,13 +78,13 @@ namespace Relentless
 
 	void FrameBuffer::Resize(uint32_t width, uint32_t height) noexcept
 	{
-		if (m_Specification.ShouldResize)
-		{
-			m_Specification.Width = width;
-			m_Specification.Height = height;
+		m_Specification.Width = width;
+		m_Specification.Height = height;
 
-			auto& memoryManager = MemoryManager::Get();
-			for (uint32_t i{ 0u }; i < m_Specification.Attachments.ColorAttachments.size(); ++i)
+		auto& memoryManager = MemoryManager::Get();
+		for (uint32_t i{ 0u }; i < m_Specification.Attachments.ColorAttachments.size(); ++i)
+		{
+			if (m_Specification.Attachments.ColorAttachments[i].ShouldResize)
 			{
 				if (m_Specification.Attachments.ColorAttachments[i].Format != TextureFormat::None)
 				{
@@ -105,18 +111,25 @@ namespace Relentless
 					m_Specification.Attachments.ColorAttachments[i].Output = RenderTexture::Create(rtSpec, m_Specification.DebugName + " - RenderTexture[" + std::to_string(i) + "]");
 				}
 			}
+		}
 
-			if (m_Specification.Attachments.DepthAttachment.Format != TextureFormat::None)
+		if (m_Specification.Attachments.DepthAttachment.Format != TextureFormat::None)
+		{
+			if (m_Specification.Attachments.DepthAttachment.ShouldResize)
 			{
 				memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.DepthAttachment.Output->GetDSVDescriptorHandle());
 				memoryManager.DestroyResource(std::move(m_Specification.Attachments.DepthAttachment.Output));
-				m_Specification.Attachments.DepthAttachment.Output = DepthStencil::Create(width, height, m_Specification.MSAASamples, m_Specification.DebugName + " - DepthStencil");
+
+				DepthStencilSpecification depthStencilSpecification;
+				depthStencilSpecification.Width = width;
+				depthStencilSpecification.Height = height;
+				depthStencilSpecification.Format = RLSTextureFormatToDXGITextureFormat(m_Specification.Attachments.DepthAttachment.Format);
+				depthStencilSpecification.Samples = m_Specification.MSAASamples;
+				depthStencilSpecification.CreateSRV = m_Specification.Attachments.DepthAttachment.Transfer ? true : false;
+				m_Specification.Attachments.DepthAttachment.Output = DepthStencil::Create(depthStencilSpecification, m_Specification.DebugName + " - DepthStencil");
 			}
 		}
-		else
-		{
-			SynchronizeDependencies();
-		}
+		SynchronizeDependencies();
 	}
 
 	void FrameBuffer::OnMSAAReconfiguration(uint8_t nrOfSamples) noexcept
@@ -140,8 +153,8 @@ namespace Relentless
 		}
 
 		//Just update the dimensions according to output in slot 0.
-		m_Specification.Width = m_Specification.Attachments.ColorAttachments[0].Output->GetWidth();
-		m_Specification.Height = m_Specification.Attachments.ColorAttachments[0].Output->GetHeight();
+		//m_Specification.Width = m_Specification.Attachments.ColorAttachments[0].Output->GetWidth();
+		//m_Specification.Height = m_Specification.Attachments.ColorAttachments[0].Output->GetHeight();
 	}
 
 	void FrameBuffer::SetOutputDependency(std::shared_ptr<FrameBuffer> dependency, uint32_t outputSlot) noexcept

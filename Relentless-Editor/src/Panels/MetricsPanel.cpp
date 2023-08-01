@@ -1,8 +1,11 @@
 #include "MetricsPanel.h"
 namespace Relentless
 {
-	void MetricsPanel::OnImGuiRender() noexcept
+	void MetricsPanel::OnImGuiRender(const bool show) noexcept
 	{
+		if (!show)
+			return;
+
 		PROFILE_FUNC;
 		ImGui::Begin("Metrics");
 

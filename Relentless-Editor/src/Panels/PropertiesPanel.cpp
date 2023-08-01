@@ -6,8 +6,11 @@ namespace Relentless
 		  m_pScene{ nullptr }
 	{}
 
-	void PropertiesPanel::OnImGuiRender() noexcept
+	void PropertiesPanel::OnImGuiRender(const bool show) noexcept
 	{
+		if (!show)
+			return;
+
 		PROFILE_FUNC;
 
 		ImGui::Begin("Properties");
@@ -28,6 +31,11 @@ namespace Relentless
 	{
 		RLS_ASSERT(pScene, "Entity manager is nullptr.");
 		m_pScene = pScene;
+	}
+
+	void PropertiesPanel::SetOnMaterialSelectedCallback(std::function<void(const MaterialHandle& materialHandle)> callback) noexcept
+	{
+		m_OnMaterialSelectedCallback = callback;
 	}
 
 	void PropertiesPanel::DrawAllComponentNodes()
@@ -244,42 +252,58 @@ namespace Relentless
 				ImGui::Button("...", buttonSize);
 				if (ImGui::IsItemClicked())
 				{
-					std::filesystem::path filePath = FileDialogs::OpenFile("OBJ File (*.obj)\0*.obj\0");
+					std::filesystem::path filePath = FileDialogs::OpenFile("Mesh files (*.obj,*.gltf)\0*.obj;*.gltf\0");
 
-					ResourceID vbID;
-					ResourceID ibID;
-					if (!AssetManager::Get().HasLoaded(filePath.stem().string() + " Vertex Buffer"))
+					if (!filePath.empty())
 					{
-						MeshFactory meshFactory;
-						auto& starterMesh = meshFactory.LoadFromFile(filePath)[0];
-
-						VertexBuffer::Specification vbSpec
+						ResourceID vbID;
+						ResourceID ibID;
+						if (!AssetManager::Get().HasLoaded(filePath.stem().string() + " Vertex Buffer"))
 						{
-							.NrOfVertices = (uint32_t)starterMesh.Vertices.size(),
-							.TotalSizeInBytes = (uint32_t)starterMesh.Vertices.size() * sizeof(SimpleVertex),
-							.Stride = sizeof(SimpleVertex),
-							.pBuffer = (void*)starterMesh.Vertices.data(),
-							.Name = filePath.stem().string() + std::string(" Vertex Buffer")
-						};
+							MeshFactory meshFactory;
+							auto& starterMesh = meshFactory.LoadFromFile(filePath)[0];
+							auto model = meshFactory.LoadModelFromFile(filePath);
 
-						IndexBuffer::Specification ibSpec
+							if (model.Meshes.size() > 1 || model.Meshes[0].SubMeshes.size() > 0)
+							{
+								m_pScene->GetEntityManager().Remove<MeshFilterComponent>(m_SelectedEntity);
+
+								
+								for (auto& mesh : model.Meshes)
+								{
+									
+
+								}
+							}
+
+							VertexBuffer::Specification vbSpec
+							{
+								.NrOfVertices = (uint32_t)starterMesh.Vertices.size(),
+								.TotalSizeInBytes = (uint32_t)starterMesh.Vertices.size() * sizeof(SimpleVertex),
+								.Stride = sizeof(SimpleVertex),
+								.pBuffer = (void*)starterMesh.Vertices.data(),
+								.Name = filePath.stem().string() + std::string(" Vertex Buffer")
+							};
+
+							IndexBuffer::Specification ibSpec
+							{
+								.NrOfIndices = (uint32_t)starterMesh.Indices.size(),
+								.TotalSizeInBytes = (uint32_t)starterMesh.Indices.size() * sizeof(uint32_t),
+								.Stride = sizeof(uint32_t),
+								.pBuffer = (void*)starterMesh.Indices.data(),
+								.Name = filePath.stem().string() + std::string(" Index Buffer")
+							};
+							vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
+							ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
+						}
+						else
 						{
-							.NrOfIndices = (uint32_t)starterMesh.Indices.size(),
-							.TotalSizeInBytes = (uint32_t)starterMesh.Indices.size() * sizeof(uint32_t),
-							.Stride = sizeof(uint32_t),
-							.pBuffer = (void*)starterMesh.Indices.data(),
-							.Name = filePath.stem().string() + std::string(" Index Buffer")
-						};
-						vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
-						ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
+							vbID = AssetManager::Get().Load<VertexBuffer>(filePath.stem().string() + std::string(" Vertex Buffer"), nullptr);
+							ibID = AssetManager::Get().Load<IndexBuffer>(filePath.stem().string() + std::string(" Index Buffer"), nullptr);
+						}
+						mfc.VertexBufferID = vbID;
+						mfc.IndexBufferID = ibID;
 					}
-					else
-					{
-						vbID = AssetManager::Get().Load<VertexBuffer>(filePath.stem().string() + std::string(" Vertex Buffer"), nullptr);
-						ibID = AssetManager::Get().Load<IndexBuffer>(filePath.stem().string() + std::string(" Index Buffer"), nullptr);
-					}
-					mfc.VertexBufferID = vbID;
-					mfc.IndexBufferID = ibID;
 				}
 
 				ImGui::PopStyleVar();
@@ -290,141 +314,35 @@ namespace Relentless
 		DrawComponentNode<MeshRendererComponent>("Mesh Renderer", [this]()
 			{
 				auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(m_SelectedEntity);
-				if (mrc.MaterialHandle != NULL_RESOURCEID)
+				std::string materialName = mrc.MaterialHandle != NULL_RESOURCEID ? AssetManager::Get().Get<Material>(mrc.MaterialHandle).GetName() : "Empty";
+
+				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+				ImGui::InputText("Material", (char*)materialName.c_str(), materialName.size(), ImGuiInputTextFlags_ReadOnly);
+				ImGui::PopItemFlag();
+				if (ImGui::BeginDragDropTarget())
 				{
-					Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
-
-					if (ImGui::ColorEdit3("Color", &material.m_AlbedoColor.x, ImGuiColorEditFlags_NoInputs))
+					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_MATERIAL"))
 					{
-						m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
+						MaterialHandle* pMaterialHandle = (MaterialHandle*)payLoad->Data;
+						mrc.MaterialHandle = *pMaterialHandle;
 					}
-					if (ImGui::DragFloat("Metallic", &material.m_Metallic, 0.05f, 0.0f, 1.0f))
+					ImGui::EndDragDropTarget();
+				}
+				
+				ImVec2 size = ImGui::GetItemRectSize();
+
+				// Move the cursor back to the beginning of the InputText widget
+				ImGui::SameLine(0, 0);
+				ImGui::SetCursorPosX(ImGui::GetCursorPosX() - size.x);
+				ImGui::InvisibleButton("##overlay", size);
+				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+				{
+					if (mrc.MaterialHandle != NULL_RESOURCEID)
 					{
-						m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-					}
-					if (ImGui::DragFloat("Roughness", &material.m_Roughness, 0.05f, 0.0f, 1.0f))
-					{
-						m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-					}
-
-					ImGui::Separator();
-
-					constexpr const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen;
-					const bool opened = ImGui::TreeNodeEx("Albedo", flags, "Albedo");
-
-					if (opened)
-					{
-						if (material.HasAlbedoTexture())
-						{
-							Texture2D* pAlbedoTexture = material.GetAlbedoTexture();
-							ImGui::ImageButton((ImTextureID)pAlbedoTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(100.0f, 100.0f), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-							if (ImGui::BeginDragDropTarget())
-							{
-								if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
-								{
-									const char* path = (const char*)payLoad->Data;
-									material.SetAlbedoTexture(AssetManager::Get().Load<Texture2D>(path));
-									m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-								}
-								ImGui::EndDragDropTarget();
-							}
-
-							ImGui::Text("     Use");
-							ImGui::SameLine();
-
-							bool useAlbedo = material.ShouldUseAlbedoTexture();
-							if (ImGui::Checkbox("##UseAlbedoCheckbox", &useAlbedo))
-							{
-								material.ToggleAlbedoTextureUsage();
-								m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-							}
-						}
-						else
-						{
-							static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-							static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
-							ImGui::ColorButton("##MyColor", buttonColor, buttonFlags, ImVec2(100.0f, 100.0f));
-							if (ImGui::BeginDragDropTarget())
-							{
-								if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
-								{
-									const char* path = (const char*)payLoad->Data;
-									material.SetAlbedoTexture(AssetManager::Get().Load<Texture2D>(path));
-									m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-								}
-								ImGui::EndDragDropTarget();
-							}
-						}
-
-						ImGui::TreePop();
-
-						ImGui::Separator();
-					}
-
-					const bool opened2 = ImGui::TreeNodeEx("NormalMap", flags, "NormalMap");
-
-					if (opened2)
-					{
-						if (material.HasNormalMap())
-						{
-							Texture2D* pNormalMap = material.GetNormalMap();
-							ImGui::ImageButton((ImTextureID)pNormalMap->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(100.0f, 100.0f), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-							if (ImGui::BeginDragDropTarget())
-							{
-								if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
-								{
-									const char* path = (const char*)payLoad->Data;
-									material.SetNormalMap(AssetManager::Get().Load<Texture2D>(path));
-									m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-								}
-								ImGui::EndDragDropTarget();
-							}
-
-							ImGui::Text("     Use");
-							ImGui::SameLine();
-
-							bool useNormalMap = material.ShouldUseNormalMap();;
-							if (ImGui::Checkbox("##UseNormalMapCheckbox", &useNormalMap))
-							{
-								material.ToggleNormalMapUsage();
-								m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-							}
-						}
-						else
-						{
-							static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-							static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
-							ImGui::ColorButton("##MyColor2", buttonColor, buttonFlags, ImVec2(100.0f, 100.0f));
-							if (ImGui::BeginDragDropTarget())
-							{
-								if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
-								{
-									const char* path = (const char*)payLoad->Data;
-									material.SetNormalMap(AssetManager::Get().Load<Texture2D>(path));
-									m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-								}
-								ImGui::EndDragDropTarget();
-							}
-						}
-
-						ImGui::TreePop();
-
-						ImGui::Separator();
+						m_OnMaterialSelectedCallback(mrc.MaterialHandle);
 					}
 				}
-
-				//if (ImGui::ColorEdit3("Color", &mrc.Color.x))
-				//{
-				//	m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-				//}
-				//if (ImGui::DragFloat("Metallic", &mrc.Metallic, 0.05f, 0.0f, 1.0f))
-				//{
-				//	m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-				//}
-				//if (ImGui::DragFloat("Roughness", &mrc.Roughness, 0.05f, 0.0f, 1.0f))
-				//{
-				//	m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-				//}
+				
 			});
 
 		DrawComponentNode<CameraComponent>("Camera", [this]()
@@ -453,7 +371,6 @@ namespace Relentless
 				if (!m_pScene->GetEntityManager().Has<MeshRendererComponent>(m_SelectedEntity))
 				{
 					m_pScene->GetEntityManager().Add<MeshRendererComponent>(m_SelectedEntity);
-					//mrc.MaterialHandle = AssetManager::Get().Create<Material>("");
 					m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
 					m_pScene->GetEntityManager().AddOrReplace<ForwardPassComponent>(m_SelectedEntity);
 				}
@@ -655,6 +572,70 @@ namespace Relentless
 		values.x = std::clamp(values.x, minValue, maxValue);
 		values.y = std::clamp(values.y, minValue, maxValue);
 		values.z = std::clamp(values.z, minValue, maxValue);
+
+		return changedValues;
+	}
+
+	bool PropertiesPanel::DrawVec2Control(const char* label, DirectX::XMFLOAT2& values, float dragSpeed, float resetValue, float minValue, float maxValue, float columnWidth) noexcept
+	{
+		bool changedValues{ false };
+
+		ImGui::PushID(label);
+		auto pFont = ImGui::GetIO().Fonts->Fonts[OPENSANS_BOLD_18];
+
+		ImGui::Columns(2);
+		ImGui::SetColumnWidth(0, columnWidth);
+		ImGui::Text(label);
+		ImGui::NextColumn();
+
+		ImGui::PushMultiItemsWidths(2, ImGui::CalcItemWidth());
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+
+		const float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+		constexpr float buttonPaddingOffsetX = 3.0f;
+		ImVec2 buttonSize = { lineHeight + buttonPaddingOffsetX, lineHeight };
+
+		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Button, ImVec4(0.8f, 0.1f, 0.15f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.2f, 0.25f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_ButtonActive, ImVec4(0.8f, 0.1f, 0.15f, 1.0f));
+		ImGui::PushFont(pFont);
+		if (ImGui::Button("X", buttonSize))
+		{
+			values.x = resetValue;
+			changedValues = true;
+		}
+		ImGui::PopFont();
+		ImGui::PopStyleColor(3);
+
+		ImGui::SameLine();
+		changedValues |= ImGui::DragFloat("##X", &values.x, dragSpeed);
+		ImGui::PopItemWidth();
+		ImGui::SameLine();
+
+		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Button, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_ButtonActive, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
+		ImGui::PushFont(pFont);
+		if (ImGui::Button("Y", buttonSize))
+		{
+			values.y = resetValue;
+			changedValues = true;
+		}
+		ImGui::PopFont();
+		ImGui::PopStyleColor(3);
+
+		ImGui::SameLine();
+		changedValues |= ImGui::DragFloat("##Y", &values.y, dragSpeed);
+
+		ImGui::PopItemWidth();
+		ImGui::PopStyleVar();
+
+		ImGui::Columns(1);
+
+		ImGui::PopID();
+
+		values.x = std::clamp(values.x, minValue, maxValue);
+		values.y = std::clamp(values.y, minValue, maxValue);
 
 		return changedValues;
 	}

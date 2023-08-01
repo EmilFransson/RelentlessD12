@@ -7,7 +7,7 @@ namespace Relentless
 	public:
 		explicit SceneHierarchyPanel() noexcept;
 		~SceneHierarchyPanel() noexcept = default;
-		void OnImGuiRender() noexcept;
+		void OnImGuiRender(const bool show) noexcept;
 		void SetActiveScene(Scene* const pScene) noexcept;
 		void DrawEntityNode(const entity entityID) noexcept;
 		void SetSelectedEntity(const entity entityID) noexcept;

@@ -18,7 +18,7 @@ namespace Relentless
 		descriptorHeapDescriptor.Type = descriptorHeapType;
 		descriptorHeapDescriptor.NumDescriptors = capacity;
 		descriptorHeapDescriptor.Flags = isShaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		descriptorHeapDescriptor.NodeMask = 0u;
+		descriptorHeapDescriptor.NodeMask = 1u;
 		DXCall(D3D12Core::GetDevice()->CreateDescriptorHeap(&descriptorHeapDescriptor, IID_PPV_ARGS(&m_pDescriptorHeap)));
 
 		m_FreeHandles = std::move(std::make_unique<uint32_t[]>(capacity));

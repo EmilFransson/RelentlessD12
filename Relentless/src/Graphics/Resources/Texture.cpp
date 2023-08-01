@@ -105,10 +105,11 @@ namespace Relentless
 	{
 		DirectX::ResourceUploadBatch resourceUpload(D3D12Core::GetDevice().Get());
 
-		std::filesystem::path fullPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Textures/") + fileName;
+		std::filesystem::path fullPath = fileName;
 		m_Name = fullPath.stem().string();
 
 		resourceUpload.Begin();
+
 
 		DXCall(DirectX::CreateWICTextureFromFile(
 			D3D12Core::GetDevice().Get(),
@@ -144,6 +145,11 @@ namespace Relentless
 
 	std::shared_ptr<Texture2D> Texture2D::Create(const std::string& fileName) noexcept
 	{
-		return std::make_shared<Texture2D>(fileName);
+		return std::make_shared<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + std::string("Textures/") + fileName);
+	}
+
+	std::shared_ptr<Texture2D> Texture2D::CreateFromPath(const std::filesystem::path& filePath) noexcept
+	{
+		return std::make_shared<Texture2D>(filePath.string());
 	}
 }

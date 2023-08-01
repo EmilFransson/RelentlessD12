@@ -7,6 +7,7 @@
 #include "../Shaders/ShaderLibrary.h"
 #include "../../Core/Window.h"
 
+
 namespace Relentless
 {
 	SceneRenderer::SceneRenderer(std::shared_ptr<Scene> pScene) noexcept
@@ -18,21 +19,57 @@ namespace Relentless
 
 	void SceneRenderer::Initialize() noexcept
 	{
+		InitializeHBAOPlus();
+
+		m_EnvironmentCBHandle = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT3));
+		m_BRDFLutTexture = Texture2D::Create("ibl_brdf_lut.png");
+
+		//Pre-Z Render pass:
+		{
+			DepthAttachment depthAttachment;
+			depthAttachment.Format = TextureFormat::R32TYPELESS;
+			depthAttachment.ShouldResize = true;
+			depthAttachment.Transfer = true;
+
+			FrameBufferSpecification frameBufferSpecification{};
+			frameBufferSpecification.DebugName = "Pre-Z Framebuffer";
+			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
+			frameBufferSpecification.MSAASamples = 8u;
+
+			PipelineSpecification pipelineSpecification{};
+			pipelineSpecification.DebugName = "Pre-Z Pipeline";
+			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.MSAAEligible = true;
+
+			RenderPassSpecification renderpassDescriptor{};
+			renderpassDescriptor.DebugName = "Pre-Z Pass";
+			renderpassDescriptor.RenderPipeline = Pipeline::Create(pipelineSpecification);
+
+			m_PreZRenderPass = RenderPass::Create(renderpassDescriptor);
+		}
+
 		//Geometry Render pass:
 		{
 			ColorAttachment colorAttachment;
 			colorAttachment.Format = TextureFormat::RGBA32F;
-			colorAttachment.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
+			colorAttachment.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::LightSkyBlue);
 			colorAttachment.Transfer = true;
+			colorAttachment.ShouldResize = true;
 
 			DepthAttachment depthAttachment;
 			depthAttachment.Format = TextureFormat::Depth;
+			depthAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
+			depthAttachment.Output = m_PreZRenderPass->GetPipeline()->GetFrameBuffer()->GetDepthOutput();
+			depthAttachment.pOutputDependency = m_PreZRenderPass->GetPipeline()->GetFrameBuffer();
+			depthAttachment.ShouldResize = false;
 
 			FrameBufferSpecification frameBufferSpecification{};
 			frameBufferSpecification.DebugName = "Geometry Framebuffer";
 			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
 			frameBufferSpecification.MSAASamples = 8u;
+			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::LESS_EQUAL;
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Geometry Pipeline";
@@ -92,12 +129,14 @@ namespace Relentless
 			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
 			colorAttachment.Output = m_GeometryRenderPass->GetOutput(0);
 			colorAttachment.pOutputDependency = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer();
+			colorAttachment.ShouldResize = false;
 
 			DepthAttachment depthAttachment;
 			depthAttachment.Format = TextureFormat::Depth;
 			depthAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
 			depthAttachment.Output = m_GeometryRenderPass->GetDepthOutput();
 			depthAttachment.pOutputDependency = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer();
+			depthAttachment.ShouldResize = false;
 
 			FrameBufferSpecification frameBufferSpecification{};
 			frameBufferSpecification.DebugName = "Wireframe Framebuffer";
@@ -162,12 +201,14 @@ namespace Relentless
 			colorAttachment.Blend = true;
 			colorAttachment.Output = m_GeometryRenderPass->GetOutput(0);
 			colorAttachment.pOutputDependency = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer();
+			colorAttachment.ShouldResize = false;
 
 			DepthAttachment depthAttachment;
 			depthAttachment.Format = TextureFormat::Depth;
 			depthAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
 			depthAttachment.Output = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer()->GetDepthOutput();
 			depthAttachment.pOutputDependency = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer();
+			depthAttachment.ShouldResize = false;
 
 			FrameBufferSpecification frameBufferSpecification{};
 			frameBufferSpecification.DebugName = "Editor Grid Framebuffer";
@@ -200,6 +241,7 @@ namespace Relentless
 			colorAttachment.Transfer = true;
 			colorAttachment.Output = MasterRenderer::GetFrameBuffer()->GetOutput(0);
 			colorAttachment.pOutputDependency = MasterRenderer::GetFrameBuffer();
+			colorAttachment.ShouldResize = false;
 
 			FrameBufferSpecification frameBufferSpecification{};
 			frameBufferSpecification.DebugName = "Composite Framebuffer";
@@ -286,6 +328,8 @@ namespace Relentless
 	void SceneRenderer::Begin() noexcept
 	{
 		PROFILE_FUNC;
+		static DirectX::XMFLOAT3 bgColor = DirectX::XMFLOAT3(DirectX::Colors::LightSkyBlue);
+		MemoryManager::Get().UpdateConstantBuffer(m_EnvironmentCBHandle, (void*)&bgColor);
 
 		MasterRenderer::Begin();
 
@@ -300,7 +344,12 @@ namespace Relentless
 
 		if (m_Options.MSAASamples > 1)
 		{
+			PreZPass();
 			GeometryPass();
+			if (m_Options.ContactShadowType == ContactShadows::HBAO_PLUS)
+			{
+				HBAOPlusRenderPass();
+			}
 			PickingPass();
 		}
 		else
@@ -335,6 +384,91 @@ namespace Relentless
 		MasterRenderer::End();
 	}
 
+	void SceneRenderer::SetContactShadowsType(const ContactShadows contactShadowsType) noexcept
+	{
+		m_Options.ContactShadowType = contactShadowsType;
+	}
+
+	void SceneRenderer::PreZPass() noexcept
+	{
+		PROFILE_FUNC;
+		MemoryManager& memoryManager = MemoryManager::Get();
+
+		MasterRenderer::BeginRenderPass(m_PreZRenderPass);
+
+		//Terrible and wrong for runtime:
+		//Camera:
+		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
+		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
+		m_PreZRenderPass->Upload("vpConstantBuffer", &m_VPData);
+
+		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
+
+		EntityManager& entityManager = m_pScene->GetEntityManager();
+		AssetManager& assetManager = AssetManager::Get();
+
+		auto verticesIndex = m_PreZRenderPass->GetInputSlot("vertices");
+		auto indicesIndex = m_PreZRenderPass->GetInputSlot("indices");
+		auto perDrawIndex = m_PreZRenderPass->GetInputSlot("perDrawData");
+
+		entityManager.Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
+			{
+				if (assetManager.Exists(mfc.VertexBufferID))
+				{
+					VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
+					IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
+
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, vb->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, ib->GetInterface()->GetGPUVirtualAddress()));
+
+					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
+					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
+					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
+
+					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
+
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+
+					RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+				}
+			});
+
+		MasterRenderer::EndRenderPass();
+	}
+
+	void SceneRenderer::HBAOPlusRenderPass() noexcept
+	{
+		PROFILE_FUNC;
+
+		GFSDK_SSAO_InputData_D3D12 InputData = {};
+		InputData.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;
+		InputData.DepthData.FullResDepthTextureSRV.pResource = m_PreZRenderPass->GetDepthOutput()->GetInterface().Get();
+		InputData.DepthData.FullResDepthTextureSRV.GpuHandle = m_PreZRenderPass->GetDepthOutput()->GetSRVDescriptorHandle().GPUHandle.ptr;
+		InputData.DepthData.ProjectionMatrix.Data = GFSDK_SSAO_Float4x4((const GFSDK_SSAO_FLOAT*)&m_pScene->GetEditorCamera()->GetProjectionMatrix());
+		InputData.DepthData.ProjectionMatrix.Layout = GFSDK_SSAO_ROW_MAJOR_ORDER;
+		InputData.DepthData.MetersToViewSpaceUnits = 1.0f;
+		InputData.NormalData.Enable = false;
+
+		GFSDK_SSAO_RenderMask RenderMask = GFSDK_SSAO_RENDER_AO;
+
+		GFSDK_SSAO_RenderTargetView_D3D12 rtv{};
+		rtv.pResource = m_GeometryRenderPass->GetOutput(0)->GetInterface().Get();
+		rtv.CpuHandle = m_GeometryRenderPass->GetOutput(0)->GetRTVDescriptorHandle().CPUHandle.ptr;
+
+		GFSDK_SSAO_Output_D3D12 Output;
+		Output.pRenderTargetView = &rtv;
+		Output.Blend.Mode = GFSDK_SSAO_MULTIPLY_RGB;
+
+		if (m_GeometryRenderPass->GetOutput(0)->GetCurrentState() != D3D12_RESOURCE_STATE_RENDER_TARGET)
+			RenderCommand::TransitionResource(m_GeometryRenderPass->GetOutput(0), D3D12_RESOURCE_STATE_RENDER_TARGET);
+		
+		if (m_PreZRenderPass->GetDepthOutput()->GetCurrentState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+			RenderCommand::TransitionResource(m_PreZRenderPass->GetDepthOutput(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		GFSDK_SSAO_Status status = m_SSAOContext->RenderAO(D3D12Core::GetCommandQueue().Get(), D3D12Core::GetCommandList().Get(), InputData, m_HBAOPlusParameters, Output, RenderMask);
+		RLS_ASSERT(status == GFSDK_SSAO_OK, "Failed to issue HBAOPlus render command.");
+	}
+
 	void SceneRenderer::GeometryPass() noexcept
 	{
 		PROFILE_FUNC;
@@ -355,6 +489,8 @@ namespace Relentless
 		m_PerFrameOpaqueGeometryData.directionalLightStructuredBufferIndex = m_pScene->GetLightManager().GetDirectionalLights()->m_VisibleHandles[frameIndex].Index;
 		m_PerFrameOpaqueGeometryData.nrOfDirectionalLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
 		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
+		m_PerFrameOpaqueGeometryData.environmentIndex = MemoryManager::Get().GetCBDescriptorIndex(m_EnvironmentCBHandle);
+		m_PerFrameOpaqueGeometryData.brdfLutTextureIndex = m_BRDFLutTexture->GetSRVDescriptorHandle().Index;
 		m_GeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
@@ -541,21 +677,30 @@ namespace Relentless
 	void SceneRenderer::CompositePass() noexcept
 	{
 		PROFILE_FUNC;
-
+		
+		//RenderCommand::TransitionResource(m_pHBAOPlusTexture, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+		//RenderCommand::TransitionResource(m_pResolvedHBAOPlusTexture, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+		//RenderCommand::ResolveMSAA(m_pHBAOPlusTexture, m_pResolvedHBAOPlusTexture);
+		
 		MasterRenderer::BeginRenderPass(m_CompositeRenderPass);
 
-
-		auto textureDataIndex = m_CompositeRenderPass->GetInputSlot("TextureData");
 		if (m_Options.MSAASamples > 1)
 		{
 			RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			//RenderCommand::TransitionResource(m_pResolvedHBAOPlusTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			//RenderCommand::TransitionResource(m_pHBAOPlusTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			m_CompositeData.PostProcessTextureIndex = m_pResolvedTexture->GetSRVDescriptorHandle().Index;
+			
+			
+			//m_CompositeData.PostProcessTextureIndex = m_pResolvedHBAOPlusTexture->GetSRVDescriptorHandle().Index;
 		}
 		else
 		{
 			RenderCommand::TransitionResource(m_CombinedGeometryAndPickingPass->GetOutput(0), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			m_CompositeData.PostProcessTextureIndex = m_CombinedGeometryAndPickingPass->GetOutput(0)->GetSRVDescriptorHandle().Index;
 		}
+		
+		auto textureDataIndex = m_CompositeRenderPass->GetInputSlot("TextureData");
 		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(textureDataIndex, 1u, &m_CompositeData, 0u));
 
 		RenderCommand::DrawInstanced(3u);
@@ -632,6 +777,7 @@ namespace Relentless
 	void SceneRenderer::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
 	{
 		MasterRenderer::Resize(width, height);
+		m_PreZRenderPass->Resize(width, height);
 		m_GeometryRenderPass->Resize(width, height);
 		m_CombinedGeometryAndPickingPass->Resize(width, height);
 		m_WireFrameRenderPass->Resize(width, height);
@@ -648,6 +794,34 @@ namespace Relentless
 		resolveRTSpec.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 
 		m_pResolvedTexture = RenderTexture::Create(resolveRTSpec, "MSAA Resolve RenderTexture");
+
+		auto& memoryManager = MemoryManager::Get();
+
+		RenderTextureSpecification hbaoPlusRTSpec{};
+		hbaoPlusRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		hbaoPlusRTSpec.CreateSRV = true;
+		hbaoPlusRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
+		hbaoPlusRTSpec.Width = width;
+		hbaoPlusRTSpec.Height = height;
+		hbaoPlusRTSpec.MultiSampleCount = m_pHBAOPlusTexture->GetMultiSampleCount();
+		memoryManager.DestroyDescriptorHandle(m_pHBAOPlusTexture->GetRTVDescriptorHandle());
+		memoryManager.DestroyDescriptorHandle(m_pHBAOPlusTexture->GetSRVDescriptorHandle());
+		memoryManager.DestroyResource(std::move(m_pHBAOPlusTexture));
+		m_pHBAOPlusTexture = RenderTexture::Create(hbaoPlusRTSpec, "HBAO+ Render Texture");
+
+		RenderTextureSpecification hbaoPlusResolvedRTSpec{};
+		hbaoPlusResolvedRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		hbaoPlusResolvedRTSpec.CreateSRV = true;
+		hbaoPlusResolvedRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
+		hbaoPlusResolvedRTSpec.Width = width;
+		hbaoPlusResolvedRTSpec.Height = height;
+		hbaoPlusResolvedRTSpec.MultiSampleCount = 1u;
+		memoryManager.DestroyDescriptorHandle(m_pResolvedHBAOPlusTexture->GetRTVDescriptorHandle());
+		memoryManager.DestroyDescriptorHandle(m_pResolvedHBAOPlusTexture->GetSRVDescriptorHandle());
+		memoryManager.DestroyResource(std::move(m_pResolvedHBAOPlusTexture));
+		m_pResolvedHBAOPlusTexture = RenderTexture::Create(hbaoPlusResolvedRTSpec, "HBAO+ Resolved Render Texture");
+
+		//InitializeHBAOPlus();
 	}
 
 	void SceneRenderer::SetMSAASamples(const uint8_t samples) noexcept
@@ -672,12 +846,41 @@ namespace Relentless
 
 			m_Options.MSAASamples = samples;
 
+			m_PreZRenderPass->OnMSAAReconfiguration(samples);
 			m_GeometryRenderPass->OnMSAAReconfiguration(samples);
 			m_CombinedGeometryAndPickingPass->OnMSAAReconfiguration(samples);
 			m_WireFrameRenderPass->OnMSAAReconfiguration(samples);
 			m_GeometryPickingRenderPass->OnMSAAReconfiguration(samples);
 			m_EditorGridRenderPass->OnMSAAReconfiguration(samples);
 			m_CompositeRenderPass->OnMSAAReconfiguration(samples);
+
+			auto& memoryManager = MemoryManager::Get();
+
+			RenderTextureSpecification hbaoPlusRTSpec{};
+			hbaoPlusRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+			hbaoPlusRTSpec.CreateSRV = true;
+			hbaoPlusRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
+			hbaoPlusRTSpec.Width = m_pHBAOPlusTexture->GetWidth();
+			hbaoPlusRTSpec.Height = m_pHBAOPlusTexture->GetHeight();
+			hbaoPlusRTSpec.MultiSampleCount = samples;
+			memoryManager.DestroyDescriptorHandle(m_pHBAOPlusTexture->GetRTVDescriptorHandle());
+			memoryManager.DestroyDescriptorHandle(m_pHBAOPlusTexture->GetSRVDescriptorHandle());
+			memoryManager.DestroyResource(std::move(m_pHBAOPlusTexture));
+			m_pHBAOPlusTexture = RenderTexture::Create(hbaoPlusRTSpec, "HBAO+ Render Texture");
+
+			RenderTextureSpecification hbaoPlusResolvedRTSpec{};
+			hbaoPlusResolvedRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+			hbaoPlusResolvedRTSpec.CreateSRV = true;
+			hbaoPlusResolvedRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
+			hbaoPlusResolvedRTSpec.Width = m_pResolvedHBAOPlusTexture->GetWidth();
+			hbaoPlusResolvedRTSpec.Height = m_pResolvedHBAOPlusTexture->GetWidth();
+			hbaoPlusResolvedRTSpec.MultiSampleCount = 1u;
+			memoryManager.DestroyDescriptorHandle(m_pResolvedHBAOPlusTexture->GetRTVDescriptorHandle());
+			memoryManager.DestroyDescriptorHandle(m_pResolvedHBAOPlusTexture->GetSRVDescriptorHandle());
+			memoryManager.DestroyResource(std::move(m_pResolvedHBAOPlusTexture));
+			m_pResolvedHBAOPlusTexture = RenderTexture::Create(hbaoPlusResolvedRTSpec, "HBAO+ Resolved Render Texture");
+
+			//InitializeHBAOPlus();
 		}
 	}
 
@@ -734,5 +937,56 @@ namespace Relentless
 		DXCall_STD(m_pIdentifierReadbackBuffer->GetInterface()->Unmap(0, nullptr));
 
 		return *pEntity;
+	}
+
+	void SceneRenderer::InitializeHBAOPlus() noexcept
+	{
+		GFSDK_SSAO_CustomHeap CustomHeap;
+		CustomHeap.new_ = ::operator new;
+		CustomHeap.delete_ = ::operator delete;
+
+		GFSDK_SSAO_DescriptorHeaps_D3D12 DescriptorHeaps;
+		DescriptorHeaps.CBV_SRV_UAV.pDescHeap = MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().Get();
+		DescriptorHeaps.CBV_SRV_UAV.BaseIndex = 10'000; //TEMP
+
+		DescriptorHeaps.RTV.pDescHeap = MemoryManager::Get().GetRTVDescriptorHeap()->GetDescriptorHeapInterface().Get();
+		DescriptorHeaps.RTV.BaseIndex = 10'000; //TEMP
+
+		GFSDK_SSAO_Status status = GFSDK_SSAO_CreateContext_D3D12
+		(
+			D3D12Core::GetDevice().Get(), 
+			1u, 
+			DescriptorHeaps, 
+			&m_SSAOContext,
+			&CustomHeap);
+		RLS_ASSERT(status == GFSDK_SSAO_OK, "Failed to initialize HBAO+.");
+
+		m_HBAOPlusParameters.Radius = 2.f;
+		m_HBAOPlusParameters.Bias = 0.1f;
+		m_HBAOPlusParameters.PowerExponent = 2.f;
+		m_HBAOPlusParameters.Blur.Enable = true;
+		m_HBAOPlusParameters.Blur.Sharpness = 16.f;
+		m_HBAOPlusParameters.Blur.Radius = GFSDK_SSAO_BLUR_RADIUS_4;
+		m_HBAOPlusParameters.DepthStorage = GFSDK_SSAO_FP32_VIEW_DEPTHS;
+		m_HBAOPlusParameters.EnableDualLayerAO = false;
+		m_HBAOPlusParameters.StepCount = GFSDK_SSAO_STEP_COUNT_8;
+
+		RenderTextureSpecification hbaoPlusRTSpec{};
+		hbaoPlusRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		hbaoPlusRTSpec.CreateSRV = true;
+		hbaoPlusRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
+		hbaoPlusRTSpec.Width = 800u;
+		hbaoPlusRTSpec.Height = 600u;
+		hbaoPlusRTSpec.MultiSampleCount = 8u;
+		m_pHBAOPlusTexture = RenderTexture::Create(hbaoPlusRTSpec, "HBAO+ Render Texture");
+
+		RenderTextureSpecification hbaoPlusResolvedRTSpec{};
+		hbaoPlusResolvedRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		hbaoPlusResolvedRTSpec.CreateSRV = true;
+		hbaoPlusResolvedRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
+		hbaoPlusResolvedRTSpec.Width = 800u;
+		hbaoPlusResolvedRTSpec.Height = 600u;
+		hbaoPlusResolvedRTSpec.MultiSampleCount = 1u;
+		m_pResolvedHBAOPlusTexture = RenderTexture::Create(hbaoPlusResolvedRTSpec, "HBAO+ Resolved Render Texture");
 	}
 }

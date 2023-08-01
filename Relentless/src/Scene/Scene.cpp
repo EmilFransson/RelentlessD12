@@ -151,6 +151,19 @@ namespace Relentless
 					m_EntityManager.Remove<DirtyMeshRendererComponent>(entityID);
 			});
 
+		auto& dirtyMaterials = AssetManager::Get().GetMaterialManager().GetDirtyMaterials();
+		for (uint32_t i{0u}; i < dirtyMaterials.size(); ++i)
+		{
+			Material::UploadToGPU(dirtyMaterials[i].first);
+			dirtyMaterials[i].second--;
+
+			if (dirtyMaterials[i].second == 0u)
+			{
+				dirtyMaterials.erase(dirtyMaterials.begin() + i);
+				i--;
+			}
+		}
+
 		/****LIGHTS****/
 		m_EntityManager.Collect<TransformComponent, DirectionalLightComponent, DirtyTransformComponent>().Do([&](entity entityID, TransformComponent& tc, DirectionalLightComponent& lc)
 			{

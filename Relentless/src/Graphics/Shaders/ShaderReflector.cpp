@@ -54,6 +54,10 @@ namespace Relentless
 		{
 			return D3D12_FILTER_ANISOTROPIC;
 		}
+		else if (name.find("_LINEAR_CLAMP") != std::string::npos)
+		{
+			return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+		}
 		else if (name.find("_LINEAR") != std::string::npos)
 		{
 			return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -150,7 +154,14 @@ namespace Relentless
 			else if (samplerDescriptor.Filter == D3D12_FILTER_MIN_MAG_MIP_LINEAR)
 			{
 				samplerDescriptor.MaxAnisotropy = 0;
-				samplerDescriptor.AddressU = samplerDescriptor.AddressV = samplerDescriptor.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+				if (data.Name == "sampler_LINEAR_CLAMP")
+				{
+					samplerDescriptor.AddressU = samplerDescriptor.AddressV = samplerDescriptor.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+				}
+				else
+				{
+					samplerDescriptor.AddressU = samplerDescriptor.AddressV = samplerDescriptor.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+				}
 
 			}
 			staticSamplerDescriptors.push_back(samplerDescriptor);

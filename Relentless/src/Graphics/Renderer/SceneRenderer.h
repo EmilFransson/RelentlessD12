@@ -2,11 +2,15 @@
 #include "RenderPass.h"
 #include "../../Scene/Scene.h"
 #include "../Resources/Buffer.h"
+#include "../../../vendor/includes/HBAO+/GFSDK_SSAO.h"
 namespace Relentless
 {
+
+	enum class ContactShadows : uint8_t { OFF = 0, HBAO_PLUS };
 	struct Options
 	{
 		uint8_t MSAASamples{ 8u };
+		ContactShadows ContactShadowType{ ContactShadows::HBAO_PLUS };
 	};
 
 	class SceneRenderer
@@ -22,13 +26,18 @@ namespace Relentless
 		void SetMSAASamples(const uint8_t samples) noexcept;
 		entity GetHoveredEntity() noexcept;
 		const Options& GetOptions() const noexcept { return m_Options; }
+		void SetContactShadowsType(const ContactShadows contactShadowsType) noexcept;
+		[[nodiscard]] GFSDK_SSAO_Parameters& GetHBAOPlusParameters() noexcept { return m_HBAOPlusParameters; }
 	private:
+		void PreZPass() noexcept;
 		void GeometryPass() noexcept;
+		void HBAOPlusRenderPass() noexcept;
 		void EditorGridPass() noexcept;
 		void WireframePass() noexcept;
 		void PickingPass() noexcept;
 		void CompositePass() noexcept;
 		void CombinedGeometryAndPickingPass() noexcept;
+		void InitializeHBAOPlus() noexcept;
 	private:
 		Options m_Options;
 		std::shared_ptr<Scene> m_pScene;
@@ -45,6 +54,8 @@ namespace Relentless
 			uint32_t directionalLightStructuredBufferIndex;
 			uint32_t nrOfDirectionalLights;
 			uint32_t nrOfPointLights;
+			uint32_t environmentIndex;
+			uint32_t brdfLutTextureIndex;
 		} m_PerFrameOpaqueGeometryData;
 
 		struct PerFrameEditorData
@@ -79,15 +90,28 @@ namespace Relentless
 			uint32_t Index;
 		} m_InstanceDataSBIndex;
 
+		struct Environment
+		{
+			DirectX::XMFLOAT3 BackgroundColor;
+		} m_Environment;
+
+		size_t m_EnvironmentCBHandle;
+
 		std::shared_ptr<RenderPass> m_GeometryRenderPass;
 		std::shared_ptr<RenderPass> m_GeometryPickingRenderPass;
 		std::shared_ptr<RenderPass> m_CompositeRenderPass;
 		std::shared_ptr<RenderPass> m_WireFrameRenderPass;
 		std::shared_ptr<RenderPass> m_EditorGridRenderPass;
 		std::shared_ptr<RenderPass> m_CombinedGeometryAndPickingPass;
+		std::shared_ptr<RenderPass> m_PreZRenderPass;
 
 		std::shared_ptr<ReadBackBuffer> m_pIdentifierReadbackBuffer{ nullptr };
 		std::shared_ptr<RenderTexture> m_pResolvedTexture{ nullptr };
+		std::shared_ptr<RenderTexture> m_pHBAOPlusTexture{ nullptr };
+		std::shared_ptr<RenderTexture> m_pResolvedHBAOPlusTexture{ nullptr };
+		std::shared_ptr<Texture2D> m_BRDFLutTexture{ nullptr };
+		
+		GFSDK_SSAO_Parameters m_HBAOPlusParameters;
 
 		entity m_HoveredEntity{NULL_ENTITY};
 
@@ -119,5 +143,7 @@ namespace Relentless
 
 		TransformComponent m_EditorGridTransformComponent1;
 		TransformComponent m_EditorGridTransformComponent2;
+		
+		GFSDK_SSAO_Context_D3D12* m_SSAOContext;
 	};
 }

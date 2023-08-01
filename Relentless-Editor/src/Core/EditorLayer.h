@@ -5,6 +5,7 @@
 #include "../Panels/ContentBrowserPanel.h"
 #include "../Panels/MetricsPanel.h"
 #include "../Panels/SceneRendererPanel.h"
+#include "../Panels/InspectorPanel.h"
 
 namespace Relentless
 {
@@ -29,7 +30,6 @@ namespace Relentless
 		void DestroySelectedEntity() noexcept;
 		void CopySelectedEntity() noexcept;
 		void ManipulateTransformGizmo() noexcept;
-
 	private:
 		bool m_SceneViewportChanged;
 		bool m_HoveringSceneViewport;
@@ -46,10 +46,21 @@ namespace Relentless
 		ContentBrowserPanel m_ContentBrowserPanel;
 		MetricsPanel m_MetricsPanel;
 		SceneRendererPanel m_SceneRendererPanel;
+		InspectorPanel m_InspectorPanel;
 
 		std::shared_ptr<Scene> m_pScene;
 		std::shared_ptr<SceneRenderer> m_pSceneRenderer;
 	
 		std::queue<std::function<void()>> m_DeferredFunctions;
+		
+		bool m_DisplaySceneHierarchyPanel;
+		bool m_DisplayContentBrowserPanel;
+		bool m_DisplayPropertiesPanel;
+		bool m_DisplayInspectorPanel;
+		bool m_DisplayMetricsPanel;
+		bool m_DisplaySceneRendererPanel;
+		bool m_DisplayStatisticsPanel;
+
+		bool m_ImmersiveModeEnabled;
 	};
 }

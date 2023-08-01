@@ -11,6 +11,12 @@ namespace Relentless
 		case TextureFormat::R32UINT:
 			return DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 			break;
+		case TextureFormat::R32TYPELESS:
+			return DXGI_FORMAT::DXGI_FORMAT_R32_TYPELESS;
+			break;
+		case TextureFormat::Depth:
+			return DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT;
+			break;
 		}
 
 		RLS_ASSERT(false, "Unsupported texture format encountered.");
