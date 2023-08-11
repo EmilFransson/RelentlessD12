@@ -118,6 +118,11 @@ namespace Relentless
 			if (m_Specification.Attachments.DepthAttachment.ShouldResize)
 			{
 				memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.DepthAttachment.Output->GetDSVDescriptorHandle());
+				if (m_Specification.Attachments.DepthAttachment.Transfer)
+				{
+					memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.DepthAttachment.Output->GetSRVDescriptorHandle());
+				}
+				
 				memoryManager.DestroyResource(std::move(m_Specification.Attachments.DepthAttachment.Output));
 
 				DepthStencilSpecification depthStencilSpecification;

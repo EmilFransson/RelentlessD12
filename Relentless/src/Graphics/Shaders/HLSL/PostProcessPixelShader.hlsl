@@ -59,9 +59,6 @@ float3 aces_fitted(float3 v)
     return mul2(v);
 }
 
-
-
-
 struct TextureMetaData
 {
     uint hdrTextureIndex;

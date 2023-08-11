@@ -61,6 +61,8 @@ struct Material
 
     float heightScale;
     float aoScale;
+
+    uint combinedRoughnessMetalnessMap;
 };
 
 ConstantBuffer<VPConstantBuffer> vpConstantBuffer : register(b0, space0);

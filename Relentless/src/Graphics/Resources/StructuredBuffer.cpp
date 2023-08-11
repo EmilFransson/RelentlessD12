@@ -14,8 +14,6 @@ namespace Relentless
 		bufferHeapProperties.CreationNodeMask = 0u;
 		bufferHeapProperties.VisibleNodeMask = 0u;
 
-		//sizeInBytes = (sizeInBytes + 255) & ~255;
-
 		D3D12_RESOURCE_DESC bufferDescriptor = {};
 		bufferDescriptor.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 		bufferDescriptor.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
@@ -47,6 +45,15 @@ namespace Relentless
 		for (uint32_t i{ 0u }; i < D3D12Core::GetNrOfBufferedFrames(); ++i)
 		{
 			m_VisibleHandles[i] = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::SRV);
+		}
+	}
+
+	StructuredBuffer::~StructuredBuffer() noexcept
+	{
+		MemoryManager::Get().DestroyDescriptorHandle(m_NonVisibleHandle);
+		for (uint32_t i{ 0u }; i < D3D12Core::GetNrOfBufferedFrames(); ++i)
+		{
+			MemoryManager::Get().DestroyDescriptorHandle(m_VisibleHandles[i]);
 		}
 	}
 

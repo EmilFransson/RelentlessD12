@@ -14,11 +14,11 @@ namespace Relentless
 	{
 	public:
 		explicit Scene(const char* name = "Sample Scene") noexcept;
-		~Scene() noexcept = default;
+		~Scene() noexcept;
 
-		void OnUpdate() noexcept;
+		void OnUpdate(const float deltaTime) noexcept;
 		entity CreateEntity(const char* tag) noexcept;
-		entity CreateEntityWithUUID(const char* tag) noexcept;
+		entity CreateEntityWithUUID(const char* tag, const UUID& guid) noexcept;
 		entity CreateLight(const char* name, LightType type) noexcept;
 
 		template<auto ShapeType>
@@ -54,7 +54,7 @@ namespace Relentless
 		[[nodiscard]] bool EntityIsAncestor(const entity ancestor, const entity descendant) noexcept;
 
 		void ParentEntity(const entity toBecomeChild, const entity toBecomeParent) noexcept;
-
+		[[nodiscard]] entity FindEntityByUUID(const UUID& uuid) noexcept;
 		[[nodiscard]] LightManager& GetLightManager() noexcept { return m_LightManager; }
 		[[nodiscard]] const D3D12_VIEWPORT& GetViewport() const noexcept { return m_Viewport; }
 		[[nodiscard]] const RECT& GetScissorRect() const noexcept { return m_ScissorRect; }
@@ -81,44 +81,13 @@ namespace Relentless
 		std::filesystem::path fullPath = GetFullShapePath<ShapeType>();
 		std::string nameString = fullPath.stem().string();
 
-		ResourceID vbID;
-		ResourceID ibID;
-		if (!AssetManager::Get().HasLoaded(nameString + " Vertex Buffer"))
-		{
-			MeshFactory factory;
-			Mesh shapeMesh = factory.LoadFromFile(fullPath)[0]; //We know a shape only consists of one mesh
+		auto& mm = AssetManager::Get().GetMeshManager();
+		MeshHandle& meshHandle = mm.GetHandleByString(nameString);
 
-			VertexBuffer::Specification vbSpec
-			{
-				.NrOfVertices = (uint32_t)shapeMesh.Vertices.size(),
-				.TotalSizeInBytes = (uint32_t)shapeMesh.Vertices.size() * sizeof(SimpleVertex),
-				.Stride = sizeof(SimpleVertex),
-				.pBuffer = (void*)shapeMesh.Vertices.data(),
-				.Name = nameString + std::string(" Vertex Buffer")
-			};
-
-			IndexBuffer::Specification ibSpec
-			{
-				.NrOfIndices = (uint32_t)shapeMesh.Indices.size(),
-				.TotalSizeInBytes = (uint32_t)shapeMesh.Indices.size() * sizeof(uint32_t),
-				.Stride = sizeof(uint32_t),
-				.pBuffer = (void*)shapeMesh.Indices.data(),
-				.Name = nameString + std::string(" Index Buffer")
-			};
-			vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
-			ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
-		}
-		else
-		{
-			vbID = AssetManager::Get().Load<VertexBuffer>(nameString + " Vertex Buffer", nullptr);
-			ibID = AssetManager::Get().Load<IndexBuffer>(nameString + " Index Buffer", nullptr);
-		}
-
-		auto entity = CreateEntityWithUUID(nameString.c_str());
+		auto entity = CreateEntity(nameString.c_str());
 
 		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
-		mfc.VertexBufferID = vbID;
-		mfc.IndexBufferID = ibID;
+		mfc.MeshHandle = meshHandle;
 		
 		m_EntityManager.Add<ForwardPassComponent>(entity);
 		
@@ -136,44 +105,13 @@ namespace Relentless
 		std::filesystem::path fullPath = GetFullExtraPath<ExtraType>();
 		std::string nameString = fullPath.stem().string();
 
-		ResourceID vbID;
-		ResourceID ibID;
-		if (!AssetManager::Get().HasLoaded(nameString + " Vertex Buffer"))
-		{
-			MeshFactory factory;
-			Mesh shapeMesh = factory.LoadFromFile(fullPath)[0]; //We know a shape only consists of one mesh
+		auto& mm = AssetManager::Get().GetMeshManager();
+		MeshHandle& meshHandle = mm.GetHandleByString(nameString);
 
-			VertexBuffer::Specification vbSpec
-			{
-				.NrOfVertices = (uint32_t)shapeMesh.Vertices.size(),
-				.TotalSizeInBytes = (uint32_t)shapeMesh.Vertices.size() * sizeof(SimpleVertex),
-				.Stride = sizeof(SimpleVertex),
-				.pBuffer = (void*)shapeMesh.Vertices.data(),
-				.Name = nameString + std::string(" Vertex Buffer")
-			};
-
-			IndexBuffer::Specification ibSpec
-			{
-				.NrOfIndices = (uint32_t)shapeMesh.Indices.size(),
-				.TotalSizeInBytes = (uint32_t)shapeMesh.Indices.size() * sizeof(uint32_t),
-				.Stride = sizeof(uint32_t),
-				.pBuffer = (void*)shapeMesh.Indices.data(),
-				.Name = nameString + std::string(" Index Buffer")
-			};
-			vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
-			ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
-		}
-		else
-		{
-			vbID = AssetManager::Get().Load<VertexBuffer>(nameString + " Vertex Buffer", nullptr);
-			ibID = AssetManager::Get().Load<IndexBuffer>(nameString + " Index Buffer", nullptr);
-		}
-
-		auto entity = CreateEntityWithUUID(nameString.c_str());
+		auto entity = CreateEntity(nameString.c_str());
 
 		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
-		mfc.VertexBufferID = vbID;
-		mfc.IndexBufferID = ibID;
+		mfc.MeshHandle = meshHandle;
 
 		m_EntityManager.Add<ForwardPassComponent>(entity);
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
@@ -213,7 +151,7 @@ namespace Relentless
 		}
 		else if constexpr (ShapeType == Shape::IcoSphere)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/IcoSphere.obj";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Icosphere.obj";
 		}
 		else if constexpr (ShapeType == Shape::Torus)
 		{

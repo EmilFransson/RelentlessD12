@@ -21,13 +21,32 @@ namespace Relentless
 		m_ScissorRect.bottom = static_cast<LONG>(m_Viewport.Height);
 	}
 
-	void Scene::OnUpdate() noexcept
+	Scene::~Scene() noexcept
+	{
+		m_EntityManager.Collect<TransformComponent>().Do([this](entity e, TransformComponent& tc)
+			{
+				if (m_EntityManager.Has<PointLightComponent>(e))
+				{
+					m_LightManager.DeallocatePointLight(e);
+				}
+				else if (m_EntityManager.Has<DirectionalLightComponent>(e))
+				{
+					m_LightManager.DeallocateDirectionalLight(e);
+				}
+
+				MemoryManager::Get().FreeConstantBuffer(tc.ConstantBufferID);
+			});
+	}
+
+	void Scene::OnUpdate([[maybe_unused]] const float deltaTime) noexcept
 	{
 		PROFILE_FUNC;
 
 		/*TRANSFORMS*/
-		m_EntityManager.Collect<TransformComponent, DirtyTransformComponent>().Do([&](entity entityHandle, TransformComponent& transformComponent, DirtyTransformComponent& dirty)
+		m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)
 			{
+				auto& transformComponent = m_EntityManager.Get<TransformComponent>(entityHandle);
+
 				if (dirty.AdjustedWorldSpace)
 				{
 					const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.Rotation.x);
@@ -37,6 +56,8 @@ namespace Relentless
 					const DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.Scale))
 						* DirectX::XMMatrixRotationX(angleInRadiansX) * DirectX::XMMatrixRotationY(angleInRadiansY) * DirectX::XMMatrixRotationZ(angleInRadiansZ)
 						* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.Translation));
+					
+					
 					DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
 
 					if (m_EntityManager.Has<IsChildComponent>(entityHandle))
@@ -61,31 +82,34 @@ namespace Relentless
 				}
 				else
 				{
-					auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityHandle);
+					if (m_EntityManager.Has<IsChildComponent>(entityHandle))
+					{
+						auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityHandle);
 
-					const float angleInRadiansX = DirectX::XMConvertToRadians(childComponent.LocalRotation.x);
-					const float angleInRadiansY = DirectX::XMConvertToRadians(childComponent.LocalRotation.y);
-					const float angleInRadiansZ = DirectX::XMConvertToRadians(childComponent.LocalRotation.z);
+						const float angleInRadiansX = DirectX::XMConvertToRadians(childComponent.LocalRotation.x);
+						const float angleInRadiansY = DirectX::XMConvertToRadians(childComponent.LocalRotation.y);
+						const float angleInRadiansZ = DirectX::XMConvertToRadians(childComponent.LocalRotation.z);
 
-					const DirectX::XMMATRIX localTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childComponent.LocalScale))
-						* DirectX::XMMatrixRotationX(angleInRadiansX) * DirectX::XMMatrixRotationY(angleInRadiansY) * DirectX::XMMatrixRotationZ(angleInRadiansZ)
-						* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childComponent.LocalTranslation));
-					DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, localTransform);
+						const DirectX::XMMATRIX localTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childComponent.LocalScale))
+							* DirectX::XMMatrixRotationX(angleInRadiansX) * DirectX::XMMatrixRotationY(angleInRadiansY) * DirectX::XMMatrixRotationZ(angleInRadiansZ)
+							* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childComponent.LocalTranslation));
+						DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, localTransform);
 
-					//child local * parent world = child world
-					auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(childComponent.Parent);
-					DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
-					DirectX::XMMATRIX childLocalMatrix = DirectX::XMLoadFloat4x4(&childComponent.LocalTransform);
-					DirectX::XMMATRIX childWorldMatrix = childLocalMatrix * parentWorldMatrix;
+						//child local * parent world = child world
+						auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(childComponent.Parent);
+						DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
+						DirectX::XMMATRIX childLocalMatrix = DirectX::XMLoadFloat4x4(&childComponent.LocalTransform);
+						DirectX::XMMATRIX childWorldMatrix = childLocalMatrix * parentWorldMatrix;
 
-					DirectX::XMStoreFloat4x4(&transformComponent.Transform, childWorldMatrix);
-					ImGuizmo::DecomposeMatrixToComponents
-					(
-						&transformComponent.Transform.m[0][0],
-						&transformComponent.Translation.x,
-						&transformComponent.Rotation.x,
-						&transformComponent.Scale.x
-					);
+						DirectX::XMStoreFloat4x4(&transformComponent.Transform, childWorldMatrix);
+						ImGuizmo::DecomposeMatrixToComponents
+						(
+							&transformComponent.Transform.m[0][0],
+							&transformComponent.Translation.x,
+							&transformComponent.Rotation.x,
+							&transformComponent.Scale.x
+						);
+					}
 				}
 
 				if (m_EntityManager.Has<ParentComponent>(entityHandle))
@@ -142,15 +166,6 @@ namespace Relentless
 			});
 
 		/*MATERIALS*/
-		m_EntityManager.Collect<MeshRendererComponent, DirtyMeshRendererComponent>().Do([&](entity entityID, MeshRendererComponent& mrc, DirtyMeshRendererComponent& dirty)
-			{
-				Material::UploadToGPU(mrc.MaterialHandle);
-
-				dirty.Updates--;
-				if (dirty.Updates == 0u)
-					m_EntityManager.Remove<DirtyMeshRendererComponent>(entityID);
-			});
-
 		auto& dirtyMaterials = AssetManager::Get().GetMaterialManager().GetDirtyMaterials();
 		for (uint32_t i{0u}; i < dirtyMaterials.size(); ++i)
 		{
@@ -165,8 +180,10 @@ namespace Relentless
 		}
 
 		/****LIGHTS****/
-		m_EntityManager.Collect<TransformComponent, DirectionalLightComponent, DirtyTransformComponent>().Do([&](entity entityID, TransformComponent& tc, DirectionalLightComponent& lc)
+		m_EntityManager.Collect<DirectionalLightComponent, DirtyTransformComponent>().Do([&](entity entityID, DirectionalLightComponent& lc)
 			{
+				auto& tc = m_EntityManager.Get<TransformComponent>(entityID);
+
 				lc.Direction.x = std::sin(DirectX::XMConvertToRadians(tc.Rotation.y));
 				lc.Direction.y = std::cos(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
 				lc.Direction.z = std::sin(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
@@ -174,12 +191,13 @@ namespace Relentless
 				m_LightManager.UpdateDirectionalLight(lc, entityID);
 			});
 
-		m_EntityManager.Collect<TransformComponent, PointLightComponent, DirtyTransformComponent>().Do([&](entity entityID, TransformComponent& tc, PointLightComponent& lc)
+		m_EntityManager.Collect<PointLightComponent, DirtyTransformComponent>().Do([&](entity entityID, PointLightComponent& lc)
 			{
+				auto& tc = m_EntityManager.Get<TransformComponent>(entityID);
+
 				lc.Position = tc.Translation;
 				m_LightManager.UpdatePointLight(lc, entityID);
 			});
-
 
 		/****Clean up****/
 		m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)
@@ -193,17 +211,17 @@ namespace Relentless
 
 	entity Scene::CreateEntity(const char* name) noexcept
 	{
-		return CreateEntityWithUUID(name);
+		return CreateEntityWithUUID(name, IDComponent().UuId);
 	}
 
-	entity Scene::CreateEntityWithUUID(const char* name) noexcept
+	entity Scene::CreateEntityWithUUID(const char* name, const UUID& guid) noexcept
 	{
 		auto entity = m_EntityManager.CreateEntity();
 		auto& tc = m_EntityManager.Add<TransformComponent>(entity);
 		tc.ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT4X4));
 		m_EntityManager.Add<DirtyTransformComponent>(entity);
 		m_EntityManager.Add<NameComponent>(entity, name);
-		m_EntityManager.Add<IDComponent>(entity);
+		m_EntityManager.Add<IDComponent>(entity, guid);
 		m_EntityManager.Add<RootComponent>(entity);
 
 		return entity;
@@ -211,7 +229,7 @@ namespace Relentless
 
 	entity Scene::CreateLight(const char* name, LightType type) noexcept
 	{
-		auto lightEntity = CreateEntityWithUUID(name);
+		auto lightEntity = CreateEntity(name);
 		if (type == LightType::Directional)
 		{
 			auto& tc = m_EntityManager.Get<TransformComponent>(lightEntity);
@@ -235,7 +253,7 @@ namespace Relentless
 
 	entity Scene::CreateCamera(const char* name) noexcept
 	{
-		auto camera = CreateEntityWithUUID(name);
+		auto camera = CreateEntity(name);
 		auto& cc = m_EntityManager.Add<CameraComponent>(camera);
 		auto& tc = m_EntityManager.Get<TransformComponent>(camera);
 		tc.Translation = {0.0f, 0.0f, -5.0f};
@@ -291,6 +309,8 @@ namespace Relentless
 				}
 			}
 		}
+
+		MemoryManager::Get().FreeConstantBuffer(m_EntityManager.Get<TransformComponent>(entityHandle).ConstantBufferID);
 
 		m_EntityManager.DestroyEntity(entityHandle);
 	}
@@ -381,5 +401,20 @@ namespace Relentless
 			&childComponent.LocalRotation.x, 
 			&childComponent.LocalScale.x
 		);
+	}
+
+	entity Scene::FindEntityByUUID(const UUID& uuid) noexcept
+	{
+		entity toReturn = NULL_ENTITY;
+		m_EntityManager.Collect<IDComponent>().Do([&](entity e, const IDComponent& id)
+			{
+				if (uuid == id.UuId)
+				{
+					toReturn = e;
+					return;
+				}
+			});
+
+		return toReturn;
 	}
 }

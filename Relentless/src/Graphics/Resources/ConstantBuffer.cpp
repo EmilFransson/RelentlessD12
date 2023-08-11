@@ -44,4 +44,18 @@ namespace Relentless
 			m_VisibleHandles[i] = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::CBV);
 		}
 	}
+
+	ConstantBuffer::~ConstantBuffer() noexcept
+	{
+		
+	}
+
+	void ConstantBuffer::ReleaseHandles() noexcept
+	{
+		MemoryManager::Get().DestroyDescriptorHandle(m_NonVisibleHandle);
+		for (uint32_t i{ 0u }; i < D3D12Core::GetNrOfBufferedFrames(); ++i)
+		{
+			MemoryManager::Get().DestroyDescriptorHandle(m_VisibleHandles[i]);
+		}
+	}
 }

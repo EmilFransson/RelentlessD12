@@ -76,7 +76,7 @@ namespace Relentless
 
 		//And a depth stencil descriptor:
 		D3D12_DEPTH_STENCIL_DESC depthStencilDescriptor = {};
-		depthStencilDescriptor.DepthEnable = frameBufferSpecification.Attachments.DepthAttachment.Format == TextureFormat::Depth ? TRUE : FALSE;
+		depthStencilDescriptor.DepthEnable = (frameBufferSpecification.Attachments.DepthAttachment.Format != TextureFormat::None) ? TRUE : FALSE;
 		depthStencilDescriptor.DepthWriteMask = specification.DepthWrite ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
 		depthStencilDescriptor.DepthFunc = RLSComparisonFuncToD3D12ComparisonFunc(frameBufferSpecification.DepthComparisonFunction);
 		depthStencilDescriptor.StencilEnable = FALSE;

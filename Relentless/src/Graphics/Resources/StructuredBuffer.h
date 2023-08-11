@@ -6,7 +6,7 @@ namespace Relentless
 	{
 	public:
 		explicit StructuredBuffer(uint32_t nrOfElements, size_t byteStride) noexcept;
-		virtual ~StructuredBuffer() noexcept override final = default;
+		virtual ~StructuredBuffer() noexcept override final;
 
 		[[nodiscard]] uint32_t GetFreeIndex() const noexcept;
 

@@ -35,8 +35,20 @@ namespace Relentless
 			NAME_D12_OBJECT_INDEXED(m_CommandAllocators[i], L"Command Allocator", i);
 		}
 
-		DXCall(D3D12Core::GetDevice()->CreateCommandList(0u, m_CommandType, m_CommandAllocators[0].Get(), nullptr, IID_PPV_ARGS(&m_pCommandList)));
+		for (uint8_t i{ 0u }; i < nrOfBufferedFrames; ++i)
+		{
+			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList{ nullptr };
+			DXCall(D3D12Core::GetDevice()->CreateCommandList(0u, m_CommandType, m_CommandAllocators[i].Get(), nullptr, IID_PPV_ARGS(&pCommandList)));
+			m_CommandLists.emplace_back(std::move(pCommandList));
+			NAME_D12_OBJECT_INDEXED(m_CommandLists[i], L"Command List", i);
+		}
+		for (uint8_t i{ 1u }; i < nrOfBufferedFrames; ++i)
+		{
+			DXCall(m_CommandLists[i]->Close());
+		}
+
+		//DXCall(D3D12Core::GetDevice()->CreateCommandList(0u, m_CommandType, m_CommandAllocators[0].Get(), nullptr, IID_PPV_ARGS(&m_pCommandList)));
 		//DXCall(m_pCommandList->Close());
-		NAME_D12_OBJECT(m_pCommandList, L"Main Command List");
+		//NAME_D12_OBJECT(m_pCommandList, L"Main Command List");
 	}
 }

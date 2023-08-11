@@ -17,6 +17,15 @@ namespace Relentless
 #pragma warning(pop)
 		return temp;
 	}
+
+	std::string ConvertWideStringToString(std::wstring const& wstr) noexcept
+	{
+		int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+		std::string s(size_needed, 0);
+		WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &s[0], size_needed, NULL, NULL);
+		return s;
+	}
+
 	std::wstring ConvertStringToWstring(const std::string& string) noexcept
 	{
 		int size = MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, string.c_str(), static_cast<int>(string.size()), nullptr, 0);

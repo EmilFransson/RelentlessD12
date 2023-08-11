@@ -18,7 +18,10 @@ namespace Relentless
 		void PerformDeferredDeletion() noexcept;
 		[[nodiscard]] constexpr const std::unique_ptr<UploadBuffer>& GetUploadBuffer() const { return m_pUploadBuffer; }
 		[[nodiscard]] constexpr const std::unique_ptr<DescriptorHeap>& GetShaderBindableDescriptorHeap() const { return m_pShaderBindablesDescriptorHeap; }
+		[[nodiscard]] constexpr const std::unique_ptr<DescriptorHeap>& GetCBVSRVUAVDescriptorHeap() const { return m_pShaderBindablesDescriptorHeapNV; }
 		[[nodiscard]] constexpr const std::unique_ptr<DescriptorHeap>& GetRTVDescriptorHeap() const { return m_pRTVDescriptorHeap; }
+		[[nodiscard]] constexpr const std::unique_ptr<DescriptorHeap>& GetDSVDescriptorHeap() const { return m_pDSVDescriptorHeap; }
+		[[nodiscard]] const size_t GetNrOfConstantBuffersInUse() const { return m_ConstantBuffers.size() - m_FreeConstantBufferHandles.size(); }
 		void UpdateConstantBuffer(const ConstantBuffer& constantBuffer, void* pData) noexcept;
 		void UpdateConstantBuffer(size_t id, void* pData) noexcept;
 		void UpdateStructuredBuffer(const StructuredBuffer& structuredBuffer, void* pData, uint32_t index) noexcept;
@@ -26,6 +29,7 @@ namespace Relentless
 		[[nodiscard]] size_t CreateConstantBuffer(uint32_t sizeInBytes) noexcept;
 		[[nodiscard]] std::unique_ptr<ConstantBuffer>& GetConstantBuffer(size_t ID) noexcept { return m_ConstantBuffers[ID]; }
 		[[nodiscard]] uint32_t GetCBDescriptorIndex(const size_t constantBufferHandle) noexcept;
+		void FreeConstantBuffer(size_t cbHandle) noexcept;
 	private:
 		MemoryManager() noexcept = default;
 		~MemoryManager() noexcept = default;
@@ -39,6 +43,7 @@ namespace Relentless
 		std::unique_ptr<std::vector<DescriptorHandle>[]> m_pDeferredFreeLists;
 		std::unique_ptr<std::vector<std::shared_ptr<IResource>>[]> m_pDeferredFreeListsResources;
 
+		std::queue<size_t> m_FreeConstantBufferHandles;
 		std::vector<std::unique_ptr<ConstantBuffer>> m_ConstantBuffers;
 	};
 }

@@ -58,6 +58,7 @@ namespace Relentless
 			colorAttachment.Format = TextureFormat::RGBA32F;
 			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
 			colorAttachment.Transfer = true;
+			colorAttachment.ShouldResize = true;
 
 			FrameBufferSpecification fbSpec;
 			fbSpec.DebugName = "Final Composite FrameBuffer";
@@ -104,18 +105,6 @@ namespace Relentless
 
 		// Set the fence value for the next frame.
 		s_Data.pFenceValues[s_Data.currentFrameIndex] = currentFenceValue + 1;
-
-		UINT64* pTimestamps = nullptr;
-
-		D3D12_RANGE readRange = { 0, s_Data.NrOfQueries * sizeof(UINT64) };
-		DXCall(s_Data.m_pQueryResultBuffer->GetInterface()->Map(0, &readRange, reinterpret_cast<void**>(&pTimestamps)));
-
-		UINT64 startTime = pTimestamps[0];
-		UINT64 endTime = pTimestamps[1];
-
-		//double TimeInMs = (((double)endTime - (double)startTime) / (double)s_Data.GPUFrequency) * 1000.0f;
-		//std::cout << "Time in MS: " << std::to_string(TimeInMs) << "\n";
-		DXCall_STD(s_Data.m_pQueryResultBuffer->GetInterface()->Unmap(0, nullptr));
 	}
 
 	void MasterRenderer::WaitAndSyncAllFramesInFlight() noexcept
@@ -159,7 +148,7 @@ namespace Relentless
 	void MasterRenderer::ResetFrameCommandUnits(const uint32_t frameIndex) noexcept
 	{
 		auto pCommandAllocator{ D3D12Core::GetCommandAllocator(frameIndex) };
-		auto pCommandList{ D3D12Core::GetCommandList() };
+		auto pCommandList{ D3D12Core::GetCommandList(frameIndex) };
 		DXCall(pCommandAllocator->Reset());
 		DXCall(pCommandList->Reset(pCommandAllocator.Get(), nullptr));
 	}
@@ -172,15 +161,10 @@ namespace Relentless
 	void MasterRenderer::Begin() noexcept
 	{
 		ResetFrameCommandUnits(GetCurrentFrameIndex());
-		DXCall_STD(D3D12Core::GetCommandList()->EndQuery(s_Data.m_pQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0));
 	}
 
 	void MasterRenderer::End() noexcept
 	{
-		DXCall_STD(D3D12Core::GetCommandList()->EndQuery(s_Data.m_pQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 1));
-
-		// Resolve the query data
-		DXCall_STD(D3D12Core::GetCommandList()->ResolveQueryData(s_Data.m_pQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0, s_Data.NrOfQueries, s_Data.m_pQueryResultBuffer->GetInterface().Get(), 0));
 	}
 
 	static D3D_PRIMITIVE_TOPOLOGY RLSTopologyToD3D12Topology(RLS::Topology topology) noexcept
@@ -210,6 +194,8 @@ namespace Relentless
 		auto& outputs = pFrameBuffer->GetSpecification().Attachments.ColorAttachments;
 		auto& depthOutput = pFrameBuffer->GetSpecification().Attachments.DepthAttachment;
 
+		bool hasDepthAttachment = false;
+
 		for (uint32_t i{ 0u }; i < outputs.size(); ++i)
 		{
 			if (outputs[i].Output->GetCurrentState() != D3D12_RESOURCE_STATE_RENDER_TARGET)
@@ -217,13 +203,12 @@ namespace Relentless
 		}
 		if (depthOutput.Output)
 		{
+			hasDepthAttachment = true;
 			if (depthOutput.Output->GetCurrentState() != D3D12_RESOURCE_STATE_DEPTH_WRITE)
 				RenderCommand::TransitionResource(depthOutput.Output, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 		}
 		
-
-		
-		DXCall_STD(D3D12Core::GetCommandList()->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), pipelineSpecification.DepthWrite ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE));
+		DXCall_STD(D3D12Core::GetCommandList()->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), hasDepthAttachment ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE));
 
 		RenderCommand::SetRootSignature(pPipeline->GetRootSig());
 		RenderCommand::SetPipelineState(pPipeline->GetInterface2());

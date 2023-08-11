@@ -150,7 +150,7 @@ namespace Relentless
 
 	void ContentBrowserPanel::RenderAssetHierarchyOverview() noexcept
 	{
-		const uint32_t offset = currentDirectory.string().find("Assets");
+		const size_t offset = currentDirectory.string().find("Assets");
 		std::string displayLocationString = currentDirectory.string().substr(offset);
 		for (auto& character : displayLocationString)
 		{
@@ -344,7 +344,7 @@ namespace Relentless
 		if (textSize.x > m_ThumbnailWidth)
 		{
 			// calculate the number of chars that can be fit in the width
-			uint32_t nrOfAllowedCharacters = (m_ThumbnailWidth / textSize.x) * text.length();
+			uint32_t nrOfAllowedCharacters = static_cast<uint32_t>((m_ThumbnailWidth / textSize.x) * text.length());
 			const float ellipsisWidth = ImGui::CalcTextSize("...").x;
 
 			// take into account the width of "..." when truncating the text

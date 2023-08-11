@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stdint.h>
 #include <thread>
+#include <future>
 #include <mutex>
 #include <span>
 #include <filesystem>

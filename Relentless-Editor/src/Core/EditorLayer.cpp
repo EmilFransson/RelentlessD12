@@ -108,6 +108,10 @@ namespace Relentless
 					if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
 						m_ImmersiveModeEnabled = !m_ImmersiveModeEnabled;
 				}
+				else if (key == RLS_KEY::S && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+				{
+					SaveScene(std::string(EDITOR_ASSET_DIRECTORY) + "Scenes/Example.Relentless");
+				}
 			}
 			event.StopPropagation();
 			break;
@@ -118,7 +122,6 @@ namespace Relentless
 	void EditorLayer::OnImGuiRender() noexcept
 	{
 		PROFILE_FUNC;
-
 
 		if (!m_ImmersiveModeEnabled)
 		{
@@ -142,7 +145,7 @@ namespace Relentless
 					ImGui::MenuItem("Immersive Mode", "Ctrl + i", &m_ImmersiveModeEnabled);
 					if (ImGui::MenuItem("Full Screen", "Alt + Enter", Window::IsFullScreen()))
 					{
-						Window::PrepareForFullScreenToggling(!Window::IsFullScreen());
+						Window::PrepareForFullScreenToggling();
 					}
 
 					ImGui::EndMenu();
@@ -158,6 +161,8 @@ namespace Relentless
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Scene");
+
+		
 
 		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
 		{
@@ -197,6 +202,18 @@ namespace Relentless
 			ImVec2(m_ViewportPanelSize.x, m_ViewportPanelSize.y)
 		);
 
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_SCENE"))
+			{
+				const char* path = (const char*)payLoad->Data;
+				
+				m_Path = std::string(path);
+				//LoadScene(path);
+			}
+			ImGui::EndDragDropTarget();
+		}
+
 		if (m_SelectedEntity != NULL_ENTITY && m_CurrentGizmoType != GizmoType::NONE)
 		{
 			ManipulateTransformGizmo();
@@ -223,6 +240,26 @@ namespace Relentless
 			ImGui::SameLine();
 			m_SelectedEntity == NULL_ENTITY ? ImGui::Text("None") : ImGui::Text("%s (%d)", m_pScene->GetEntityManager().Get<NameComponent>(m_SelectedEntity).Name.c_str(), (m_SelectedEntity >> 12));
 			
+			ImGui::Text("#Shader bindable descriptors: ");
+			ImGui::SameLine(); 
+			ImGui::Text("%d", MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetNrOfDescriptorsInUse());
+
+			ImGui::Text("#CBV/SRV/UAV descriptors: ");
+			ImGui::SameLine();
+			ImGui::Text("%d", MemoryManager::Get().GetCBVSRVUAVDescriptorHeap()->GetNrOfDescriptorsInUse());
+
+			ImGui::Text("#RTV descriptors: ");
+			ImGui::SameLine();
+			ImGui::Text("%d", MemoryManager::Get().GetRTVDescriptorHeap()->GetNrOfDescriptorsInUse());
+
+			ImGui::Text("#DSV descriptors: ");
+			ImGui::SameLine();
+			ImGui::Text("%d", MemoryManager::Get().GetDSVDescriptorHeap()->GetNrOfDescriptorsInUse());
+
+			ImGui::Text("#Constant buffer sets: ");
+			ImGui::SameLine();
+			ImGui::Text("%d", MemoryManager::Get().GetNrOfConstantBuffersInUse());
+
 			ImGui::End();
 		}
 
@@ -232,10 +269,98 @@ namespace Relentless
 		m_PropertiesPanel.OnImGuiRender(m_DisplayPropertiesPanel && !m_ImmersiveModeEnabled);
 		m_ContentBrowserPanel.OnImGuiRender(m_DisplayContentBrowserPanel && !m_ImmersiveModeEnabled);
 		m_MetricsPanel.OnImGuiRender(m_DisplayMetricsPanel && !m_ImmersiveModeEnabled);
+
+		if (!m_ImmersiveModeEnabled)
+		{
+			ImGui::Begin("Developer Panel");
+			if (ImGui::Button("Load Full Sponza Model"))
+			{
+				std::vector<std::string> starterMeshes
+				{
+					"Sponza/NewSponza_Main_glTF_002.gltf",
+					"PKG_B_Ivy/NewSponza_IvyGrowth_glTF.gltf",
+					"PKG_A_Curtains/NewSponza_Curtains_glTF.gltf",
+					"PKG_C.1_Trees/NewSponza_CypressTree_glTF.gltf"
+				};
+				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+				MeshManager& mm = AssetManager::Get().GetMeshManager();
+
+				//Saves ~5 seconds (lol)
+				std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
+					{
+						std::string fullMeshPath(meshPath + std::string(starterMeshName));
+						mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
+					});
+				MemoryManager::Get().GetUploadBuffer()->Upload();
+			}
+			if (ImGui::Button("Load main Sponza model"))
+			{
+				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+				MeshManager& mm = AssetManager::Get().GetMeshManager();
+
+				std::string fullMeshPath(meshPath + "Sponza/NewSponza_Main_glTF_002.gltf");
+				mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
+				
+				MemoryManager::Get().GetUploadBuffer()->Upload();
+			}
+			if (ImGui::Button("Load Sponza curtains model"))
+			{
+				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+				MeshManager& mm = AssetManager::Get().GetMeshManager();
+
+				std::string fullMeshPath(meshPath + "PKG_A_Curtains/NewSponza_Curtains_glTF.gltf");
+				mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
+
+				MemoryManager::Get().GetUploadBuffer()->Upload();
+			}
+			if (ImGui::Button("Load Sponza ivy model"))
+			{
+				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+				MeshManager& mm = AssetManager::Get().GetMeshManager();
+
+				std::string fullMeshPath(meshPath + "PKG_B_Ivy/NewSponza_IvyGrowth_glTF.gltf");
+				mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
+
+				MemoryManager::Get().GetUploadBuffer()->Upload();
+			}
+			if (ImGui::Button("Load Sponza cypress tree model"))
+			{
+				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+				MeshManager& mm = AssetManager::Get().GetMeshManager();
+
+				std::string fullMeshPath(meshPath + "PKG_C.1_Trees/NewSponza_CypressTree_glTF.gltf");
+				mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
+
+				MemoryManager::Get().GetUploadBuffer()->Upload();
+			}
+
+			if (ImGui::Button("Load Bartholomew The Great"))
+			{
+				MeshManager& mm = AssetManager::Get().GetMeshManager();
+				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+
+				mm.LoadModelFromFile(meshPath + "Bartholomew/scene.gltf", m_pScene.get());
+
+				MemoryManager::Get().GetUploadBuffer()->Upload();
+			}
+
+			if (ImGui::Button("Load San Miguel"))
+			{
+				MeshManager& mm = AssetManager::Get().GetMeshManager();
+				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+
+				mm.LoadModelFromFile(meshPath + "San_Miguel/san-miguel-low-poly.obj", m_pScene.get());
+
+				MemoryManager::Get().GetUploadBuffer()->Upload();
+			}
+			ImGui::End();
+		}
+		
 	}
 
 	void EditorLayer::OnAttach() noexcept
 	{
+		m_pScene = std::make_shared<Scene>();
 		LoadStarterMeshes();
 		CreateStartScene();
 		m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pScene);
@@ -308,7 +433,7 @@ namespace Relentless
 		MemoryManager::Get().GetUploadBuffer()->Upload();
 		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
 
-		//SceneSerializer::Serialize(m_pScene, "Example.Relentless");
+		SceneSerializer::Serialize(m_pScene, std::string(EDITOR_ASSET_DIRECTORY) + "Scenes/Example.Relentless");
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -334,7 +459,7 @@ namespace Relentless
 		auto& cb = *m_pScene->GetEditorCamera()->m_pConstantBuffer;
 		MemoryManager::Get().UpdateConstantBuffer(cb, &m_pScene->GetEditorCamera()->GetPosition());
 
-		m_pScene->OnUpdate();
+		m_pScene->OnUpdate(deltaTime);
 	}
 
 	void EditorLayer::OnRender() noexcept
@@ -346,9 +471,9 @@ namespace Relentless
 		m_pSceneRenderer->End();
 	}
 
-	//NOT CURRENTLY CORRECT ACTUALLY:
-	//YES THE GPU HAS STARTED HOWEVER WE DO NOT KNOW WHETHER IT IS FINISHED AT ALL 
-	//WITH RENDERING THIS FRAME (SEE Application.cpp for more details)
+	//This is post issuing the render commands.
+	//Important: That does NOT mean it is finished.
+	//To be specific: It should be assumed it is not
 	void EditorLayer::OnPostRender() noexcept
 	{
 		if (m_HoveringSceneViewport)
@@ -359,63 +484,43 @@ namespace Relentless
 			m_HoveredEntity = NULL_ENTITY;
 
 		m_SceneRendererPanel.OnPostRender();
+
+		if (!m_Path.empty())
+		{
+			LoadScene(m_Path);
+			m_Path = {};
+		}
 	}
 
 	void EditorLayer::LoadStarterMeshes() noexcept
 	{
-		auto& assetManager = AssetManager::Get();
 		std::vector<std::string> starterMeshes
 		{
+			"Cube.obj",
 			"Capsule.gltf",
 			"Cone.gltf",
 			"Cylinder.gltf",
-			"IcoSphere.obj",
+			"Icosphere.obj",
 			"Plane.gltf",
 			"Quad.gltf",
 			"Sphere.obj",
 			"Torus.obj",
-			"Triangle.gltf",
+			"Triangle.obj",
 			"UtahTeapot.gltf"
 		};
 
-
-		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Meshes/");
+		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/StarterContent/");
+		MeshManager& mm = AssetManager::Get().GetMeshManager();
+		
 		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
 			{
 				std::string fullMeshPath(meshPath + std::string(starterMeshName));
-				std::string fileName = starterMeshName.substr(0, starterMeshName.find_first_of("."));
-				if (!assetManager.HasLoaded(fileName + " Vertex Buffer"))
-				{
-					MeshFactory meshFactory;
-					auto& starterMesh = meshFactory.LoadFromFile(fullMeshPath)[0];
-
-					VertexBuffer::Specification vbSpec
-					{
-						.NrOfVertices = (uint32_t)starterMesh.Vertices.size(),
-						.TotalSizeInBytes = (uint32_t)starterMesh.Vertices.size() * sizeof(SimpleVertex),
-						.Stride = sizeof(SimpleVertex),
-						.pBuffer = (void*)starterMesh.Vertices.data(),
-						.Name = fileName + std::string(" Vertex Buffer")
-					};
-
-					IndexBuffer::Specification ibSpec
-					{
-						.NrOfIndices = (uint32_t)starterMesh.Indices.size(),
-						.TotalSizeInBytes = (uint32_t)starterMesh.Indices.size() * sizeof(uint32_t),
-						.Stride = sizeof(uint32_t),
-						.pBuffer = (void*)starterMesh.Indices.data(),
-						.Name = fileName + std::string(" Index Buffer")
-					};
-					AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
-					AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
-				}
+				mm.LoadModelFromFile(fullMeshPath);
 			});
 	}
 
 	void EditorLayer::CreateStartScene() noexcept
 	{
-		m_pScene = std::make_shared<Scene>();
-
 		m_pScene->CreateLight("Directional Light", LightType::Directional);
 		
 		{
@@ -432,7 +537,14 @@ namespace Relentless
 			auto cube = m_pScene->CreateShape<Shape::Cube>();
 			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(cube);
 			tc.Translation = { 0.0f, 0.55f, 0.0f };
+		
+			//auto cube2 = m_pScene->CreateShape<Shape::Cube>();
+			//auto& tc2 = m_pScene->GetEntityManager().Get<TransformComponent>(cube2);
+			//tc2.Translation = { 0.0f, 10.0f, 0.0f };
+			//m_pScene->ParentEntity(cube2, cube);
 		}
+
+		
 	}
 
 	void EditorLayer::OnSceneViewportChanged() noexcept
@@ -458,14 +570,14 @@ namespace Relentless
 	}
 
 	//Should be extended to perform full copies, however as for now
-	//it serves as an easy way of getting more shapes on screen.
+	//it serves as an easy way of getting more meshes/models on screen.
 	void EditorLayer::CopySelectedEntity() noexcept
 	{
 		if (m_SelectedEntity == NULL_ENTITY)
 			return;
 
 		auto& mgr = m_pScene->GetEntityManager();
-		auto newEntity = m_pScene->CreateEntityWithUUID(mgr.Get<NameComponent>(m_SelectedEntity).Name.c_str());
+		auto newEntity = m_pScene->CreateEntityWithUUID(mgr.Get<NameComponent>(m_SelectedEntity).Name.c_str(), IDComponent().UuId);
 		auto& tc1 = mgr.Get<TransformComponent>(m_SelectedEntity);
 		auto& tc2 = mgr.Get<TransformComponent>(newEntity);
 		tc2.Translation = tc1.Translation;
@@ -478,8 +590,7 @@ namespace Relentless
 			auto& mfcNew = mgr.Add<MeshFilterComponent>(newEntity);
 			auto& mfc = mgr.Get<MeshFilterComponent>(m_SelectedEntity);
 
-			mfcNew.VertexBufferID = mfc.VertexBufferID;
-			mfcNew.IndexBufferID = mfc.IndexBufferID;
+			mfcNew.MeshHandle = mfc.MeshHandle;
 		}
 		if (mgr.Has<MeshRendererComponent>(m_SelectedEntity))
 		{
@@ -597,5 +708,29 @@ namespace Relentless
 
 			m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
 		}
+	}
+
+	void EditorLayer::LoadScene(const std::filesystem::path& filepath) noexcept
+	{
+		MasterRenderer::WaitAndSyncAllFramesInFlight();
+		m_pScene = std::make_shared<Scene>();
+		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
+		SceneSerializer::Deserialize(m_pScene, filepath.string());
+		m_pSceneRenderer->SetContext(m_pScene);
+
+		m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
+		m_PropertiesPanel.SetActiveScene(m_pScene.get());
+
+		m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
+		m_SceneHierarchyPanel.SetActiveScene(m_pScene.get());
+
+		m_SelectedEntity = m_HoveredEntity = NULL_ENTITY;
+
+		m_SceneViewportChanged = true;
+	}
+
+	void EditorLayer::SaveScene(const std::filesystem::path& filepath) noexcept
+	{
+		SceneSerializer::Serialize(m_pScene, filepath.string());
 	}
 }

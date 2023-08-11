@@ -41,6 +41,8 @@ struct Material
 
     float heightScale;
     float aoScale;
+
+    uint combinedRoughnessMetalnessMap;
 };
 
 struct PerFrameData
@@ -80,8 +82,6 @@ struct PointLight
 
 ConstantBuffer<PerDrawData> perDrawData     : register(b3, space0);
 ConstantBuffer<PerFrameData> perFrameData   : register(b4, space0);
-
-static const float3 ambientLight = float3(0.03f, 0.03f, 0.03f);
 
 static const uint NO_USE = 0xFFFFFFFF;
 
@@ -155,14 +155,12 @@ float3 CalculateBRDF(const float3 toLightDirection, const float3 viewDirection, 
     return diffuse + specular;
 }
 
-
 float4 ps_main(PS_IN psIn) : SV_TARGET
 {
     ConstantBuffer<Material> material = ResourceDescriptorHeap[perDrawData.materialIndex];
     ConstantBuffer<Camera> camera = ResourceDescriptorHeap[perFrameData.cameraMetaDataIndex];
 
     float2 adjustedUV = psIn.inTexCoords;
-    
 
     float4 albedoColor = float4(material.color, 1.0f);
     if (material.albedoIndex != NO_USE)
@@ -170,22 +168,31 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
         Texture2D albedoTexture = ResourceDescriptorHeap[material.albedoIndex];
         albedoColor = albedoTexture.Sample(sampler_ANISOTROPIC, adjustedUV);
         albedoColor.rgb = pow(albedoColor.rgb, 2.2);
+        clip(albedoColor.a < 0.1f ? -1 : 1);
     }
 
     float metallic = material.metallic;
-    if (material.metallicIndex != NO_USE)
+    float roughness = material.roughness;
+    if (material.combinedRoughnessMetalnessMap == 1)
     {
         Texture2D metallicTexture = ResourceDescriptorHeap[material.metallicIndex];
-        metallic = metallicTexture.Sample(sampler_LINEAR, adjustedUV).r;
+        roughness = metallicTexture.Sample(sampler_LINEAR, adjustedUV).g;
+        metallic = metallicTexture.Sample(sampler_LINEAR, adjustedUV).b;
+    }
+    else
+    {
+        if (material.metallicIndex != NO_USE)
+        {
+            Texture2D metallicTexture = ResourceDescriptorHeap[material.metallicIndex];
+            metallic = metallicTexture.Sample(sampler_LINEAR, adjustedUV).r;
+        }
+        if (material.roughnessIndex != NO_USE)
+        {
+            Texture2D roughnessTexture = ResourceDescriptorHeap[material.roughnessIndex];
+            roughness = roughnessTexture.Sample(sampler_LINEAR, adjustedUV).r;
+        }
     }
     metallic = clamp(metallic, 0.0f, 1.0f);
-
-    float roughness = material.roughness;
-    if (material.roughnessIndex != NO_USE)
-    {
-        Texture2D roughnessTexture = ResourceDescriptorHeap[material.roughnessIndex];
-        roughness = roughnessTexture.Sample(sampler_LINEAR, adjustedUV).r;
-    }
     roughness = clamp(roughness, 0.0f, 1.0f);
 
 

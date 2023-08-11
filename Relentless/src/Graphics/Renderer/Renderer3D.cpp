@@ -185,7 +185,7 @@ namespace Relentless
 		s_RendererData.m_PickingPassEntities.push_back(e);
 	}
 
-	void Renderer3D::End(EntityManager& entityManager) noexcept
+	void Renderer3D::End([[maybe_unused]] EntityManager& entityManager) noexcept
 	{
 		PROFILE_FUNC;
 

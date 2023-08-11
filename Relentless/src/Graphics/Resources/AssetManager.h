@@ -3,18 +3,7 @@
 #include "IndexBuffer.h"
 #include "../MemoryManager.h"
 #include "Material.h"
-//namespace std
-//{
-//	template<>
-//	struct hash<UUID>
-//	{
-//		std::size_t operator()(const UUID& gUid) const
-//		{
-//			const uint64_t* half = reinterpret_cast<const uint64_t*>(&gUid);
-//			return half[0] ^ half[1];
-//		}
-//	};
-//}
+#include "../../Mesh/Mesh.h"
 
 namespace Relentless
 {
@@ -27,10 +16,9 @@ namespace Relentless
 		~AssetManager() noexcept = default;
 
 		[[nodiscard]] static constexpr AssetManager& Get() noexcept { return s_instance; }
-
 		[[nodiscard]] bool HasLoaded(const std::string& assetPath) const noexcept;
-
 		[[nodiscard]] MaterialManager& GetMaterialManager() noexcept { return m_MaterialManager; }
+		[[nodiscard]] MeshManager& GetMeshManager() noexcept { return m_MeshManager; }
 
 		template<typename AssetType>
 		void Upload(const ResourceID& resourceID) noexcept
@@ -144,5 +132,6 @@ namespace Relentless
 		std::unordered_map<ResourceID, std::shared_ptr<IResource>> m_Assets;
 		std::unordered_map<std::string, ResourceID> m_PathToResourceIDMap;
 		MaterialManager m_MaterialManager;
+		MeshManager m_MeshManager;
 	};
 }

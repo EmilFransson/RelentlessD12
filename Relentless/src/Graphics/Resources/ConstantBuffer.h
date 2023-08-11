@@ -7,7 +7,8 @@ namespace Relentless
 	{
 	public:
 		explicit ConstantBuffer(size_t sizeInBytes) noexcept;
-		virtual ~ConstantBuffer() noexcept override final = default;
+		virtual ~ConstantBuffer() noexcept override final;
+		void ReleaseHandles() noexcept;
 
 		size_t m_SizeInBytes;
 		DescriptorHandle m_NonVisibleHandle;

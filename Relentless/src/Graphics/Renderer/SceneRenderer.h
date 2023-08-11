@@ -20,6 +20,7 @@ namespace Relentless
 		~SceneRenderer() noexcept = default;
 		void Initialize() noexcept;
 		void Begin() noexcept;
+		void SetContext(const std::shared_ptr<Scene>& pScene) noexcept;
 		void IssueRenderPasses() noexcept;
 		void End() noexcept;
 		void OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept;
@@ -28,6 +29,7 @@ namespace Relentless
 		const Options& GetOptions() const noexcept { return m_Options; }
 		void SetContactShadowsType(const ContactShadows contactShadowsType) noexcept;
 		[[nodiscard]] GFSDK_SSAO_Parameters& GetHBAOPlusParameters() noexcept { return m_HBAOPlusParameters; }
+		void InitializeHBAOPlus() noexcept;
 	private:
 		void PreZPass() noexcept;
 		void GeometryPass() noexcept;
@@ -37,7 +39,6 @@ namespace Relentless
 		void PickingPass() noexcept;
 		void CompositePass() noexcept;
 		void CombinedGeometryAndPickingPass() noexcept;
-		void InitializeHBAOPlus() noexcept;
 	private:
 		Options m_Options;
 		std::shared_ptr<Scene> m_pScene;
@@ -107,8 +108,6 @@ namespace Relentless
 
 		std::shared_ptr<ReadBackBuffer> m_pIdentifierReadbackBuffer{ nullptr };
 		std::shared_ptr<RenderTexture> m_pResolvedTexture{ nullptr };
-		std::shared_ptr<RenderTexture> m_pHBAOPlusTexture{ nullptr };
-		std::shared_ptr<RenderTexture> m_pResolvedHBAOPlusTexture{ nullptr };
 		std::shared_ptr<Texture2D> m_BRDFLutTexture{ nullptr };
 		
 		GFSDK_SSAO_Parameters m_HBAOPlusParameters;

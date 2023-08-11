@@ -20,7 +20,7 @@ namespace Relentless
 		m_pShaderBindablesDescriptorHeap = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, true));
 		m_pDeferredFreeLists = std::move(std::unique_ptr<std::vector<DescriptorHandle>[]>(RLS_NEW std::vector<DescriptorHandle>[D3D12Core::GetNrOfBufferedFrames()]));
 		m_pDeferredFreeListsResources = std::move(std::unique_ptr<std::vector<std::shared_ptr<IResource>>[]>(RLS_NEW std::vector<std::shared_ptr<IResource>>[D3D12Core::GetNrOfBufferedFrames()]));
-		m_pUploadBuffer = std::move(std::make_unique<UploadBuffer>(5'000'000, "Main Upload Buffer"));
+		m_pUploadBuffer = std::move(std::make_unique<UploadBuffer>(500'000'000, "Main Upload Buffer"));
 	}
 
 	const DescriptorHandle MemoryManager::CreateDescriptorHandle(DescriptorHandleType descriptorHandleType) noexcept
@@ -40,7 +40,17 @@ namespace Relentless
 			return handle;
 		}
 		case DescriptorHandleType::SRV_NV:
+		{
+			DescriptorHandle handle = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptor();
+			handle.Type = descriptorHandleType;
+			return handle;
+		}
 		case DescriptorHandleType::CBV_NV:
+		{
+			DescriptorHandle handle = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptor();
+			handle.Type = descriptorHandleType;
+			return handle;
+		}
 		case DescriptorHandleType::UAV_NV:
 		{
 			DescriptorHandle handle = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptor();
@@ -48,7 +58,17 @@ namespace Relentless
 			return handle;
 		}
 		case DescriptorHandleType::SRV:
+		{
+			DescriptorHandle handle = m_pShaderBindablesDescriptorHeap->AllocateDescriptor();
+			handle.Type = descriptorHandleType;
+			return handle;
+		}
 		case DescriptorHandleType::CBV:
+		{
+			DescriptorHandle handle = m_pShaderBindablesDescriptorHeap->AllocateDescriptor();
+			handle.Type = descriptorHandleType;
+			return handle;
+		}
 		case DescriptorHandleType::UAV:
 		{
 			DescriptorHandle handle = m_pShaderBindablesDescriptorHeap->AllocateDescriptor();
@@ -64,7 +84,6 @@ namespace Relentless
 
 	void MemoryManager::DestroyDescriptorHandle(const DescriptorHandle& descriptorHandle) noexcept
 	{
-		//const uint32_t index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
 		const uint32_t frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
 
 		m_pDeferredFreeLists[frameIndex].emplace_back(descriptorHandle);
@@ -72,17 +91,14 @@ namespace Relentless
 
 	void MemoryManager::DestroyResource(std::shared_ptr<IResource> pResource) noexcept
 	{
-		//const uint32_t index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
 		const uint32_t frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
-
 		
 		m_pDeferredFreeListsResources[frameIndex].emplace_back(std::move(pResource));
 	}
 
 	void MemoryManager::PerformDeferredDeletion() noexcept
 	{
-		//const uint32_t index = Window::GetCurrentBackbufferIndex() % D3D12Core::GetNrOfBufferedFrames();
-		const uint32_t frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+		const uint32_t frameIndex = MasterRenderer::GetCurrentFrameIndex();
 		
 		if (!m_pDeferredFreeLists[frameIndex].empty())
 		{
@@ -95,6 +111,15 @@ namespace Relentless
 					break;
 				case DescriptorHandleType::DSV:
 					m_pDSVDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
+					break;
+				case DescriptorHandleType::CBV:
+					m_pShaderBindablesDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
+					break;
+				case DescriptorHandleType::SRV:
+					m_pShaderBindablesDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
+					break;
+				case DescriptorHandleType::UAV:
+					m_pShaderBindablesDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
 					break;
 				case DescriptorHandleType::CBV_NV:
 				case DescriptorHandleType::SRV_NV:
@@ -191,8 +216,18 @@ namespace Relentless
 
 	size_t MemoryManager::CreateConstantBuffer(uint32_t sizeInBytes) noexcept
 	{
-		m_ConstantBuffers.emplace_back(std::make_unique<ConstantBuffer>(sizeInBytes));
-		return m_ConstantBuffers.size() - 1;
+		if (!m_FreeConstantBufferHandles.empty())
+		{
+			size_t handle = m_FreeConstantBufferHandles.front();
+			m_FreeConstantBufferHandles.pop();
+			m_ConstantBuffers[handle] = std::make_unique<ConstantBuffer>(sizeInBytes);
+			return handle;
+		}
+		else
+		{
+			m_ConstantBuffers.emplace_back(std::make_unique<ConstantBuffer>(sizeInBytes));
+			return m_ConstantBuffers.size() - 1;
+		}
 	}
 
 	uint32_t MemoryManager::GetCBDescriptorIndex(const size_t constantBufferHandle) noexcept
@@ -201,4 +236,11 @@ namespace Relentless
 		return GetConstantBuffer(constantBufferHandle)->m_VisibleHandles[frameIndex].Index;
 	}
 
+	void MemoryManager::FreeConstantBuffer(size_t cbHandle) noexcept 
+	{
+		RLS_ASSERT(m_ConstantBuffers.size() > cbHandle && m_ConstantBuffers[cbHandle], "Constant buffer handle is invalid.");
+		
+		m_ConstantBuffers[cbHandle]->ReleaseHandles();
+		m_FreeConstantBufferHandles.push(cbHandle);
+	}
 }

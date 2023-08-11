@@ -146,9 +146,6 @@ namespace Relentless
 
 			ImGui::Columns(1);
 
-
-			constexpr const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen;
-
 			ImGui::Columns(2);
 			
 			if (material.HasMetallicTexture())

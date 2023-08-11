@@ -2,6 +2,7 @@
 namespace Relentless
 {
 	[[nodiscard]] std::string ConvertWstringToString(std::wstring const& wstr) noexcept;
+	[[nodiscard]] std::string ConvertWideStringToString(std::wstring const& wstr) noexcept;
 	[[nodiscard]] std::wstring ConvertStringToWstring(const std::string& string) noexcept;
 
 	static constexpr unsigned int crc_table[256] = {

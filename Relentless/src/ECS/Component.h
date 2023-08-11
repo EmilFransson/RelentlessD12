@@ -3,6 +3,7 @@
 #include "../Graphics/Resources/ConstantBuffer.h"
 #include "../Graphics/D3D12Core.h"
 #include "../Graphics/Resources/Material.h"
+#include "../Mesh/Mesh.h"
 
 namespace Relentless
 {
@@ -52,8 +53,7 @@ namespace Relentless
 
 	struct MeshFilterComponent
 	{
-		ResourceID VertexBufferID;
-		ResourceID IndexBufferID;
+		MeshHandle MeshHandle;
 	};
 
 	struct MeshRendererComponent
@@ -87,6 +87,12 @@ namespace Relentless
 			#else
 			UuidCreate(&UuId);
 			#endif
+		}
+		
+		IDComponent(const UUID& id)
+			: UuId{id}
+		{
+
 		}
 
 		UUID UuId;
@@ -165,11 +171,6 @@ namespace Relentless
 		DirectX::XMFLOAT3 LocalTranslation;
 		DirectX::XMFLOAT3 LocalRotation;
 		DirectX::XMFLOAT3 LocalScale;
-	};
-
-	struct AlbedoTextureComponent
-	{
-		ResourceID AlbedoTextureID;
 	};
 
 	struct SelectedInEditorComponent

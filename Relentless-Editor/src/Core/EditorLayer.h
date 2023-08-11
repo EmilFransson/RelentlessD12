@@ -3,7 +3,7 @@
 #include "../Panels/SceneHierarchyPanel.h"
 #include "../Panels/PropertiesPanel.h"
 #include "../Panels/ContentBrowserPanel.h"
-#include "../Panels/MetricsPanel.h"
+#include "../Panels/MetricsPanel.h" 
 #include "../Panels/SceneRendererPanel.h"
 #include "../Panels/InspectorPanel.h"
 
@@ -30,6 +30,8 @@ namespace Relentless
 		void DestroySelectedEntity() noexcept;
 		void CopySelectedEntity() noexcept;
 		void ManipulateTransformGizmo() noexcept;
+		void LoadScene(const std::filesystem::path& filepath) noexcept;
+		void SaveScene(const std::filesystem::path& filepath) noexcept;
 	private:
 		bool m_SceneViewportChanged;
 		bool m_HoveringSceneViewport;
@@ -62,5 +64,7 @@ namespace Relentless
 		bool m_DisplayStatisticsPanel;
 
 		bool m_ImmersiveModeEnabled;
+
+		std::string m_Path{};
 	};
 }

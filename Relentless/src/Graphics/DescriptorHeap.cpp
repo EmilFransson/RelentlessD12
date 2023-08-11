@@ -47,12 +47,12 @@ namespace Relentless
 
 		RLS_ASSERT(m_pDescriptorHeap, "D3D12 Descriptor heap interface is not initialized.");
 		RLS_ASSERT(m_CurrentNrOfDescriptors != m_Capacity, "Descriptor heap capacity reached.");
-
+		
 		if (m_FreeList.empty())
 		{
+			m_CurrentNrOfDescriptors++;
 			const uint32_t index = m_FreeHandles[m_CurrentNrOfDescriptors];
 			const uint32_t offset = index * m_DescriptorSize;
-			m_CurrentNrOfDescriptors++;
 
 			DescriptorHandle descriptorHandleToReturn{};
 			descriptorHandleToReturn.CPUHandle.ptr = m_CpuHandleStart.ptr + offset;

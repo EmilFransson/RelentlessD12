@@ -13,6 +13,7 @@ namespace Relentless
 		  m_EmissionIntensity{0.0f},
 		  m_HeightScale{0.02f},
 		  m_AOScale{1.0f},
+		  m_CombinedRoughnessMetallnesMap{false},
 		  m_AlbedoTextureIndex{0xFFFFFFFF},
 		  m_MetallicTextureIndex{0xFFFFFFFF},
 		  m_RoughnessTextureIndex{0xFFFFFFFF},
@@ -230,7 +231,7 @@ namespace Relentless
 		return AssetManager::Get().GetAsset<Texture2D>(m_EmissionTextureHandle);
 	}
 
-	size_t Material::GetConstantBufferIndex() const noexcept
+	uint32_t Material::GetConstantBufferIndex() const noexcept
 	{
 		return MemoryManager::Get().GetCBDescriptorIndex(m_ConstantBufferID);
 	}
@@ -359,14 +360,20 @@ namespace Relentless
 		}
 	}
 
+	inline static std::mutex g_LoadMutex2;
+	
 	Material& MaterialManager::Get(const MaterialHandle& materialHandle) noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_LoadMutex2);
+
 		RLS_ASSERT(m_IDToMaterialMap.contains(materialHandle), "Material handle is invalid.");
 		return m_IDToMaterialMap[materialHandle];
 	}
 
 	MaterialHandle MaterialManager::Create(const std::string& name, const Material& material) noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_LoadMutex2);
+
 		UUID uuID;
 		#if defined RLS_DEBUG
 		RLS_ASSERT(::UuidCreate(&uuID) == RPC_S_OK, "Failed to generate UUID.");
@@ -375,7 +382,7 @@ namespace Relentless
 		#endif
 
 		m_IDToMaterialMap[uuID] = material;
-		m_IDToMaterialMap[uuID].m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(88u);
+		m_IDToMaterialMap[uuID].m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(92u);
 		m_IDToMaterialMap[uuID].m_Name = name;
 
 		SetDirty(uuID);
@@ -384,6 +391,8 @@ namespace Relentless
 
 	void MaterialManager::Upload(const MaterialHandle& materialHandle) noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_LoadMutex2);
+
 		Material& material = m_IDToMaterialMap[materialHandle];
 		MemoryManager::Get().UpdateConstantBuffer(material.m_ConstantBufferID, &material);
 	}

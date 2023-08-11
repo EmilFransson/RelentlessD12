@@ -135,7 +135,7 @@ namespace Relentless
 					ImGui::PushMultiItemsWidths(1, ImGui::CalcItemWidth());
 					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
-					ImGui::DragFloat("##HBAO_PLUS_RADIUS", &parameters.Radius, 0.06, 0.0f, FLT_MAX);
+					ImGui::DragFloat("##HBAO_PLUS_RADIUS", &parameters.Radius, 0.06f, 0.0f, FLT_MAX);
 
 					ImGui::PopItemWidth();
 					ImGui::PopStyleVar();
@@ -146,7 +146,7 @@ namespace Relentless
 					ImGui::PushMultiItemsWidths(1, ImGui::CalcItemWidth());
 					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
-					ImGui::DragFloat("##HBAO_PLUS_BIAS", &parameters.Bias, 0.006, 0.0f, 0.5f);
+					ImGui::DragFloat("##HBAO_PLUS_BIAS", &parameters.Bias, 0.006f, 0.0f, 0.5f);
 
 					ImGui::PopItemWidth();
 					ImGui::PopStyleVar();
@@ -157,7 +157,7 @@ namespace Relentless
 					ImGui::PushMultiItemsWidths(1, ImGui::CalcItemWidth());
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
-			ImGui::DragFloat("##HBAO_PLUS_SmallScaleAO", &parameters.SmallScaleAO, 0.006, 0.0f, 2.0f);
+			ImGui::DragFloat("##HBAO_PLUS_SmallScaleAO", &parameters.SmallScaleAO, 0.006f, 0.0f, 2.0f);
 
 			ImGui::PopItemWidth();
 			ImGui::PopStyleVar();
@@ -168,7 +168,7 @@ namespace Relentless
 					ImGui::PushMultiItemsWidths(1, ImGui::CalcItemWidth());
 					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
-					ImGui::DragFloat("##HBAO_PLUS_LargeScaleAO", &parameters.LargeScaleAO, 0.006, 0.0f, 2.0f);
+					ImGui::DragFloat("##HBAO_PLUS_LargeScaleAO", &parameters.LargeScaleAO, 0.006f, 0.0f, 2.0f);
 
 					ImGui::PopItemWidth();
 					ImGui::PopStyleVar();
@@ -179,7 +179,7 @@ namespace Relentless
 					ImGui::PushMultiItemsWidths(1, ImGui::CalcItemWidth());
 					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
-					ImGui::DragFloat("##HBAO_PLUS_Power", &parameters.PowerExponent, 0.006, 1.0f, 4.0f);
+					ImGui::DragFloat("##HBAO_PLUS_Power", &parameters.PowerExponent, 0.006f, 1.0f, 4.0f);
 
 					ImGui::PopItemWidth();
 					ImGui::PopStyleVar();
@@ -267,7 +267,7 @@ namespace Relentless
 						ImGui::PushMultiItemsWidths(1, ImGui::CalcItemWidth());
 						ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
-						ImGui::DragFloat("##HBAO_PLUS_BlurSharpness", &parameters.Blur.Sharpness, 0.06, 0.0f, 16.0f);
+						ImGui::DragFloat("##HBAO_PLUS_BlurSharpness", &parameters.Blur.Sharpness, 0.06f, 0.0f, 16.0f);
 	
 						ImGui::PopItemWidth();
 						ImGui::PopStyleVar();

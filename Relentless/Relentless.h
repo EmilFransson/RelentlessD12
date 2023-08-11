@@ -31,6 +31,7 @@
 #include <src/Graphics/Resources/VertexBuffer.h>
 #include <src/Graphics/Resources/IndexBuffer.h>
 #include <src/Graphics/Resources/AssetManager.h>
+#include <src/Mesh/Mesh.h>
 
 //IO
 #include <src/Core/Window.h>

@@ -61,8 +61,12 @@ namespace Relentless
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(m_Name).c_str());
 	}
 
+	inline static std::mutex g_LoadMutex;
+
 	void UploadBuffer::Upload() noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_LoadMutex);
+
 		uint64_t offset = 0u;
 		for (uint32_t i{ 0u }; i < m_UploadQueue.size(); i++)
 		{
@@ -87,17 +91,16 @@ namespace Relentless
 		m_MappedPtr -= offset;
 		m_CurrentSize = 0u;
 
-		//Renderer3D::ExecuteCommands();
-		//Renderer3D::WaitForGPU();
-		//RenderCommand::ResetFrameCommandUnits(0u);
-
+		
 		MasterRenderer::ExecuteCommands();
 		MasterRenderer::WaitForGPU();
-		MasterRenderer::ResetFrameCommandUnits(0u);
+		MasterRenderer::ResetFrameCommandUnits(MasterRenderer::GetCurrentFrameIndex());
 	}
 
 	void UploadBuffer::Copy(const uint64_t size, void* pSrc, IResource* pDst, const D3D12_RESOURCE_STATES stateAfterCopy) noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_LoadMutex);
+		
 		RLS_ASSERT(size > 0, "Size is not greater than 0.");
 		RLS_ASSERT(pSrc, "Source adress is nullptr.");
 		RLS_ASSERT(pDst, "Destination resource is nullptr.");

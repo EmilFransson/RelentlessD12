@@ -30,17 +30,20 @@ namespace Relentless
 			depthAttachment.Format = TextureFormat::R32TYPELESS;
 			depthAttachment.ShouldResize = true;
 			depthAttachment.Transfer = true;
+			depthAttachment.OperatorOnLoad = OperatorOnLoad::Clear;
 
 			FrameBufferSpecification frameBufferSpecification{};
 			frameBufferSpecification.DebugName = "Pre-Z Framebuffer";
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
 			frameBufferSpecification.MSAASamples = 8u;
+			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::LESS;
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Pre-Z Pipeline";
 			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = true;
+			pipelineSpecification.DepthWrite = true;
 
 			RenderPassSpecification renderpassDescriptor{};
 			renderpassDescriptor.DebugName = "Pre-Z Pass";
@@ -69,7 +72,7 @@ namespace Relentless
 			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
 			frameBufferSpecification.MSAASamples = 8u;
-			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::LESS_EQUAL;
+			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::EQUAL;
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Geometry Pipeline";
@@ -77,6 +80,7 @@ namespace Relentless
 			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PBRPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = true;
+			pipelineSpecification.DepthWrite = false;
 
 			RenderPassSpecification renderpassDescriptor{};
 			renderpassDescriptor.DebugName = "Geometry Pass";
@@ -89,8 +93,9 @@ namespace Relentless
 		{
 			ColorAttachment colorAttachment;
 			colorAttachment.Format = TextureFormat::RGBA32F;
-			colorAttachment.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
+			colorAttachment.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::LightSkyBlue);
 			colorAttachment.Transfer = true;
+			colorAttachment.ShouldResize = true;
 
 			ColorAttachment colorAttachment2;
 			colorAttachment2.Format = TextureFormat::R32UINT;
@@ -98,14 +103,20 @@ namespace Relentless
 			colorAttachment2.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
 			colorAttachment2.Transfer = true;
 			colorAttachment2.IsSRGB = false;
+			colorAttachment2.ShouldResize = true;
 
 			DepthAttachment depthAttachment;
 			depthAttachment.Format = TextureFormat::Depth;
+			depthAttachment.ShouldResize = false;
+			depthAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
+			depthAttachment.Output = m_PreZRenderPass->GetPipeline()->GetFrameBuffer()->GetDepthOutput();
+			depthAttachment.pOutputDependency = m_PreZRenderPass->GetPipeline()->GetFrameBuffer();
 
 			FrameBufferSpecification frameBufferSpecification{};
 			frameBufferSpecification.DebugName = "GeometryAndPicking Framebuffer";
 			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment, colorAttachment2 };
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
+			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::EQUAL;
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "GeometryAndPicking Pipeline";
@@ -113,6 +124,7 @@ namespace Relentless
 			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("GeometryAndPickingPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = false;
+			pipelineSpecification.DepthWrite = false;
 
 			RenderPassSpecification renderpassDescriptor{};
 			renderpassDescriptor.DebugName = "GeometryAndPicking Pass";
@@ -143,7 +155,6 @@ namespace Relentless
 			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
 			frameBufferSpecification.Attachments.DepthAttachment = { depthAttachment };
 			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::ALWAYS;
-			frameBufferSpecification.ShouldResize = false;
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Wireframe Pipeline";
@@ -169,6 +180,7 @@ namespace Relentless
 			colorAttachment.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
 			colorAttachment.Transfer = true;
 			colorAttachment.IsSRGB = false;
+			colorAttachment.ShouldResize = true;
 
 			DepthAttachment depthAttachment;
 			depthAttachment.Format = TextureFormat::Depth;
@@ -215,8 +227,7 @@ namespace Relentless
 			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
 			frameBufferSpecification.MSAASamples = 8u;
-			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::LESS_EQUAL;
-			frameBufferSpecification.ShouldResize = false;
+			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::LESS;
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Editor Grid Pipeline";
@@ -225,6 +236,7 @@ namespace Relentless
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.Topology = Topology::Line;
 			pipelineSpecification.MSAAEligible = true;
+			pipelineSpecification.DepthWrite = false;
 
 			RenderPassSpecification renderpassDescriptor{};
 			renderpassDescriptor.DebugName = "Editor Grid Pass";
@@ -238,7 +250,6 @@ namespace Relentless
 			ColorAttachment colorAttachment;
 			colorAttachment.Format = TextureFormat::RGBA32F;
 			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
-			colorAttachment.Transfer = true;
 			colorAttachment.Output = MasterRenderer::GetFrameBuffer()->GetOutput(0);
 			colorAttachment.pOutputDependency = MasterRenderer::GetFrameBuffer();
 			colorAttachment.ShouldResize = false;
@@ -255,6 +266,7 @@ namespace Relentless
 			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PostProcessPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = false;
+			pipelineSpecification.DepthWrite = false;
 
 			RenderPassSpecification renderpassDescriptor{};
 			renderpassDescriptor.DebugName = "Composite Pass";
@@ -338,13 +350,19 @@ namespace Relentless
 		RenderCommand::SetScissorRect(m_pScene->GetScissorRect());
 	}
 
+	void SceneRenderer::SetContext(const std::shared_ptr<Scene>& pScene) noexcept
+	{
+		RLS_ASSERT(pScene, "Scene is invalid.");
+		m_pScene = pScene;
+	}
+
 	void SceneRenderer::IssueRenderPasses() noexcept
 	{
 		PROFILE_FUNC;
 
+		PreZPass();
 		if (m_Options.MSAASamples > 1)
 		{
-			PreZPass();
 			GeometryPass();
 			if (m_Options.ContactShadowType == ContactShadows::HBAO_PLUS)
 			{
@@ -355,6 +373,10 @@ namespace Relentless
 		else
 		{
 			CombinedGeometryAndPickingPass();
+			if (m_Options.ContactShadowType == ContactShadows::HBAO_PLUS)
+			{
+				HBAOPlusRenderPass();
+			}
 		}
 		EditorGridPass();
 		WireframePass();
@@ -402,8 +424,6 @@ namespace Relentless
 		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 		m_PreZRenderPass->Upload("vpConstantBuffer", &m_VPData);
 
-		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
-
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 		AssetManager& assetManager = AssetManager::Get();
 
@@ -413,13 +433,13 @@ namespace Relentless
 
 		entityManager.Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (assetManager.Exists(mfc.VertexBufferID))
+				if (mfc.MeshHandle != NULL_RESOURCEID)
 				{
-					VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
-					IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
+					MeshManager& m = assetManager.GetMeshManager();
+					FullMesh& mesh = m.Get(mfc.MeshHandle);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, vb->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, ib->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
@@ -429,7 +449,7 @@ namespace Relentless
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
 
-					RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
 				}
 			});
 
@@ -452,18 +472,20 @@ namespace Relentless
 		GFSDK_SSAO_RenderMask RenderMask = GFSDK_SSAO_RENDER_AO;
 
 		GFSDK_SSAO_RenderTargetView_D3D12 rtv{};
-		rtv.pResource = m_GeometryRenderPass->GetOutput(0)->GetInterface().Get();
-		rtv.CpuHandle = m_GeometryRenderPass->GetOutput(0)->GetRTVDescriptorHandle().CPUHandle.ptr;
+		const auto& output = m_Options.MSAASamples > 1 ? m_GeometryRenderPass->GetOutput(0) : m_CombinedGeometryAndPickingPass->GetOutput(0);
+		const auto& depthOutput = m_Options.MSAASamples > 1 ? m_GeometryRenderPass->GetDepthOutput() : m_CombinedGeometryAndPickingPass->GetDepthOutput();
+		rtv.pResource = output->GetInterface().Get();
+		rtv.CpuHandle = output->GetRTVDescriptorHandle().CPUHandle.ptr;
 
 		GFSDK_SSAO_Output_D3D12 Output;
 		Output.pRenderTargetView = &rtv;
 		Output.Blend.Mode = GFSDK_SSAO_MULTIPLY_RGB;
 
-		if (m_GeometryRenderPass->GetOutput(0)->GetCurrentState() != D3D12_RESOURCE_STATE_RENDER_TARGET)
-			RenderCommand::TransitionResource(m_GeometryRenderPass->GetOutput(0), D3D12_RESOURCE_STATE_RENDER_TARGET);
+		if (output->GetCurrentState() != D3D12_RESOURCE_STATE_RENDER_TARGET)
+			RenderCommand::TransitionResource(output, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		
-		if (m_PreZRenderPass->GetDepthOutput()->GetCurrentState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
-			RenderCommand::TransitionResource(m_PreZRenderPass->GetDepthOutput(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		if (depthOutput->GetCurrentState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+			RenderCommand::TransitionResource(depthOutput, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		GFSDK_SSAO_Status status = m_SSAOContext->RenderAO(D3D12Core::GetCommandQueue().Get(), D3D12Core::GetCommandList().Get(), InputData, m_HBAOPlusParameters, Output, RenderMask);
 		RLS_ASSERT(status == GFSDK_SSAO_OK, "Failed to issue HBAOPlus render command.");
@@ -502,23 +524,23 @@ namespace Relentless
 
 		entityManager.Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (assetManager.Exists(mfc.VertexBufferID))
+				if (mfc.MeshHandle != NULL_RESOURCEID)
 				{
-					VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
-					IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
-		
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, vb->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, ib->GetInterface()->GetGPUVirtualAddress()));
-		
+					MeshManager& m = assetManager.GetMeshManager();
+					FullMesh& mesh = m.Get(mfc.MeshHandle);
+
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
-					
+
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
-		
+
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
 
-					RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
 				}
 			});
 
@@ -552,28 +574,27 @@ namespace Relentless
 
 		entityManager.Collect<ForwardPassComponent, SelectedInEditorComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (assetManager.Exists(mfc.VertexBufferID))
+				if (mfc.MeshHandle != NULL_RESOURCEID)
 				{
-					VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
-					IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
+					MeshManager& m = assetManager.GetMeshManager();
+					FullMesh& mesh = m.Get(mfc.MeshHandle);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, vb->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, ib->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
+
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
 
-					RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
 				}
 			});
 
 		MasterRenderer::EndRenderPass();
-
-		
 	}
 
 	void SceneRenderer::EditorGridPass() noexcept
@@ -642,13 +663,12 @@ namespace Relentless
 
 		entityManager.Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (assetManager.Exists(mfc.VertexBufferID))
+				if (mfc.MeshHandle != NULL_RESOURCEID)
 				{
-					VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
-					IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
-		
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, vb->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, ib->GetInterface()->GetGPUVirtualAddress()));
+					FullMesh& fm = assetManager.GetMeshManager().Get(mfc.MeshHandle);
+
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, fm.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, fm.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					m_PickingData.entityID = e;
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
@@ -659,7 +679,7 @@ namespace Relentless
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
 
-					RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+					RenderCommand::DrawInstanced(fm.GetIndexBuffer()->GetNrOfIndices());
 				}
 			});
 
@@ -678,21 +698,12 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 		
-		//RenderCommand::TransitionResource(m_pHBAOPlusTexture, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-		//RenderCommand::TransitionResource(m_pResolvedHBAOPlusTexture, D3D12_RESOURCE_STATE_RESOLVE_DEST);
-		//RenderCommand::ResolveMSAA(m_pHBAOPlusTexture, m_pResolvedHBAOPlusTexture);
-		
 		MasterRenderer::BeginRenderPass(m_CompositeRenderPass);
 
 		if (m_Options.MSAASamples > 1)
 		{
 			RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-			//RenderCommand::TransitionResource(m_pResolvedHBAOPlusTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-			//RenderCommand::TransitionResource(m_pHBAOPlusTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			m_CompositeData.PostProcessTextureIndex = m_pResolvedTexture->GetSRVDescriptorHandle().Index;
-			
-			
-			//m_CompositeData.PostProcessTextureIndex = m_pResolvedHBAOPlusTexture->GetSRVDescriptorHandle().Index;
 		}
 		else
 		{
@@ -741,13 +752,12 @@ namespace Relentless
 
 		entityManager.Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (assetManager.Exists(mfc.VertexBufferID))
+				if (mfc.MeshHandle != NULL_RESOURCEID)
 				{
-					VertexBuffer* vb = assetManager.GetAsset<VertexBuffer>(mfc.VertexBufferID);
-					IndexBuffer* ib = assetManager.GetAsset<IndexBuffer>(mfc.IndexBufferID);
+					FullMesh& fm = assetManager.GetMeshManager().Get(mfc.MeshHandle);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, vb->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, ib->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, fm.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, fm.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					m_PickingData.entityID = e;
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
@@ -759,7 +769,7 @@ namespace Relentless
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
 
-					RenderCommand::DrawInstanced(ib->GetNrOfIndices());
+					RenderCommand::DrawInstanced(fm.GetIndexBuffer()->GetNrOfIndices());
 				}
 			});
 		
@@ -785,6 +795,8 @@ namespace Relentless
 		m_GeometryPickingRenderPass->Resize(width, height);
 		m_CompositeRenderPass->Resize(width, height);
 
+		auto& memoryManager = MemoryManager::Get();
+		
 		RenderTextureSpecification resolveRTSpec{};
 		resolveRTSpec.MultiSampleCount = 1u;
 		resolveRTSpec.CreateSRV = true;
@@ -792,36 +804,9 @@ namespace Relentless
 		resolveRTSpec.Height = height;
 		resolveRTSpec.Flags = D3D12_RESOURCE_FLAG_NONE;
 		resolveRTSpec.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-
+		memoryManager.DestroyDescriptorHandle(m_pResolvedTexture->GetSRVDescriptorHandle());
+		memoryManager.DestroyResource(std::move(m_pResolvedTexture));
 		m_pResolvedTexture = RenderTexture::Create(resolveRTSpec, "MSAA Resolve RenderTexture");
-
-		auto& memoryManager = MemoryManager::Get();
-
-		RenderTextureSpecification hbaoPlusRTSpec{};
-		hbaoPlusRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-		hbaoPlusRTSpec.CreateSRV = true;
-		hbaoPlusRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
-		hbaoPlusRTSpec.Width = width;
-		hbaoPlusRTSpec.Height = height;
-		hbaoPlusRTSpec.MultiSampleCount = m_pHBAOPlusTexture->GetMultiSampleCount();
-		memoryManager.DestroyDescriptorHandle(m_pHBAOPlusTexture->GetRTVDescriptorHandle());
-		memoryManager.DestroyDescriptorHandle(m_pHBAOPlusTexture->GetSRVDescriptorHandle());
-		memoryManager.DestroyResource(std::move(m_pHBAOPlusTexture));
-		m_pHBAOPlusTexture = RenderTexture::Create(hbaoPlusRTSpec, "HBAO+ Render Texture");
-
-		RenderTextureSpecification hbaoPlusResolvedRTSpec{};
-		hbaoPlusResolvedRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-		hbaoPlusResolvedRTSpec.CreateSRV = true;
-		hbaoPlusResolvedRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
-		hbaoPlusResolvedRTSpec.Width = width;
-		hbaoPlusResolvedRTSpec.Height = height;
-		hbaoPlusResolvedRTSpec.MultiSampleCount = 1u;
-		memoryManager.DestroyDescriptorHandle(m_pResolvedHBAOPlusTexture->GetRTVDescriptorHandle());
-		memoryManager.DestroyDescriptorHandle(m_pResolvedHBAOPlusTexture->GetSRVDescriptorHandle());
-		memoryManager.DestroyResource(std::move(m_pResolvedHBAOPlusTexture));
-		m_pResolvedHBAOPlusTexture = RenderTexture::Create(hbaoPlusResolvedRTSpec, "HBAO+ Resolved Render Texture");
-
-		//InitializeHBAOPlus();
 	}
 
 	void SceneRenderer::SetMSAASamples(const uint8_t samples) noexcept
@@ -853,82 +838,8 @@ namespace Relentless
 			m_GeometryPickingRenderPass->OnMSAAReconfiguration(samples);
 			m_EditorGridRenderPass->OnMSAAReconfiguration(samples);
 			m_CompositeRenderPass->OnMSAAReconfiguration(samples);
-
-			auto& memoryManager = MemoryManager::Get();
-
-			RenderTextureSpecification hbaoPlusRTSpec{};
-			hbaoPlusRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-			hbaoPlusRTSpec.CreateSRV = true;
-			hbaoPlusRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
-			hbaoPlusRTSpec.Width = m_pHBAOPlusTexture->GetWidth();
-			hbaoPlusRTSpec.Height = m_pHBAOPlusTexture->GetHeight();
-			hbaoPlusRTSpec.MultiSampleCount = samples;
-			memoryManager.DestroyDescriptorHandle(m_pHBAOPlusTexture->GetRTVDescriptorHandle());
-			memoryManager.DestroyDescriptorHandle(m_pHBAOPlusTexture->GetSRVDescriptorHandle());
-			memoryManager.DestroyResource(std::move(m_pHBAOPlusTexture));
-			m_pHBAOPlusTexture = RenderTexture::Create(hbaoPlusRTSpec, "HBAO+ Render Texture");
-
-			RenderTextureSpecification hbaoPlusResolvedRTSpec{};
-			hbaoPlusResolvedRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-			hbaoPlusResolvedRTSpec.CreateSRV = true;
-			hbaoPlusResolvedRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
-			hbaoPlusResolvedRTSpec.Width = m_pResolvedHBAOPlusTexture->GetWidth();
-			hbaoPlusResolvedRTSpec.Height = m_pResolvedHBAOPlusTexture->GetWidth();
-			hbaoPlusResolvedRTSpec.MultiSampleCount = 1u;
-			memoryManager.DestroyDescriptorHandle(m_pResolvedHBAOPlusTexture->GetRTVDescriptorHandle());
-			memoryManager.DestroyDescriptorHandle(m_pResolvedHBAOPlusTexture->GetSRVDescriptorHandle());
-			memoryManager.DestroyResource(std::move(m_pResolvedHBAOPlusTexture));
-			m_pResolvedHBAOPlusTexture = RenderTexture::Create(hbaoPlusResolvedRTSpec, "HBAO+ Resolved Render Texture");
-
-			//InitializeHBAOPlus();
 		}
 	}
-
-	//entity SceneRenderer::GetHoveredEntity(const uint32_t x, const uint32_t y) noexcept
-	//{
-	//	auto pPickingColorOutput = m_GeometryPickingRenderPass->GetPipeline()->GetFrameBuffer()->GetColorOutput(0);
-	//
-	//	uint64_t totalBytes = RenderUtility::GetTextureSizeInBytes(pPickingColorOutput);
-	//	D3D12_RANGE readBackBufferRange{ 0, totalBytes};
-	//	uint32_t* pReadBackBufferData{};
-	//	DXCall(m_pIdentifierReadbackTexture->GetInterface()->Map
-	//	(
-	//		0u,
-	//		&readBackBufferRange,
-	//		reinterpret_cast<void**>(&pReadBackBufferData)
-	//	));
-	//
-	//	auto pPickingRT = m_GeometryPickingRenderPass->GetPipeline()->GetFrameBuffer()->GetColorOutput(0);
-	//	auto desc = pPickingRT->GetInterface()->GetDesc();
-	//
-	//	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint{};
-	//	DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&desc, 0u, 1u, 0u, &footPrint, nullptr, nullptr, nullptr));
-	//	const uint32_t index = (y * (footPrint.Footprint.RowPitch / 4)) + x;
-	//	const uint32_t indexExpressedAsBytes = index * 4;
-	//
-	//	bool outsideOfViewport = indexExpressedAsBytes > totalBytes;
-	//	if (outsideOfViewport)
-	//	{
-	//		D3D12_RANGE emptyRange{ 0, 0 };
-	//		DXCall_STD(m_pIdentifierReadbackTexture->GetInterface()->Unmap
-	//		(
-	//			0,
-	//			&emptyRange
-	//		));
-	//		return NULL_ENTITY;
-	//	}
-	//
-	//	m_HoveredEntity = pReadBackBufferData[index];
-	//
-	//	D3D12_RANGE emptyRange{ 0, 0 };
-	//	DXCall_STD(m_pIdentifierReadbackTexture->GetInterface()->Unmap
-	//	(
-	//		0,
-	//		&emptyRange
-	//	));
-	//
-	//	return m_HoveredEntity;
-	//}
 
 	entity SceneRenderer::GetHoveredEntity() noexcept
 	{
@@ -970,23 +881,5 @@ namespace Relentless
 		m_HBAOPlusParameters.DepthStorage = GFSDK_SSAO_FP32_VIEW_DEPTHS;
 		m_HBAOPlusParameters.EnableDualLayerAO = false;
 		m_HBAOPlusParameters.StepCount = GFSDK_SSAO_STEP_COUNT_8;
-
-		RenderTextureSpecification hbaoPlusRTSpec{};
-		hbaoPlusRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-		hbaoPlusRTSpec.CreateSRV = true;
-		hbaoPlusRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
-		hbaoPlusRTSpec.Width = 800u;
-		hbaoPlusRTSpec.Height = 600u;
-		hbaoPlusRTSpec.MultiSampleCount = 8u;
-		m_pHBAOPlusTexture = RenderTexture::Create(hbaoPlusRTSpec, "HBAO+ Render Texture");
-
-		RenderTextureSpecification hbaoPlusResolvedRTSpec{};
-		hbaoPlusResolvedRTSpec.ClearColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-		hbaoPlusResolvedRTSpec.CreateSRV = true;
-		hbaoPlusResolvedRTSpec.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
-		hbaoPlusResolvedRTSpec.Width = 800u;
-		hbaoPlusResolvedRTSpec.Height = 600u;
-		hbaoPlusResolvedRTSpec.MultiSampleCount = 1u;
-		m_pResolvedHBAOPlusTexture = RenderTexture::Create(hbaoPlusResolvedRTSpec, "HBAO+ Resolved Render Texture");
 	}
 }

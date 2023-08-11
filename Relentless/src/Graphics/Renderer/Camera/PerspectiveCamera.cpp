@@ -35,6 +35,11 @@ namespace Relentless
 		m_pConstantBuffer = std::make_unique<ConstantBuffer>(sizeof(DirectX::XMFLOAT3));
 	}
 
+	PerspectiveCamera::~PerspectiveCamera() noexcept 
+	{
+		m_pConstantBuffer->ReleaseHandles();
+	}
+
 	void PerspectiveCamera::RecalculateViewProjectionMatrix() noexcept
 	{
 		DirectX::XMVECTOR lookAt = DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&m_Position), DirectX::XMLoadFloat3(&m_FrontVector));

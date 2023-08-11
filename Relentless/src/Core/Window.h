@@ -31,7 +31,7 @@ namespace Relentless
 		static void ToggleVSync() noexcept;
 		[[nodiscard]] static bool IsVSyncing() noexcept { return m_IsVsyncing; }
 		[[nodiscard]] static bool IsFullScreen() noexcept { return m_IsFullScreen; }
-		static void PrepareForFullScreenToggling(bool fullScreen) noexcept
+		static void PrepareForFullScreenToggling() noexcept
 		{
 			m_ShouldToggleFullScreen = true;
 		}

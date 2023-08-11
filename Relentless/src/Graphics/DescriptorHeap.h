@@ -27,6 +27,7 @@ namespace Relentless
 		[[nodiscard]] constexpr Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>& GetDescriptorHeapInterface() noexcept { return m_pDescriptorHeap; }
 		[[nodiscard]] constexpr D3D12_CPU_DESCRIPTOR_HANDLE GetCPUStartHandle() noexcept { return m_CpuHandleStart; }
 		[[nodiscard]] constexpr D3D12_GPU_DESCRIPTOR_HANDLE GetGPUStartHandle() noexcept { return m_GpuHandleStart; }
+		[[nodiscard]] constexpr uint32_t GetNrOfDescriptorsInUse() const noexcept { return m_CurrentNrOfDescriptors; }
 	private:
 		[[nodiscard]] constexpr bool IsShaderVisible() noexcept { return m_GpuHandleStart.ptr != 0u; }
 		void SetDebugName() noexcept;
@@ -41,5 +42,7 @@ namespace Relentless
 		uint32_t m_CurrentNrOfDescriptors;
 		std::unique_ptr<uint32_t[]> m_FreeHandles;
 		std::vector<DescriptorHandle> m_FreeList;
+		uint32_t m_CreatedDescriptors{ 0u };
+		uint32_t m_FreedDescriptors{ 0u };
 	};
 }

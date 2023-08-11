@@ -1,18 +1,6 @@
 #pragma once
 
-namespace std
-{
-	template<>
-	struct hash<UUID>
-	{
-		std::size_t operator()(const UUID& gUid) const
-		{
-			const uint64_t* half = reinterpret_cast<const uint64_t*>(&gUid);
-			return half[0] ^ half[1];
-		}
-	};
-}
-
+#include "Helper.h"
 namespace Relentless
 {
 	typedef UUID ResourceID;
@@ -55,7 +43,7 @@ namespace Relentless
 		[[nodiscard]] Texture2D* GetAmbientOcclusionTexture() const noexcept;
 		[[nodiscard]] Texture2D* GetEmissionTexture() const noexcept;
 		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
-		[[nodiscard]] size_t GetConstantBufferIndex() const noexcept;
+		[[nodiscard]] uint32_t GetConstantBufferIndex() const noexcept;
 		static void UploadToGPU(const MaterialHandle& materialHandle) noexcept;
 		void ToggleAlbedoTextureUsage() noexcept;
 		void ToggleMetallicTextureUsage() noexcept;
@@ -86,6 +74,7 @@ namespace Relentless
 		DirectX::XMFLOAT2 m_Offset;
 		float m_HeightScale;
 		float m_AOScale;
+		uint32_t m_CombinedRoughnessMetallnesMap;
 	private:
 		std::string m_Name;
 		ResourceID m_AlbedoTextureHandle;
@@ -113,7 +102,7 @@ namespace Relentless
 		explicit MaterialManager() noexcept = default;
 		~MaterialManager() noexcept = default;
 		[[nodiscard]] Material& Get(const MaterialHandle& materialHandle) noexcept;
-		[[nodiscard]] MaterialHandle Create(const std::string& name = std::string("Unnamed Material"), const Material & = Material()) noexcept;
+		[[nodiscard]] MaterialHandle Create(const std::string& name = std::string("Unnamed Material"), const Material& = Material()) noexcept;
 		__forceinline void Upload(const MaterialHandle& materialHandle) noexcept;
 		void SetDirty(const MaterialHandle& materialHandle) noexcept;
 		[[nodiscard]] std::vector<std::pair<MaterialHandle, uint8_t>>& GetDirtyMaterials() noexcept { return m_DirtyMaterials; }

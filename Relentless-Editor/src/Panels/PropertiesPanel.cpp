@@ -219,11 +219,11 @@ namespace Relentless
 				auto& mfc = m_pScene->GetEntityManager().Get<MeshFilterComponent>(m_SelectedEntity);
 				
 				char input[40];
-				if (AssetManager::Get().Exists(mfc.VertexBufferID))
+				if (false)
 				{
-					std::string name = AssetManager::Get().GetAssetName(mfc.VertexBufferID);
-					name = name.substr(0, name.find_first_of(" "));
-					strcpy_s(input, sizeof(input), name.c_str());
+					//std::string name = AssetManager::Get().GetAssetName(mfc.VertexBufferID);
+					//name = name.substr(0, name.find_first_of(" "));
+					//strcpy_s(input, sizeof(input), name.c_str());
 				}
 				else
 				{
@@ -254,56 +254,44 @@ namespace Relentless
 				{
 					std::filesystem::path filePath = FileDialogs::OpenFile("Mesh files (*.obj,*.gltf)\0*.obj;*.gltf\0");
 
-					if (!filePath.empty())
-					{
-						ResourceID vbID;
-						ResourceID ibID;
-						if (!AssetManager::Get().HasLoaded(filePath.stem().string() + " Vertex Buffer"))
-						{
-							MeshFactory meshFactory;
-							auto& starterMesh = meshFactory.LoadFromFile(filePath)[0];
-							auto model = meshFactory.LoadModelFromFile(filePath);
-
-							if (model.Meshes.size() > 1 || model.Meshes[0].SubMeshes.size() > 0)
-							{
-								m_pScene->GetEntityManager().Remove<MeshFilterComponent>(m_SelectedEntity);
-
-								
-								for (auto& mesh : model.Meshes)
-								{
-									
-
-								}
-							}
-
-							VertexBuffer::Specification vbSpec
-							{
-								.NrOfVertices = (uint32_t)starterMesh.Vertices.size(),
-								.TotalSizeInBytes = (uint32_t)starterMesh.Vertices.size() * sizeof(SimpleVertex),
-								.Stride = sizeof(SimpleVertex),
-								.pBuffer = (void*)starterMesh.Vertices.data(),
-								.Name = filePath.stem().string() + std::string(" Vertex Buffer")
-							};
-
-							IndexBuffer::Specification ibSpec
-							{
-								.NrOfIndices = (uint32_t)starterMesh.Indices.size(),
-								.TotalSizeInBytes = (uint32_t)starterMesh.Indices.size() * sizeof(uint32_t),
-								.Stride = sizeof(uint32_t),
-								.pBuffer = (void*)starterMesh.Indices.data(),
-								.Name = filePath.stem().string() + std::string(" Index Buffer")
-							};
-							vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
-							ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
-						}
-						else
-						{
-							vbID = AssetManager::Get().Load<VertexBuffer>(filePath.stem().string() + std::string(" Vertex Buffer"), nullptr);
-							ibID = AssetManager::Get().Load<IndexBuffer>(filePath.stem().string() + std::string(" Index Buffer"), nullptr);
-						}
-						mfc.VertexBufferID = vbID;
-						mfc.IndexBufferID = ibID;
-					}
+					//if (!filePath.empty())
+					//{
+					//	ResourceID vbID;
+					//	ResourceID ibID;
+					//	if (!AssetManager::Get().HasLoaded(filePath.stem().string() + " Vertex Buffer"))
+					//	{
+					//		MeshFactory meshFactory;
+					//		auto& starterMesh = meshFactory.LoadFromFile(filePath)[0];
+					//		auto model = meshFactory.LoadModelFromFile(filePath);
+					//
+					//		VertexBuffer::Specification vbSpec
+					//		{
+					//			.NrOfVertices = (uint32_t)starterMesh.Vertices.size(),
+					//			.TotalSizeInBytes = (uint32_t)starterMesh.Vertices.size() * sizeof(SimpleVertex),
+					//			.Stride = sizeof(SimpleVertex),
+					//			.pBuffer = (void*)starterMesh.Vertices.data(),
+					//			.Name = filePath.stem().string() + std::string(" Vertex Buffer")
+					//		};
+					//
+					//		IndexBuffer::Specification ibSpec
+					//		{
+					//			.NrOfIndices = (uint32_t)starterMesh.Indices.size(),
+					//			.TotalSizeInBytes = (uint32_t)starterMesh.Indices.size() * sizeof(uint32_t),
+					//			.Stride = sizeof(uint32_t),
+					//			.pBuffer = (void*)starterMesh.Indices.data(),
+					//			.Name = filePath.stem().string() + std::string(" Index Buffer")
+					//		};
+					//		vbID = AssetManager::Get().Load<VertexBuffer>(vbSpec.Name, &vbSpec);
+					//		ibID = AssetManager::Get().Load<IndexBuffer>(ibSpec.Name, &ibSpec);
+					//	}
+					//	else
+					//	{
+					//		vbID = AssetManager::Get().Load<VertexBuffer>(filePath.stem().string() + std::string(" Vertex Buffer"), nullptr);
+					//		ibID = AssetManager::Get().Load<IndexBuffer>(filePath.stem().string() + std::string(" Index Buffer"), nullptr);
+					//	}
+					//	//mfc.VertexBufferID = vbID;
+					//	//mfc.IndexBufferID = ibID;
+					//}
 				}
 
 				ImGui::PopStyleVar();
