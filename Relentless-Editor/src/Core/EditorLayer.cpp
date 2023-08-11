@@ -270,91 +270,91 @@ namespace Relentless
 		m_ContentBrowserPanel.OnImGuiRender(m_DisplayContentBrowserPanel && !m_ImmersiveModeEnabled);
 		m_MetricsPanel.OnImGuiRender(m_DisplayMetricsPanel && !m_ImmersiveModeEnabled);
 
-		if (!m_ImmersiveModeEnabled)
-		{
-			ImGui::Begin("Developer Panel");
-			if (ImGui::Button("Load Full Sponza Model"))
-			{
-				std::vector<std::string> starterMeshes
-				{
-					"Sponza/NewSponza_Main_glTF_002.gltf",
-					"PKG_B_Ivy/NewSponza_IvyGrowth_glTF.gltf",
-					"PKG_A_Curtains/NewSponza_Curtains_glTF.gltf",
-					"PKG_C.1_Trees/NewSponza_CypressTree_glTF.gltf"
-				};
-				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-				MeshManager& mm = AssetManager::Get().GetMeshManager();
-
-				//Saves ~5 seconds (lol)
-				std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
-					{
-						std::string fullMeshPath(meshPath + std::string(starterMeshName));
-						mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
-					});
-				MemoryManager::Get().GetUploadBuffer()->Upload();
-			}
-			if (ImGui::Button("Load main Sponza model"))
-			{
-				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-				MeshManager& mm = AssetManager::Get().GetMeshManager();
-
-				std::string fullMeshPath(meshPath + "Sponza/NewSponza_Main_glTF_002.gltf");
-				mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
-				
-				MemoryManager::Get().GetUploadBuffer()->Upload();
-			}
-			if (ImGui::Button("Load Sponza curtains model"))
-			{
-				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-				MeshManager& mm = AssetManager::Get().GetMeshManager();
-
-				std::string fullMeshPath(meshPath + "PKG_A_Curtains/NewSponza_Curtains_glTF.gltf");
-				mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
-
-				MemoryManager::Get().GetUploadBuffer()->Upload();
-			}
-			if (ImGui::Button("Load Sponza ivy model"))
-			{
-				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-				MeshManager& mm = AssetManager::Get().GetMeshManager();
-
-				std::string fullMeshPath(meshPath + "PKG_B_Ivy/NewSponza_IvyGrowth_glTF.gltf");
-				mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
-
-				MemoryManager::Get().GetUploadBuffer()->Upload();
-			}
-			if (ImGui::Button("Load Sponza cypress tree model"))
-			{
-				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-				MeshManager& mm = AssetManager::Get().GetMeshManager();
-
-				std::string fullMeshPath(meshPath + "PKG_C.1_Trees/NewSponza_CypressTree_glTF.gltf");
-				mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
-
-				MemoryManager::Get().GetUploadBuffer()->Upload();
-			}
-
-			if (ImGui::Button("Load Bartholomew The Great"))
-			{
-				MeshManager& mm = AssetManager::Get().GetMeshManager();
-				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-
-				mm.LoadModelFromFile(meshPath + "Bartholomew/scene.gltf", m_pScene.get());
-
-				MemoryManager::Get().GetUploadBuffer()->Upload();
-			}
-
-			if (ImGui::Button("Load San Miguel"))
-			{
-				MeshManager& mm = AssetManager::Get().GetMeshManager();
-				std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-
-				mm.LoadModelFromFile(meshPath + "San_Miguel/san-miguel-low-poly.obj", m_pScene.get());
-
-				MemoryManager::Get().GetUploadBuffer()->Upload();
-			}
-			ImGui::End();
-		}
+		//if (!m_ImmersiveModeEnabled)
+		//{
+		//	ImGui::Begin("Developer Panel");
+		//	if (ImGui::Button("Load Full Sponza Model"))
+		//	{
+		//		std::vector<std::string> starterMeshes
+		//		{
+		//			"Sponza/NewSponza_Main_glTF_002.gltf",
+		//			"PKG_B_Ivy/NewSponza_IvyGrowth_glTF.gltf",
+		//			"PKG_A_Curtains/NewSponza_Curtains_glTF.gltf",
+		//			"PKG_C.1_Trees/NewSponza_CypressTree_glTF.gltf"
+		//		};
+		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
+		//
+		//		//Saves ~5 seconds (lol)
+		//		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
+		//			{
+		//				std::string fullMeshPath(meshPath + std::string(starterMeshName));
+		//				mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
+		//			});
+		//		MemoryManager::Get().GetUploadBuffer()->Upload();
+		//	}
+		//	if (ImGui::Button("Load main Sponza model"))
+		//	{
+		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
+		//
+		//		std::string fullMeshPath(meshPath + "Sponza/NewSponza_Main_glTF_002.gltf");
+		//		mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
+		//		
+		//		MemoryManager::Get().GetUploadBuffer()->Upload();
+		//	}
+		//	if (ImGui::Button("Load Sponza curtains model"))
+		//	{
+		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
+		//
+		//		std::string fullMeshPath(meshPath + "PKG_A_Curtains/NewSponza_Curtains_glTF.gltf");
+		//		mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
+		//
+		//		MemoryManager::Get().GetUploadBuffer()->Upload();
+		//	}
+		//	if (ImGui::Button("Load Sponza ivy model"))
+		//	{
+		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
+		//
+		//		std::string fullMeshPath(meshPath + "PKG_B_Ivy/NewSponza_IvyGrowth_glTF.gltf");
+		//		mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
+		//
+		//		MemoryManager::Get().GetUploadBuffer()->Upload();
+		//	}
+		//	if (ImGui::Button("Load Sponza cypress tree model"))
+		//	{
+		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
+		//
+		//		std::string fullMeshPath(meshPath + "PKG_C.1_Trees/NewSponza_CypressTree_glTF.gltf");
+		//		mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
+		//
+		//		MemoryManager::Get().GetUploadBuffer()->Upload();
+		//	}
+		//
+		//	if (ImGui::Button("Load Bartholomew The Great"))
+		//	{
+		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
+		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+		//
+		//		mm.LoadModelFromFile(meshPath + "Bartholomew/scene.gltf", m_pScene.get());
+		//
+		//		MemoryManager::Get().GetUploadBuffer()->Upload();
+		//	}
+		//
+		//	if (ImGui::Button("Load San Miguel"))
+		//	{
+		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
+		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
+		//
+		//		mm.LoadModelFromFile(meshPath + "San_Miguel/san-miguel-low-poly.obj", m_pScene.get());
+		//
+		//		MemoryManager::Get().GetUploadBuffer()->Upload();
+		//	}
+		//	ImGui::End();
+		//}
 		
 	}
 
