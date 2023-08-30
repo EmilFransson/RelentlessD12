@@ -22,7 +22,7 @@ namespace Relentless
 		InitializeHBAOPlus();
 
 		m_EnvironmentCBHandle = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT3));
-		m_BRDFLutTexture = Texture2D::Create("ibl_brdf_lut.png");
+		m_BRDFLutTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures/ibl_brdf_lut.png");
 
 		//Pre-Z Render pass:
 		{
@@ -425,24 +425,23 @@ namespace Relentless
 		m_PreZRenderPass->Upload("vpConstantBuffer", &m_VPData);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-		AssetManager& assetManager = AssetManager::Get();
+		MeshManager& m = AssetManager::GetMeshManager();
 
 		auto verticesIndex = m_PreZRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_PreZRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_PreZRenderPass->GetInputSlot("perDrawData");
 
-		entityManager.Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
+		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (mfc.MeshHandle != NULL_RESOURCEID)
+				if (mfc.MeshHandle != NULL_HANDLE)
 				{
-					MeshManager& m = assetManager.GetMeshManager();
-					FullMesh& mesh = m.Get(mfc.MeshHandle);
+					Mesh& mesh = m.GetMesh(mfc.MeshHandle);
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
+					const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
@@ -512,28 +511,27 @@ namespace Relentless
 		m_PerFrameOpaqueGeometryData.nrOfDirectionalLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
 		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
 		m_PerFrameOpaqueGeometryData.environmentIndex = MemoryManager::Get().GetCBDescriptorIndex(m_EnvironmentCBHandle);
-		m_PerFrameOpaqueGeometryData.brdfLutTextureIndex = m_BRDFLutTexture->GetSRVDescriptorHandle().Index;
+		m_PerFrameOpaqueGeometryData.brdfLutTextureIndex = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle).GetSRVDescriptorHandle().Index;
 		m_GeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-		AssetManager& assetManager = AssetManager::Get();
+		MeshManager& m = AssetManager::GetMeshManager();
 
 		auto verticesIndex = m_GeometryRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_GeometryRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_GeometryRenderPass->GetInputSlot("perDrawData");
 
-		entityManager.Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
+		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (mfc.MeshHandle != NULL_RESOURCEID)
+				if (mfc.MeshHandle != NULL_HANDLE)
 				{
-					MeshManager& m = assetManager.GetMeshManager();
-					FullMesh& mesh = m.Get(mfc.MeshHandle);
+					Mesh& mesh = m.GetMesh(mfc.MeshHandle);
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
+					const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
@@ -566,24 +564,23 @@ namespace Relentless
 		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 		m_WireFrameRenderPass->Upload("vpConstantBuffer", &m_VPData);
 
-		AssetManager& assetManager = AssetManager::Get();
+		MeshManager& m = AssetManager::GetMeshManager();
 
 		auto verticesIndex = m_WireFrameRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_WireFrameRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_WireFrameRenderPass->GetInputSlot("perDrawData");
 
-		entityManager.Collect<ForwardPassComponent, SelectedInEditorComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
+		entityManager.Collect<OpaquePassComponent, SelectedInEditorComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (mfc.MeshHandle != NULL_RESOURCEID)
+				if (mfc.MeshHandle != NULL_HANDLE)
 				{
-					MeshManager& m = assetManager.GetMeshManager();
-					FullMesh& mesh = m.Get(mfc.MeshHandle);
+					Mesh& mesh = m.GetMesh(mfc.MeshHandle);
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
+					const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
@@ -642,8 +639,6 @@ namespace Relentless
 		RenderCommand::DrawInstanced(EDITOR_GRID_VERTEX_COUNT, EDITOR_GRID_INSTANCE_COUNT);
 
 		MasterRenderer::EndRenderPass();
-
-		
 	}
 
 	void SceneRenderer::PickingPass() noexcept
@@ -653,7 +648,6 @@ namespace Relentless
 		MasterRenderer::BeginRenderPass(m_GeometryPickingRenderPass);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-		AssetManager& assetManager = AssetManager::Get();
 		MemoryManager& memoryManager = MemoryManager::Get();
 
 		auto verticesIndex = m_GeometryPickingRenderPass->GetInputSlot("vertices");
@@ -661,25 +655,25 @@ namespace Relentless
 		auto identifierIndex = m_GeometryPickingRenderPass->GetInputSlot("Identifier");
 		auto perDrawIndex = m_GeometryPickingRenderPass->GetInputSlot("perDrawData");
 
-		entityManager.Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
+		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (mfc.MeshHandle != NULL_RESOURCEID)
+				if (mfc.MeshHandle != NULL_HANDLE)
 				{
-					FullMesh& fm = assetManager.GetMeshManager().Get(mfc.MeshHandle);
+					Mesh& mesh = AssetManager::Get<Mesh>(mfc.MeshHandle);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, fm.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, fm.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					m_PickingData.entityID = e;
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
+					const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
 
-					RenderCommand::DrawInstanced(fm.GetIndexBuffer()->GetNrOfIndices());
+					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
 				}
 			});
 
@@ -743,33 +737,32 @@ namespace Relentless
 		m_CombinedGeometryAndPickingPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-		AssetManager& assetManager = AssetManager::Get();
 
 		auto verticesIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("vertices");
 		auto indicesIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("indices");
 		auto perDrawIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("perDrawData");
 		auto identifierIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("Identifier");
 
-		entityManager.Collect<ForwardPassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
+		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (mfc.MeshHandle != NULL_RESOURCEID)
+				if (mfc.MeshHandle != NULL_HANDLE)
 				{
-					FullMesh& fm = assetManager.GetMeshManager().Get(mfc.MeshHandle);
+					Mesh& mesh = AssetManager::Get<Mesh>(mfc.MeshHandle);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, fm.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, fm.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					m_PickingData.entityID = e;
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material material = AssetManager::Get().Get<Material>(mrc.MaterialHandle);
+					const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
 
-					RenderCommand::DrawInstanced(fm.GetIndexBuffer()->GetNrOfIndices());
+					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
 				}
 			});
 		

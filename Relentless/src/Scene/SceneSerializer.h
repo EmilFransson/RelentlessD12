@@ -2,8 +2,6 @@
 #include "Scene.h"
 namespace Relentless
 {
-
-	class Emitter;
 	class SceneSerializer
 	{
 	public:

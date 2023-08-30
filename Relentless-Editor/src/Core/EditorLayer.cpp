@@ -417,9 +417,9 @@ namespace Relentless
 				m_DisplayInspectorPanel = true;
 			});
 
-		m_ContentBrowserPanel.SetOnAssetSelectedCallback([this](const ResourceID& resourceID, const InspectedAssetType inspectedAssetType)
+		m_ContentBrowserPanel.SetOnAssetSelectedCallback([this](const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)
 			{
-				m_InspectorPanel.SetContext(resourceID, inspectedAssetType);
+				m_InspectorPanel.SetContext(AssetHandle, inspectedAssetType);
 				if (inspectedAssetType == InspectedAssetType::NONE)
 				{
 					m_DisplayInspectorPanel = false;
@@ -485,6 +485,7 @@ namespace Relentless
 
 		m_SceneRendererPanel.OnPostRender();
 
+		//TODO: CHANGE!!!!! FFS
 		if (!m_Path.empty())
 		{
 			LoadScene(m_Path);
@@ -510,7 +511,7 @@ namespace Relentless
 		};
 
 		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/StarterContent/");
-		MeshManager& mm = AssetManager::Get().GetMeshManager();
+		MeshManager& mm = AssetManager::GetMeshManager();
 		
 		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
 			{
@@ -526,7 +527,11 @@ namespace Relentless
 		{
 			auto ground = m_pScene->CreateShape<Shape::Cube>();
 			m_pScene->GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
-			Material& material = AssetManager::Get().Get<Material>(m_pScene->GetEntityManager().Get<MeshRendererComponent>(ground).MaterialHandle);
+			
+			auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(ground);
+			mrc.MaterialHandle = AssetManager::Create<Material>("M_Ground");
+
+			Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
 			material.m_AlbedoColor = { 42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f };
 
 			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(ground);
@@ -537,14 +542,7 @@ namespace Relentless
 			auto cube = m_pScene->CreateShape<Shape::Cube>();
 			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(cube);
 			tc.Translation = { 0.0f, 0.55f, 0.0f };
-		
-			//auto cube2 = m_pScene->CreateShape<Shape::Cube>();
-			//auto& tc2 = m_pScene->GetEntityManager().Get<TransformComponent>(cube2);
-			//tc2.Translation = { 0.0f, 10.0f, 0.0f };
-			//m_pScene->ParentEntity(cube2, cube);
 		}
-
-		
 	}
 
 	void EditorLayer::OnSceneViewportChanged() noexcept
@@ -599,8 +597,8 @@ namespace Relentless
 			mrcNew.MaterialHandle = mrc.MaterialHandle;
 			mgr.Add<DirtyMeshRendererComponent>(newEntity);
 		}
-		if (mgr.Has<ForwardPassComponent>(m_SelectedEntity))
-			mgr.Add<ForwardPassComponent>(newEntity);
+		if (mgr.Has<OpaquePassComponent>(m_SelectedEntity))
+			mgr.Add<OpaquePassComponent>(newEntity);
 		if (mgr.Has<DirectionalLightComponent>(m_SelectedEntity))
 		{
 			auto& newDlc = mgr.Add<DirectionalLightComponent>(newEntity);

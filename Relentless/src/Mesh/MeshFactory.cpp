@@ -6,7 +6,7 @@
 #include "../Graphics/Resources/AssetManager.h"
 namespace Relentless
 {
-	std::vector<Mesh>& MeshFactory::LoadFromFile(const std::filesystem::path& filePath) noexcept
+	std::vector<MeshStruct>& MeshFactory::LoadFromFile(const std::filesystem::path& filePath) noexcept
 	{
 		meshes.clear();
 		headDone = false;
@@ -50,7 +50,7 @@ namespace Relentless
 		return model;
 	}
 
-	void MeshFactory::ProcessNode(aiNode* pNode, const aiScene* pScene, std::vector<Mesh>& meshes2) noexcept
+	void MeshFactory::ProcessNode(aiNode* pNode, const aiScene* pScene, std::vector<MeshStruct>& meshes2) noexcept
 	{
 		RLS_ASSERT(pNode && pScene, "Assimp data is invalid.");
 
@@ -75,7 +75,7 @@ namespace Relentless
 		}
 	}
 
-	Mesh MeshFactory::ProcessMesh(aiMesh* pMesh, const aiScene* pScene) noexcept
+	MeshStruct MeshFactory::ProcessMesh(aiMesh* pMesh, const aiScene* pScene) noexcept
 	{
 		RLS_ASSERT(pMesh && pScene, "Assimp data is invalid.");
 		RLS_ASSERT(pMesh->HasPositions(), "Mesh contains no position data.");
@@ -84,7 +84,7 @@ namespace Relentless
 		RLS_ASSERT(pMesh->HasTangentsAndBitangents(), "Mesh contains no tangent and/or bitangent data.");
 		RLS_ASSERT(pMesh->HasTextureCoords(0u), "Mesh contains no texture coordinate data.")
 
-		Mesh mesh;
+			MeshStruct mesh;
 		mesh.Vertices.reserve(pMesh->mNumVertices);
 		for (uint32_t i{ 0u }; i < pMesh->mNumVertices; ++i)
 		{

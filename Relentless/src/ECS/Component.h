@@ -53,13 +53,16 @@ namespace Relentless
 
 	struct MeshFilterComponent
 	{
+		MeshFilterComponent()
+			: MeshHandle{ NULL_HANDLE }
+		{}
 		MeshHandle MeshHandle;
 	};
 
 	struct MeshRendererComponent
 	{
 		MeshRendererComponent()
-			: MaterialHandle{ NULL_RESOURCEID }
+			: MaterialHandle{ NULL_HANDLE }
 		{}
 		MaterialHandle MaterialHandle;
 	};
@@ -73,7 +76,12 @@ namespace Relentless
 		uint32_t Updates;
 	};
 
-	struct ForwardPassComponent
+	struct OpaquePassComponent
+	{
+		//ID
+	};
+
+	struct TransparentPassComponent
 	{
 		//ID
 	};

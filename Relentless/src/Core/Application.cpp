@@ -7,6 +7,7 @@
 #include "../Graphics/MemoryManager.h"
 #include "Timer.h"
 #include "../Input/Mouse.h"
+#include "../Graphics/Resources/AssetManager.h"
 namespace Relentless
 {
 	Application::Application(const ApplicationSpecification& applicationSpecification) noexcept
@@ -101,6 +102,7 @@ namespace Relentless
 		Log::Initialize();
 		D3D12Core::Initialize();
 		MemoryManager::Get().Initialize();
+		AssetManager::Initialize();
 
 		std::string engineIni = std::string(MAIN_ENGINE_DIRECTORY) + std::string("engine.ini");
 

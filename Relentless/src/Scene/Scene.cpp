@@ -166,7 +166,7 @@ namespace Relentless
 			});
 
 		/*MATERIALS*/
-		auto& dirtyMaterials = AssetManager::Get().GetMaterialManager().GetDirtyMaterials();
+		auto& dirtyMaterials = AssetManager::GetMaterialManager().GetDirtyMaterials();
 		for (uint32_t i{0u}; i < dirtyMaterials.size(); ++i)
 		{
 			Material::UploadToGPU(dirtyMaterials[i].first);

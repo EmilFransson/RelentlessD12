@@ -33,6 +33,8 @@ namespace Relentless
 		Texture(const RenderTextureSpecification& textureSpecification, const std::string& name = "?") noexcept;
 		Texture() noexcept = default;
 		virtual ~Texture() noexcept override = default;
+		Texture(Texture&& other) noexcept = default;
+		Texture& operator=(Texture&& other) noexcept = default;
 	protected:
 		DescriptorHandle m_SRVDescriptorHandle;
 	private:
@@ -58,7 +60,10 @@ namespace Relentless
 	{
 	public:
 		explicit Texture2D(const std::string& fileName) noexcept;
+		Texture2D() noexcept {}
 		virtual ~Texture2D() noexcept override final = default;
+		Texture2D(Texture2D&& other) noexcept = default;
+		Texture2D& operator=(Texture2D&& other) noexcept = default;
 		[[nodiscard]] static std::shared_ptr<Texture2D> Create(const std::string& fileName) noexcept;
 		[[nodiscard]] static std::shared_ptr<Texture2D> CreateFromPath(const std::filesystem::path& filePath) noexcept;
 	};

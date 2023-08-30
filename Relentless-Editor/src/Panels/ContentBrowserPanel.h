@@ -10,7 +10,7 @@ namespace Relentless
 		explicit ContentBrowserPanel() noexcept;
 		~ContentBrowserPanel() noexcept = default;
 		void OnImGuiRender(const bool show) noexcept;
-		void SetOnAssetSelectedCallback(std::function<void(const ResourceID& resourceID, const InspectedAssetType inspectedAssetType)> callback) noexcept;
+		void SetOnAssetSelectedCallback(std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> callback) noexcept;
 	private:
 		void RenderDirectoryHierarchy() noexcept;
 		void DrawDirectoryNode(const std::filesystem::directory_entry& directoryName) noexcept;
@@ -20,17 +20,17 @@ namespace Relentless
 		void RenderAssetSearchBox() noexcept;
 		void RenderAssetThumbNails() noexcept;
 		void RenderPopUpOptions() noexcept;
-		void RenderThumbnailText(const std::string& text, bool thumbNailHovered) noexcept;
+		void RenderThumbnailText(const std::string& text, bool thumbNailHovered, bool newlyCreated = false, const AssetHandle& handle = NULL_HANDLE) noexcept;
 	private:
 		float m_ThumbnailWidth;
-		std::shared_ptr<Texture2D> m_pDirectoryTexture;
-		std::shared_ptr<Texture2D> m_pSceneTexture;
-		std::shared_ptr<Texture2D> m_pMaterialTexture;
+		TextureHandle m_DirectoryTextureHandle;
+		TextureHandle m_SceneTextureHandle;
+		TextureHandle m_MaterialTextureHandle;
 		std::string m_SelectedDirectory;
 		float m_LocationStringPosition[2];
 
-		std::unordered_map<std::string, std::vector<MaterialHandle>> m_CreatedMaterials;
+		std::unordered_map<std::string, std::vector<std::pair<MaterialHandle, bool>>> m_CreatedMaterials;
 
-		std::function<void(const ResourceID& resourceID, const InspectedAssetType inspectedAssetType)> m_OnAssetSelectedCallback;
+		std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> m_OnAssetSelectedCallback;
 	};
 }

@@ -1,58 +1,12 @@
 #include "SceneSerializer.h"
+#include "../Utility/SerializeUtilities.h"
 #pragma warning(push, 0)
 #define YAML_CPP_STATIC_DEFINE 1
 #include "yaml-cpp/yaml.h"
 #pragma warning(pop)
 
-namespace YAML
-{
-	template<>
-	struct convert<DirectX::XMFLOAT3>
-	{
-		static Node encode(const DirectX::XMFLOAT3 rhs)
-		{
-			Node node;
-			node.push_back(rhs.x);
-			node.push_back(rhs.y);
-			node.push_back(rhs.z);
-			return node;
-		}
-
-		static bool decode(const Node& node, DirectX::XMFLOAT3& rhs)
-		{
-			if (!node.IsSequence() || node.size() != 3)
-			{
-				return false;
-			}
-
-			rhs.x = node[0].as<float>();
-			rhs.y = node[1].as<float>();
-			rhs.z = node[2].as<float>();
-
-			return true;
-		}
-	};
-}
-
 namespace Relentless
 {
-	YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT3& v)
-	{
-		out << YAML::Flow;
-		out << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
-		return out;
-	}
-
-	YAML::Emitter& operator<<(YAML::Emitter& out, UUID& id)
-	{
-		wchar_t wszGuid[40] = { 0 };
-		StringFromGUID2(id, wszGuid, 39);
-		std::wstring ws = std::wstring(wszGuid);
-		std::string s = ConvertWideStringToString(ws);
-		out << s;
-		return out;
-	}
-
 	static void SerializeEntity(YAML::Emitter& out, EntityManager& manager, entity entity) noexcept
 	{
 		out << YAML::BeginMap;
@@ -87,7 +41,7 @@ namespace Relentless
 			out << YAML::Key << "MeshFilterComponent";
 			out << YAML::BeginMap;
 		
-			out << YAML::Key << "MeshHandle" << YAML::Value << mfc.MeshHandle;
+			out << YAML::Key << "MeshHandle" << YAML::Value << mfc.MeshHandle.UUID;
 		
 			out << YAML::EndMap;
 		}
@@ -96,7 +50,7 @@ namespace Relentless
 			out << YAML::Key << "MeshRendererComponent";
 			out << YAML::BeginMap;
 		
-			out << YAML::Key << "MaterialHandle" << YAML::Value << manager.Get<MeshRendererComponent>(entity).MaterialHandle;
+			out << YAML::Key << "MaterialHandle" << YAML::Value << manager.Get<MeshRendererComponent>(entity).MaterialHandle.UUID;
 		
 			out << YAML::EndMap;
 		}
@@ -126,9 +80,9 @@ namespace Relentless
 		
 			out << YAML::EndMap;
 		}
-		if (manager.Has<ForwardPassComponent>(entity))
+		if (manager.Has<OpaquePassComponent>(entity))
 		{
-			out << YAML::Key << "ForwardPassComponent";
+			out << YAML::Key << "OpaquePassComponent";
 			out << YAML::BeginMap;
 		
 			out << YAML::Key << "ForwardPass" << YAML::Value << true;
@@ -274,7 +228,7 @@ namespace Relentless
 				auto& mfc = mgr.Add<MeshFilterComponent>(deserializedEntity);
 				std::wstring vertexBufferIDAsString = ConvertStringToWstring(meshFilterComponent["MeshHandle"].as<std::string>());
 				MeshHandle meshHandle;
-				IIDFromString(vertexBufferIDAsString.c_str(), &meshHandle);
+				IIDFromString(vertexBufferIDAsString.c_str(), &meshHandle.UUID);
 				
 				mfc.MeshHandle = meshHandle;
 			}
@@ -285,15 +239,15 @@ namespace Relentless
 				auto& mrc = mgr.Add<MeshRendererComponent>(deserializedEntity);
 				std::wstring materialHandleIDAsString = ConvertStringToWstring(meshRendererComponent["MaterialHandle"].as<std::string>());
 				MaterialHandle materialHandle;
-				IIDFromString(materialHandleIDAsString.c_str(), &materialHandle);
+				IIDFromString(materialHandleIDAsString.c_str(), &materialHandle.UUID);
 				
 				mrc.MaterialHandle = materialHandle;
 			}
 		
-			auto forwardPassComponent = entity["ForwardPassComponent"];
-			if (forwardPassComponent)
+			auto opaquePassComponent = entity["OpaquePassComponent"];
+			if (opaquePassComponent)
 			{
-				mgr.Add<ForwardPassComponent>(deserializedEntity);
+				mgr.Add<OpaquePassComponent>(deserializedEntity);
 			}
 		
 			auto directionalLightComponent = entity["DirectionalLightComponent"];

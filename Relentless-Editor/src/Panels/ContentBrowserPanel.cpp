@@ -7,9 +7,9 @@ namespace Relentless
 		: m_ThumbnailWidth{100.0f},
 		  m_SelectedDirectory{"Assets"}
 	{
-		m_pDirectoryTexture = Texture2D::Create("Directory.jpg");
-		m_pSceneTexture = Texture2D::Create("RLS_LOGO.jpg");
-		m_pMaterialTexture = Texture2D::Create("FileIcon.png");
+		m_DirectoryTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures/Directory.jpg");
+		m_SceneTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures/RLS_LOGO.jpg");
+		m_MaterialTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures/FileIcon.png");
 
 		std::string directory = currentDirectory.string();
 		currentDirectory = directory.substr(0u, directory.size() - 1);
@@ -41,13 +41,13 @@ namespace Relentless
 
 		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered())
 		{
-			m_OnAssetSelectedCallback(NULL_RESOURCEID, InspectedAssetType::NONE);
+			m_OnAssetSelectedCallback(NULL_HANDLE, InspectedAssetType::NONE);
 		}
 
 		ImGui::End();
 	}
 
-	void ContentBrowserPanel::SetOnAssetSelectedCallback(std::function<void(const ResourceID& resourceID, const InspectedAssetType inspectedAssetType)> callback) noexcept
+	void ContentBrowserPanel::SetOnAssetSelectedCallback(std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> callback) noexcept
 	{
 		m_OnAssetSelectedCallback = callback;
 	}
@@ -204,7 +204,7 @@ namespace Relentless
 			{
 				ImGui::TableNextColumn();
 
-				ImGui::ImageButton((void*)m_pDirectoryTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth), ImVec2(0, 0), ImVec2(1, 1), -1, ImGui::GetStyle().Colors[ImGuiCol_WindowBg]);
+				ImGui::ImageButton((void*)AssetManager::Get<Texture2D>(m_DirectoryTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth), ImVec2(0, 0), ImVec2(1, 1), -1, ImGui::GetStyle().Colors[ImGuiCol_WindowBg]);
 				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
 				{
 					currentDirectory /= entry;
@@ -218,21 +218,21 @@ namespace Relentless
 
 				if (dir_entry.path().filename().extension().string() == ".jpg" || dir_entry.path().filename().extension().string() == ".png")
 				{
-					if (!AssetManager::Get().HasLoaded(dir_entry.path().string()))
+					if (!AssetManager::Exists<Texture2D>(dir_entry.path().string()))
 					{
-						AssetManager::Get().Load<Texture2D>(dir_entry.path().string());
+						AssetManager::Load<Texture2D>(dir_entry.path().string());
 					}
 
-					ResourceID textureResourceID = AssetManager::Get().Load<Texture2D>(dir_entry.path().string());
-					Texture2D* pTexture = AssetManager::Get().GetAsset<Texture2D>(textureResourceID);
-					ImGui::ImageButton((ImTextureID)pTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+					AssetHandle textureAssetHandle = AssetManager::Load<Texture2D>(dir_entry.path().string());
+					Texture2D& texture = AssetManager::Get<Texture2D>(textureAssetHandle);
+					ImGui::ImageButton((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
 
 					if (ImGui::BeginDragDropSource())
 					{
 						const char* path = entryPath.c_str();
 						ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 						ImGui::BeginTooltip();
-						ImGui::Image((ImTextureID)pTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+						ImGui::Image((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
 						ImGui::EndTooltip();
 						ImGui::PopStyleVar(1);
 						ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE", path, strlen(path) + 1, ImGuiCond_::ImGuiCond_Once);
@@ -242,18 +242,18 @@ namespace Relentless
 					ImGui::SameLine();
 					ImGui::NewLine();
 
-					RenderThumbnailText(pTexture->GetName(), ImGui::IsItemHovered());
+					RenderThumbnailText(texture.GetName(), ImGui::IsItemHovered());
 				}
 				else if (dir_entry.path().filename().extension().string() == ".Relentless")
 				{
-					ImGui::ImageButton((ImTextureID)m_pSceneTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+					ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
 
 					if (ImGui::BeginDragDropSource())
 					{
 						const char* path = entryPath.c_str();
 						ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 						ImGui::BeginTooltip();
-						ImGui::Image((ImTextureID)m_pSceneTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+						ImGui::Image((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
 						ImGui::EndTooltip();
 						ImGui::PopStyleVar(1);
 						ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_SCENE", path, strlen(path) + 1, ImGuiCond_::ImGuiCond_Once);
@@ -271,11 +271,13 @@ namespace Relentless
 		auto it = m_CreatedMaterials.find(currentDirectory.string());
 		if (it != m_CreatedMaterials.end())
 		{
-			for (auto& materialHandle : it->second)
+			for (auto& pair : it->second)
 			{
+				auto& materialHandle = pair.first;
+
 				ImGui::TableNextColumn();
 
-				ImGui::ImageButton((ImTextureID)m_pMaterialTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+				ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_MaterialTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
 
 				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
 				{
@@ -286,18 +288,16 @@ namespace Relentless
 				{
 					ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 					ImGui::BeginTooltip();
-					ImGui::Image((ImTextureID)m_pMaterialTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+					ImGui::Image((ImTextureID)AssetManager::Get<Texture2D>(m_MaterialTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
 					ImGui::EndTooltip();
 					ImGui::PopStyleVar(1);
 					ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_MATERIAL", (void*)&materialHandle, sizeof(Material), ImGuiCond_::ImGuiCond_Once);
 					ImGui::EndDragDropSource();
 				}
 
-				
-
 				ImGui::SameLine();
 				ImGui::NewLine();
-				RenderThumbnailText(AssetManager::Get().Get<Material>(materialHandle).GetName(), ImGui::IsItemHovered());
+				RenderThumbnailText(AssetManager::Get<Material>(materialHandle).GetName(), ImGui::IsItemHovered(), pair.second, pair.first);
 			}
 		}
 
@@ -315,22 +315,22 @@ namespace Relentless
 
 				if (extension == ".jpg" || extension == ".png")
 				{
-					if (!AssetManager::Get().HasLoaded(filePath.string()))
+					if (!AssetManager::Exists<Texture2D>(filePath.string()))
 					{
 						std::filesystem::copy(filePath, currentDirectory, std::filesystem::copy_options::overwrite_existing);
-						AssetManager::Get().Load<Texture2D>(filePath.string());
+						AssetManager::Load<Texture2D>(filePath.string());
 					}
 				}
 			}
 			if (ImGui::MenuItem("New Material"))
 			{
-				m_CreatedMaterials[currentDirectory.string()].push_back(AssetManager::Get().Create<Material>("New Material"));
+				m_CreatedMaterials[currentDirectory.string()].push_back({ AssetManager::Create<Material>("New Material"), true });
 			}
 			ImGui::EndPopup();
 		}
 	}
 
-	void ContentBrowserPanel::RenderThumbnailText(const std::string& text, bool thumbNailHovered) noexcept
+	void ContentBrowserPanel::RenderThumbnailText(const std::string& text, bool thumbNailHovered, bool newlyCreated, const AssetHandle& handle) noexcept
 	{
 		ImGui::PushItemWidth(m_ThumbnailWidth);
 
@@ -358,12 +358,41 @@ namespace Relentless
 			indent = (m_ThumbnailWidth - textSize.x) / 2.0f - paddingAdjustment;
 		}
 
-		// Set indent
-		ImGui::Dummy(ImVec2(indent, 0)); // Dummy is used to create an empty space, effectively indenting the text
-		ImGui::SameLine();
 
 		// Display the text
-		ImGui::Selectable(textToRender.c_str(), thumbNailHovered, 0, textSize);
+		if (newlyCreated)
+		{
+			ImGui::SetKeyboardFocusHere();
+			static char buf[64] = "";
+			if (ImGui::InputText("##Heyaaaa", buf, 64, ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				if (!std::string(buf).empty() && handle != NULL_HANDLE)
+				{
+					AssetManager::GetMaterialManager().GetMaterial(handle).SetName(buf);
+					for (auto& kv : m_CreatedMaterials)
+					{
+						auto& createdMaterials = kv.second;
+						for (auto& pair : createdMaterials)
+						{
+							if (pair.first == handle)
+							{
+								pair.second = false;
+								break;
+							}
+						}
+					}
+					memset(buf, 0, 64);
+				}
+			}
+		}
+		else
+		{
+			// Set indent
+			ImGui::Dummy(ImVec2(indent, 0)); // Dummy is used to create an empty space, effectively indenting the text
+			ImGui::SameLine();
+
+			ImGui::Selectable(textToRender.c_str(), thumbNailHovered, 0, textSize);
+		}
 
 		ImGui::PopItemWidth();
 	}

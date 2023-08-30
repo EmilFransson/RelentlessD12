@@ -3,12 +3,12 @@
 namespace Relentless
 {
 	InspectorPanel::InspectorPanel() noexcept
-		: m_InspectedAssetHandle{ NULL_RESOURCEID },
+		: m_InspectedAssetHandle{ NULL_HANDLE },
 		  m_InspectedAssetType{ InspectedAssetType::NONE },
 		  m_ForceDisplay{false},
 		  m_MaterialMapThumbnailSize{25.0f}
 	{
-		m_pColorPickerWidgetTexture = Texture2D::Create("pickerwidget.png");
+		m_pColorPickerWidgetTexture = Texture2D::Create(std::string(ENGINE_ASSET_DIRECTORY) + "Textures/pickerwidget.png");
 	}
 
 	void InspectorPanel::OnImGuiRender(const bool show) noexcept
@@ -34,22 +34,27 @@ namespace Relentless
 		ImGui::End();
 	}
 
-	void InspectorPanel::SetContext(const ResourceID& resourceID, const InspectedAssetType assetType) noexcept
+	void InspectorPanel::SetContext(const AssetHandle& assetHandle, const InspectedAssetType assetType) noexcept
 	{
-		m_InspectedAssetHandle = resourceID;
+		m_InspectedAssetHandle = assetHandle;
 		m_InspectedAssetType = assetType;
-		if (m_InspectedAssetHandle != NULL_RESOURCEID)
+		if (m_InspectedAssetHandle != NULL_HANDLE)
 			m_ForceDisplay = true;
 	}
 
 	void InspectorPanel::RenderMaterialInspector() noexcept
 	{
-		RLS_ASSERT(m_InspectedAssetHandle != NULL_RESOURCEID, "Asset handle is invalid.");
+		RLS_ASSERT(m_InspectedAssetHandle != NULL_HANDLE, "Asset handle is invalid.");
 		RLS_ASSERT(m_InspectedAssetType != InspectedAssetType::NONE, "Asset type is invalid.");
 
-		if (m_InspectedAssetHandle != NULL_RESOURCEID)
+		if (m_InspectedAssetHandle != NULL_HANDLE)
 		{
-			Material& material = AssetManager::Get().Get<Material>(m_InspectedAssetHandle);
+			Material& material = AssetManager::Get<Material>(m_InspectedAssetHandle);
+
+			if (material.GetName() == "Default-Material")
+			{
+				ImGui::PushItemFlag(ImGuiItemFlags_::ImGuiItemFlags_Disabled, true);
+			}
 
 			bool changedMaterial = false;
 
@@ -61,6 +66,45 @@ namespace Relentless
 			ImGui::PopFont();
 
 			ImGui::Separator();
+
+
+			ImGui::Columns(2);
+			ImGui::SetColumnWidth(0, 120.0f);
+			ImGui::SetColumnWidth(1, 297.0f);
+			ImGui::Text("Render Mode");
+			ImGui::NextColumn();
+			
+			ImGui::PushMultiItemsWidths(1, ImGui::CalcItemWidth());
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+
+			const char* renderModeStrings[] = { "None", "Opaque", "CutOut", "Transparent"};
+			const char* currentRenderModeString = renderModeStrings[(uint32_t)material.GetRenderMode()];
+
+			if (ImGui::BeginCombo("##RenderModeString", currentRenderModeString))
+			{
+				for (uint8_t i = 0u; i < ARRAYSIZE(renderModeStrings); ++i)
+				{
+					bool isSelected = currentRenderModeString == renderModeStrings[i];
+					if (ImGui::Selectable(renderModeStrings[i], isSelected))
+					{
+						if (!isSelected)
+						{
+							material.SetRenderMode((RenderMode)i);
+						}
+					}
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+
+			ImGui::PopItemWidth();
+			ImGui::PopStyleVar();
+
+
+			ImGui::Columns(1);
+			ImGui::Separator();
+
 			auto boldFont = io.Fonts->Fonts[OPENSANS_BOLD_18];
 			ImGui::PushFont(boldFont);
 			ImGui::Text("Maps");
@@ -73,14 +117,14 @@ namespace Relentless
 
 			if (material.HasAlbedoTexture())
 			{
-				Texture2D* pAlbedoTexture = material.GetAlbedoTexture();
-				ImGui::ImageButton((ImTextureID)pAlbedoTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Texture2D& albedoTexture = material.GetAlbedoTexture();
+				ImGui::ImageButton((ImTextureID)albedoTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetAlbedoTexture(AssetManager::Get().Load<Texture2D>(path));
+						material.SetAlbedoTexture(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -88,6 +132,15 @@ namespace Relentless
 
 				ImGui::SameLine();
 				ImGui::Text("Albedo");
+				if (ImGui::BeginPopupContextItem("AlbedoContextMenu"))
+				{
+					if (ImGui::MenuItem("Reset"))
+					{
+						material.RemoveAlbedoTexture();
+						Material::UploadToGPU(m_InspectedAssetHandle);
+					}
+					ImGui::EndPopup();
+				}
 			}
 			else
 			{
@@ -99,7 +152,7 @@ namespace Relentless
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetAlbedoTexture(AssetManager::Get().Load<Texture2D>(path));
+						material.SetAlbedoTexture(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -107,18 +160,6 @@ namespace Relentless
 
 				ImGui::SameLine();
 				ImGui::Text("Albedo");
-				//if (ImGui::IsItemHovered())
-				//{
-					//if (ImGui::BeginPopupContextItem(0, 1))
-					//{
-					//	if (ImGui::MenuItem("Reset"))
-					//	{
-					//
-					//		ImGui::EndPopup();
-					//	}
-					//	ImGui::EndPopup();
-					//}
-				//}
 			}
 
 			ImGui::NextColumn();
@@ -150,17 +191,28 @@ namespace Relentless
 			
 			if (material.HasMetallicTexture())
 			{
-				Texture2D* pMetallicTexture = material.GetMetallicTexture();
-				ImGui::ImageButton((ImTextureID)pMetallicTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Texture2D& metallicTexture = material.GetMetallicTexture();
+				ImGui::ImageButton((ImTextureID)metallicTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetMetallicTexture(AssetManager::Get().Load<Texture2D>(path));
+						material.SetMetallicTexture(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
+				}
+				ImGui::SameLine();
+				ImGui::Text("Metallic");
+				if (ImGui::BeginPopupContextItem("MetallicContextMenu"))
+				{
+					if (ImGui::MenuItem("Reset"))
+					{
+						material.RemoveMetallicTexture();
+						Material::UploadToGPU(m_InspectedAssetHandle);
+					}
+					ImGui::EndPopup();
 				}
 			}
 			else
@@ -173,16 +225,14 @@ namespace Relentless
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetMetallicTexture(AssetManager::Get().Load<Texture2D>(path));
+						material.SetMetallicTexture(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
 				}
+				ImGui::SameLine();
+				ImGui::Text("Metallic");
 			}
-
-
-			ImGui::SameLine();
-			ImGui::Text("Metallic");
 			
 			ImGui::NextColumn();
 			
@@ -194,17 +244,29 @@ namespace Relentless
 			
 			if (material.HasRoughnessTexture())
 			{
-				Texture2D* pRoughnessTexture = material.GetRoughnessTexture();
-				ImGui::ImageButton((ImTextureID)pRoughnessTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Texture2D& roughnessTexture = material.GetRoughnessTexture();
+				ImGui::ImageButton((ImTextureID)roughnessTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetRoughnessTexture(AssetManager::Get().Load<Texture2D>(path));
+						material.SetRoughnessTexture(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
+				}
+
+				ImGui::SameLine();
+				ImGui::Text("Roughness");
+				if (ImGui::BeginPopupContextItem("RoughnessContextMenu"))
+				{
+					if (ImGui::MenuItem("Reset"))
+					{
+						material.RemoveRoughnessTexture();
+						Material::UploadToGPU(m_InspectedAssetHandle);
+					}
+					ImGui::EndPopup();
 				}
 			}
 			else
@@ -217,15 +279,15 @@ namespace Relentless
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetRoughnessTexture(AssetManager::Get().Load<Texture2D>(path));
+						material.SetRoughnessTexture(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
 				}
-			}
 
-			ImGui::SameLine();
-			ImGui::Text("Roughness");
+				ImGui::SameLine();
+				ImGui::Text("Roughness");
+			}
 
 			ImGui::NextColumn();
 
@@ -237,17 +299,28 @@ namespace Relentless
 
 			if (material.HasNormalMap())
 			{
-				Texture2D* pNormalMap = material.GetNormalMap();
-				ImGui::ImageButton((ImTextureID)pNormalMap->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Texture2D& normalMap = material.GetNormalMap();
+				ImGui::ImageButton((ImTextureID)normalMap.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetNormalMap(AssetManager::Get().Load<Texture2D>(path));
+						material.SetNormalMap(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
+				}
+				ImGui::SameLine();
+				ImGui::Text("Normal");
+				if (ImGui::BeginPopupContextItem("NormalContextMenu"))
+				{
+					if (ImGui::MenuItem("Reset"))
+					{
+						material.RemoveNormalMap();
+						Material::UploadToGPU(m_InspectedAssetHandle);
+					}
+					ImGui::EndPopup();
 				}
 			}
 			else
@@ -260,15 +333,15 @@ namespace Relentless
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetNormalMap(AssetManager::Get().Load<Texture2D>(path));
+						material.SetNormalMap(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
 				}
-
+				ImGui::SameLine();
+				ImGui::Text("Normal");
 			}
-			ImGui::SameLine();
-			ImGui::Text("Normal");
+			
 
 			ImGui::NextColumn();
 			ImGui::Columns(1);
@@ -278,17 +351,28 @@ namespace Relentless
 
 			if (material.HasHeightMap())
 			{
-				Texture2D* pHeightMap = material.GetHeightMap();
-				ImGui::ImageButton((ImTextureID)pHeightMap->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Texture2D& heightMap = material.GetHeightMap();
+				ImGui::ImageButton((ImTextureID)heightMap.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetHeightMap(AssetManager::Get().Load<Texture2D>(path));
+						material.SetHeightMap(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
+				}
+				ImGui::SameLine();
+				ImGui::Text("Height");
+				if (ImGui::BeginPopupContextItem("HeightContextMenu"))
+				{
+					if (ImGui::MenuItem("Reset"))
+					{
+						material.RemoveHeightMap();
+						Material::UploadToGPU(m_InspectedAssetHandle);
+					}
+					ImGui::EndPopup();
 				}
 			}
 			else
@@ -301,15 +385,15 @@ namespace Relentless
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetHeightMap(AssetManager::Get().Load<Texture2D>(path));
+						material.SetHeightMap(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
 				}
-
+				ImGui::SameLine();
+				ImGui::Text("Height");
 			}
-			ImGui::SameLine();
-			ImGui::Text("Height");
+			
 
 			ImGui::NextColumn();
 
@@ -320,41 +404,32 @@ namespace Relentless
 
 			ImGui::Columns(1);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 			ImGui::Columns(2);
 			
 			if (material.HasAmbientOcclusionTexture())
 			{
-				Texture2D* pAmbientOcclusionTexture = material.GetAmbientOcclusionTexture();
-				ImGui::ImageButton((ImTextureID)pAmbientOcclusionTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Texture2D& ambientOcclusionTexture = material.GetAmbientOcclusionTexture();
+				ImGui::ImageButton((ImTextureID)ambientOcclusionTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetAmbientOcclusionTexture(AssetManager::Get().Load<Texture2D>(path));
+						material.SetAmbientOcclusionTexture(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
+				}
+				ImGui::SameLine();
+				ImGui::Text("AO");
+				if (ImGui::BeginPopupContextItem("AOContextMenu"))
+				{
+					if (ImGui::MenuItem("Reset"))
+					{
+						material.RemoveAmbientOcclusionTexture();
+						Material::UploadToGPU(m_InspectedAssetHandle);
+					}
+					ImGui::EndPopup();
 				}
 			}
 			else
@@ -367,22 +442,20 @@ namespace Relentless
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetAmbientOcclusionTexture(AssetManager::Get().Load<Texture2D>(path));
+						material.SetAmbientOcclusionTexture(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
 				}
+				ImGui::SameLine();
+				ImGui::Text("AO");
 			}
-
-			ImGui::SameLine();
-			ImGui::Text("AO");
 
 			ImGui::NextColumn();
 		
 			if (material.HasAmbientOcclusionTexture())
 			{
 				changedMaterial |= ImGui::DragFloat("##AOScale", &material.m_AOScale, 0.006f, 0.0f, 1.0f);
-
 			}
 
 			ImGui::Columns(3);
@@ -390,17 +463,28 @@ namespace Relentless
 			
 			if (material.HasEmissionTexture())
 			{
-				Texture2D* pEmissionTexture = material.GetEmissionTexture();
-				ImGui::ImageButton((ImTextureID)pEmissionTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Texture2D& emissionTexture = material.GetEmissionTexture();
+				ImGui::ImageButton((ImTextureID)emissionTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetEmissionTexture(AssetManager::Get().Load<Texture2D>(path));
+						material.SetEmissionTexture(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
+				}
+				ImGui::SameLine();
+				ImGui::Text("Emission");
+				if (ImGui::BeginPopupContextItem("EmissionContextMenu"))
+				{
+					if (ImGui::MenuItem("Reset"))
+					{
+						material.RemoveEmissionTexture();
+						Material::UploadToGPU(m_InspectedAssetHandle);
+					}
+					ImGui::EndPopup();
 				}
 			}
 			else
@@ -413,15 +497,14 @@ namespace Relentless
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
 						const char* path = (const char*)payLoad->Data;
-						material.SetEmissionTexture(AssetManager::Get().Load<Texture2D>(path));
+						material.SetEmissionTexture(AssetManager::Load<Texture2D>(path));
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
 				}
+				ImGui::SameLine();
+				ImGui::Text("Emission");
 			}
-
-			ImGui::SameLine();
-			ImGui::Text("Emission");
 
 			ImGui::NextColumn();
 
@@ -471,7 +554,13 @@ namespace Relentless
 			
 			
 			if (changedMaterial)
-				AssetManager::Get().GetMaterialManager().SetDirty(m_InspectedAssetHandle);
+				AssetManager::GetMaterialManager().SetDirty(m_InspectedAssetHandle);
+
+			if (material.GetName() == "Default-Material")
+			{
+				ImGui::PopItemFlag();
+			}
+
 		}
 	}
 

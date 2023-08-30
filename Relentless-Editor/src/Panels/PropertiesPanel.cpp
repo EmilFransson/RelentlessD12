@@ -51,13 +51,13 @@ namespace Relentless
 #pragma warning(push, 0)
 			_itoa(m_SelectedEntity, bPtr, 2);
 #pragma warning(pop)			
-			bool shouldRender = m_pScene->GetEntityManager().Has<ForwardPassComponent>(m_SelectedEntity);
+			bool shouldRender = m_pScene->GetEntityManager().Has<OpaquePassComponent>(m_SelectedEntity);
 			if (ImGui::Checkbox(buff, &shouldRender))
 			{
 				if (!shouldRender)
-					m_pScene->GetEntityManager().Remove<ForwardPassComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().Remove<OpaquePassComponent>(m_SelectedEntity);
 				else
-					m_pScene->GetEntityManager().Add<ForwardPassComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().Add<OpaquePassComponent>(m_SelectedEntity);
 			}
 
 			ImGuiIO& io = ImGui::GetIO();
@@ -217,13 +217,13 @@ namespace Relentless
 		DrawComponentNode<MeshFilterComponent>("Mesh Filter", [this]()
 			{
 				auto& mfc = m_pScene->GetEntityManager().Get<MeshFilterComponent>(m_SelectedEntity);
-				
+
 				char input[40];
-				if (false)
+				if (mfc.MeshHandle != NULL_HANDLE)
 				{
-					//std::string name = AssetManager::Get().GetAssetName(mfc.VertexBufferID);
-					//name = name.substr(0, name.find_first_of(" "));
-					//strcpy_s(input, sizeof(input), name.c_str());
+					Mesh& mesh = AssetManager::GetMeshManager().GetMesh(mfc.MeshHandle);
+					std::string name = mesh.GetName();
+					strcpy_s(input, sizeof(input), name.c_str());
 				}
 				else
 				{
@@ -249,15 +249,15 @@ namespace Relentless
 				ImGui::PopItemWidth();
 				ImGui::SameLine(itemWidth + buttonSize.x);
 				
-				ImGui::Button("...", buttonSize);
-				if (ImGui::IsItemClicked())
-				{
-					std::filesystem::path filePath = FileDialogs::OpenFile("Mesh files (*.obj,*.gltf)\0*.obj;*.gltf\0");
-
-					//if (!filePath.empty())
+				//ImGui::Button("...", buttonSize);
+				//if (ImGui::IsItemClicked())
+				//{
+				//	std::filesystem::path filePath = FileDialogs::OpenFile("Mesh files (*.obj,*.gltf)\0*.obj;*.gltf\0");
+				//
+				//	//if (!filePath.empty())
 					//{
-					//	ResourceID vbID;
-					//	ResourceID ibID;
+					//	AssetHandle vbID;
+					//	AssetHandle ibID;
 					//	if (!AssetManager::Get().HasLoaded(filePath.stem().string() + " Vertex Buffer"))
 					//	{
 					//		MeshFactory meshFactory;
@@ -292,17 +292,16 @@ namespace Relentless
 					//	//mfc.VertexBufferID = vbID;
 					//	//mfc.IndexBufferID = ibID;
 					//}
-				}
+				//}
 
 				ImGui::PopStyleVar();
 				ImGui::Columns(1);
-
 			});
 
 		DrawComponentNode<MeshRendererComponent>("Mesh Renderer", [this]()
 			{
 				auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(m_SelectedEntity);
-				std::string materialName = mrc.MaterialHandle != NULL_RESOURCEID ? AssetManager::Get().Get<Material>(mrc.MaterialHandle).GetName() : "Empty";
+				std::string materialName = mrc.MaterialHandle != NULL_HANDLE ? AssetManager::Get<Material>(mrc.MaterialHandle).GetName() : "Empty";
 
 				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 				ImGui::InputText("Material", (char*)materialName.c_str(), materialName.size(), ImGuiInputTextFlags_ReadOnly);
@@ -325,12 +324,26 @@ namespace Relentless
 				ImGui::InvisibleButton("##overlay", size);
 				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
 				{
-					if (mrc.MaterialHandle != NULL_RESOURCEID)
+					if (mrc.MaterialHandle != NULL_HANDLE)
 					{
 						m_OnMaterialSelectedCallback(mrc.MaterialHandle);
 					}
 				}
-				
+
+				if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0))
+				{
+					ImVec2 item_min = ImGui::GetItemRectMin();
+					ImVec2 item_max = ImGui::GetItemRectMax();
+					ImDrawList* draw_list = ImGui::GetWindowDrawList();
+					draw_list->AddRect(item_min, item_max, IM_COL32(200, 200, 200, 255));
+				}
+				else if (ImGui::IsItemHovered())
+				{
+					ImVec2 item_min = ImGui::GetItemRectMin();
+					ImVec2 item_max = ImGui::GetItemRectMax();
+					ImDrawList* draw_list = ImGui::GetWindowDrawList();
+					draw_list->AddRect(item_min, item_max, IM_COL32(200, 200, 0, 255));
+				}
 			});
 
 		DrawComponentNode<CameraComponent>("Camera", [this]()
@@ -360,7 +373,7 @@ namespace Relentless
 				{
 					m_pScene->GetEntityManager().Add<MeshRendererComponent>(m_SelectedEntity);
 					m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-					m_pScene->GetEntityManager().AddOrReplace<ForwardPassComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().AddOrReplace<OpaquePassComponent>(m_SelectedEntity);
 				}
 				else
 				{
@@ -373,7 +386,7 @@ namespace Relentless
 				if (!m_pScene->GetEntityManager().Has<MeshFilterComponent>(m_SelectedEntity))
 				{
 					m_pScene->GetEntityManager().Add<MeshFilterComponent>(m_SelectedEntity);
-					m_pScene->GetEntityManager().AddOrReplace<ForwardPassComponent>(m_SelectedEntity);
+					m_pScene->GetEntityManager().AddOrReplace<OpaquePassComponent>(m_SelectedEntity);
 				}
 				else
 				{

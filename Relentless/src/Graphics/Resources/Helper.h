@@ -12,3 +12,8 @@ namespace std
 		}
 	};
 }
+
+namespace Relentless
+{
+	[[nodiscard]] UUID CreateUUID() noexcept;
+}

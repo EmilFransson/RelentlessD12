@@ -1,0 +1,12 @@
+Material:
+  Name: Default-Material
+  Albedo Color: [1, 1, 1]
+  Metallic: 0
+  Emission Color: [0, 0, 0]
+  Emission Intensity: 0
+  Roughness: 0.5
+  Tiling Factor: [1, 1]
+  Offset: [0, 0]
+  Heightmap Scale: 0.0199999996
+  AO Scale: 1
+  Combined RoughnessMetalness: false

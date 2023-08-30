@@ -81,7 +81,7 @@ namespace Relentless
 		std::filesystem::path fullPath = GetFullShapePath<ShapeType>();
 		std::string nameString = fullPath.stem().string();
 
-		auto& mm = AssetManager::Get().GetMeshManager();
+		auto& mm = AssetManager::GetMeshManager();
 		MeshHandle& meshHandle = mm.GetHandleByString(nameString);
 
 		auto entity = CreateEntity(nameString.c_str());
@@ -89,10 +89,13 @@ namespace Relentless
 		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
 		mfc.MeshHandle = meshHandle;
 		
-		m_EntityManager.Add<ForwardPassComponent>(entity);
+		m_EntityManager.Add<OpaquePassComponent>(entity);
 		
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
-		mrc.MaterialHandle = AssetManager::Get().Create<Material>("Some Material");
+
+		MaterialManager& materialManager = AssetManager::GetMaterialManager();
+		mrc.MaterialHandle = materialManager.GetDefaultMaterialHandle();
+
 		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
 
 		return entity;
@@ -104,18 +107,20 @@ namespace Relentless
 	{
 		std::filesystem::path fullPath = GetFullExtraPath<ExtraType>();
 		std::string nameString = fullPath.stem().string();
-
-		auto& mm = AssetManager::Get().GetMeshManager();
-		MeshHandle& meshHandle = mm.GetHandleByString(nameString);
-
+		
 		auto entity = CreateEntity(nameString.c_str());
+
+		MeshManager& mm = AssetManager::GetMeshManager();
+		MeshHandle& meshHandle = mm.GetHandleByString(nameString);
 
 		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
 		mfc.MeshHandle = meshHandle;
 
-		m_EntityManager.Add<ForwardPassComponent>(entity);
+		m_EntityManager.Add<OpaquePassComponent>(entity);
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
-		mrc.MaterialHandle = AssetManager::Get().Create<Material>("Some Material");
+
+		MaterialManager& materialManager = AssetManager::GetMaterialManager();
+		mrc.MaterialHandle = materialManager.GetDefaultMaterialHandle();
 		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
 
 		return entity;

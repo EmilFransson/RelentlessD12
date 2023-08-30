@@ -48,5 +48,8 @@
 
 //ECS
 #include <src/Scene/Scene.h>
-#include <src/Scene/SceneSerializer.h>
 #include <src/ECS/EntityManager.h>
+
+//Serialization
+#include <src/Scene/SceneSerializer.h>
+#include <src/Graphics/Resources/MaterialSerializer.h>

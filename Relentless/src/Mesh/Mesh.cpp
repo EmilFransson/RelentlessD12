@@ -8,23 +8,29 @@
 
 namespace Relentless
 {
-	FullMesh::FullMesh(const std::string& name, const VertexBuffer::Specification& vbSpec, const IndexBuffer::Specification& ibSpec) noexcept
+	Mesh::Mesh(const std::string& name, const VertexBuffer::Specification& vbSpec, const IndexBuffer::Specification& ibSpec) noexcept
 		:m_Name{ name }
 	{
 		m_pVertexBuffer = std::make_unique<VertexBuffer>(&vbSpec);
 		m_pIndexBuffer = std::make_unique<IndexBuffer>(&ibSpec);
 	}
 
-	FullMesh& MeshManager::Get(const MeshHandle& meshHandle) noexcept
+	void Mesh::SetName(const std::string& name) noexcept
 	{
-		RLS_ASSERT(m_Meshes.contains(meshHandle), "Mesh handle is invalid.");
-		return m_Meshes[meshHandle];
+		m_Name = name;
 	}
 
-	FullMesh& MeshManager::GetByString(const std::string& meshString) noexcept
+	Mesh& MeshManager::GetMesh(const MeshHandle& meshHandle) noexcept
 	{
-		RLS_ASSERT(m_MeshNameToHandleMap.contains(meshString) && m_Meshes.contains(m_MeshNameToHandleMap[meshString]), "Mesh \"" + meshString + "\" does not exist.");
-		return m_Meshes[m_MeshNameToHandleMap[meshString]];
+		RLS_ASSERT(m_Meshes.size() > meshHandle.Index, "Mesh handle is invalid.");
+		return m_Meshes[meshHandle.Index];
+	}
+
+	Mesh& MeshManager::GetByString(const std::string& meshString) noexcept
+	{
+		MeshHandle& meshHandle = GetHandleByString(meshString);
+		RLS_ASSERT(m_Meshes.size() > meshHandle.Index, "Mesh \"" + meshString + "\" does not exist.");
+		return m_Meshes[meshHandle.Index];
 	}
 
 	MeshHandle& MeshManager::GetHandleByString(const std::string& meshString) noexcept
@@ -100,7 +106,7 @@ namespace Relentless
 
 				auto e = pScene->CreateEntity(pMesh->mName.C_Str());
 
-				pScene->GetEntityManager().AddOrReplace<ForwardPassComponent>(e);
+				pScene->GetEntityManager().AddOrReplace<OpaquePassComponent>(e);
 				pScene->GetEntityManager().Get<DirtyTransformComponent>(e).AdjustedWorldSpace = false;
 				auto& tc = pScene->GetEntityManager().Get<TransformComponent>(e);
 				tc.Transform = currentTransform;
@@ -110,6 +116,7 @@ namespace Relentless
 				mrc.MaterialHandle = materialHandle;
 				auto& mfc = pScene->GetEntityManager().Add<MeshFilterComponent>(e);
 				mfc.MeshHandle = meshHandle;
+
 			}
 		}
 
@@ -188,34 +195,38 @@ namespace Relentless
 			.Name = pMesh->mName.C_Str() + std::string(" Index Buffer")
 		};
 
-		UUID uuID;
-#if defined RLS_DEBUG
-		RLS_ASSERT(::UuidCreate(&uuID) == RPC_S_OK, "Failed to generate UUID.");
-#else
-		::UuidCreate(&uuID);
-#endif
+		MeshHandle meshHandle;
+		meshHandle.UUID = CreateUUID();
 
-		m_Meshes.emplace(std::piecewise_construct,
-			std::forward_as_tuple(uuID),
-			std::forward_as_tuple(pMesh->mName.C_Str(), vbSpec, ibSpec));
+		if (!m_FreeList.empty())
+		{
+			meshHandle.Index = m_FreeList.front();
+			m_FreeList.pop();
+			m_Meshes[meshHandle.Index] = Mesh(pMesh->mName.C_Str(), vbSpec, ibSpec);
+		}
+		else
+		{
+			meshHandle.Index = m_Meshes.size();
+			m_Meshes.emplace_back(Mesh(pMesh->mName.C_Str(), vbSpec, ibSpec));
+		}
 
-		m_MeshNameToHandleMap[std::string(pMesh->mName.C_Str())] = uuID;
+		m_MeshNameToHandleMap[std::string(pMesh->mName.C_Str())] = meshHandle;
 
-		return uuID;
+		return meshHandle;
 	}
 
 	MaterialHandle MeshManager::ProcessMaterial(aiMesh* pMesh, const aiScene* pAssimpScene, const std::filesystem::path& workingDirectory) noexcept
 	{
 		aiMaterial* m = pAssimpScene->mMaterials[pMesh->mMaterialIndex];
-		MaterialHandle materialHandle = AssetManager::Get().Create<Material>(m->GetName().C_Str());
-		auto& materialManager = AssetManager::Get().GetMaterialManager();
-		Material& mat = materialManager.Get(materialHandle);
+		MaterialHandle materialHandle = AssetManager::Create<Material>(m->GetName().C_Str());
+		auto& materialManager = AssetManager::GetMaterialManager();
+		Material& mat = materialManager.GetMaterial(materialHandle);
 
 		aiString path;
 		if (m->GetTexture(aiTextureType_BASE_COLOR, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = workingDirectory / std::string(path.C_Str());
-			ResourceID baseColorID = AssetManager::Get().Load<Texture2D>(fullPath.string());
+			AssetHandle baseColorID = AssetManager::Load<Texture2D>(fullPath.string());
 			mat.SetAlbedoTexture(baseColorID);
 
 			int usesAlpha;
@@ -229,7 +240,7 @@ namespace Relentless
 		else if (m->GetTexture(aiTextureType_DIFFUSE, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = workingDirectory / std::string(path.C_Str());
-			ResourceID baseColorID = AssetManager::Get().Load<Texture2D>(fullPath.string());
+			AssetHandle baseColorID = AssetManager::Load<Texture2D>(fullPath.string());
 			mat.SetAlbedoTexture(baseColorID);
 		}
 		else 
@@ -252,7 +263,7 @@ namespace Relentless
 				//fullPath = s;
 			}
 
-			ResourceID metallicID = AssetManager::Get().Load<Texture2D>(fullPath.string());
+			AssetHandle metallicID = AssetManager::Load<Texture2D>(fullPath.string());
 			mat.SetMetallicTexture(metallicID);
 		}
 
@@ -261,7 +272,7 @@ namespace Relentless
 			if (m->GetTexture(aiTextureType::aiTextureType_DIFFUSE_ROUGHNESS, 0, &path) == aiReturn::aiReturn_SUCCESS)
 			{
 				std::filesystem::path fullPath = workingDirectory / std::string(path.C_Str());
-				ResourceID roughnessID = AssetManager::Get().Load<Texture2D>(fullPath.string());
+				AssetHandle roughnessID = AssetManager::Load<Texture2D>(fullPath.string());
 				mat.SetRoughnessTexture(roughnessID);
 			}
 		}
@@ -269,25 +280,25 @@ namespace Relentless
 		if (m->GetTexture(aiTextureType::aiTextureType_NORMALS, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = workingDirectory / std::string(path.C_Str());
-			ResourceID normalID = AssetManager::Get().Load<Texture2D>(fullPath.string());
+			AssetHandle normalID = AssetManager::Load<Texture2D>(fullPath.string());
 			mat.SetNormalMap(normalID);
 		}
 		else if (m->GetTexture(aiTextureType::aiTextureType_NORMAL_CAMERA, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = workingDirectory / std::string(path.C_Str());
-			ResourceID normalID = AssetManager::Get().Load<Texture2D>(fullPath.string());
+			AssetHandle normalID = AssetManager::Load<Texture2D>(fullPath.string());
 			mat.SetNormalMap(normalID);
 		}
 		if (m->GetTexture(aiTextureType::aiTextureType_AMBIENT_OCCLUSION, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = workingDirectory / std::string(path.C_Str());
-			ResourceID aoID = AssetManager::Get().Load<Texture2D>(fullPath.string());
+			AssetHandle aoID = AssetManager::Load<Texture2D>(fullPath.string());
 			mat.SetAmbientOcclusionTexture(aoID);
 		}
 		if (m->GetTexture(aiTextureType::aiTextureType_EMISSION_COLOR, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = workingDirectory / std::string(path.C_Str());
-			ResourceID emissionID = AssetManager::Get().Load<Texture2D>(fullPath.string());
+			AssetHandle emissionID = AssetManager::Load<Texture2D>(fullPath.string());
 			mat.SetEmissionTexture(emissionID);
 		}
 		else
@@ -302,7 +313,7 @@ namespace Relentless
 		if (m->GetTexture(aiTextureType::aiTextureType_HEIGHT, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = workingDirectory / std::string(path.C_Str());
-			ResourceID heightID = AssetManager::Get().Load<Texture2D>(fullPath.string());
+			AssetHandle heightID = AssetManager::Load<Texture2D>(fullPath.string());
 			mat.SetHeightMap(heightID);
 		}
 		return materialHandle;

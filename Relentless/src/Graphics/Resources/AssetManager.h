@@ -1,137 +1,107 @@
 #pragma once
-#include "VertexBuffer.h"
-#include "IndexBuffer.h"
-#include "../MemoryManager.h"
+#include "../MemoryManager.h" //TODO: Perhaps remove?
 #include "Material.h"
 #include "../../Mesh/Mesh.h"
+#include "TextureManager.h"
 
 namespace Relentless
 {
-	inline static std::mutex g_LoadMutex;
-
 	class AssetManager
 	{
-	public:
+	private:
 		AssetManager() noexcept = default;
 		~AssetManager() noexcept = default;
 
-		[[nodiscard]] static constexpr AssetManager& Get() noexcept { return s_instance; }
-		[[nodiscard]] bool HasLoaded(const std::string& assetPath) const noexcept;
-		[[nodiscard]] MaterialManager& GetMaterialManager() noexcept { return m_MaterialManager; }
-		[[nodiscard]] MeshManager& GetMeshManager() noexcept { return m_MeshManager; }
+		struct Data
+		{
+			MaterialManager MaterialManager;
+			MeshManager MeshManager;
+			TextureManager TextureManager;
+		};
+
+		static Data s_Data;
+
+		template<typename>
+		struct always_false : std::false_type {};
+	public:
+		static void Initialize() noexcept;
+		[[nodiscard]] static MaterialManager& GetMaterialManager() noexcept;
+		[[nodiscard]] static MeshManager& GetMeshManager() noexcept;
+		[[nodiscard]] static TextureManager& GetTextureManager() noexcept;
 
 		template<typename AssetType>
-		void Upload(const ResourceID& resourceID) noexcept
+		[[nodiscard]] static AssetType& Get(const AssetHandle& AssetHandle) noexcept
 		{
-			if constexpr (std::is_same_v<AssetType, Material>)
-			{
-				m_MaterialManager.Upload(resourceID);
-			}
-		}
-
-		template<typename AssetType>
-		__forceinline [[nodiscard]] const ResourceID Create(const std::string& assetName, const AssetType& assetType = AssetType())
-		{
-			if constexpr (std::is_same_v<AssetType, Material>)
-			{
-				return m_MaterialManager.Create(assetName, assetType);
-			}
-		}
-
-		template<typename AssetType>
-		requires std::is_base_of_v<IResource, AssetType>
-		const ResourceID& Load(const std::string& contextName, void* pSpecification = nullptr) noexcept
-		{
-			const std::lock_guard<std::mutex> lock(g_LoadMutex);
-			if (!m_PathToResourceIDMap.contains(contextName))
-			{
-				UUID uuID;
-				#if defined RLS_DEBUG
-				RLS_ASSERT(::UuidCreate(&uuID) == RPC_S_OK, "Failed to generate UUID.");
-				#else
-				::UuidCreate(&uuID);
-				#endif
-				m_PathToResourceIDMap[contextName] = uuID;
-				if (pSpecification)
-					LoadInternal<AssetType>(uuID, pSpecification);
-				else
-					LoadInternal<AssetType>(uuID, (void*)contextName.c_str());
-
-				MemoryManager::Get().GetUploadBuffer()->Upload();
-			}
-			return m_PathToResourceIDMap[contextName];
+			static_assert(always_false<AssetType>::value, "This operation is not supported by the type, or the type does not exist.");
 		}
 
 		template<typename AssetType>
-		[[nodiscard]] AssetType& Get(const ResourceID assetID) noexcept
+		[[nodiscard]] static bool Exists(const std::string& assetName) noexcept
 		{
-			if constexpr (std::is_same_v<AssetType, Material>)
-			{
-				return m_MaterialManager.Get(assetID);
-			}
+			static_assert(always_false<AssetType>::value, "This operation is not supported by the type, or the type does not exist.");
 		}
 
 		template<typename AssetType>
-		requires std::is_base_of_v<IResource, AssetType>
-		[[nodiscard]] AssetType* GetAsset(const ResourceID& assetID) noexcept
+		static AssetHandle Create(const std::string& context) noexcept
 		{
-			RLS_ASSERT(m_Assets.contains(assetID), "Asset has not been loaded.");
-			return static_cast<AssetType*>(m_Assets[assetID].get());
+			static_assert(always_false<AssetType>::value, "This operation is not supported by the type, or the type does not exist.");
 		}
 
-		[[nodiscard]] bool Exists(const ResourceID& uuID) const noexcept
-		{
-			return m_Assets.contains(uuID);
-		}
-
-		[[nodiscard]] const std::string& GetAssetName(const ResourceID& uuID) const noexcept
-		{
-			RLS_ASSERT(m_Assets.contains(uuID), "Resource does not exist.");
-			const std::string* toReturn{nullptr};
-			for (const auto& [name, ID] : m_PathToResourceIDMap)
-			{
-				if (ID == uuID)
-				{
-					toReturn = &name;
-					break;
-				}
-			}
-			return *toReturn;
-		}
-	private:
 		template<typename AssetType>
-		requires std::is_base_of_v<IResource, AssetType>
-		void LoadInternal(const ResourceID& uuID, void* pSpecification)
+		static AssetHandle Load(const std::string& context) noexcept
 		{
-			RLS_ASSERT(false, "Resource not yet supported.");
+			static_assert(always_false<AssetType>::value, "This operation is not supported by the type, or the type does not exist.");
 		}
-
-		template<>
-		void LoadInternal<VertexBuffer>(const ResourceID& uuID, void* pSpecification)
-		{
-			VertexBuffer::Specification* pVertexBufferSpecification = static_cast<VertexBuffer::Specification*>(pSpecification);
-			m_Assets[uuID] = std::move(std::make_shared<VertexBuffer>(pVertexBufferSpecification));
-		}
-
-		template<>
-		void LoadInternal<IndexBuffer>(const ResourceID& uuID, void* pSpecification)
-		{
-			IndexBuffer::Specification* pIndexBufferSpecification = static_cast<IndexBuffer::Specification*>(pSpecification);
-			m_Assets[uuID] = std::move(std::make_shared<IndexBuffer>(pIndexBufferSpecification));
-		}
-
-		template<>
-		void LoadInternal<Texture2D>(const ResourceID& uuID, void* fileName)
-		{
-			RLS_ASSERT(fileName, "FileName is NULL");
-			m_Assets[uuID] = std::move(std::make_shared<Texture2D>((char*)fileName));
-		}
-
-	private:
-		static AssetManager s_instance;
-		std::unordered_map<ResourceID, std::shared_ptr<IResource>> m_Assets;
-		std::unordered_map<std::string, ResourceID> m_PathToResourceIDMap;
-		MaterialManager m_MaterialManager;
-		MeshManager m_MeshManager;
 	};
+
+	template<>
+	inline Material& AssetManager::Get<Material>(const MaterialHandle& materialHandle) noexcept
+	{
+		return s_Data.MaterialManager.GetMaterial(materialHandle);
+	}
+
+	template<>
+	inline Mesh& AssetManager::Get<Mesh>(const MeshHandle& materialHandle) noexcept
+	{
+		return s_Data.MeshManager.GetMesh(materialHandle);
+	}
+
+	template<>
+	inline Texture2D& AssetManager::Get<Texture2D>(const TextureHandle& textureHandle) noexcept
+	{
+		return s_Data.TextureManager.GetTexture(textureHandle);
+	}
+
+	template<>
+	inline bool AssetManager::Exists<Material>(const std::string& assetName) noexcept
+	{
+		return s_Data.MaterialManager.Exists(assetName);
+	}
+
+	template<>
+	inline bool AssetManager::Exists<Mesh>(const std::string& assetName) noexcept
+	{
+		return s_Data.MeshManager.Exists(assetName);
+	}
+
+	template<>
+	inline bool AssetManager::Exists<Texture2D>(const std::string& assetName) noexcept
+	{
+		return s_Data.TextureManager.Exists(assetName);
+	}
+
+	template<>
+	inline AssetHandle AssetManager::Create<Material>(const std::string& name) noexcept
+	{
+		return s_Data.MaterialManager.Create(name);
+	}
+
+	template<>
+	inline AssetHandle AssetManager::Load<Texture2D>(const std::string& context) noexcept
+	{
+		if (s_Data.TextureManager.Exists(context))
+			return s_Data.TextureManager.GetTextureHandleByString(context);
+
+		return s_Data.TextureManager.LoadTextureFromFile(context);
+	}
 }

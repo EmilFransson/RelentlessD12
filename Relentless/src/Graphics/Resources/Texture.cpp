@@ -145,7 +145,7 @@ namespace Relentless
 
 	std::shared_ptr<Texture2D> Texture2D::Create(const std::string& fileName) noexcept
 	{
-		return std::make_shared<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + std::string("Textures/") + fileName);
+		return std::make_shared<Texture2D>(fileName);
 	}
 
 	std::shared_ptr<Texture2D> Texture2D::CreateFromPath(const std::filesystem::path& filePath) noexcept
