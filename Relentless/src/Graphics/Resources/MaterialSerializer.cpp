@@ -5,7 +5,7 @@
 
 namespace Relentless
 {
-	void MaterialSerializer::Serialize(MaterialHandle& materialHandle, const std::string& path) noexcept
+	void MaterialSerializer::Serialize(MaterialHandle& materialHandle, const std::string& path, const std::string& toReplace) noexcept
 	{
 		RLS_ASSERT(std::filesystem::path(path).extension().string() == MATERIAL_EXTENSION, "Material extension is wrong.");
 		RLS_ASSERT(materialHandle != NULL_HANDLE, "Material handle is invalid.");
@@ -55,16 +55,28 @@ namespace Relentless
 		//(For materials, the rasset-file only contains the guid!)
 		if (!std::filesystem::exists(path + ASSET_EXTENSION))
 		{
+			std::string pathWithExtension = path + ASSET_EXTENSION;
 			YAML::Emitter outAsset;
 
 			outAsset << YAML::BeginMap;
 			outAsset << YAML::Key << "GUID" << YAML::Value << materialHandle.UUID;
 			outAsset << YAML::EndMap;
 
-			outFile.open(path + ASSET_EXTENSION);
+			outFile.open(pathWithExtension);
 			RLS_ASSERT(outFile.is_open(), "Unable to open/create material asset file to write to.");
 			outFile << outAsset.c_str();
 			outFile.close();
+
+			::SetFileAttributesA(pathWithExtension.c_str(), GetFileAttributesA(pathWithExtension.c_str()) | FILE_ATTRIBUTE_HIDDEN);
+		}
+
+		if (!toReplace.empty())
+		{
+			RLS_ASSERT(std::filesystem::exists(toReplace), ".rmat file to replace does not exist.");
+			RLS_ASSERT(std::filesystem::exists(toReplace + ASSET_EXTENSION), ".rasset file to replace does not exist.");
+		
+			std::filesystem::remove(toReplace);
+			std::filesystem::remove(toReplace + ASSET_EXTENSION);
 		}
 	}
 

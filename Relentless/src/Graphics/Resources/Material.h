@@ -111,6 +111,8 @@ namespace Relentless
 		~MaterialManager() noexcept = default;
 		void Intitialize() noexcept;
 		[[nodiscard]] Material& GetMaterial(const MaterialHandle& materialHandle) noexcept;
+		[[nodiscard]] MaterialHandle& GetMaterialHandleByName(const std::string& materialname) noexcept;
+		void OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept;
 		[[nodiscard]] MaterialHandle Create(const std::string& name, const Material& = Material()) noexcept;
 		MaterialHandle CreateWithUUID(const UUID& materialHandle, const std::string& name, const Material& = Material()) noexcept;
 		__forceinline void Upload(const MaterialHandle& materialHandle) noexcept;

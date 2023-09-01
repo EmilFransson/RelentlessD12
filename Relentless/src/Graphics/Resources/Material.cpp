@@ -438,6 +438,22 @@ namespace Relentless
 		return m_Materials[materialHandle.Index];
 	}
 
+	MaterialHandle& MaterialManager::GetMaterialHandleByName(const std::string& materialName) noexcept
+	{
+		const std::lock_guard<std::mutex> lock(g_CreateMutex);
+
+		RLS_ASSERT(Exists(materialName), "Material does not exist.");
+		return m_StringToMaterialHandleMap[materialName];
+	}
+
+	void MaterialManager::OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept
+	{
+		RLS_ASSERT(Exists(previousName), "Material does not exist.");
+		auto it = m_StringToMaterialHandleMap.find(previousName);
+		m_StringToMaterialHandleMap[newName] = it->second;
+		m_StringToMaterialHandleMap.erase(it);
+	}
+
 	MaterialHandle MaterialManager::Create(const std::string& name, const Material& material) noexcept
 	{
 		return CreateWithUUID(CreateUUID(), name, material);

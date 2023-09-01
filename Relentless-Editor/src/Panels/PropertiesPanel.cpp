@@ -310,7 +310,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_MATERIAL"))
 					{
-						MaterialHandle* pMaterialHandle = (MaterialHandle*)payLoad->Data;
+						const MaterialHandle* pMaterialHandle = (MaterialHandle*)payLoad->Data;
 						mrc.MaterialHandle = *pMaterialHandle;
 					}
 					ImGui::EndDragDropTarget();

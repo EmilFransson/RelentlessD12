@@ -9,8 +9,12 @@ namespace Relentless
 	enum class ContactShadows : uint8_t { OFF = 0, HBAO_PLUS };
 	struct Options
 	{
-		uint8_t MSAASamples{ 8u };
+		uint8_t MSAASamples{ 2u };
+		#if defined RLS_DEBUG
+		ContactShadows ContactShadowType{ ContactShadows::OFF };
+		#else
 		ContactShadows ContactShadowType{ ContactShadows::HBAO_PLUS };
+		#endif
 	};
 
 	class SceneRenderer

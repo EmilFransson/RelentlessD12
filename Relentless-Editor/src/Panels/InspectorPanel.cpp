@@ -123,8 +123,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetAlbedoTexture(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetAlbedoTexture(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -151,8 +151,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetAlbedoTexture(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetAlbedoTexture(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -197,8 +197,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetMetallicTexture(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetMetallicTexture(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -224,8 +224,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetMetallicTexture(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetMetallicTexture(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -250,8 +250,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetRoughnessTexture(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetRoughnessTexture(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -278,8 +278,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetRoughnessTexture(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetRoughnessTexture(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -305,8 +305,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetNormalMap(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetNormalMap(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -332,8 +332,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetNormalMap(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetNormalMap(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -357,8 +357,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetHeightMap(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetHeightMap(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -384,8 +384,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetHeightMap(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetHeightMap(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -414,8 +414,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetAmbientOcclusionTexture(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetAmbientOcclusionTexture(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -441,8 +441,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetAmbientOcclusionTexture(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetAmbientOcclusionTexture(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -469,8 +469,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetEmissionTexture(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetEmissionTexture(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
@@ -496,8 +496,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						const char* path = (const char*)payLoad->Data;
-						material.SetEmissionTexture(AssetManager::Load<Texture2D>(path));
+						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						material.SetEmissionTexture(*textureHandle);
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();

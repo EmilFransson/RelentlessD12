@@ -20,7 +20,7 @@ namespace Relentless
 		void RenderAssetSearchBox() noexcept;
 		void RenderAssetThumbNails() noexcept;
 		void RenderPopUpOptions() noexcept;
-		void RenderThumbnailText(const std::string& text, bool thumbNailHovered, bool newlyCreated = false, const AssetHandle& handle = NULL_HANDLE) noexcept;
+		void RenderThumbnailText(const std::string& text, bool thumbNailHovered, const AssetHandle& handle = NULL_HANDLE) noexcept;
 	private:
 		float m_ThumbnailWidth;
 		TextureHandle m_DirectoryTextureHandle;
@@ -28,8 +28,9 @@ namespace Relentless
 		TextureHandle m_MaterialTextureHandle;
 		std::string m_SelectedDirectory;
 		float m_LocationStringPosition[2];
+		uint32_t m_NrOfCreatedMaterials{ 0u };
 
-		std::unordered_map<std::string, std::vector<std::pair<MaterialHandle, bool>>> m_CreatedMaterials;
+		AssetHandle m_AssetToName;
 
 		std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> m_OnAssetSelectedCallback;
 	};

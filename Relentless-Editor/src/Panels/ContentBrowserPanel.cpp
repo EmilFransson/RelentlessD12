@@ -5,7 +5,8 @@ namespace Relentless
 
 	ContentBrowserPanel::ContentBrowserPanel() noexcept
 		: m_ThumbnailWidth{100.0f},
-		  m_SelectedDirectory{"Assets"}
+		  m_SelectedDirectory{"Assets"},
+		m_AssetToName{ NULL_HANDLE }
 	{
 		m_DirectoryTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures/Directory.jpg");
 		m_SceneTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures/RLS_LOGO.jpg");
@@ -199,6 +200,7 @@ namespace Relentless
 		{
 			std::string entryPath = dir_entry.path().string();
 			std::string entry = dir_entry.path().filename().string();
+			std::string entryStem = dir_entry.path().filename().stem().string();
 
 			if (dir_entry.is_directory())
 			{
@@ -223,19 +225,18 @@ namespace Relentless
 						AssetManager::Load<Texture2D>(dir_entry.path().string());
 					}
 
-					AssetHandle textureAssetHandle = AssetManager::Load<Texture2D>(dir_entry.path().string());
+					TextureHandle textureAssetHandle = AssetManager::Load<Texture2D>(dir_entry.path().string());
 					Texture2D& texture = AssetManager::Get<Texture2D>(textureAssetHandle);
 					ImGui::ImageButton((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
 
 					if (ImGui::BeginDragDropSource())
 					{
-						const char* path = entryPath.c_str();
 						ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 						ImGui::BeginTooltip();
 						ImGui::Image((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
 						ImGui::EndTooltip();
 						ImGui::PopStyleVar(1);
-						ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE", path, strlen(path) + 1, ImGuiCond_::ImGuiCond_Once);
+						ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE", (void*)&textureAssetHandle, sizeof(TextureHandle), ImGuiCond_::ImGuiCond_Once);
 						ImGui::EndDragDropSource();
 					}
 
@@ -265,42 +266,40 @@ namespace Relentless
 
 					RenderThumbnailText(dir_entry.path().filename().string(), ImGui::IsItemHovered());
 				}
+				else if (dir_entry.path().filename().extension().string() == ".rmat")
+				{
+					if (!AssetManager::Exists<Material>(entryStem))
+					{
+						MaterialSerializer::Deserialize(dir_entry.path().string());
+					}
+
+					MaterialHandle& materialHandle = AssetManager::GetMaterialManager().GetMaterialHandleByName(entryStem);
+					ImGui::PushID(GetAssetHandleAsString(materialHandle).c_str());
+
+					ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_MaterialTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+
+					if (ImGui::BeginDragDropSource())
+					{
+						ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+						ImGui::BeginTooltip();
+						ImGui::Image((ImTextureID)AssetManager::Get<Texture2D>(m_MaterialTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+						ImGui::EndTooltip();
+						ImGui::PopStyleVar(1);
+						ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_MATERIAL", (void*)&materialHandle, sizeof(MaterialHandle), ImGuiCond_::ImGuiCond_Once);
+						ImGui::EndDragDropSource();
+					}
+					else if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+					{
+						m_OnAssetSelectedCallback(materialHandle, InspectedAssetType::MATERIAL);
+					}
+
+					ImGui::SameLine();
+					ImGui::NewLine();
+					RenderThumbnailText(AssetManager::Get<Material>(materialHandle).GetName(), ImGui::IsItemHovered(), materialHandle);
+					ImGui::PopID();
+				}
 			}
 		}
-
-		auto it = m_CreatedMaterials.find(currentDirectory.string());
-		if (it != m_CreatedMaterials.end())
-		{
-			for (auto& pair : it->second)
-			{
-				auto& materialHandle = pair.first;
-
-				ImGui::TableNextColumn();
-
-				ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_MaterialTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
-
-				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
-				{
-					m_OnAssetSelectedCallback(materialHandle, InspectedAssetType::MATERIAL);
-				}
-
-				if (ImGui::BeginDragDropSource())
-				{
-					ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-					ImGui::BeginTooltip();
-					ImGui::Image((ImTextureID)AssetManager::Get<Texture2D>(m_MaterialTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
-					ImGui::EndTooltip();
-					ImGui::PopStyleVar(1);
-					ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_MATERIAL", (void*)&materialHandle, sizeof(Material), ImGuiCond_::ImGuiCond_Once);
-					ImGui::EndDragDropSource();
-				}
-
-				ImGui::SameLine();
-				ImGui::NewLine();
-				RenderThumbnailText(AssetManager::Get<Material>(materialHandle).GetName(), ImGui::IsItemHovered(), pair.second, pair.first);
-			}
-		}
-
 		ImGui::EndTable();
 	}
 
@@ -324,13 +323,17 @@ namespace Relentless
 			}
 			if (ImGui::MenuItem("New Material"))
 			{
-				m_CreatedMaterials[currentDirectory.string()].push_back({ AssetManager::Create<Material>("New Material"), true });
+				std::string name = "New Material[" + std::to_string(++m_NrOfCreatedMaterials) + "]";
+				m_AssetToName = AssetManager::Create<Material>(name);
+
+				std::filesystem::path fullPath = currentDirectory / name;
+				MaterialSerializer::Serialize(m_AssetToName, fullPath.string() + ".rmat");
 			}
 			ImGui::EndPopup();
 		}
 	}
 
-	void ContentBrowserPanel::RenderThumbnailText(const std::string& text, bool thumbNailHovered, bool newlyCreated, const AssetHandle& handle) noexcept
+	void ContentBrowserPanel::RenderThumbnailText(const std::string& text, bool thumbNailHovered, const AssetHandle& handle) noexcept
 	{
 		ImGui::PushItemWidth(m_ThumbnailWidth);
 
@@ -358,30 +361,28 @@ namespace Relentless
 			indent = (m_ThumbnailWidth - textSize.x) / 2.0f - paddingAdjustment;
 		}
 
-
 		// Display the text
-		if (newlyCreated)
+		if (handle != NULL_HANDLE && handle == m_AssetToName)
 		{
-			ImGui::SetKeyboardFocusHere();
 			static char buf[64] = "";
-			if (ImGui::InputText("##Heyaaaa", buf, 64, ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue))
+			ImGui::SetKeyboardFocusHere();
+			if (ImGui::InputText("##NameAssetInput", buf, 64, ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue))
 			{
-				if (!std::string(buf).empty() && handle != NULL_HANDLE)
+				if (!std::string(buf).empty())
 				{
-					AssetManager::GetMaterialManager().GetMaterial(handle).SetName(buf);
-					for (auto& kv : m_CreatedMaterials)
-					{
-						auto& createdMaterials = kv.second;
-						for (auto& pair : createdMaterials)
-						{
-							if (pair.first == handle)
-							{
-								pair.second = false;
-								break;
-							}
-						}
-					}
+					MaterialManager& materialManager = AssetManager::GetMaterialManager();
+					const std::string materialNametoReplace = materialManager.GetMaterial(handle).GetName();
+					materialManager.GetMaterial(handle).SetName(buf);
+			
+					std::filesystem::path fullPathToSave = currentDirectory;
+					fullPathToSave.append(std::string(buf));
+					std::filesystem::path fullPathToDelete = currentDirectory;
+					fullPathToDelete.append(materialNametoReplace);
+			
+					MaterialSerializer::Serialize(m_AssetToName, fullPathToSave.string() + ".rmat", fullPathToDelete.string() + ".rmat");
 					memset(buf, 0, 64);
+					m_AssetToName = NULL_HANDLE;
+					materialManager.OnMaterialNameChange(materialNametoReplace, std::string(buf));
 				}
 			}
 		}

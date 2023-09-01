@@ -25,4 +25,6 @@ namespace Relentless
 	typedef AssetHandle MeshHandle;
 
 	#define NULL_HANDLE AssetHandle(UUID{0}, NULL_INDEX)
+
+	[[nodiscard]] std::string GetAssetHandleAsString(const AssetHandle& assetHandle) noexcept;
 }

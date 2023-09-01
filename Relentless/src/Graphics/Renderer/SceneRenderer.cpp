@@ -35,7 +35,7 @@ namespace Relentless
 			FrameBufferSpecification frameBufferSpecification{};
 			frameBufferSpecification.DebugName = "Pre-Z Framebuffer";
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
-			frameBufferSpecification.MSAASamples = 8u;
+			frameBufferSpecification.MSAASamples = m_Options.MSAASamples;
 			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::LESS;
 
 			PipelineSpecification pipelineSpecification{};
@@ -71,7 +71,7 @@ namespace Relentless
 			frameBufferSpecification.DebugName = "Geometry Framebuffer";
 			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
-			frameBufferSpecification.MSAASamples = 8u;
+			frameBufferSpecification.MSAASamples = m_Options.MSAASamples;
 			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::EQUAL;
 
 			PipelineSpecification pipelineSpecification{};
@@ -226,7 +226,7 @@ namespace Relentless
 			frameBufferSpecification.DebugName = "Editor Grid Framebuffer";
 			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
-			frameBufferSpecification.MSAASamples = 8u;
+			frameBufferSpecification.MSAASamples = m_Options.MSAASamples;
 			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::LESS;
 
 			PipelineSpecification pipelineSpecification{};
