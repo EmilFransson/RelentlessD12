@@ -198,10 +198,8 @@ namespace Relentless
 		m_LocationStringPosition[0] = ImGui::GetCursorScreenPos().x;
 		for (auto const& dir_entry : std::filesystem::directory_iterator{ currentDirectory })
 		{
-			std::string entryPath = dir_entry.path().string();
 			std::string entry = dir_entry.path().filename().string();
-			std::string entryStem = dir_entry.path().filename().stem().string();
-
+			
 			if (dir_entry.is_directory())
 			{
 				ImGui::TableNextColumn();
@@ -212,41 +210,29 @@ namespace Relentless
 					currentDirectory /= entry;
 					m_SelectedDirectory = entry;
 				}
+
+				ImGui::SameLine();
+				ImGui::NewLine();
+
 				RenderThumbnailText(entry, ImGui::IsItemHovered());
 			}
 			else
 			{
-				ImGui::TableNextColumn();
+				std::string entryPath = dir_entry.path().string();
+				std::string entryStem = dir_entry.path().filename().stem().string();
+				std::string extension = dir_entry.path().filename().extension().string();
 
-				if (dir_entry.path().filename().extension().string() == ".jpg" || dir_entry.path().filename().extension().string() == ".png")
+				if (extension == ".jpg" || extension == ".png")
 				{
-					if (!AssetManager::Exists<Texture2D>(dir_entry.path().string()))
-					{
-						AssetManager::Load<Texture2D>(dir_entry.path().string());
-					}
+					ImGui::TableNextColumn();
 
-					TextureHandle textureAssetHandle = AssetManager::Load<Texture2D>(dir_entry.path().string());
-					Texture2D& texture = AssetManager::Get<Texture2D>(textureAssetHandle);
-					ImGui::ImageButton((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
-
-					if (ImGui::BeginDragDropSource())
-					{
-						ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-						ImGui::BeginTooltip();
-						ImGui::Image((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
-						ImGui::EndTooltip();
-						ImGui::PopStyleVar(1);
-						ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE", (void*)&textureAssetHandle, sizeof(TextureHandle), ImGuiCond_::ImGuiCond_Once);
-						ImGui::EndDragDropSource();
-					}
-
-					ImGui::SameLine();
-					ImGui::NewLine();
-
-					RenderThumbnailText(texture.GetName(), ImGui::IsItemHovered());
+					TextureHandle textureAssetHandle = AssetManager::Load<Texture2D>(entryPath);
+					RenderAssetThumbnail<Texture2D>(textureAssetHandle, textureAssetHandle, textureAssetHandle, entry, m_ThumbnailWidth);
 				}
-				else if (dir_entry.path().filename().extension().string() == ".Relentless")
+				else if (extension == ".Relentless")
 				{
+					ImGui::TableNextColumn();
+
 					ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
 
 					if (ImGui::BeginDragDropSource())
@@ -264,39 +250,19 @@ namespace Relentless
 					ImGui::SameLine();
 					ImGui::NewLine();
 
-					RenderThumbnailText(dir_entry.path().filename().string(), ImGui::IsItemHovered());
+					RenderThumbnailText(entry, ImGui::IsItemHovered());
 				}
-				else if (dir_entry.path().filename().extension().string() == ".rmat")
+				else if (extension == ".rmat")
 				{
+					ImGui::TableNextColumn();
+
 					if (!AssetManager::Exists<Material>(entryStem))
 					{
-						MaterialSerializer::Deserialize(dir_entry.path().string());
+						MaterialSerializer::Deserialize(entryPath);
 					}
 
 					MaterialHandle& materialHandle = AssetManager::GetMaterialManager().GetMaterialHandleByName(entryStem);
-					ImGui::PushID(GetAssetHandleAsString(materialHandle).c_str());
-
-					ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_MaterialTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
-
-					if (ImGui::BeginDragDropSource())
-					{
-						ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-						ImGui::BeginTooltip();
-						ImGui::Image((ImTextureID)AssetManager::Get<Texture2D>(m_MaterialTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
-						ImGui::EndTooltip();
-						ImGui::PopStyleVar(1);
-						ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_MATERIAL", (void*)&materialHandle, sizeof(MaterialHandle), ImGuiCond_::ImGuiCond_Once);
-						ImGui::EndDragDropSource();
-					}
-					else if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
-					{
-						m_OnAssetSelectedCallback(materialHandle, InspectedAssetType::MATERIAL);
-					}
-
-					ImGui::SameLine();
-					ImGui::NewLine();
-					RenderThumbnailText(AssetManager::Get<Material>(materialHandle).GetName(), ImGui::IsItemHovered(), materialHandle);
-					ImGui::PopID();
+					RenderAssetThumbnail<Material>(m_MaterialTextureHandle, m_MaterialTextureHandle, materialHandle, AssetManager::Get<Material>(materialHandle).GetName(), m_ThumbnailWidth);
 				}
 			}
 		}
@@ -333,7 +299,7 @@ namespace Relentless
 		}
 	}
 
-	void ContentBrowserPanel::RenderThumbnailText(const std::string& text, bool thumbNailHovered, const AssetHandle& handle) noexcept
+	void ContentBrowserPanel::RenderThumbnailText(const std::string& text, bool thumbNailHovered) noexcept
 	{
 		ImGui::PushItemWidth(m_ThumbnailWidth);
 
@@ -361,40 +327,45 @@ namespace Relentless
 			indent = (m_ThumbnailWidth - textSize.x) / 2.0f - paddingAdjustment;
 		}
 
+		
+		// Set indent
+		ImGui::Dummy(ImVec2(indent, 0)); // Dummy is used to create an empty space, effectively indenting the text
+		ImGui::SameLine();
+
 		// Display the text
-		if (handle != NULL_HANDLE && handle == m_AssetToName)
+		ImGui::Selectable(textToRender.c_str(), thumbNailHovered, 0, textSize);
+
+		ImGui::PopItemWidth();
+	}
+
+	//Function assumes correct placement relative other imgui calls beforehand!
+	//TODO: Change to accomodate more assets than just materials!!
+	void ContentBrowserPanel::EditThumbnailText(const AssetHandle& handle) noexcept
+	{
+		constexpr float textFieldWidthPadding = 8.0f;
+		ImGui::PushItemWidth(m_ThumbnailWidth + textFieldWidthPadding);
+
+		static char buf[64] = "";
+		ImGui::SetKeyboardFocusHere();
+		if (ImGui::InputText("##NameAssetInput", buf, 64, ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue))
 		{
-			static char buf[64] = "";
-			ImGui::SetKeyboardFocusHere();
-			if (ImGui::InputText("##NameAssetInput", buf, 64, ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue))
+			if (!std::string(buf).empty())
 			{
-				if (!std::string(buf).empty())
-				{
-					MaterialManager& materialManager = AssetManager::GetMaterialManager();
-					const std::string materialNametoReplace = materialManager.GetMaterial(handle).GetName();
-					materialManager.GetMaterial(handle).SetName(buf);
-			
-					std::filesystem::path fullPathToSave = currentDirectory;
-					fullPathToSave.append(std::string(buf));
-					std::filesystem::path fullPathToDelete = currentDirectory;
-					fullPathToDelete.append(materialNametoReplace);
-			
-					MaterialSerializer::Serialize(m_AssetToName, fullPathToSave.string() + ".rmat", fullPathToDelete.string() + ".rmat");
-					memset(buf, 0, 64);
-					m_AssetToName = NULL_HANDLE;
-					materialManager.OnMaterialNameChange(materialNametoReplace, std::string(buf));
-				}
+				MaterialManager& materialManager = AssetManager::GetMaterialManager();
+				const std::string materialNametoReplace = materialManager.GetMaterial(handle).GetName();
+				materialManager.GetMaterial(handle).SetName(buf);
+
+				std::filesystem::path fullPathToSave = currentDirectory;
+				fullPathToSave.append(std::string(buf));
+				std::filesystem::path fullPathToDelete = currentDirectory;
+				fullPathToDelete.append(materialNametoReplace);
+
+				MaterialSerializer::Serialize(m_AssetToName, fullPathToSave.string() + ".rmat", fullPathToDelete.string() + ".rmat");
+				memset(buf, 0, 64);
+				m_AssetToName = NULL_HANDLE;
+				materialManager.OnMaterialNameChange(materialNametoReplace, std::string(buf));
 			}
 		}
-		else
-		{
-			// Set indent
-			ImGui::Dummy(ImVec2(indent, 0)); // Dummy is used to create an empty space, effectively indenting the text
-			ImGui::SameLine();
-
-			ImGui::Selectable(textToRender.c_str(), thumbNailHovered, 0, textSize);
-		}
-
 		ImGui::PopItemWidth();
 	}
 }

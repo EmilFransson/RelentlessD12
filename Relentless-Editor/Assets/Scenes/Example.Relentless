@@ -1,6 +1,6 @@
 Scene: Sample Scene
 Entities:
-  - Entity: "{9FA6FB1F-BF83-4CFB-8770-C24AE3341F98}"
+  - Entity: "{86027F9D-0CB9-44E1-953E-C357BCC563EE}"
     NameComponent:
       Name: Cube
     TransformComponent:
@@ -8,14 +8,14 @@ Entities:
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     MeshFilterComponent:
-      MeshHandle: "{6330C6B2-1F95-40A2-97A3-1FC56E73C5A5}"
+      MeshHandle: "{7D28D18F-DC3A-41D5-85B8-810CF7AE9FF7}"
     MeshRendererComponent:
       MaterialHandle: "{00000000-0000-0000-0000-000000000001}"
     OpaquePassComponent:
       ForwardPass: true
     RootComponent:
       Root: true
-  - Entity: "{E87A4581-CB1B-45C8-9513-900F51B705C7}"
+  - Entity: "{76E7042B-6DAB-4B2D-AD6D-2A2E8CCC3A27}"
     NameComponent:
       Name: Ground
     TransformComponent:
@@ -23,14 +23,14 @@ Entities:
       Rotation: [0, 0, 0]
       Scale: [6.4000001, 0.100000001, 6.4000001]
     MeshFilterComponent:
-      MeshHandle: "{6330C6B2-1F95-40A2-97A3-1FC56E73C5A5}"
+      MeshHandle: "{7D28D18F-DC3A-41D5-85B8-810CF7AE9FF7}"
     MeshRendererComponent:
-      MaterialHandle: "{94710FD0-BFDF-40A8-945C-57B286F840C0}"
+      MaterialHandle: "{F4A74919-0C59-42F0-97E6-3FA4FDBED096}"
     OpaquePassComponent:
       ForwardPass: true
     RootComponent:
       Root: true
-  - Entity: "{FA3D47A3-6421-4ED9-B909-BAD82D929CE6}"
+  - Entity: "{1D18EECA-8B69-454F-9D17-392C64CDB544}"
     NameComponent:
       Name: Directional Light
     TransformComponent:
