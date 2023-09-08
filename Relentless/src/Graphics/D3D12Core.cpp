@@ -50,7 +50,6 @@ namespace Relentless
 		m_DirectCommandInterface.Initialize(D3D12_COMMAND_LIST_TYPE_DIRECT, m_NrOfBufferedFrames);
 
 		m_IsInitialized = true;
-
 	}
 
 	void D3D12Core::CreateDebugAndValidationLayer() noexcept

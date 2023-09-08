@@ -25,7 +25,7 @@ namespace Relentless
 		ImGuiIO& io = ImGui::GetIO();
 		auto boldFont = io.Fonts->Fonts[OPENSANS_BOLD_18];
 		ImGui::PushFont(boldFont);
-		bool opened = ImGui::TreeNodeEx(m_pScene->GetName(), sceneNodeflags, m_pScene->GetName());
+		bool opened = ImGui::TreeNodeEx(m_pScene->GetName().c_str(), sceneNodeflags, m_pScene->GetName().c_str());
 		ImGui::PopFont();
 
 		if (opened)

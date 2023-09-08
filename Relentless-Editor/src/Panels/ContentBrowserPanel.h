@@ -11,6 +11,7 @@ namespace Relentless
 		~ContentBrowserPanel() noexcept = default;
 		void OnImGuiRender(const bool show) noexcept;
 		void SetOnAssetSelectedCallback(std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> callback) noexcept;
+		void SetActiveScene(std::shared_ptr<Scene> pScene) noexcept;
 	private:
 		void RenderDirectoryHierarchy() noexcept;
 		void DrawDirectoryNode(const std::filesystem::directory_entry& directoryName) noexcept;
@@ -62,11 +63,14 @@ namespace Relentless
 			else
 			{
 				RenderThumbnailText(name, ImGui::IsItemHovered());
+				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+				{
+					m_AssetToName = payloadAssetHandle;
+				}
 			}
 
 			ImGui::PopID();
 		}
-
 
 	private:
 		float m_ThumbnailWidth;
@@ -75,7 +79,9 @@ namespace Relentless
 		TextureHandle m_MaterialTextureHandle;
 		std::string m_SelectedDirectory;
 		float m_LocationStringPosition[2];
-		uint32_t m_NrOfCreatedMaterials{ 0u };
+		bool m_FirstTimeEditingThumbnail{ true };
+
+		std::shared_ptr<Scene> m_pScene;
 
 		AssetHandle m_AssetToName;
 

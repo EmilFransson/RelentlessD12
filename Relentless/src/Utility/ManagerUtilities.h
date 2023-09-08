@@ -3,6 +3,7 @@
 namespace Relentless
 {
 	#define NULL_INDEX std::numeric_limits<uint16_t>::max()
+	#define NULL_UUID UUID{0}
 
 	struct AssetHandle
 	{

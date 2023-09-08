@@ -1,8 +1,9 @@
 Material:
   Name: Default-Material
-  Albedo Color: [1, 1, 1]
+  Render Mode: 1
+  Albedo Color: [1, 1, 1, 1]
   Metallic: 0
-  Emission Color: [0, 0, 0]
+  Emission Color: [0, 0, 0, 1]
   Emission Intensity: 0
   Roughness: 0.5
   Tiling Factor: [1, 1]
@@ -10,3 +11,11 @@ Material:
   Heightmap Scale: 0.0199999996
   AO Scale: 1
   Combined RoughnessMetalness: false
+  Maps:
+    Albedo: "{00000000-0000-0000-0000-000000000000}"
+    Metallic: "{00000000-0000-0000-0000-000000000000}"
+    Roughness: "{00000000-0000-0000-0000-000000000000}"
+    Normal: "{00000000-0000-0000-0000-000000000000}"
+    Height: "{00000000-0000-0000-0000-000000000000}"
+    AO: "{00000000-0000-0000-0000-000000000000}"
+    Emission: "{00000000-0000-0000-0000-000000000000}"

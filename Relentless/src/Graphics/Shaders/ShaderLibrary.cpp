@@ -15,6 +15,8 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::PIXEL, "PixelShaderOrangeOutput.hlsl"));
 		Add(Shader::Create(ShaderType::PIXEL, "GeometryAndPickingPixelShader.hlsl"));
 		Add(Shader::Create(ShaderType::PIXEL, "PBRPixelShader.hlsl"));
+		Add(Shader::Create(ShaderType::PIXEL, "CutOutPBRPixelShader.hlsl"));
+		Add(Shader::Create(ShaderType::PIXEL, "TransparentPBRPixelShader.hlsl"));
 	}
 
 	void ShaderLibrary::Add(const std::shared_ptr<Shader>& pShader) noexcept

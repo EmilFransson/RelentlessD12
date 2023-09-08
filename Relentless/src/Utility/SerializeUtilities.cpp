@@ -2,6 +2,12 @@
 
 namespace Relentless
 {
+	YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT4& v)
+	{
+		out << YAML::Flow;
+		out << YAML::BeginSeq << v.x << v.y << v.z << v.w << YAML::EndSeq;
+		return out;
+	}
 
 	YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT3& v)
 	{
@@ -25,5 +31,13 @@ namespace Relentless
 		std::string s = ConvertWideStringToString(ws);
 		out << s;
 		return out;
+	}
+
+	UUID ConvertStringToGUID(const std::string& guidString) noexcept
+	{
+		std::wstring GUIDAsWString = ConvertStringToWstring(guidString);
+		GUID uuid;
+		IIDFromString(GUIDAsWString.c_str(), &uuid);
+		return uuid;
 	}
 }

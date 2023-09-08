@@ -11,6 +11,35 @@
 namespace YAML
 {
 	template<>
+	struct convert<DirectX::XMFLOAT4>
+	{
+		static Node encode(const DirectX::XMFLOAT4 rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.push_back(rhs.z);
+			node.push_back(rhs.w);
+			return node;
+		}
+
+		static bool decode(const Node& node, DirectX::XMFLOAT4& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 4)
+			{
+				return false;
+			}
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			rhs.z = node[2].as<float>();
+			rhs.w = node[3].as<float>();
+
+			return true;
+		}
+	};
+
+	template<>
 	struct convert<DirectX::XMFLOAT3>
 	{
 		static Node encode(const DirectX::XMFLOAT3 rhs)
@@ -64,9 +93,14 @@ namespace YAML
 
 namespace Relentless
 {
+	YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT4& v);
+
 	YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT3& v);
 
 	YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT2& v);
 
 	YAML::Emitter& operator<<(YAML::Emitter& out, UUID& id);
+
+	[[nodiscard]] UUID ConvertStringToGUID(const std::string& guidString) noexcept;
+
 }

@@ -40,4 +40,5 @@ foreach(var ${dlls})
 	)
 endforeach()
 
-target_compile_definitions(${ExecutableName} PUBLIC EDITOR_ASSET_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/Assets/")
+string(REPLACE "/" "\\\\" WINDOWS_STYLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Assets/")
+target_compile_definitions(${ExecutableName} PUBLIC "EDITOR_ASSET_DIRECTORY=\"${WINDOWS_STYLE_PATH}\"")

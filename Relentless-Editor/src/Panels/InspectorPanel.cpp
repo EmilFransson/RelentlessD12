@@ -51,7 +51,8 @@ namespace Relentless
 		{
 			Material& material = AssetManager::Get<Material>(m_InspectedAssetHandle);
 
-			if (material.GetName() == "Default-Material")
+			bool isDefaultMaterial = material.GetName() == "Default-Material";
+			if (isDefaultMaterial)
 			{
 				ImGui::PushItemFlag(ImGuiItemFlags_::ImGuiItemFlags_Disabled, true);
 			}
@@ -119,7 +120,7 @@ namespace Relentless
 			{
 				Texture2D& albedoTexture = material.GetAlbedoTexture();
 				ImGui::ImageButton((ImTextureID)albedoTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -147,7 +148,7 @@ namespace Relentless
 				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
 				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
 				ImGui::ColorButton("##MyColor", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -175,7 +176,7 @@ namespace Relentless
 			for (uint8_t i{ 1u }; i < 8; ++i)
 			{
 				std::string name = "##Color" + std::to_string(i);
-				changedMaterial |= ImGui::ColorEdit3(name.c_str(), &material.m_AlbedoColor.x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoBorder | ImGuiColorEditFlags_::ImGuiColorEditFlags_HDR);
+				changedMaterial |= ImGui::ColorEdit4(name.c_str(), &material.m_AlbedoColor.x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoBorder | ImGuiColorEditFlags_::ImGuiColorEditFlags_HDR);
 				ImGui::SameLine();
 			}
 
@@ -193,7 +194,7 @@ namespace Relentless
 			{
 				Texture2D& metallicTexture = material.GetMetallicTexture();
 				ImGui::ImageButton((ImTextureID)metallicTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -220,7 +221,7 @@ namespace Relentless
 				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
 				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
 				ImGui::ColorButton("##MyColor3", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -246,7 +247,7 @@ namespace Relentless
 			{
 				Texture2D& roughnessTexture = material.GetRoughnessTexture();
 				ImGui::ImageButton((ImTextureID)roughnessTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -274,7 +275,7 @@ namespace Relentless
 				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
 				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
 				ImGui::ColorButton("##MyColor4", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -301,7 +302,7 @@ namespace Relentless
 			{
 				Texture2D& normalMap = material.GetNormalMap();
 				ImGui::ImageButton((ImTextureID)normalMap.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -328,7 +329,7 @@ namespace Relentless
 				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
 				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
 				ImGui::ColorButton("##MyColor15", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -353,7 +354,7 @@ namespace Relentless
 			{
 				Texture2D& heightMap = material.GetHeightMap();
 				ImGui::ImageButton((ImTextureID)heightMap.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -380,7 +381,7 @@ namespace Relentless
 				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
 				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
 				ImGui::ColorButton("##MyColor88", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -410,7 +411,7 @@ namespace Relentless
 			{
 				Texture2D& ambientOcclusionTexture = material.GetAmbientOcclusionTexture();
 				ImGui::ImageButton((ImTextureID)ambientOcclusionTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -437,7 +438,7 @@ namespace Relentless
 				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
 				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
 				ImGui::ColorButton("##MyColor5", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -465,7 +466,7 @@ namespace Relentless
 			{
 				Texture2D& emissionTexture = material.GetEmissionTexture();
 				ImGui::ImageButton((ImTextureID)emissionTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
@@ -492,7 +493,7 @@ namespace Relentless
 				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
 				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
 				ImGui::ColorButton("##MyColor6", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (ImGui::BeginDragDropTarget())
+				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{

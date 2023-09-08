@@ -7,10 +7,10 @@
 namespace Relentless
 {
 	Material::Material() noexcept
-		: m_AlbedoColor{1.0f, 1.0f, 1.0f},
+		: m_AlbedoColor{1.0f, 1.0f, 1.0f, 1.0f},
 		  m_Metallic{0.0f},
 		  m_Roughness{0.5f},
-		  m_EmissionColor{0.0f, 0.0f, 0.0f},
+		  m_EmissionColor{0.0f, 0.0f, 0.0f, 1.0f},
 		  m_EmissionIntensity{0.0f},
 		  m_HeightScale{0.02f},
 		  m_AOScale{1.0f},
@@ -425,6 +425,7 @@ namespace Relentless
 	void MaterialManager::Intitialize() noexcept
 	{
 		m_DefaultMaterialHandle = MaterialSerializer::Deserialize(std::string(ENGINE_ASSET_DIRECTORY) + "Materials/Default-Material.rmat");
+		MaterialSerializer::Deserialize(std::string(ENGINE_ASSET_DIRECTORY) + "Materials/M_Ground.rmat");
 	}
 
 	inline static std::mutex g_CreateMutex;
@@ -444,6 +445,20 @@ namespace Relentless
 
 		RLS_ASSERT(Exists(materialName), "Material does not exist.");
 		return m_StringToMaterialHandleMap[materialName];
+	}
+
+	MaterialHandle MaterialManager::PromoteToHandle(const UUID& uuid) noexcept
+	{
+		for (auto& [name, handle] : m_StringToMaterialHandleMap)
+		{
+			if (handle.UUID == uuid)
+			{
+				return handle;
+			}
+		}
+
+		RLS_ASSERT(false, "UUID does not exist in unordered_map.");
+		return NULL_HANDLE;
 	}
 
 	void MaterialManager::OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept
@@ -484,7 +499,7 @@ namespace Relentless
 			m_Materials.emplace_back(material);
 		}
 		m_Materials[materialHandle.Index].m_Name = name;
-		m_Materials[materialHandle.Index].m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(92u);
+		m_Materials[materialHandle.Index].m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
 
 		m_StringToMaterialHandleMap[name] = materialHandle;
 

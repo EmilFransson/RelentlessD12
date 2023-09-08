@@ -133,7 +133,6 @@ namespace Relentless
 			
 			out << YAML::EndMap;
 		}
-		
 		out << YAML::EndMap;
 	}
 
@@ -178,6 +177,7 @@ namespace Relentless
 		
 		std::string sceneName = data["Scene"].as<std::string>();
 		RLS_CORE_TRACE("Deserializing scene {0}", sceneName);
+		pScene->SetName(sceneName);
 		
 		auto entities = data["Entities"];
 		for (auto entity : entities)
@@ -227,10 +227,10 @@ namespace Relentless
 			{
 				auto& mfc = mgr.Add<MeshFilterComponent>(deserializedEntity);
 				std::wstring vertexBufferIDAsString = ConvertStringToWstring(meshFilterComponent["MeshHandle"].as<std::string>());
-				MeshHandle meshHandle;
-				IIDFromString(vertexBufferIDAsString.c_str(), &meshHandle.UUID);
+				UUID uuid;
+				IIDFromString(vertexBufferIDAsString.c_str(), &uuid);
 				
-				mfc.MeshHandle = meshHandle;
+				mfc.MeshHandle = AssetManager::GetMeshManager().PromoteToHandle(uuid);
 			}
 		
 			auto meshRendererComponent = entity["MeshRendererComponent"];
@@ -238,10 +238,10 @@ namespace Relentless
 			{
 				auto& mrc = mgr.Add<MeshRendererComponent>(deserializedEntity);
 				std::wstring materialHandleIDAsString = ConvertStringToWstring(meshRendererComponent["MaterialHandle"].as<std::string>());
-				MaterialHandle materialHandle;
-				IIDFromString(materialHandleIDAsString.c_str(), &materialHandle.UUID);
+				UUID uuid;
+				IIDFromString(materialHandleIDAsString.c_str(), &uuid);
 				
-				mrc.MaterialHandle = materialHandle;
+				mrc.MaterialHandle = AssetManager::GetMaterialManager().PromoteToHandle(uuid);
 			}
 		
 			auto opaquePassComponent = entity["OpaquePassComponent"];

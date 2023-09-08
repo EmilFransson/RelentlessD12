@@ -22,7 +22,7 @@ namespace Relentless
 		InitializeHBAOPlus();
 
 		m_EnvironmentCBHandle = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT3));
-		m_BRDFLutTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures/ibl_brdf_lut.png");
+		m_BRDFLutTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\ibl_brdf_lut.png");
 
 		//Pre-Z Render pass:
 		{
@@ -52,7 +52,7 @@ namespace Relentless
 			m_PreZRenderPass = RenderPass::Create(renderpassDescriptor);
 		}
 
-		//Geometry Render pass:
+		//Opaque Geometry Render pass:
 		{
 			ColorAttachment colorAttachment;
 			colorAttachment.Format = TextureFormat::RGBA32F;
@@ -68,14 +68,14 @@ namespace Relentless
 			depthAttachment.ShouldResize = false;
 
 			FrameBufferSpecification frameBufferSpecification{};
-			frameBufferSpecification.DebugName = "Geometry Framebuffer";
+			frameBufferSpecification.DebugName = "Opaque Geometry Framebuffer";
 			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
 			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
 			frameBufferSpecification.MSAASamples = m_Options.MSAASamples;
 			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::EQUAL;
 
 			PipelineSpecification pipelineSpecification{};
-			pipelineSpecification.DebugName = "Geometry Pipeline";
+			pipelineSpecification.DebugName = "Opaque Geometry Pipeline";
 			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
 			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PBRPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
@@ -83,10 +83,89 @@ namespace Relentless
 			pipelineSpecification.DepthWrite = false;
 
 			RenderPassSpecification renderpassDescriptor{};
-			renderpassDescriptor.DebugName = "Geometry Pass";
+			renderpassDescriptor.DebugName = "Opaque Geometry Pass";
 			renderpassDescriptor.RenderPipeline = Pipeline::Create(pipelineSpecification);
 
-			m_GeometryRenderPass = RenderPass::Create(renderpassDescriptor);
+			m_OpaqueGeometryRenderPass = RenderPass::Create(renderpassDescriptor);
+		}
+
+		//CutOut Geometry Render pass:
+		{
+			ColorAttachment colorAttachment;
+			colorAttachment.Format = TextureFormat::RGBA32F;
+			colorAttachment.Transfer = true;
+			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
+			colorAttachment.Output = m_OpaqueGeometryRenderPass->GetOutput(0);
+			colorAttachment.pOutputDependency = m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer();
+			colorAttachment.ShouldResize = false;
+
+			DepthAttachment depthAttachment;
+			depthAttachment.Format = TextureFormat::Depth;
+			depthAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
+			depthAttachment.Output = m_PreZRenderPass->GetPipeline()->GetFrameBuffer()->GetDepthOutput();
+			depthAttachment.pOutputDependency = m_PreZRenderPass->GetPipeline()->GetFrameBuffer();
+			depthAttachment.ShouldResize = false;
+
+			FrameBufferSpecification frameBufferSpecification{};
+			frameBufferSpecification.DebugName = "CutOut Geometry Framebuffer";
+			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
+			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
+			frameBufferSpecification.MSAASamples = m_Options.MSAASamples;
+			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::LESS;
+
+			PipelineSpecification pipelineSpecification{};
+			pipelineSpecification.DebugName = "CutOut Geometry Pipeline";
+			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("CutOutPBRPixelShader");
+			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.MSAAEligible = true;
+			pipelineSpecification.DepthWrite = true;
+
+			RenderPassSpecification renderpassDescriptor{};
+			renderpassDescriptor.DebugName = "CutOut Geometry Pass";
+			renderpassDescriptor.RenderPipeline = Pipeline::Create(pipelineSpecification);
+
+			m_CutOutGeometryRenderPass = RenderPass::Create(renderpassDescriptor);
+		}
+
+		//Transparent Geometry Render pass:
+		{
+			ColorAttachment colorAttachment;
+			colorAttachment.Format = TextureFormat::RGBA32F;
+			colorAttachment.Transfer = true;
+			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
+			colorAttachment.Output = m_OpaqueGeometryRenderPass->GetOutput(0);
+			colorAttachment.pOutputDependency = m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer();
+			colorAttachment.ShouldResize = false;
+			colorAttachment.Blend = true;
+
+			DepthAttachment depthAttachment;
+			depthAttachment.Format = TextureFormat::Depth;
+			depthAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
+			depthAttachment.Output = m_PreZRenderPass->GetPipeline()->GetFrameBuffer()->GetDepthOutput();
+			depthAttachment.pOutputDependency = m_PreZRenderPass->GetPipeline()->GetFrameBuffer();
+			depthAttachment.ShouldResize = false;
+
+			FrameBufferSpecification frameBufferSpecification{};
+			frameBufferSpecification.DebugName = "Transparent Geometry Framebuffer";
+			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
+			frameBufferSpecification.Attachments.DepthAttachment = depthAttachment;
+			frameBufferSpecification.MSAASamples = m_Options.MSAASamples;
+			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::LESS;
+
+			PipelineSpecification pipelineSpecification{};
+			pipelineSpecification.DebugName = "Transparent Geometry Pipeline";
+			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("TransparentPBRPixelShader");
+			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.MSAAEligible = true;
+			pipelineSpecification.DepthWrite = true;
+
+			RenderPassSpecification renderpassDescriptor{};
+			renderpassDescriptor.DebugName = "Transparent Geometry Pass";
+			renderpassDescriptor.RenderPipeline = Pipeline::Create(pipelineSpecification);
+
+			m_TransparentGeometryRenderPass = RenderPass::Create(renderpassDescriptor);
 		}
 
 		//Combined Geometry and Picking Render pass:
@@ -139,15 +218,15 @@ namespace Relentless
 			colorAttachment.Format = TextureFormat::RGBA32F;
 			colorAttachment.Transfer = true;
 			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
-			colorAttachment.Output = m_GeometryRenderPass->GetOutput(0);
-			colorAttachment.pOutputDependency = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer();
+			colorAttachment.Output = m_OpaqueGeometryRenderPass->GetOutput(0);
+			colorAttachment.pOutputDependency = m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer();
 			colorAttachment.ShouldResize = false;
 
 			DepthAttachment depthAttachment;
 			depthAttachment.Format = TextureFormat::Depth;
 			depthAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
-			depthAttachment.Output = m_GeometryRenderPass->GetDepthOutput();
-			depthAttachment.pOutputDependency = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer();
+			depthAttachment.Output = m_OpaqueGeometryRenderPass->GetDepthOutput();
+			depthAttachment.pOutputDependency = m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer();
 			depthAttachment.ShouldResize = false;
 
 			FrameBufferSpecification frameBufferSpecification{};
@@ -169,7 +248,7 @@ namespace Relentless
 			renderpassDescriptor.DebugName = "Wireframe Pass";
 			renderpassDescriptor.RenderPipeline = Pipeline::Create(pipelineSpecification);
 
-			m_WireFrameRenderPass= RenderPass::Create(renderpassDescriptor);
+			m_WireFrameRenderPass = RenderPass::Create(renderpassDescriptor);
 		}
 
 		//Picking:
@@ -211,15 +290,15 @@ namespace Relentless
 			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
 			colorAttachment.Transfer = true;
 			colorAttachment.Blend = true;
-			colorAttachment.Output = m_GeometryRenderPass->GetOutput(0);
-			colorAttachment.pOutputDependency = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer();
+			colorAttachment.Output = m_OpaqueGeometryRenderPass->GetOutput(0);
+			colorAttachment.pOutputDependency = m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer();
 			colorAttachment.ShouldResize = false;
 
 			DepthAttachment depthAttachment;
 			depthAttachment.Format = TextureFormat::Depth;
 			depthAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
-			depthAttachment.Output = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer()->GetDepthOutput();
-			depthAttachment.pOutputDependency = m_GeometryRenderPass->GetPipeline()->GetFrameBuffer();
+			depthAttachment.Output = m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer()->GetDepthOutput();
+			depthAttachment.pOutputDependency = m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer();
 			depthAttachment.ShouldResize = false;
 
 			FrameBufferSpecification frameBufferSpecification{};
@@ -340,6 +419,58 @@ namespace Relentless
 	void SceneRenderer::Begin() noexcept
 	{
 		PROFILE_FUNC;
+
+		m_OpaqueRenderModeEntities.clear();
+		m_CutOutRenderModeEntities.clear();
+		m_TransparentRenderModeEntities.clear();
+
+		MaterialManager& materialManager = AssetManager::GetMaterialManager();
+		m_pScene->GetEntityManager().Collect<MeshRendererComponent, MeshFilterComponent>().Do([&](entity e, MeshRendererComponent& mrc, MeshFilterComponent& mfc)
+			{
+				if (mrc.MaterialHandle == NULL_HANDLE || mfc.MeshHandle == NULL_HANDLE)
+					return;
+
+				const Material& material = materialManager.GetMaterial(mrc.MaterialHandle);
+				switch (material.GetRenderMode())
+				{
+				case RenderMode::Opaque:
+					m_OpaqueRenderModeEntities.emplace_back(e);
+					break;
+				case RenderMode::CutOut:
+					m_CutOutRenderModeEntities.emplace_back(e);
+					break;
+				case RenderMode::Transparent:
+					m_TransparentRenderModeEntities.emplace_back(e);
+					break;
+				}
+			});
+
+		if (m_TransparentRenderModeEntities.size() > 0)
+		{
+			auto& mgr = m_pScene->GetEntityManager();
+			std::shared_ptr<PerspectiveCamera> pEditorCamera = m_pScene->GetEditorCamera();
+			std::sort(m_TransparentRenderModeEntities.begin(), m_TransparentRenderModeEntities.end(), [&](const entity a, const entity b)
+				{
+					TransformComponent& tcA = mgr.Get<TransformComponent>(a);
+					TransformComponent& tcB = mgr.Get<TransformComponent>(b);
+
+					double squaredDistanceA = std::pow(tcA.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcA.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcA.Translation.z - pEditorCamera->GetPosition().z, 2);
+					double squaredDistanceB = std::pow(tcB.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcB.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcB.Translation.z - pEditorCamera->GetPosition().z, 2);
+
+					return squaredDistanceA > squaredDistanceB;
+				});
+		}
+
+		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
+		m_PerFrameOpaqueGeometryData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
+		m_PerFrameOpaqueGeometryData.pointLightStructuredBufferIndex = m_pScene->GetLightManager().GetPointLights()->m_VisibleHandles[frameIndex].Index;
+		m_PerFrameOpaqueGeometryData.directionalLightStructuredBufferIndex = m_pScene->GetLightManager().GetDirectionalLights()->m_VisibleHandles[frameIndex].Index;
+		m_PerFrameOpaqueGeometryData.nrOfDirectionalLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
+		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
+		m_PerFrameOpaqueGeometryData.environmentIndex = MemoryManager::Get().GetCBDescriptorIndex(m_EnvironmentCBHandle);
+		m_PerFrameOpaqueGeometryData.brdfLutTextureIndex = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle).GetSRVDescriptorHandle().Index;
+
+		//TODO: Should not be done every frame!
 		static DirectX::XMFLOAT3 bgColor = DirectX::XMFLOAT3(DirectX::Colors::LightSkyBlue);
 		MemoryManager::Get().UpdateConstantBuffer(m_EnvironmentCBHandle, (void*)&bgColor);
 
@@ -363,11 +494,14 @@ namespace Relentless
 		PreZPass();
 		if (m_Options.MSAASamples > 1)
 		{
-			GeometryPass();
+			OpaqueGeometryPass();
+			CutOutGeometryPass();
 			if (m_Options.ContactShadowType == ContactShadows::HBAO_PLUS)
 			{
 				HBAOPlusRenderPass();
 			}
+			EditorGridPass();
+			TransparentGeometryPass();
 			PickingPass();
 		}
 		else
@@ -377,14 +511,14 @@ namespace Relentless
 			{
 				HBAOPlusRenderPass();
 			}
+			EditorGridPass();
 		}
-		EditorGridPass();
 		WireframePass();
 
 		if (m_Options.MSAASamples > 1)
 		{
 			//MSAA Resolve:
-			auto pGeometryPassColorOutput = m_GeometryRenderPass->GetOutput(0);
+			auto pGeometryPassColorOutput = m_OpaqueGeometryRenderPass->GetOutput(0);
 			RenderCommand::TransitionResource(pGeometryPassColorOutput, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
 			RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_RESOLVE_DEST);
 			RenderCommand::ResolveMSAA(pGeometryPassColorOutput, m_pResolvedTexture);
@@ -431,26 +565,24 @@ namespace Relentless
 		auto indicesIndex = m_PreZRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_PreZRenderPass->GetInputSlot("perDrawData");
 
-		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
-			{
-				if (mfc.MeshHandle != NULL_HANDLE)
-				{
-					Mesh& mesh = m.GetMesh(mfc.MeshHandle);
+		for (entity currentEntity : m_OpaqueRenderModeEntities)
+		{
+			const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			Mesh& mesh = m.GetMesh(mfc.MeshHandle);
 
-					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
-					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
-					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
+			const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
+			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
 
-					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
-				}
-			});
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+
+			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+		}
 
 		MasterRenderer::EndRenderPass();
 	}
@@ -471,8 +603,8 @@ namespace Relentless
 		GFSDK_SSAO_RenderMask RenderMask = GFSDK_SSAO_RENDER_AO;
 
 		GFSDK_SSAO_RenderTargetView_D3D12 rtv{};
-		const auto& output = m_Options.MSAASamples > 1 ? m_GeometryRenderPass->GetOutput(0) : m_CombinedGeometryAndPickingPass->GetOutput(0);
-		const auto& depthOutput = m_Options.MSAASamples > 1 ? m_GeometryRenderPass->GetDepthOutput() : m_CombinedGeometryAndPickingPass->GetDepthOutput();
+		const auto& output = m_Options.MSAASamples > 1 ? m_OpaqueGeometryRenderPass->GetOutput(0) : m_CombinedGeometryAndPickingPass->GetOutput(0);
+		const auto& depthOutput = m_Options.MSAASamples > 1 ? m_OpaqueGeometryRenderPass->GetDepthOutput() : m_CombinedGeometryAndPickingPass->GetDepthOutput();
 		rtv.pResource = output->GetInterface().Get();
 		rtv.CpuHandle = output->GetRTVDescriptorHandle().CPUHandle.ptr;
 
@@ -490,18 +622,22 @@ namespace Relentless
 		RLS_ASSERT(status == GFSDK_SSAO_OK, "Failed to issue HBAOPlus render command.");
 	}
 
-	void SceneRenderer::GeometryPass() noexcept
+	void SceneRenderer::OpaqueGeometryPass() noexcept
 	{
 		PROFILE_FUNC;
+
+		if (m_OpaqueRenderModeEntities.empty())
+			return;
+
 		MemoryManager& memoryManager = MemoryManager::Get();
 
-		MasterRenderer::BeginRenderPass(m_GeometryRenderPass);
+		MasterRenderer::BeginRenderPass(m_OpaqueGeometryRenderPass);
 
 		//Terrible and wrong for runtime:
 		//Camera:
 		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
 		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
-		m_GeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
+		m_OpaqueGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
 
 		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
 
@@ -512,35 +648,127 @@ namespace Relentless
 		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
 		m_PerFrameOpaqueGeometryData.environmentIndex = MemoryManager::Get().GetCBDescriptorIndex(m_EnvironmentCBHandle);
 		m_PerFrameOpaqueGeometryData.brdfLutTextureIndex = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle).GetSRVDescriptorHandle().Index;
-		m_GeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
+		m_OpaqueGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 		MeshManager& m = AssetManager::GetMeshManager();
 
-		auto verticesIndex = m_GeometryRenderPass->GetInputSlot("vertices");
-		auto indicesIndex = m_GeometryRenderPass->GetInputSlot("indices");
-		auto perDrawIndex = m_GeometryRenderPass->GetInputSlot("perDrawData");
+		auto verticesIndex = m_OpaqueGeometryRenderPass->GetInputSlot("vertices");
+		auto indicesIndex = m_OpaqueGeometryRenderPass->GetInputSlot("indices");
+		auto perDrawIndex = m_OpaqueGeometryRenderPass->GetInputSlot("perDrawData");
 
-		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
-			{
-				if (mfc.MeshHandle != NULL_HANDLE)
-				{
-					Mesh& mesh = m.GetMesh(mfc.MeshHandle);
+		for (entity currentEntity : m_OpaqueRenderModeEntities)
+		{
+			const auto&[tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			Mesh& mesh = m.GetMesh(mfc.MeshHandle);
 
-					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
-					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
-					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
+			const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
+			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
 
-					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
-				}
-			});
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+
+			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+		}
+
+		MasterRenderer::EndRenderPass();
+	}
+
+	void SceneRenderer::CutOutGeometryPass() noexcept
+	{
+		PROFILE_FUNC;
+
+		if (m_CutOutRenderModeEntities.empty())
+			return;
+
+		MemoryManager& memoryManager = MemoryManager::Get();
+
+		MasterRenderer::BeginRenderPass(m_CutOutGeometryRenderPass);
+
+		//Terrible and wrong for runtime:
+		//Camera:
+		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
+		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
+		m_CutOutGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
+		m_CutOutGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
+
+		EntityManager& entityManager = m_pScene->GetEntityManager();
+		MeshManager& m = AssetManager::GetMeshManager();
+
+		auto verticesIndex = m_CutOutGeometryRenderPass->GetInputSlot("vertices");
+		auto indicesIndex = m_CutOutGeometryRenderPass->GetInputSlot("indices");
+		auto perDrawIndex = m_CutOutGeometryRenderPass->GetInputSlot("perDrawData");
+
+		for (entity currentEntity : m_CutOutRenderModeEntities)
+		{
+			const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
+
+			Mesh& mesh = m.GetMesh(mfc.MeshHandle);
+
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+
+			const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
+			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
+
+			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
+
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+
+			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+		}
+
+		MasterRenderer::EndRenderPass();
+	}
+
+	void SceneRenderer::TransparentGeometryPass() noexcept
+	{
+		PROFILE_FUNC;
+
+		if (m_TransparentRenderModeEntities.empty())
+			return;
+
+		MemoryManager& memoryManager = MemoryManager::Get();
+
+		MasterRenderer::BeginRenderPass(m_TransparentGeometryRenderPass);
+
+		//Terrible and wrong for runtime:
+		//Camera:
+		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
+		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
+		m_TransparentGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
+		m_TransparentGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
+
+		EntityManager& entityManager = m_pScene->GetEntityManager();
+		MeshManager& m = AssetManager::GetMeshManager();
+
+		auto verticesIndex = m_TransparentGeometryRenderPass->GetInputSlot("vertices");
+		auto indicesIndex = m_TransparentGeometryRenderPass->GetInputSlot("indices");
+		auto perDrawIndex = m_TransparentGeometryRenderPass->GetInputSlot("perDrawData");
+
+		for (entity currentEntity : m_TransparentRenderModeEntities)
+		{
+			const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
+
+			Mesh& mesh = m.GetMesh(mfc.MeshHandle);
+
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+
+			const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
+			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
+
+			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
+
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+
+			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+		}
 
 		MasterRenderer::EndRenderPass();
 	}
@@ -781,7 +1009,9 @@ namespace Relentless
 	{
 		MasterRenderer::Resize(width, height);
 		m_PreZRenderPass->Resize(width, height);
-		m_GeometryRenderPass->Resize(width, height);
+		m_OpaqueGeometryRenderPass->Resize(width, height);
+		m_CutOutGeometryRenderPass->Resize(width, height);
+		m_TransparentGeometryRenderPass->Resize(width, height);
 		m_CombinedGeometryAndPickingPass->Resize(width, height);
 		m_WireFrameRenderPass->Resize(width, height);
 		m_EditorGridRenderPass->Resize(width, height);
@@ -816,16 +1046,18 @@ namespace Relentless
 			}
 			else if (m_Options.MSAASamples == 1)
 			{
-				m_EditorGridRenderPass->GetPipeline()->GetFrameBuffer()->SetOutputDependency(m_GeometryRenderPass->GetPipeline()->GetFrameBuffer(), 0);
-				m_EditorGridRenderPass->GetPipeline()->GetFrameBuffer()->SetDepthDependency(m_GeometryRenderPass->GetPipeline()->GetFrameBuffer());
-				m_WireFrameRenderPass->GetPipeline()->GetFrameBuffer()->SetOutputDependency(m_GeometryRenderPass->GetPipeline()->GetFrameBuffer(), 0);
-				m_WireFrameRenderPass->GetPipeline()->GetFrameBuffer()->SetDepthDependency(m_GeometryRenderPass->GetPipeline()->GetFrameBuffer());
+				m_EditorGridRenderPass->GetPipeline()->GetFrameBuffer()->SetOutputDependency(m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer(), 0);
+				m_EditorGridRenderPass->GetPipeline()->GetFrameBuffer()->SetDepthDependency(m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer());
+				m_WireFrameRenderPass->GetPipeline()->GetFrameBuffer()->SetOutputDependency(m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer(), 0);
+				m_WireFrameRenderPass->GetPipeline()->GetFrameBuffer()->SetDepthDependency(m_OpaqueGeometryRenderPass->GetPipeline()->GetFrameBuffer());
 			}
 
 			m_Options.MSAASamples = samples;
 
 			m_PreZRenderPass->OnMSAAReconfiguration(samples);
-			m_GeometryRenderPass->OnMSAAReconfiguration(samples);
+			m_OpaqueGeometryRenderPass->OnMSAAReconfiguration(samples);
+			m_CutOutGeometryRenderPass->OnMSAAReconfiguration(samples);
+			m_TransparentGeometryRenderPass->OnMSAAReconfiguration(samples);
 			m_CombinedGeometryAndPickingPass->OnMSAAReconfiguration(samples);
 			m_WireFrameRenderPass->OnMSAAReconfiguration(samples);
 			m_GeometryPickingRenderPass->OnMSAAReconfiguration(samples);

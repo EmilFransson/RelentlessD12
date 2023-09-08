@@ -38,6 +38,11 @@ namespace Relentless
 			});
 	}
 
+	void Scene::SetName(const std::string& name) noexcept
+	{
+		m_Name = name;
+	}
+
 	void Scene::OnUpdate([[maybe_unused]] const float deltaTime) noexcept
 	{
 		PROFILE_FUNC;

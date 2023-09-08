@@ -15,7 +15,7 @@ namespace Relentless
 	public:
 		explicit Scene(const char* name = "Sample Scene") noexcept;
 		~Scene() noexcept;
-
+		void SetName(const std::string& name) noexcept;
 		void OnUpdate(const float deltaTime) noexcept;
 		entity CreateEntity(const char* tag) noexcept;
 		entity CreateEntityWithUUID(const char* tag, const UUID& guid) noexcept;
@@ -40,7 +40,7 @@ namespace Relentless
 		entity CreateCamera(const char* name) noexcept;
 		void DestroyEntity(const entity entityHandle) noexcept;
 		[[nodiscard]] EntityManager& GetEntityManager() noexcept { return m_EntityManager; }
-		[[nodiscard]] constexpr const char* GetName() const noexcept { return m_Name; }
+		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
 		void SetViewportPanelSize(const ImVec2& viewportPanelSize) noexcept 
 		{ 
 			m_ViewportPanelSize = viewportPanelSize;
@@ -65,7 +65,7 @@ namespace Relentless
 	private:
 		EntityManager m_EntityManager;
 		LightManager m_LightManager;
-		const char* m_Name;
+		std::string m_Name;
 		ImVec2 m_ViewportPanelSize;
 		ImVec2 m_MousePosition;
 		D3D12_VIEWPORT m_Viewport;

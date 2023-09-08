@@ -20,29 +20,28 @@ struct PerDrawData
 
 struct Material
 {
-    float3 color;
+    float4 color;
+    
     float metallic;
-
     float3 emissionColor;
-    float emissionIntensity;
 
+    float emissionIntensity;
     float roughness;
     uint albedoIndex;
     uint metallicIndex;
+    
     uint roughnessIndex;
-
     uint normalIndex;
     uint heightMapIndex;
     uint ambientOcclusionIndex;
+    
     uint emissionIndex;
+    float heightScale;
+    float aoScale;
+    uint combinedRoughnessMetalnessMap;
 
     float2 tilingFactor;
     float2 offset;
-
-    float heightScale;
-    float aoScale;
-
-    uint combinedRoughnessMetalnessMap;
 };
 
 struct PerFrameData
@@ -176,7 +175,7 @@ PS_OUT ps_main(in PS_IN psIn)
 
     float2 adjustedUV = psIn.inTexCoords;
 
-    float4 albedoColor = float4(material.color, 1.0f);
+    float4 albedoColor = material.color;
     if (material.albedoIndex != NO_USE)
     {
         Texture2D albedoTexture = ResourceDescriptorHeap[material.albedoIndex];

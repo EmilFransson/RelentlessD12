@@ -20,29 +20,29 @@ struct PerDrawData
 
 struct Material
 {
-    float3 color;
+    float4 color;
+    float4 emissionColor;
+    
     float metallic;
+    float3 padding;
 
-    float3 emissionColor;
     float emissionIntensity;
-
     float roughness;
     uint albedoIndex;
     uint metallicIndex;
+    
     uint roughnessIndex;
-
     uint normalIndex;
     uint heightMapIndex;
     uint ambientOcclusionIndex;
+    
     uint emissionIndex;
+    float heightScale;
+    float aoScale;
+    uint combinedRoughnessMetalnessMap;
 
     float2 tilingFactor;
     float2 offset;
-
-    float heightScale;
-    float aoScale;
-
-    uint combinedRoughnessMetalnessMap;
 };
 
 struct PerFrameData
@@ -162,13 +162,12 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
 
     float2 adjustedUV = psIn.inTexCoords;
 
-    float4 albedoColor = float4(material.color, 1.0f);
+    float4 albedoColor = material.color;
     if (material.albedoIndex != NO_USE)
     {
         Texture2D albedoTexture = ResourceDescriptorHeap[material.albedoIndex];
         albedoColor = albedoTexture.Sample(sampler_ANISOTROPIC, adjustedUV);
         albedoColor.rgb = pow(albedoColor.rgb, 2.2);
-        clip(albedoColor.a < 0.1f ? -1 : 1);
     }
 
     float metallic = material.metallic;
@@ -218,13 +217,13 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
         ambientOcclusion = lerp(1.0f, ambientOcclusion, material.aoScale);
     }
 
-    float3 emissionColor = material.emissionColor;
+    float4 emissionColor = material.emissionColor;
     if (material.emissionIndex != NO_USE)
     {
         Texture2D emissionTexture = ResourceDescriptorHeap[material.emissionIndex];
-        emissionColor = emissionTexture.Sample(sampler_LINEAR, adjustedUV).rgb;
+        emissionColor = emissionTexture.Sample(sampler_LINEAR, adjustedUV);
     }
-    emissionColor *= material.emissionIntensity;
+    emissionColor.rgb *= material.emissionIntensity;
 
     const float3 viewDirection = normalize(camera.positionWS - psIn.inPositionWS);
 
@@ -286,7 +285,7 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
     float3 specular = prefilteredColor * (F * brdf.r + brdf.g);
    // return float4(specular, 1.0f);
 
-    float3 finalAmbientColor = ((diffuse + specular) * ambientOcclusion) + emissionColor; // ao is from ambient occlusion map
+    float3 finalAmbientColor = ((diffuse + specular) * ambientOcclusion) + emissionColor.rgb; // ao is from ambient occlusion map
 
     //const float3 finalAmbientColor = (float3(albedoColor.xyz) * ambientLight * ambientOcclusion) + emissionColor;
     

@@ -63,9 +63,12 @@ namespace Relentless
 	public:
 		friend class MaterialManager;
 		
-		DirectX::XMFLOAT3 m_AlbedoColor;
+		DirectX::XMFLOAT4 m_AlbedoColor;
+		DirectX::XMFLOAT4 m_EmissionColor;
 		float m_Metallic;
-		DirectX::XMFLOAT3 m_EmissionColor;
+	private:
+		float m_Padding[3];
+	public:
 		float m_EmissionIntensity;
 		float m_Roughness;
 	private:
@@ -77,11 +80,11 @@ namespace Relentless
 		uint32_t m_AmbientOcclusionTextureIndex;
 		uint32_t m_EmissionTextureIndex;
 	public:
-		DirectX::XMFLOAT2 m_TilingFactor;
-		DirectX::XMFLOAT2 m_Offset;
 		float m_HeightScale;
 		float m_AOScale;
 		uint32_t m_CombinedRoughnessMetallnesMap;
+		DirectX::XMFLOAT2 m_TilingFactor;
+		DirectX::XMFLOAT2 m_Offset;
 	private:
 		std::string m_Name;
 		TextureHandle m_AlbedoTextureHandle;
@@ -102,6 +105,8 @@ namespace Relentless
 
 		size_t m_ConstantBufferID;
 		RenderMode m_RenderMode;
+
+		friend class MaterialSerializer;
 	};
 	
 	class MaterialManager
@@ -112,6 +117,7 @@ namespace Relentless
 		void Intitialize() noexcept;
 		[[nodiscard]] Material& GetMaterial(const MaterialHandle& materialHandle) noexcept;
 		[[nodiscard]] MaterialHandle& GetMaterialHandleByName(const std::string& materialname) noexcept;
+		[[nodiscard]] MaterialHandle PromoteToHandle(const UUID& uuid) noexcept;
 		void OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept;
 		[[nodiscard]] MaterialHandle Create(const std::string& name, const Material& = Material()) noexcept;
 		MaterialHandle CreateWithUUID(const UUID& materialHandle, const std::string& name, const Material& = Material()) noexcept;

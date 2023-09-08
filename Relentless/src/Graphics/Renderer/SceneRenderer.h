@@ -36,7 +36,9 @@ namespace Relentless
 		void InitializeHBAOPlus() noexcept;
 	private:
 		void PreZPass() noexcept;
-		void GeometryPass() noexcept;
+		void OpaqueGeometryPass() noexcept;
+		void CutOutGeometryPass() noexcept;
+		void TransparentGeometryPass() noexcept;
 		void HBAOPlusRenderPass() noexcept;
 		void EditorGridPass() noexcept;
 		void WireframePass() noexcept;
@@ -102,7 +104,13 @@ namespace Relentless
 
 		size_t m_EnvironmentCBHandle;
 
-		std::shared_ptr<RenderPass> m_GeometryRenderPass;
+		std::vector<entity> m_OpaqueRenderModeEntities;
+		std::vector<entity> m_CutOutRenderModeEntities;
+		std::vector<entity> m_TransparentRenderModeEntities;
+
+		std::shared_ptr<RenderPass> m_OpaqueGeometryRenderPass;
+		std::shared_ptr<RenderPass> m_CutOutGeometryRenderPass;
+		std::shared_ptr<RenderPass> m_TransparentGeometryRenderPass;
 		std::shared_ptr<RenderPass> m_GeometryPickingRenderPass;
 		std::shared_ptr<RenderPass> m_CompositeRenderPass;
 		std::shared_ptr<RenderPass> m_WireFrameRenderPass;

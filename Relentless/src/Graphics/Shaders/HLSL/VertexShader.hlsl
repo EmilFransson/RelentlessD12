@@ -40,29 +40,29 @@ struct VPConstantBuffer
 
 struct Material
 {
-    float3 color;
+    float4 color;
+    float4 emissionColor;
+    
     float metallic;
+    float3 padding;
 
-    float3 emissionColor;
     float emissionIntensity;
-
     float roughness;
     uint albedoIndex;
     uint metallicIndex;
+    
     uint roughnessIndex;
-
     uint normalIndex;
     uint heightMapIndex;
     uint ambientOcclusionIndex;
+    
     uint emissionIndex;
+    float heightScale;
+    float aoScale;
+    uint combinedRoughnessMetalnessMap;
 
     float2 tilingFactor;
     float2 offset;
-
-    float heightScale;
-    float aoScale;
-
-    uint combinedRoughnessMetalnessMap;
 };
 
 ConstantBuffer<VPConstantBuffer> vpConstantBuffer : register(b0, space0);

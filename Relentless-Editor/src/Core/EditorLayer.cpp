@@ -162,8 +162,6 @@ namespace Relentless
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Scene");
 
-		
-
 		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
 		{
 			m_DisplayInspectorPanel = false;
@@ -361,7 +359,7 @@ namespace Relentless
 	void EditorLayer::OnAttach() noexcept
 	{
 		m_pScene = std::make_shared<Scene>();
-		LoadStarterMeshes();
+		//LoadStarterMeshes();
 		CreateStartScene();
 		m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pScene);
 
@@ -433,7 +431,24 @@ namespace Relentless
 		MemoryManager::Get().GetUploadBuffer()->Upload();
 		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
 
-		SceneSerializer::Serialize(m_pScene, std::string(EDITOR_ASSET_DIRECTORY) + "Scenes/Example.Relentless");
+		//MeshManager& mm = AssetManager::GetMeshManager();
+		//std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\PKG_C.1_Trees\\NewSponza_CypressTree_glTF.gltf");
+		//mm.LoadModelFromFile(meshPath, m_pScene.get());
+		//std::cout << "Loaded Tree" << "\n";
+		// meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\Main.1_Sponza\\NewSponza_Main_glTF_002.gltf");
+		//mm.LoadModelFromFile(meshPath, m_pScene.get());
+		//std::cout << "Loaded Main Sponza" << "\n";
+		//
+		//meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\PKG_A_Curtains\\NewSponza_Curtains_glTF.gltf");
+		//mm.LoadModelFromFile(meshPath, m_pScene.get());
+		//std::cout << "Loaded Curtains" << "\n";
+		//
+		//meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\PKG_B_Ivy\\NewSponza_IvyGrowth_glTF.gltf");
+		//mm.LoadModelFromFile(meshPath, m_pScene.get());
+		//std::cout << "Loaded Ivy growth" << "\n";
+
+		
+		MemoryManager::Get().GetUploadBuffer()->Upload();
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -495,54 +510,56 @@ namespace Relentless
 
 	void EditorLayer::LoadStarterMeshes() noexcept
 	{
-		std::vector<std::string> starterMeshes
-		{
-			"Cube.obj",
-			"Capsule.gltf",
-			"Cone.gltf",
-			"Cylinder.gltf",
-			"Icosphere.obj",
-			"Plane.gltf",
-			"Quad.gltf",
-			"Sphere.obj",
-			"Torus.obj",
-			"Triangle.obj",
-			"UtahTeapot.gltf"
-		};
-
-		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/StarterContent/");
-		MeshManager& mm = AssetManager::GetMeshManager();
-		
-		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
-			{
-				std::string fullMeshPath(meshPath + std::string(starterMeshName));
-				mm.LoadModelFromFile(fullMeshPath);
-			});
+		//std::vector<std::string> starterMeshes
+		//{
+		//	"Cube.obj",
+		//	"Capsule.gltf",
+		//	"Cone.gltf",
+		//	"Cylinder.gltf",
+		//	"Icosphere.obj",
+		//	"Plane.gltf",
+		//	"Quad.gltf",
+		//	"Sphere.obj",
+		//	"Torus.obj",
+		//	"Triangle.obj",
+		//	"UtahTeapot.gltf"
+		//};
+		//
+		//std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/StarterContent/");
+		//MeshManager& mm = AssetManager::GetMeshManager();
+		//
+		//std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
+		//	{
+		//		std::string fullMeshPath(meshPath + std::string(starterMeshName));
+		//		mm.LoadModelFromFile(fullMeshPath);
+		//	});
 	}
 
 	void EditorLayer::CreateStartScene() noexcept
 	{
-		m_pScene->CreateLight("Directional Light", LightType::Directional);
-		
-		{
-			auto ground = m_pScene->CreateShape<Shape::Cube>();
-			m_pScene->GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
-			
-			auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(ground);
-			mrc.MaterialHandle = AssetManager::Create<Material>("M_Ground");
+		SceneSerializer::Deserialize(m_pScene, ENGINE_ASSET_DIRECTORY + std::string("Scenes/StarterScene.Relentless"));
 
-			Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
-			material.m_AlbedoColor = { 42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f };
-
-			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(ground);
-			tc.Scale = DirectX::XMFLOAT3{ 6.4f, 0.1f, 6.4f };
-		}
-
-		{
-			auto cube = m_pScene->CreateShape<Shape::Cube>();
-			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(cube);
-			tc.Translation = { 0.0f, 0.55f, 0.0f };
-		}
+		//m_pScene->CreateLight("Directional Light", LightType::Directional);
+		//
+		//{
+		//	auto ground = m_pScene->CreateShape<Shape::Cube>();
+		//	m_pScene->GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
+		//	
+		//	auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(ground);
+		//	mrc.MaterialHandle = AssetManager::Create<Material>("M_Ground");
+		//
+		//	Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
+		//	material.m_AlbedoColor = { 42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f, 1.0f };
+		//
+		//	auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(ground);
+		//	tc.Scale = DirectX::XMFLOAT3{ 6.4f, 0.1f, 6.4f };
+		//}
+		//
+		//{
+		//	auto cube = m_pScene->CreateShape<Shape::Cube>();
+		//	auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(cube);
+		//	tc.Translation = { 0.0f, 0.55f, 0.0f };
+		//}
 	}
 
 	void EditorLayer::OnSceneViewportChanged() noexcept

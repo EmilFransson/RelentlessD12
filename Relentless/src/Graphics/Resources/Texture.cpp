@@ -106,18 +106,19 @@ namespace Relentless
 		DirectX::ResourceUploadBatch resourceUpload(D3D12Core::GetDevice().Get());
 
 		std::filesystem::path fullPath = fileName;
-		m_Name = fullPath.stem().string();
+		RLS_ASSERT(std::filesystem::exists(fullPath), "File path is invalid.");
+		m_Name = fullPath.string();
 
+		bool test = resourceUpload.IsSupportedForGenerateMips(DXGI_FORMAT_B8G8R8A8_UNORM);
 		resourceUpload.Begin();
 
-
-		DXCall(DirectX::CreateWICTextureFromFile(
+		DXCall(DirectX::CreateWICTextureFromFileEx(
 			D3D12Core::GetDevice().Get(),
 			resourceUpload, 
-			fullPath.c_str(),
-			&m_pResource, 
-			true)
+			fullPath.c_str(), 0, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, DirectX::DX12::WIC_LOADER_MIP_AUTOGEN,
+			&m_pResource)
 		);
+		
 
 		// Upload the resources to the GPU.
 		auto uploadResourcesFinished = resourceUpload.End(D3D12Core::GetCommandQueue().Get());

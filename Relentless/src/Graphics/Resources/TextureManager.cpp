@@ -4,7 +4,7 @@ namespace Relentless
 {
 	inline static std::mutex g_CreateMutex;
 
-	TextureHandle TextureManager::LoadTextureFromFile(const std::string& fullPath) noexcept
+	TextureHandle TextureManager::LoadTextureFromFile(const std::string& fullPath, const UUID& uuid) noexcept
 	{
 		const std::lock_guard<std::mutex> lock(g_CreateMutex);
 		if (Exists(fullPath))
@@ -13,7 +13,7 @@ namespace Relentless
 		}
 		
 		TextureHandle textureHandle;
-		textureHandle.UUID = CreateUUID();
+		textureHandle.UUID = uuid;
 
 		if (!m_FreeList.empty())
 		{
@@ -57,5 +57,18 @@ namespace Relentless
 	bool TextureManager::Exists(const std::string& textureName) noexcept
 	{
 		return m_TextureNameToHandleMap.contains(textureName);
+	}
+
+	TextureHandle TextureManager::PromoteToHandle(const UUID& uuid) noexcept
+	{
+		for (auto& [name, handle] : m_TextureNameToHandleMap)
+		{
+			if (handle.UUID == uuid)
+			{
+				return handle;
+			}
+		}
+
+		RLS_ASSERT(false, "UUID does not exist in unordered_map.");
 	}
 }
