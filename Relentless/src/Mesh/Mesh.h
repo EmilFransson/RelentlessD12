@@ -4,14 +4,11 @@
 #include "../Graphics/Resources/Helper.h"
 #include "../../vendor/includes/Assimp/scene.h"
 #include "../Utility/ManagerUtilities.h"
+#include "../ECS/ECSCommon.h"
 
 struct aiNode;
 struct aiScene;
 struct aiMesh;
-namespace YAML
-{
-	class Node;
-}
 
 namespace Relentless
 {
@@ -36,17 +33,17 @@ namespace Relentless
 	public:
 		MeshManager() noexcept = default;
 		~MeshManager() noexcept = default;
-		void Initialize() noexcept;
 		[[nodiscard]] Mesh& GetMesh(const MeshHandle& meshHandle) noexcept;
 		[[nodiscard]] Mesh& GetByString(const std::string& meshString) noexcept;
 		[[nodiscard]] MeshHandle& GetHandleByString(const std::string& meshString) noexcept;
 		[[nodiscard]] MeshHandle PromoteToHandle(const UUID& uuid) noexcept;
-		void LoadModelFromFile(const std::string& fullPath, Scene* pScene = nullptr, YAML::Node* pYamlNode = nullptr) noexcept;
+		MeshHandle LoadMeshBinary(const std::string& path, const UUID& uuid) noexcept;
+		void LoadModelFromFile(const std::string& fullPath, Scene* pScene = nullptr) noexcept;
 		[[nodiscard]] bool Exists(const std::string& path) noexcept; //TODO: Go by name probably!
 	private:
 		DirectX::XMMATRIX ConvertMatrix(aiMatrix4x4& inMat);
-		void ProcessNode(aiNode* pNode, const aiScene* pAssimpScene, Scene* pScene, const DirectX::XMFLOAT4X4& transform, const std::filesystem::path& workingDirectory, YAML::Node* pYamlNode = nullptr) noexcept;
-		[[nodiscard]] MeshHandle ProcessMesh(aiMesh* pMesh, const aiScene* pScene, YAML::Node* pYamlNode = nullptr) noexcept;
+		void ProcessNode(aiNode* pNode, const aiScene* pAssimpScene, Scene* pScene, const DirectX::XMFLOAT4X4& transform, const std::filesystem::path& workingDirectory, entity parent = NULL_ENTITY) noexcept;
+		[[nodiscard]] MeshHandle ProcessMesh(aiMesh* pMesh, const std::filesystem::path& workingDirectory) noexcept;
 		[[nodiscard]] MaterialHandle ProcessMaterial(aiMesh* pMesh, const aiScene* pScene, const std::filesystem::path& workingDirectory) noexcept;
 	private:
 		std::queue<uint16_t> m_FreeList;

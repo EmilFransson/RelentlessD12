@@ -6,7 +6,7 @@ namespace Relentless
 {
 	VertexBuffer::VertexBuffer(const Specification* specification) noexcept
 		: IResource{ specification->Name },
-		  m_NrOfVertices{ specification->NrOfVertices }
+		  m_Specification{ *specification }
 	{
 		D3D12_HEAP_PROPERTIES heapProperties = {};
 		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;

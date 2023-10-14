@@ -110,6 +110,8 @@ namespace Relentless
 
 	void Window::OnUpdate()
 	{
+		PROFILE_FUNC;
+
 		if (m_ShouldToggleFullScreen)
 		{
 			ToggleFullScreen();
@@ -130,6 +132,8 @@ namespace Relentless
 
 	void Window::Present() noexcept
 	{
+		PROFILE_FUNC;
+
 		UINT presentFlags = (!m_IsFullScreen && !m_IsVsyncing) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 		DXCall(m_pSwapChain->Present(m_IsVsyncing, presentFlags));
 	}

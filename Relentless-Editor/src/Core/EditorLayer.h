@@ -10,6 +10,7 @@
 namespace Relentless
 {
 	enum class GizmoType : int8_t { NONE = -1, TRANSLATE = 0, ROTATE = 1, SCALE = 2 };
+	enum class GizmoMode : uint8_t { LOCAL = 0, WORLD };
 
 	class EditorLayer : public Layer
 	{
@@ -42,6 +43,7 @@ namespace Relentless
 		entity m_HoveredEntity;
 		entity m_SelectedEntity;
 		GizmoType m_CurrentGizmoType;
+		GizmoMode m_CurrentGizmoMode;
 
 		SceneHierarchyPanel m_SceneHierarchyPanel;
 		PropertiesPanel m_PropertiesPanel;
@@ -66,5 +68,6 @@ namespace Relentless
 		bool m_ImmersiveModeEnabled;
 
 		std::string m_Path{};
+		bool m_CreateNewScene{ false };
 	};
 }

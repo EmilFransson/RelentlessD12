@@ -6,7 +6,6 @@ namespace Relentless
 	{
 	public:
 		[[nodiscard]] static std::string OpenFile(const char* filter) noexcept;
-	private:
-
+		[[nodiscard]] static std::string SaveFile(const char* filter) noexcept;
 	};
 }

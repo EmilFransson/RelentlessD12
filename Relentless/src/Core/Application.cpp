@@ -8,6 +8,7 @@
 #include "Timer.h"
 #include "../Input/Mouse.h"
 #include "../Graphics/Resources/AssetManager.h"
+#include "../Assets/AssetManagerEx.h"
 namespace Relentless
 {
 	Application::Application(const ApplicationSpecification& applicationSpecification) noexcept
@@ -25,6 +26,7 @@ namespace Relentless
 			PROFILE_FUNC;
 
 			Timer::Update();
+			
 			
 			MemoryManager::Get().PerformDeferredDeletion();
 
@@ -48,21 +50,28 @@ namespace Relentless
 			}
 
 			MasterRenderer::PrepareBackBuffer();
+			MemoryManager::Get().GetUploadBuffer()->Upload();
 			MasterRenderer::ExecuteCommands();
 
 
 			Window::Present();
 			MasterRenderer::WaitAndSync();
 
-			for (auto& pLayer : LayerStack::Get())
 			{
-				pLayer->OnPostRender();
+				PROFILE_SCOPE("Application::Run::OnPostRender");
+
+				for (auto& pLayer : LayerStack::Get())
+				{
+					pLayer->OnPostRender();
+				}
 			}
 
 			Mouse::Reset();
 
 			Window::OnUpdate();
 			D3D12Core::AdvanceToNextFrame();
+
+			
 		}
 		ShutDown();
 	}
@@ -130,6 +139,9 @@ namespace Relentless
 		PushOverlay(&m_ImGuiLayer);
 
 		m_IsRunning = true;
+
+		AssetHandle_EX aex = AssetManagerEx::LoadFromFile<Texture2D>(EDITOR_ASSET_DIRECTORY + std::string("Textures\\bright_grid.jpg"));
+		Texture2D& tex = AssetManagerEx::GetAsset<Texture2D>(aex);
 	}
 
 	void Application::ShutDown() noexcept

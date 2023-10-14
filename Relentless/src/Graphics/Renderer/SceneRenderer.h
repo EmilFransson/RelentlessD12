@@ -15,6 +15,8 @@ namespace Relentless
 		#else
 		ContactShadows ContactShadowType{ ContactShadows::HBAO_PLUS };
 		#endif
+		bool DisplaySelectionWireframe{ true };
+		bool DisplayEditorGrid{ true };
 	};
 
 	class SceneRenderer
@@ -32,6 +34,8 @@ namespace Relentless
 		entity GetHoveredEntity() noexcept;
 		const Options& GetOptions() const noexcept { return m_Options; }
 		void SetContactShadowsType(const ContactShadows contactShadowsType) noexcept;
+		void ToggleSelectionWireframe() noexcept;
+		void ToggleEditorGrid() noexcept;
 		[[nodiscard]] GFSDK_SSAO_Parameters& GetHBAOPlusParameters() noexcept { return m_HBAOPlusParameters; }
 		void InitializeHBAOPlus() noexcept;
 	private:
@@ -45,6 +49,8 @@ namespace Relentless
 		void PickingPass() noexcept;
 		void CompositePass() noexcept;
 		void CombinedGeometryAndPickingPass() noexcept;
+		void AddToResourceTransitionBatch(const std::shared_ptr<IResource>& pResource, D3D12_RESOURCE_STATES stateAfter) noexcept;
+		void AddToResourceTransitionBatch(const Microsoft::WRL::ComPtr<ID3D12Resource>& pResource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter) noexcept;
 	private:
 		Options m_Options;
 		std::shared_ptr<Scene> m_pScene;
@@ -125,6 +131,7 @@ namespace Relentless
 		GFSDK_SSAO_Parameters m_HBAOPlusParameters;
 
 		entity m_HoveredEntity{NULL_ENTITY};
+		std::vector<D3D12_RESOURCE_BARRIER> m_ResourceBarrierBatch;
 
 		//EditorGrid
 		struct Vertex_Basic

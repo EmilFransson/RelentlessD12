@@ -27,6 +27,8 @@ namespace Relentless
 #else
 		shaderArguments.push_back(L"-O3");
 #endif
+
+
 		DxcBuffer sourceBuffer = {};
 		sourceBuffer.Ptr = pSource->GetBufferPointer();
 		sourceBuffer.Size = pSource->GetBufferSize();

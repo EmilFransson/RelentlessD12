@@ -1,5 +1,4 @@
 #pragma once
-#include "Helper.h"
 #include "../../Utility/ManagerUtilities.h"
 
 namespace Relentless
@@ -108,7 +107,7 @@ namespace Relentless
 
 		friend class MaterialSerializer;
 	};
-	
+
 	class MaterialManager
 	{
 	public:
@@ -119,8 +118,8 @@ namespace Relentless
 		[[nodiscard]] MaterialHandle& GetMaterialHandleByName(const std::string& materialname) noexcept;
 		[[nodiscard]] MaterialHandle PromoteToHandle(const UUID& uuid) noexcept;
 		void OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept;
-		[[nodiscard]] MaterialHandle Create(const std::string& name, const Material& = Material()) noexcept;
-		MaterialHandle CreateWithUUID(const UUID& materialHandle, const std::string& name, const Material& = Material()) noexcept;
+		[[nodiscard]] MaterialHandle Create(const std::string& name, const Material & = Material()) noexcept;
+		MaterialHandle CreateWithUUID(const UUID& materialHandle, const std::string& name, const Material & = Material()) noexcept;
 		__forceinline void Upload(const MaterialHandle& materialHandle) noexcept;
 		void SetDirty(const MaterialHandle& materialHandle) noexcept;
 		[[nodiscard]] std::vector<std::pair<MaterialHandle, uint8_t>>& GetDirtyMaterials() noexcept { return m_DirtyMaterials; }

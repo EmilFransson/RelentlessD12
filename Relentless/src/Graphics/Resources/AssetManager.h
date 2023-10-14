@@ -4,6 +4,8 @@
 #include "TextureManager.h"
 #include "TextureSerializer.h"
 #include "MaterialSerializer.h"
+#include "../../Mesh/MeshSerializer.h"
+//#include "../../Scene/SceneManager.h"
 
 namespace Relentless
 {
@@ -20,6 +22,7 @@ namespace Relentless
 			MaterialManager MaterialManager;
 			MeshManager MeshManager;
 			TextureManager TextureManager;
+			//SceneManager SceneManager;
 			std::unordered_map<UUID, std::string> UUIDToPathMap;
 			std::unordered_map<std::string, UUID> PathToUUIDMap;
 		};
@@ -33,7 +36,9 @@ namespace Relentless
 		[[nodiscard]] static MaterialManager& GetMaterialManager() noexcept;
 		[[nodiscard]] static MeshManager& GetMeshManager() noexcept;
 		[[nodiscard]] static TextureManager& GetTextureManager() noexcept;
-		[[nodiscard]] static const std::string& GetAssetPath(const AssetHandle& assetHandle) noexcept;
+		//[[nodiscard]] static SceneManager& GetSceneManager() noexcept;
+		[[nodiscard]] static const std::string GetAssetPath(const UUID& uuid) noexcept;
+		[[nodiscard]] static bool IsAssetPathMapped(const std::string& path) noexcept;
 		static void MapGUIDToFilepath(const UUID& uuid, const std::string& path) noexcept;
 		static void DeleteGUIDToFilepathMapping(const UUID& uuid, const std::string& path) noexcept;
 
@@ -94,6 +99,12 @@ namespace Relentless
 		return s_Data.TextureManager.GetTexture(textureHandle);
 	}
 
+	//template<>
+	//inline Scene& AssetManager::Get<Scene>(const SceneHandle& sceneHandle) noexcept
+	//{
+	//	return s_Data.SceneManager.GetScene(sceneHandle);
+	//}
+
 	template<>
 	inline bool AssetManager::Exists<Material>(const std::string& assetName) noexcept
 	{
@@ -111,6 +122,12 @@ namespace Relentless
 	{
 		return s_Data.TextureManager.Exists(assetName);
 	}
+
+	//template<>
+	//inline bool AssetManager::Exists<Scene>(const std::string& assetName) noexcept
+	//{
+	//	return s_Data.SceneManager.Exists(assetName);
+	//}
 
 	template<>
 	inline AssetHandle AssetManager::Create<Material>(const std::string& name) noexcept
@@ -132,56 +149,80 @@ namespace Relentless
 	template<>
 	inline AssetHandle AssetManager::Load<Texture2D>(const std::filesystem::path& fullPath) noexcept
 	{
-		const std::lock_guard<std::mutex> lock(g_MainCreateMutex);
-
 		RLS_ASSERT(std::filesystem::exists(fullPath), "Path is invalid");
 
 		if (s_Data.TextureManager.Exists(fullPath.string())) 
 		{
 			return s_Data.TextureManager.GetTextureHandleByString(fullPath.string());
 		}
-		else if (s_Data.PathToUUIDMap.contains(fullPath.string() + ".rasset"))
+		else if (IsAssetPathMapped(fullPath.string()))
 		{
 			return TextureSerializer::Deserialize(fullPath.string());
 		}
 
 		UUID uuid = TextureSerializer::SerializeDefault(fullPath.string());
 		TextureHandle textureHandle = s_Data.TextureManager.LoadTextureFromFile(fullPath.string(), uuid);
-		s_Data.UUIDToPathMap[textureHandle.UUID] = fullPath.string() + ".rasset";
-		s_Data.PathToUUIDMap[fullPath.string() + ".rasset"] = textureHandle.UUID;
+		MapGUIDToFilepath(textureHandle.UUID, fullPath.string());
+		
 		return textureHandle;
 	}
 
 	template<>
 	inline AssetHandle AssetManager::Load<Material>(const std::filesystem::path& fullPath) noexcept
 	{
-		const std::lock_guard<std::mutex> lock(g_MainCreateMutex);
-
 		if (s_Data.MaterialManager.Exists(fullPath.filename().stem().string()))
 		{
 			return s_Data.MaterialManager.GetMaterialHandleByName(fullPath.stem().string());
 		}
-		else if (s_Data.PathToUUIDMap.contains(fullPath.string() + ".rasset"))
+		else if (IsAssetPathMapped(fullPath.string()))
 		{
 			return MaterialSerializer::Deserialize(fullPath.string());
 		}
 
-		//TODO: Generate the rmat in SerializeDefault
 		UUID uuid = MaterialSerializer::SerializeDefault(fullPath.string());
 		MaterialHandle materialHandle = s_Data.MaterialManager.CreateWithUUID(uuid, fullPath.filename().stem().string());
-		s_Data.UUIDToPathMap[materialHandle.UUID] = fullPath.string() + ".rmat" + ".rasset";
-		s_Data.PathToUUIDMap[fullPath.string() + ".rmat" + ".rasset"] = materialHandle.UUID;
+		MapGUIDToFilepath(materialHandle.UUID, fullPath.string());
+		
 		return materialHandle;
 	}
 
 	template<>
+	inline AssetHandle AssetManager::Load<Mesh>(const std::filesystem::path& fullPath) noexcept
+	{
+		if (s_Data.MeshManager.Exists(fullPath.filename().stem().string()))
+		{
+			return s_Data.MeshManager.GetHandleByString(fullPath.stem().string());
+		}
+		else if (IsAssetPathMapped(fullPath.string()))
+		{
+			return ModelSerializer::Deserialize(fullPath.string());
+		}
+
+		//The mesh is kept in binary, so it should really always exist here:
+		RLS_ASSERT(false, "How did we get here?");
+		return {};
+	}
+
+	//template<>
+	//inline AssetHandle AssetManager::Load<Scene>(const std::filesystem::path& fullPath) noexcept
+	//{
+	//	if (s_Data.SceneManager.Exists(fullPath.filename().stem().string()))
+	//	{
+	//		return s_Data.SceneManager.GetSceneHandleByString(fullPath.stem().string());
+	//	}
+	//	else if (IsAssetPathMapped(fullPath.string()))
+	//	{
+	//		return SceneSerializer::Deserialize(fullPath.string());
+	//	}
+	//
+	//	//The mesh is kept in binary, so it should really always exist here:
+	//	RLS_ASSERT(false, "How did we get here?");
+	//	return {};
+	//}
+
+	template<>
 	inline AssetHandle AssetManager::LoadWithUUID<Texture2D>(const UUID& uuid, const std::filesystem::path& fullPath) noexcept
 	{
-		const std::lock_guard<std::mutex> lock(g_MainCreateMutex);
-
-		RLS_ASSERT(std::filesystem::exists(fullPath), "Path is invalid");
-		s_Data.UUIDToPathMap[uuid] = fullPath.string();
-
 		if (s_Data.TextureManager.Exists(fullPath.string()))
 		{
 			return s_Data.TextureManager.GetTextureHandleByString(fullPath.string());

@@ -6,7 +6,7 @@ namespace Relentless
 {
 	IndexBuffer::IndexBuffer(const Specification* specification) noexcept
 		: IResource{ specification->Name },
-		  m_NrOfIndices{ specification->NrOfIndices }
+		  m_Specification{ *specification }
 	{
 		D3D12_HEAP_PROPERTIES heapProperties = {};
 		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;

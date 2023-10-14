@@ -307,6 +307,40 @@ namespace Relentless
 		}
 		ImGui::Separator();
 
+		DrawColumnSection("Display selection wireframe", 120u, [&]()
+			{
+				ImGui::PushMultiItemsWidths(1, ImGui::CalcItemWidth());
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+
+				bool isChecked = m_pContext->GetOptions().DisplaySelectionWireframe;
+				if (ImGui::Checkbox("##DisplaySelectionWireframe", &isChecked))
+				{
+					m_pContext->ToggleSelectionWireframe();
+				}
+
+				ImGui::PopItemWidth();
+				ImGui::PopStyleVar();
+			});
+
+		ImGui::Separator();
+
+		DrawColumnSection("Display Editor Grid", 120u, [&]()
+			{
+				ImGui::PushMultiItemsWidths(1, ImGui::CalcItemWidth());
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+
+				bool isChecked = m_pContext->GetOptions().DisplayEditorGrid;
+				if (ImGui::Checkbox("##DisplayEditorGrid", &isChecked))
+				{
+					m_pContext->ToggleEditorGrid();
+				}
+
+				ImGui::PopItemWidth();
+				ImGui::PopStyleVar();
+			});
+
+		ImGui::Separator();
+
 		ImGui::End();
 	}
 

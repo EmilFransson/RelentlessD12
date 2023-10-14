@@ -59,12 +59,13 @@ namespace Relentless
 	class Texture2D : public Texture 
 	{
 	public:
-		explicit Texture2D(const std::string& fileName) noexcept;
+		explicit Texture2D(const std::string& fileName, bool srgb = false) noexcept;
 		Texture2D() noexcept {}
 		virtual ~Texture2D() noexcept override final = default;
 		Texture2D(Texture2D&& other) noexcept = default;
 		Texture2D& operator=(Texture2D&& other) noexcept = default;
-		[[nodiscard]] static std::shared_ptr<Texture2D> Create(const std::string& fileName) noexcept;
-		[[nodiscard]] static std::shared_ptr<Texture2D> CreateFromPath(const std::filesystem::path& filePath) noexcept;
+		[[nodiscard]] static std::shared_ptr<Texture2D> Create(const std::string& fileName, bool srgb = false) noexcept;
+		[[nodiscard]] static std::shared_ptr<Texture2D> CreateFromPath(const std::filesystem::path& filePath, bool srgb = false) noexcept;
+		[[nodiscard]] static Texture2D LoadFromFile(const std::filesystem::path& filePath) noexcept { return {}; }
 	};
 }

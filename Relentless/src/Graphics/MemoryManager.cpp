@@ -98,6 +98,8 @@ namespace Relentless
 
 	void MemoryManager::PerformDeferredDeletion() noexcept
 	{
+		PROFILE_FUNC;
+
 		const uint32_t frameIndex = MasterRenderer::GetCurrentFrameIndex();
 		
 		if (!m_pDeferredFreeLists[frameIndex].empty())

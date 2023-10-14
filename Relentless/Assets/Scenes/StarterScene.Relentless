@@ -7,6 +7,9 @@ Entities:
       Translation: [0, 0.550000012, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
+      Local Translation: [0, 0.550000012, 0]
+      Local Rotation: [0, 0, 0]
+      Local Scale: [1, 1, 1]
     MeshFilterComponent:
       MeshHandle: "{00000000-0000-0000-0000-000000000005}"
     MeshRendererComponent:
@@ -22,6 +25,9 @@ Entities:
       Translation: [0, 0, 0]
       Rotation: [0, 0, 0]
       Scale: [6.4000001, 0.100000001, 6.4000001]
+      Local Translation: [0, 0, 0]
+      Local Rotation: [0, 0, 0]
+      Local Scale: [6.4000001, 0.100000001, 6.4000001]
     MeshFilterComponent:
       MeshHandle: "{00000000-0000-0000-0000-000000000005}"
     MeshRendererComponent:
@@ -37,6 +43,9 @@ Entities:
       Translation: [0, 3, 0]
       Rotation: [50, -30, 0]
       Scale: [1, 1, 1]
+      Local Translation: [0, 3, 0]
+      Local Rotation: [50, -30, 0]
+      Local Scale: [1, 1, 1]
     DirectionalLightComponent:
       Direction: [0, 0, 0]
       Intensity: 1

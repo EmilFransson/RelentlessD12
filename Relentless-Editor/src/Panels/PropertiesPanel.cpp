@@ -100,7 +100,7 @@ namespace Relentless
 		{
 			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
 			bool changedValues = true;
-			
+
 			changedValues = DrawVec3Control("Position", tc.Translation, 0.06f);
 			ImGui::Separator();
 			changedValues |= DrawVec3Control("Rotation", tc.Rotation, 0.03f);
@@ -111,27 +111,24 @@ namespace Relentless
 				m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
 			
 			ImGui::TreePop();
-		}
 
-		if (m_pScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
-		{
 			const bool opened = ImGui::TreeNodeEx((void*)typeid(IsChildComponent).hash_code(), flags, "Local Transform");
 			if (opened)
 			{
-				auto& childComponent = m_pScene->GetEntityManager().Get<IsChildComponent>(m_SelectedEntity);
+				auto& transformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
 
-				bool changedValues = true;
-				changedValues = DrawVec3Control("Position", childComponent.LocalTranslation, 0.06f);
+				changedValues = DrawVec3Control("Local Position", transformComponent.LocalTranslation, 0.06f);
 				ImGui::Separator();
-				changedValues |= DrawVec3Control("Rotation", childComponent.LocalRotation, 0.03f);
+				changedValues |= DrawVec3Control("Local Rotation", transformComponent.LocalRotation, 0.03f);
 				ImGui::Separator();
-				changedValues |= DrawVec3Control("Scale", childComponent.LocalScale, 0.03f, 1.0f, 0.01f);
+				changedValues |= DrawVec3Control("Local Scale", transformComponent.LocalScale, 0.03f, 1.0f, 0.01f);
 
 				if (changedValues)
 					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = false;
 
 				ImGui::TreePop();
 			}
+
 		}
 
 		DrawComponentNode<DirectionalLightComponent>("Light", [this]()

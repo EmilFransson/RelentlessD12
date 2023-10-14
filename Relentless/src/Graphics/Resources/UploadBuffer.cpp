@@ -65,7 +65,7 @@ namespace Relentless
 
 	void UploadBuffer::Upload() noexcept
 	{
-		const std::lock_guard<std::mutex> lock(g_LoadMutex);
+		//const std::lock_guard<std::mutex> lock(g_LoadMutex);
 
 		uint64_t offset = 0u;
 		for (uint32_t i{ 0u }; i < m_UploadQueue.size(); i++)
@@ -92,9 +92,9 @@ namespace Relentless
 		m_CurrentSize = 0u;
 
 		
-		MasterRenderer::ExecuteCommands();
-		MasterRenderer::WaitForGPU();
-		MasterRenderer::ResetFrameCommandUnits(MasterRenderer::GetCurrentFrameIndex());
+		//MasterRenderer::ExecuteCommands();
+		//MasterRenderer::WaitForGPU();
+		//MasterRenderer::ResetFrameCommandUnits(MasterRenderer::GetCurrentFrameIndex());
 	}
 
 	void UploadBuffer::Copy(const uint64_t size, void* pSrc, IResource* pDst, const D3D12_RESOURCE_STATES stateAfterCopy) noexcept

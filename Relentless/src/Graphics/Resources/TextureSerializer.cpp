@@ -55,7 +55,7 @@ namespace Relentless
 
 		std::string pathWithExtension = path + ASSET_EXTENSION;
 		std::ofstream outFile(pathWithExtension);
-		RLS_ASSERT(outFile.is_open(), "Unable to open/create texture asset file to write to.");
+		//RLS_ASSERT(outFile.is_open(), "Unable to open/create texture asset file to write to.");
 
 		outFile << out.c_str();
 		outFile.close();

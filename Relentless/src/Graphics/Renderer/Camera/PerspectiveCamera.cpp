@@ -10,8 +10,8 @@ namespace Relentless
 		m_Pitch{ -35.0f },
 		m_CameraSpeed{ 10.0f },
 		m_TiltSensitivity{ 0.25f },
-		m_FieldOfViewDegrees{ 60.0f },
-		m_NearPlane{0.3f},
+		m_FieldOfViewDegrees{ 90.0f },
+		m_NearPlane{0.1f},
 		m_FarPlane{ 1000.f }
 	{
 		DirectX::XMStoreFloat3(&m_Position, position);

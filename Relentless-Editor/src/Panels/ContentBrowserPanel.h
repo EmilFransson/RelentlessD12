@@ -33,7 +33,8 @@ namespace Relentless
 
 			Texture2D& tooltipImageTexture = AssetManager::Get<Texture2D>(tooltipImageTextureHandle);
 
-			constexpr std::string_view payloadID = std::is_same_v<AssetType, Texture2D> ? "CONTENT_BROWSER_ITEM_TEXTURE" : "CONTENT_BROWSER_ITEM_MATERIAL";
+			constexpr std::string_view payloadID = std::is_same_v<AssetType, Texture2D> ? "CONTENT_BROWSER_ITEM_TEXTURE" 
+				: std::is_same_v<AssetType, Material> ? "CONTENT_BROWSER_ITEM_MATERIAL" : "CONTENT_BROWSER_ITEM_SCENE";
 
 			if (ImGui::BeginDragDropSource())
 			{
@@ -56,7 +57,7 @@ namespace Relentless
 			ImGui::SameLine();
 			ImGui::NewLine();
 
-			if (payloadAssetHandle == m_AssetToName)
+			if (payloadAssetHandle == m_AssetToName && !std::is_same_v<AssetType, Texture2D>)
 			{
 				EditThumbnailText(payloadAssetHandle);
 			}

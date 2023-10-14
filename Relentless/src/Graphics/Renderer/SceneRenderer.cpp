@@ -271,7 +271,7 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Picking Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("PickingVertexShader");
 			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PickingPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = false;
@@ -423,6 +423,7 @@ namespace Relentless
 		m_OpaqueRenderModeEntities.clear();
 		m_CutOutRenderModeEntities.clear();
 		m_TransparentRenderModeEntities.clear();
+		m_ResourceBarrierBatch.clear();
 
 		MaterialManager& materialManager = AssetManager::GetMaterialManager();
 		m_pScene->GetEntityManager().Collect<MeshRendererComponent, MeshFilterComponent>().Do([&](entity e, MeshRendererComponent& mrc, MeshFilterComponent& mfc)
@@ -445,22 +446,43 @@ namespace Relentless
 				}
 			});
 
-		if (m_TransparentRenderModeEntities.size() > 0)
 		{
-			auto& mgr = m_pScene->GetEntityManager();
-			std::shared_ptr<PerspectiveCamera> pEditorCamera = m_pScene->GetEditorCamera();
-			std::sort(m_TransparentRenderModeEntities.begin(), m_TransparentRenderModeEntities.end(), [&](const entity a, const entity b)
-				{
-					TransformComponent& tcA = mgr.Get<TransformComponent>(a);
-					TransformComponent& tcB = mgr.Get<TransformComponent>(b);
+			PROFILE_SCOPE("SceneRenderer::Begin::SortAllEntities");
 
-					double squaredDistanceA = std::pow(tcA.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcA.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcA.Translation.z - pEditorCamera->GetPosition().z, 2);
-					double squaredDistanceB = std::pow(tcB.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcB.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcB.Translation.z - pEditorCamera->GetPosition().z, 2);
+			//Sort transparent entities back to front:
+			if (m_TransparentRenderModeEntities.size() > 0)
+			{
+				auto& mgr = m_pScene->GetEntityManager();
+				std::shared_ptr<PerspectiveCamera> pEditorCamera = m_pScene->GetEditorCamera();
+				std::sort(m_TransparentRenderModeEntities.begin(), m_TransparentRenderModeEntities.end(), [&](const entity a, const entity b)
+					{
+						TransformComponent& tcA = mgr.Get<TransformComponent>(a);
+						TransformComponent& tcB = mgr.Get<TransformComponent>(b);
 
-					return squaredDistanceA > squaredDistanceB;
-				});
+						double squaredDistanceA = std::pow(tcA.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcA.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcA.Translation.z - pEditorCamera->GetPosition().z, 2);
+						double squaredDistanceB = std::pow(tcB.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcB.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcB.Translation.z - pEditorCamera->GetPosition().z, 2);
+
+						return squaredDistanceA > squaredDistanceB;
+					});
+			}
+			//Sort opaque entities front to back:
+			if (m_OpaqueRenderModeEntities.size() > 0)
+			{
+				auto& mgr = m_pScene->GetEntityManager();
+				std::shared_ptr<PerspectiveCamera> pEditorCamera = m_pScene->GetEditorCamera();
+				std::sort(m_OpaqueRenderModeEntities.begin(), m_OpaqueRenderModeEntities.end(), [&](const entity a, const entity b)
+					{
+						TransformComponent& tcA = mgr.Get<TransformComponent>(a);
+						TransformComponent& tcB = mgr.Get<TransformComponent>(b);
+
+						double squaredDistanceA = std::pow(tcA.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcA.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcA.Translation.z - pEditorCamera->GetPosition().z, 2);
+						double squaredDistanceB = std::pow(tcB.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcB.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcB.Translation.z - pEditorCamera->GetPosition().z, 2);
+
+						return squaredDistanceA < squaredDistanceB;
+					});
+			}
 		}
-
+		
 		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
 		m_PerFrameOpaqueGeometryData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
 		m_PerFrameOpaqueGeometryData.pointLightStructuredBufferIndex = m_pScene->GetLightManager().GetPointLights()->m_VisibleHandles[frameIndex].Index;
@@ -469,6 +491,11 @@ namespace Relentless
 		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
 		m_PerFrameOpaqueGeometryData.environmentIndex = MemoryManager::Get().GetCBDescriptorIndex(m_EnvironmentCBHandle);
 		m_PerFrameOpaqueGeometryData.brdfLutTextureIndex = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle).GetSRVDescriptorHandle().Index;
+
+		//Terrible and wrong for runtime:
+		//Camera:
+		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
+		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 
 		//TODO: Should not be done every frame!
 		static DirectX::XMFLOAT3 bgColor = DirectX::XMFLOAT3(DirectX::Colors::LightSkyBlue);
@@ -517,21 +544,37 @@ namespace Relentless
 
 		if (m_Options.MSAASamples > 1)
 		{
+			AddToResourceTransitionBatch(m_OpaqueGeometryRenderPass->GetOutput(0), D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+			AddToResourceTransitionBatch(m_pResolvedTexture, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+		}
+		AddToResourceTransitionBatch(Window::GetCurrentBackBuffer().pBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		RenderCommand::FlushResourceTransitionBatch(m_ResourceBarrierBatch);
+
+		if (m_Options.MSAASamples > 1)
+		{
 			//MSAA Resolve:
 			auto pGeometryPassColorOutput = m_OpaqueGeometryRenderPass->GetOutput(0);
-			RenderCommand::TransitionResource(pGeometryPassColorOutput, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-			RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_RESOLVE_DEST);
 			RenderCommand::ResolveMSAA(pGeometryPassColorOutput, m_pResolvedTexture);
 		}
 
 		CompositePass();
 
+		if (m_Options.MSAASamples > 1)
+		{
+			AddToResourceTransitionBatch(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		}
+		else
+		{
+
+		}
+		//RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		AddToResourceTransitionBatch(MasterRenderer::GetFrameBuffer()->GetOutput(0), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		RenderCommand::FlushResourceTransitionBatch(m_ResourceBarrierBatch);
+
 		//Set UI-texture as pixel shader resource and prepare back buffer as render target for imgui:
 		{
-			BackBuffer backBuffer = Window::GetCurrentBackBuffer();
-			RenderCommand::TransitionResource(backBuffer.pBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			RenderCommand::TransitionResource(MasterRenderer::GetFrameBuffer()->GetOutput(0), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-			RenderCommand::SetRenderTarget(backBuffer);
+			//RenderCommand::TransitionResource(MasterRenderer::GetFrameBuffer()->GetOutput(0), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			RenderCommand::SetRenderTarget(Window::GetCurrentBackBuffer());
 		}
 	}
 
@@ -545,6 +588,16 @@ namespace Relentless
 		m_Options.ContactShadowType = contactShadowsType;
 	}
 
+	void SceneRenderer::ToggleSelectionWireframe() noexcept
+	{
+		m_Options.DisplaySelectionWireframe = !m_Options.DisplaySelectionWireframe;
+	}
+
+	void SceneRenderer::ToggleEditorGrid() noexcept
+	{
+		m_Options.DisplayEditorGrid = !m_Options.DisplayEditorGrid;
+	}
+
 	void SceneRenderer::PreZPass() noexcept
 	{
 		PROFILE_FUNC;
@@ -552,10 +605,6 @@ namespace Relentless
 
 		MasterRenderer::BeginRenderPass(m_PreZRenderPass);
 
-		//Terrible and wrong for runtime:
-		//Camera:
-		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
-		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 		m_PreZRenderPass->Upload("vpConstantBuffer", &m_VPData);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
@@ -564,6 +613,8 @@ namespace Relentless
 		auto verticesIndex = m_PreZRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_PreZRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_PreZRenderPass->GetInputSlot("perDrawData");
+
+		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
 
 		for (entity currentEntity : m_OpaqueRenderModeEntities)
 		{
@@ -579,7 +630,7 @@ namespace Relentless
 
 			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
 			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
 		}
@@ -618,62 +669,54 @@ namespace Relentless
 		if (depthOutput->GetCurrentState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
 			RenderCommand::TransitionResource(depthOutput, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
+	#if defined RLS_DEBUG
 		GFSDK_SSAO_Status status = m_SSAOContext->RenderAO(D3D12Core::GetCommandQueue().Get(), D3D12Core::GetCommandList().Get(), InputData, m_HBAOPlusParameters, Output, RenderMask);
 		RLS_ASSERT(status == GFSDK_SSAO_OK, "Failed to issue HBAOPlus render command.");
+	#else
+		m_SSAOContext->RenderAO(D3D12Core::GetCommandQueue().Get(), D3D12Core::GetCommandList().Get(), InputData, m_HBAOPlusParameters, Output, RenderMask);
+	#endif
 	}
 
 	void SceneRenderer::OpaqueGeometryPass() noexcept
 	{
 		PROFILE_FUNC;
 
-		if (m_OpaqueRenderModeEntities.empty())
-			return;
-
 		MemoryManager& memoryManager = MemoryManager::Get();
 
 		MasterRenderer::BeginRenderPass(m_OpaqueGeometryRenderPass);
 
-		//Terrible and wrong for runtime:
-		//Camera:
-		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
-		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
-		m_OpaqueGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
-
-		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
-
-		m_PerFrameOpaqueGeometryData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
-		m_PerFrameOpaqueGeometryData.pointLightStructuredBufferIndex = m_pScene->GetLightManager().GetPointLights()->m_VisibleHandles[frameIndex].Index;
-		m_PerFrameOpaqueGeometryData.directionalLightStructuredBufferIndex = m_pScene->GetLightManager().GetDirectionalLights()->m_VisibleHandles[frameIndex].Index;
-		m_PerFrameOpaqueGeometryData.nrOfDirectionalLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
-		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
-		m_PerFrameOpaqueGeometryData.environmentIndex = MemoryManager::Get().GetCBDescriptorIndex(m_EnvironmentCBHandle);
-		m_PerFrameOpaqueGeometryData.brdfLutTextureIndex = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle).GetSRVDescriptorHandle().Index;
-		m_OpaqueGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
-
-		EntityManager& entityManager = m_pScene->GetEntityManager();
-		MeshManager& m = AssetManager::GetMeshManager();
-
-		auto verticesIndex = m_OpaqueGeometryRenderPass->GetInputSlot("vertices");
-		auto indicesIndex = m_OpaqueGeometryRenderPass->GetInputSlot("indices");
-		auto perDrawIndex = m_OpaqueGeometryRenderPass->GetInputSlot("perDrawData");
-
-		for (entity currentEntity : m_OpaqueRenderModeEntities)
+		if (m_OpaqueRenderModeEntities.size() > 0)
 		{
-			const auto&[tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
+			m_OpaqueGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
+			m_OpaqueGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
-			Mesh& mesh = m.GetMesh(mfc.MeshHandle);
+			EntityManager& entityManager = m_pScene->GetEntityManager();
+			MeshManager& m = AssetManager::GetMeshManager();
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			auto verticesIndex = m_OpaqueGeometryRenderPass->GetInputSlot("vertices");
+			auto indicesIndex = m_OpaqueGeometryRenderPass->GetInputSlot("indices");
+			auto perDrawIndex = m_OpaqueGeometryRenderPass->GetInputSlot("perDrawData");
 
-			const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
-			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
+			const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
 
-			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
+			for (entity currentEntity : m_OpaqueRenderModeEntities)
+			{
+				const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+				Mesh& mesh = m.GetMesh(mfc.MeshHandle);
 
-			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+
+				const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
+				m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
+
+				m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
+
+				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
+
+				RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+			}
 		}
 
 		MasterRenderer::EndRenderPass();
@@ -690,10 +733,6 @@ namespace Relentless
 
 		MasterRenderer::BeginRenderPass(m_CutOutGeometryRenderPass);
 
-		//Terrible and wrong for runtime:
-		//Camera:
-		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
-		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 		m_CutOutGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
 		m_CutOutGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
@@ -703,6 +742,8 @@ namespace Relentless
 		auto verticesIndex = m_CutOutGeometryRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_CutOutGeometryRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_CutOutGeometryRenderPass->GetInputSlot("perDrawData");
+
+		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
 
 		for (entity currentEntity : m_CutOutRenderModeEntities)
 		{
@@ -718,7 +759,7 @@ namespace Relentless
 
 			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
 			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
 		}
@@ -737,10 +778,6 @@ namespace Relentless
 
 		MasterRenderer::BeginRenderPass(m_TransparentGeometryRenderPass);
 
-		//Terrible and wrong for runtime:
-		//Camera:
-		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
-		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 		m_TransparentGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
 		m_TransparentGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
@@ -750,6 +787,8 @@ namespace Relentless
 		auto verticesIndex = m_TransparentGeometryRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_TransparentGeometryRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_TransparentGeometryRenderPass->GetInputSlot("perDrawData");
+
+		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
 
 		for (entity currentEntity : m_TransparentRenderModeEntities)
 		{
@@ -765,7 +804,7 @@ namespace Relentless
 
 			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
 			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
 		}
@@ -777,7 +816,7 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-		if (entityManager.GetEntityCountForPool<SelectedInEditorComponent>() == 0)
+		if (entityManager.GetEntityCountForPool<SelectedInEditorComponent>() == 0 || !m_Options.DisplaySelectionWireframe)
 		{
 			return;
 		}
@@ -786,10 +825,6 @@ namespace Relentless
 
 		MasterRenderer::BeginRenderPass(m_WireFrameRenderPass);
 
-		//Terrible and wrong for runtime:
-		//Camera:
-		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
-		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 		m_WireFrameRenderPass->Upload("vpConstantBuffer", &m_VPData);
 
 		MeshManager& m = AssetManager::GetMeshManager();
@@ -797,6 +832,8 @@ namespace Relentless
 		auto verticesIndex = m_WireFrameRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_WireFrameRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_WireFrameRenderPass->GetInputSlot("perDrawData");
+
+		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
 
 		entityManager.Collect<OpaquePassComponent, SelectedInEditorComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
@@ -813,7 +850,7 @@ namespace Relentless
 
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
 					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
 				}
@@ -824,15 +861,14 @@ namespace Relentless
 
 	void SceneRenderer::EditorGridPass() noexcept
 	{
+		if (!m_Options.DisplayEditorGrid)
+			return;
+
 		PROFILE_FUNC;
 		MemoryManager& memoryManager = MemoryManager::Get();
 
 		MasterRenderer::BeginRenderPass(m_EditorGridRenderPass);
 
-		//Terrible and wrong for runtime:
-		//Camera:
-		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
-		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 		m_EditorGridRenderPass->Upload("vpConstantBuffer", &m_VPData);
 
 		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
@@ -883,6 +919,8 @@ namespace Relentless
 		auto identifierIndex = m_GeometryPickingRenderPass->GetInputSlot("Identifier");
 		auto perDrawIndex = m_GeometryPickingRenderPass->GetInputSlot("perDrawData");
 
+		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
+
 		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
 				if (mfc.MeshHandle != NULL_HANDLE)
@@ -899,7 +937,7 @@ namespace Relentless
 					const Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
 					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
 				}
@@ -924,7 +962,7 @@ namespace Relentless
 
 		if (m_Options.MSAASamples > 1)
 		{
-			RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			//RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			m_CompositeData.PostProcessTextureIndex = m_pResolvedTexture->GetSRVDescriptorHandle().Index;
 		}
 		else
@@ -949,19 +987,7 @@ namespace Relentless
 
 		MemoryManager& memoryManager = MemoryManager::Get();
 
-		//Terrible and wrong for runtime:
-		//Camera:
-		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
-		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 		m_CombinedGeometryAndPickingPass->Upload("vpConstantBuffer", &m_VPData);
-
-		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
-
-		m_PerFrameOpaqueGeometryData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
-		m_PerFrameOpaqueGeometryData.pointLightStructuredBufferIndex = m_pScene->GetLightManager().GetPointLights()->m_VisibleHandles[frameIndex].Index;
-		m_PerFrameOpaqueGeometryData.directionalLightStructuredBufferIndex = m_pScene->GetLightManager().GetDirectionalLights()->m_VisibleHandles[frameIndex].Index;
-		m_PerFrameOpaqueGeometryData.nrOfDirectionalLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
-		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
 		m_CombinedGeometryAndPickingPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
@@ -1003,6 +1029,34 @@ namespace Relentless
 		{
 			RenderCommand::CopyTexelToBuffer(m_CombinedGeometryAndPickingPass->GetOutput(1), m_pIdentifierReadbackBuffer, static_cast<uint32_t>(mousePos.x), static_cast<uint32_t>(mousePos.y), sizeof(uint32_t));
 		}
+	}
+
+	void SceneRenderer::AddToResourceTransitionBatch(const std::shared_ptr<IResource>& pResource, D3D12_RESOURCE_STATES stateAfter) noexcept
+	{
+		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		resourceTransitionBarrier.Transition.pResource = pResource->GetInterface().Get();
+		resourceTransitionBarrier.Transition.StateBefore = pResource->GetCurrentState();
+		resourceTransitionBarrier.Transition.StateAfter = stateAfter;
+		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+		m_ResourceBarrierBatch.emplace_back(resourceTransitionBarrier);
+
+		pResource->SetCurrentState(stateAfter);
+	}
+
+	void SceneRenderer::AddToResourceTransitionBatch(const Microsoft::WRL::ComPtr<ID3D12Resource>& pResource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter) noexcept
+	{
+		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		resourceTransitionBarrier.Transition.pResource = pResource.Get();
+		resourceTransitionBarrier.Transition.StateBefore = stateBefore;
+		resourceTransitionBarrier.Transition.StateAfter = stateAfter;
+		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+		m_ResourceBarrierBatch.emplace_back(resourceTransitionBarrier);
 	}
 
 	void SceneRenderer::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
@@ -1088,14 +1142,26 @@ namespace Relentless
 		DescriptorHeaps.RTV.pDescHeap = MemoryManager::Get().GetRTVDescriptorHeap()->GetDescriptorHeapInterface().Get();
 		DescriptorHeaps.RTV.BaseIndex = 10'000; //TEMP
 
+#if defined RLS_DEBUG
 		GFSDK_SSAO_Status status = GFSDK_SSAO_CreateContext_D3D12
 		(
 			D3D12Core::GetDevice().Get(), 
 			1u, 
 			DescriptorHeaps, 
 			&m_SSAOContext,
-			&CustomHeap);
+			&CustomHeap
+		);
 		RLS_ASSERT(status == GFSDK_SSAO_OK, "Failed to initialize HBAO+.");
+#else
+		GFSDK_SSAO_CreateContext_D3D12
+		(
+			D3D12Core::GetDevice().Get(),
+			1u,
+			DescriptorHeaps,
+			&m_SSAOContext,
+			&CustomHeap
+		);
+#endif
 
 		m_HBAOPlusParameters.Radius = 2.f;
 		m_HBAOPlusParameters.Bias = 0.1f;

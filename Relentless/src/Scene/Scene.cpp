@@ -48,127 +48,381 @@ namespace Relentless
 		PROFILE_FUNC;
 
 		/*TRANSFORMS*/
-		m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)
+		m_EntityManager.Collect<DirtyTransformComponent, RootComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dtc)
 			{
-				auto& transformComponent = m_EntityManager.Get<TransformComponent>(entityHandle);
-
-				if (dirty.AdjustedWorldSpace)
+				TransformComponent& transformComponent = m_EntityManager.Get<TransformComponent>(entityHandle);
+				if (dtc.AdjustedWorldSpace)
 				{
+					//Calculate world transform and convert to equivalent local
+					//As this is a root entity world == local!
 					const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.Rotation.x);
 					const float angleInRadiansY = DirectX::XMConvertToRadians(transformComponent.Rotation.y);
 					const float angleInRadiansZ = DirectX::XMConvertToRadians(transformComponent.Rotation.z);
 
 					const DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.Scale))
-						* DirectX::XMMatrixRotationX(angleInRadiansX) * DirectX::XMMatrixRotationY(angleInRadiansY) * DirectX::XMMatrixRotationZ(angleInRadiansZ)
+						* DirectX::XMMatrixRotationX(angleInRadiansX)
+						* DirectX::XMMatrixRotationY(angleInRadiansY)
+						* DirectX::XMMatrixRotationZ(angleInRadiansZ)
 						* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.Translation));
-					
-					
+
 					DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
 
-					if (m_EntityManager.Has<IsChildComponent>(entityHandle))
-					{
-						auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityHandle);
-						auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(childComponent.Parent);
-						DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
-
-						DirectX::XMMATRIX childWorldMatrix = DirectX::XMLoadFloat4x4(&transformComponent.Transform);
-						DirectX::XMMATRIX inverseParentWorldMatrix = DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform));
-						DirectX::XMMATRIX childLocalMatrix = childWorldMatrix * inverseParentWorldMatrix;
-						DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, childLocalMatrix);
-
-						ImGuizmo::DecomposeMatrixToComponents
-						(
-							&childComponent.LocalTransform.m[0][0],
-							&childComponent.LocalTranslation.x,
-							&childComponent.LocalRotation.x,
-							&childComponent.LocalScale.x
-						);
-					}
+					transformComponent.LocalTransform = transformComponent.Transform;
+					transformComponent.LocalTranslation = transformComponent.Translation;
+					transformComponent.LocalRotation = transformComponent.Rotation;
+					transformComponent.LocalScale = transformComponent.Scale;
 				}
 				else
 				{
-					if (m_EntityManager.Has<IsChildComponent>(entityHandle))
+					//Calculate local transform and convert to equivalent world:
+					//As this is a root entity local == world!
+					const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.LocalRotation.x);
+					const float angleInRadiansY = DirectX::XMConvertToRadians(transformComponent.LocalRotation.y);
+					const float angleInRadiansZ = DirectX::XMConvertToRadians(transformComponent.LocalRotation.z);
+				
+					const DirectX::XMMATRIX local = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.LocalScale))
+						* DirectX::XMMatrixRotationX(angleInRadiansX)
+						* DirectX::XMMatrixRotationY(angleInRadiansY)
+						* DirectX::XMMatrixRotationZ(angleInRadiansZ)
+						* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.LocalTranslation));
+				
+					DirectX::XMStoreFloat4x4(&transformComponent.LocalTransform, local);
+				
+					transformComponent.Transform = transformComponent.LocalTransform;
+					transformComponent.Translation = transformComponent.LocalTranslation;
+					transformComponent.Rotation = transformComponent.LocalRotation;
+					transformComponent.Scale = transformComponent.LocalScale;
+				}
+				
+				std::function<void(entity)> UpdateChildWorldMatrices;
+				UpdateChildWorldMatrices = [&](entity parentEntity)
 					{
-						auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityHandle);
+						if (m_EntityManager.Has<ParentComponent>(parentEntity))
+						{
+							auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(parentEntity);
+							DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
+				
+							for (auto& childEntity : m_EntityManager.Get<ParentComponent>(parentEntity).Children)
+							{
+								auto& childTransformComponent = m_EntityManager.Get<TransformComponent>(childEntity);
+				
+								DirectX::XMMATRIX childLocalMatrix = DirectX::XMLoadFloat4x4(&childTransformComponent.LocalTransform);
+								DirectX::XMMATRIX childWorldMatrix = DirectX::XMMatrixMultiply(childLocalMatrix, parentWorldMatrix);
+				
+								DirectX::XMStoreFloat4x4(&childTransformComponent.Transform, childWorldMatrix);
+								ImGuizmo::DecomposeMatrixToComponents
+								(
+									*childTransformComponent.Transform.m,
+									&childTransformComponent.Translation.x,
+									&childTransformComponent.Rotation.x,
+									&childTransformComponent.Scale.x
+								);
+				
+								// Recursively update the world matrices for this child's children
+								MemoryManager::Get().UpdateConstantBuffer(childTransformComponent.ConstantBufferID, &childTransformComponent.Transform);
+								UpdateChildWorldMatrices(childEntity);
+							}
+						}
+					};
+				
+				// Kick off the recursive update for this entity's children
+				UpdateChildWorldMatrices(entityHandle);
 
-						const float angleInRadiansX = DirectX::XMConvertToRadians(childComponent.LocalRotation.x);
-						const float angleInRadiansY = DirectX::XMConvertToRadians(childComponent.LocalRotation.y);
-						const float angleInRadiansZ = DirectX::XMConvertToRadians(childComponent.LocalRotation.z);
+				MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
+			});
 
-						const DirectX::XMMATRIX localTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childComponent.LocalScale))
-							* DirectX::XMMatrixRotationX(angleInRadiansX) * DirectX::XMMatrixRotationY(angleInRadiansY) * DirectX::XMMatrixRotationZ(angleInRadiansZ)
-							* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childComponent.LocalTranslation));
-						DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, localTransform);
+		/*TRANSFORMS*/
+		m_EntityManager.Collect<DirtyTransformComponent, IsChildComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dtc)
+			{
+				TransformComponent& transformComponent = m_EntityManager.Get<TransformComponent>(entityHandle);
+				if (dtc.AdjustedWorldSpace)
+				{
+					//Calculate world transform and convert to equivalent local
+					//As this is a root entity world == local!
+					const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.Rotation.x);
+					const float angleInRadiansY = DirectX::XMConvertToRadians(transformComponent.Rotation.y);
+					const float angleInRadiansZ = DirectX::XMConvertToRadians(transformComponent.Rotation.z);
 
-						//child local * parent world = child world
-						auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(childComponent.Parent);
-						DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
-						DirectX::XMMATRIX childLocalMatrix = DirectX::XMLoadFloat4x4(&childComponent.LocalTransform);
-						DirectX::XMMATRIX childWorldMatrix = childLocalMatrix * parentWorldMatrix;
+					const DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.Scale))
+						* DirectX::XMMatrixRotationX(angleInRadiansX)
+						* DirectX::XMMatrixRotationY(angleInRadiansY)
+						* DirectX::XMMatrixRotationZ(angleInRadiansZ)
+						* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.Translation));
 
-						DirectX::XMStoreFloat4x4(&transformComponent.Transform, childWorldMatrix);
-						ImGuizmo::DecomposeMatrixToComponents
-						(
-							&transformComponent.Transform.m[0][0],
-							&transformComponent.Translation.x,
-							&transformComponent.Rotation.x,
-							&transformComponent.Scale.x
-						);
-					}
+					DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
+
+					auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(m_EntityManager.Get<IsChildComponent>(entityHandle).Parent);
+
+					DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
+					DirectX::XMMATRIX inverseParentWorldMatrix = DirectX::XMMatrixInverse(nullptr, parentWorldMatrix);
+					DirectX::XMMATRIX local = DirectX::XMMatrixMultiply(world, inverseParentWorldMatrix);
+
+					DirectX::XMStoreFloat4x4(&transformComponent.LocalTransform, local);
+
+					ImGuizmo::DecomposeMatrixToComponents
+					(
+						&transformComponent.LocalTransform.m[0][0],
+						&transformComponent.LocalTranslation.x,
+						&transformComponent.LocalRotation.x,
+						&transformComponent.LocalScale.x
+					);
+				}
+				else
+				{
+					//Calculate local transform and convert to equivalent world:
+					const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.LocalRotation.x);
+					const float angleInRadiansY = DirectX::XMConvertToRadians(transformComponent.LocalRotation.y);
+					const float angleInRadiansZ = DirectX::XMConvertToRadians(transformComponent.LocalRotation.z);
+
+					const DirectX::XMMATRIX local = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.LocalScale))
+						* DirectX::XMMatrixRotationX(angleInRadiansX)
+						* DirectX::XMMatrixRotationY(angleInRadiansY)
+						* DirectX::XMMatrixRotationZ(angleInRadiansZ)
+						* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.LocalTranslation));
+
+					DirectX::XMStoreFloat4x4(&transformComponent.LocalTransform, local);
+
+					auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(m_EntityManager.Get<IsChildComponent>(entityHandle).Parent);
+
+					DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
+					DirectX::XMMATRIX world = DirectX::XMMatrixMultiply(local, parentWorldMatrix);
+
+					DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
+					ImGuizmo::DecomposeMatrixToComponents
+					(
+						&transformComponent.Transform.m[0][0],
+						&transformComponent.Translation.x,
+						&transformComponent.Rotation.x,
+						&transformComponent.Scale.x
+					);
 				}
 
-				if (m_EntityManager.Has<ParentComponent>(entityHandle))
-				{
-					std::function<void(entity, DirectX::XMFLOAT4X4&)> SceneGraph;
-					SceneGraph = [&](entity entityID, DirectX::XMFLOAT4X4& accumulatedT)
+				std::function<void(entity)> UpdateChildWorldMatrices;
+				UpdateChildWorldMatrices = [&](entity parentEntity)
 					{
-						auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityID);
-						auto& childTransformComponent = m_EntityManager.Get<TransformComponent>(entityID);
-
-						const float angleInRadiansX = DirectX::XMConvertToRadians(childComponent.LocalRotation.x);
-						const float angleInRadiansY = DirectX::XMConvertToRadians(childComponent.LocalRotation.y);
-						const float angleInRadiansZ = DirectX::XMConvertToRadians(childComponent.LocalRotation.z);
-
-						const DirectX::XMMATRIX childLocalTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childComponent.LocalScale))
-							* DirectX::XMMatrixRotationX(angleInRadiansX)
-							* DirectX::XMMatrixRotationY(angleInRadiansY)
-							* DirectX::XMMatrixRotationZ(angleInRadiansZ)
-							* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childComponent.LocalTranslation));
-						DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, childLocalTransform);
-
-						DirectX::XMMATRIX accumulatedTransformAsXMMatrix = DirectX::XMLoadFloat4x4(&accumulatedT);
-						DirectX::XMStoreFloat4x4(&childTransformComponent.Transform, DirectX::XMMatrixMultiply(childLocalTransform, accumulatedTransformAsXMMatrix));
-
-						ImGuizmo::DecomposeMatrixToComponents
-						(
-							*childTransformComponent.Transform.m,
-							&childTransformComponent.Translation.x,
-							&childTransformComponent.Rotation.x,
-							&childTransformComponent.Scale.x
-						);
-
-						m_EntityManager.AddOrReplace<DirtyTransformComponent>(entityID).AdjustedWorldSpace = false;
-
-						//Child is also a parent:
-						if (m_EntityManager.Has<ParentComponent>(entityID))
+						if (m_EntityManager.Has<ParentComponent>(parentEntity))
 						{
-							auto& pc = m_EntityManager.Get<ParentComponent>(entityID);
-							for (auto child : pc.Children)
+							auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(parentEntity);
+							DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
+
+							for (auto& childEntity : m_EntityManager.Get<ParentComponent>(parentEntity).Children)
 							{
-								SceneGraph(child, childTransformComponent.Transform);
+								auto& childTransformComponent = m_EntityManager.Get<TransformComponent>(childEntity);
+
+								DirectX::XMMATRIX childLocalMatrix = DirectX::XMLoadFloat4x4(&childTransformComponent.LocalTransform);
+								DirectX::XMMATRIX childWorldMatrix = DirectX::XMMatrixMultiply(childLocalMatrix, parentWorldMatrix);
+
+								DirectX::XMStoreFloat4x4(&childTransformComponent.Transform, childWorldMatrix);
+								ImGuizmo::DecomposeMatrixToComponents
+								(
+									*childTransformComponent.Transform.m,
+									&childTransformComponent.Translation.x,
+									&childTransformComponent.Rotation.x,
+									&childTransformComponent.Scale.x
+								);
+
+								// Recursively update the world matrices for this child's children
+								MemoryManager::Get().UpdateConstantBuffer(childTransformComponent.ConstantBufferID, &childTransformComponent.Transform);
+								UpdateChildWorldMatrices(childEntity);
 							}
 						}
 					};
 
-					auto& children = m_EntityManager.Get<ParentComponent>(entityHandle).Children;
-					for (auto child : children)
-					{
-						SceneGraph(child, transformComponent.Transform);
-					}
-				}
+				// Kick off the recursive update for this entity's children
+				UpdateChildWorldMatrices(entityHandle);
 
 				MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
 			});
+
+
+		//m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)
+		//	{
+				//if (dirty.AdjustedWorldSpace)
+				//{
+				//	const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.Rotation.x);
+				//	const float angleInRadiansY = DirectX::XMConvertToRadians(transformComponent.Rotation.y);
+				//	const float angleInRadiansZ = DirectX::XMConvertToRadians(transformComponent.Rotation.z);
+				//
+				//	const DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.Scale))
+				//		* DirectX::XMMatrixRotationX(angleInRadiansX) * DirectX::XMMatrixRotationY(angleInRadiansY) * DirectX::XMMatrixRotationZ(angleInRadiansZ)
+				//		* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.Translation));
+				//	
+				//	
+				//	DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
+				//
+				//	if (m_EntityManager.Has<IsChildComponent>(entityHandle))
+				//	{
+				//		auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityHandle);
+				//		auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(childComponent.Parent);
+				//		DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
+				//
+				//		DirectX::XMMATRIX childWorldMatrix = DirectX::XMLoadFloat4x4(&transformComponent.Transform);
+				//		DirectX::XMMATRIX inverseParentWorldMatrix = DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform));
+				//		DirectX::XMMATRIX childLocalMatrix = childWorldMatrix * inverseParentWorldMatrix;
+				//		DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, childLocalMatrix);
+				//
+				//		ImGuizmo::DecomposeMatrixToComponents
+				//		(
+				//			&childComponent.LocalTransform.m[0][0],
+				//			&childComponent.LocalTranslation.x,
+				//			&childComponent.LocalRotation.x,
+				//			&childComponent.LocalScale.x
+				//		);
+				//	}
+				//}
+				//else
+				//{
+				//	if (m_EntityManager.Has<IsChildComponent>(entityHandle))
+				//	{
+				//		auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityHandle);
+				//
+				//		const float angleInRadiansX = DirectX::XMConvertToRadians(childComponent.LocalRotation.x);
+				//		const float angleInRadiansY = DirectX::XMConvertToRadians(childComponent.LocalRotation.y);
+				//		const float angleInRadiansZ = DirectX::XMConvertToRadians(childComponent.LocalRotation.z);
+				//
+				//		const DirectX::XMMATRIX localTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childComponent.LocalScale))
+				//			* DirectX::XMMatrixRotationX(angleInRadiansX) * DirectX::XMMatrixRotationY(angleInRadiansY) * DirectX::XMMatrixRotationZ(angleInRadiansZ)
+				//			* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childComponent.LocalTranslation));
+				//		DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, localTransform);
+				//
+				//		//child local * parent world = child world
+				//		auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(childComponent.Parent);
+				//		DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
+				//		DirectX::XMMATRIX childLocalMatrix = DirectX::XMLoadFloat4x4(&childComponent.LocalTransform);
+				//		DirectX::XMMATRIX childWorldMatrix = childLocalMatrix * parentWorldMatrix;
+				//
+				//		DirectX::XMStoreFloat4x4(&transformComponent.Transform, childWorldMatrix);
+				//		ImGuizmo::DecomposeMatrixToComponents
+				//		(
+				//			&transformComponent.Transform.m[0][0],
+				//			&transformComponent.Translation.x,
+				//			&transformComponent.Rotation.x,
+				//			&transformComponent.Scale.x
+				//		);
+				//	}
+				//}
+				//
+				//if (m_EntityManager.Has<ParentComponent>(entityHandle))
+				//{
+				//	std::function<void(entity, DirectX::XMFLOAT4X4&)> SceneGraph;
+				//	SceneGraph = [&](entity entityID, DirectX::XMFLOAT4X4& accumulatedT)
+				//	{
+				//		auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityID);
+				//		auto& childTransformComponent = m_EntityManager.Get<TransformComponent>(entityID);
+				//
+				//		const float angleInRadiansX = DirectX::XMConvertToRadians(childComponent.LocalRotation.x);
+				//		const float angleInRadiansY = DirectX::XMConvertToRadians(childComponent.LocalRotation.y);
+				//		const float angleInRadiansZ = DirectX::XMConvertToRadians(childComponent.LocalRotation.z);
+				//
+				//		const DirectX::XMMATRIX childLocalTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childComponent.LocalScale))
+				//			* DirectX::XMMatrixRotationX(angleInRadiansX)
+				//			* DirectX::XMMatrixRotationY(angleInRadiansY)
+				//			* DirectX::XMMatrixRotationZ(angleInRadiansZ)
+				//			* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childComponent.LocalTranslation));
+				//		DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, childLocalTransform);
+				//
+				//		DirectX::XMMATRIX accumulatedTransformAsXMMatrix = DirectX::XMLoadFloat4x4(&accumulatedT);
+				//		DirectX::XMStoreFloat4x4(&childTransformComponent.Transform, DirectX::XMMatrixMultiply(childLocalTransform, accumulatedTransformAsXMMatrix));
+				//
+				//		ImGuizmo::DecomposeMatrixToComponents
+				//		(
+				//			*childTransformComponent.Transform.m,
+				//			&childTransformComponent.Translation.x,
+				//			&childTransformComponent.Rotation.x,
+				//			&childTransformComponent.Scale.x
+				//		);
+				//
+				//		m_EntityManager.AddOrReplace<DirtyTransformComponent>(entityID).AdjustedWorldSpace = false;
+				//
+				//		//Child is also a parent:
+				//		if (m_EntityManager.Has<ParentComponent>(entityID))
+				//		{
+				//			auto& pc = m_EntityManager.Get<ParentComponent>(entityID);
+				//			for (auto child : pc.Children)
+				//			{
+				//				SceneGraph(child, childTransformComponent.Transform);
+				//			}
+				//		}
+				//	};
+				//
+				//	auto& children = m_EntityManager.Get<ParentComponent>(entityHandle).Children;
+				//	for (auto child : children)
+				//	{
+				//		SceneGraph(child, transformComponent.Transform);
+				//	}
+				//}
+		//auto&& GetLocalModelMatrix = [&](const DirectX::XMFLOAT3& translation, const DirectX::XMFLOAT3& rotation, const DirectX::XMFLOAT3& scale) -> DirectX::XMFLOAT4X4
+				//	{
+				//		DirectX::XMMATRIX transformX = DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(rotation.x));
+				//		DirectX::XMMATRIX transformY = DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(rotation.y));
+				//		DirectX::XMMATRIX transformZ = DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(rotation.z));
+				//
+				//		DirectX::XMMATRIX rotationMatrix = transformY * transformX * transformZ;
+				//
+				//		// Create the translation and scaling matrices
+				//		DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&translation));
+				//		DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&scale));
+				//
+				//		// Create the final transformation matrix: translation * rotation * scale
+				//		DirectX::XMMATRIX localModelMatrix = scaleMatrix * rotationMatrix * translationMatrix;
+				//		DirectX::XMFLOAT4X4 localModelMatrix4x4;
+				//		DirectX::XMStoreFloat4x4(&localModelMatrix4x4, localModelMatrix);
+				//		return localModelMatrix4x4;
+				//	};
+				//
+				//std::function<void(entity)> UpdateSelfAndChild;
+				//UpdateSelfAndChild = [&](entity e)
+				//	{
+				//		if (m_EntityManager.Has<IsChildComponent>(e))
+				//		{
+				//			auto& icc = m_EntityManager.Get<IsChildComponent>(e);
+				//			entity parent = icc.Parent;
+				//
+				//			DirectX::XMMATRIX mat1 = DirectX::XMLoadFloat4x4(&m_EntityManager.Get<TransformComponent>(parent).Transform);
+				//			DirectX::XMFLOAT4X4 mat2prev = GetLocalModelMatrix(icc.LocalTranslation, icc.LocalRotation, icc.LocalScale);
+				//			DirectX::XMMATRIX mat2 = DirectX::XMLoadFloat4x4(&mat2prev);
+				//
+				//			// Multiply the matrices
+				//			DirectX::XMMATRIX resultMatrix = DirectX::XMMatrixMultiply(mat1, mat2);
+				//
+				//			// Store the result back into an XMFLOAT4X4
+				//			DirectX::XMStoreFloat4x4(&icc.LocalTransform, resultMatrix);
+				//			ImGuizmo::DecomposeMatrixToComponents(*icc.LocalTransform.m,
+				//				&icc.LocalTranslation.x,
+				//				&icc.LocalRotation.x,
+				//				&icc.LocalScale.x);
+				//
+				//			std::cout << "CHILD LOCAL TRANSLATION = [" << icc.LocalTranslation.x << "," << icc.LocalTranslation.y << "," << icc.LocalTranslation.z << "]\n";
+				//			std::cout << "CHILD LOCAL ROTATION = [" << icc.LocalRotation.x << "," << icc.LocalRotation.y << "," << icc.LocalRotation.z << "]\n";
+				//			std::cout << "CHILD LOCAL SCALE = [" << icc.LocalScale.x << "," << icc.LocalScale.y << "," << icc.LocalScale.z << "]\n";
+				//		}
+				//		else
+				//		{
+				//			auto& transformComponent = m_EntityManager.Get<TransformComponent>(e);
+				//
+				//			transformComponent.Transform = GetLocalModelMatrix(transformComponent.Translation, transformComponent.Rotation, transformComponent.Scale);
+				//			ImGuizmo::DecomposeMatrixToComponents(*transformComponent.Transform.m,
+				//				&transformComponent.Translation.x,
+				//				&transformComponent.Rotation.x,
+				//				&transformComponent.Scale.x);
+				//
+				//			MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
+				//		}
+				//		
+				//		if (m_EntityManager.Has<ParentComponent>(e))
+				//		{
+				//			auto& children = m_EntityManager.Get<ParentComponent>(e).Children;
+				//			for (auto& child : children)
+				//			{
+				//				UpdateSelfAndChild(child);
+				//			}
+				//		}
+				//	};
+				//
+				//UpdateSelfAndChild(entityHandle);
+				//auto& transformComponent = m_EntityManager.Get<TransformComponent>(entityHandle);
+				//MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
+			//});
 
 		/*MATERIALS*/
 		auto& dirtyMaterials = AssetManager::GetMaterialManager().GetDirtyMaterials();
@@ -209,7 +463,10 @@ namespace Relentless
 			{
 				dirty.Updates--;
 				if (dirty.Updates == 0u)
+				{
+					dirty.OnlyUpload = false;
 					m_EntityManager.Remove<DirtyTransformComponent>(entityHandle);
+				}
 			});
 
 	}
@@ -393,18 +650,18 @@ namespace Relentless
 		//The bond has been established. What remains is to adjust the local transform data of the child accordingly:
 		auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(toBecomeParent);
 		auto& childTransformComponent = m_EntityManager.Get<TransformComponent>(toBecomeChild);
-		auto& childComponent = m_EntityManager.Get<IsChildComponent>(toBecomeChild);
 
 		DirectX::XMMATRIX childWorldMatrix = DirectX::XMLoadFloat4x4(&childTransformComponent.Transform);
 		DirectX::XMMATRIX inverseParentWorldMatrix = DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform));
 		DirectX::XMMATRIX childLocalMatrix = childWorldMatrix * inverseParentWorldMatrix;
-		DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, childLocalMatrix);
+
+		DirectX::XMStoreFloat4x4(&childTransformComponent.LocalTransform, childLocalMatrix);
 		ImGuizmo::DecomposeMatrixToComponents
 		(
-			&childComponent.LocalTransform.m[0][0],
-			&childComponent.LocalTranslation.x, 
-			&childComponent.LocalRotation.x, 
-			&childComponent.LocalScale.x
+			&childTransformComponent.LocalTransform.m[0][0],
+			&childTransformComponent.LocalTranslation.x,
+			&childTransformComponent.LocalRotation.x,
+			&childTransformComponent.LocalScale.x
 		);
 	}
 

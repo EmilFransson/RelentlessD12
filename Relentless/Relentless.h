@@ -40,7 +40,6 @@
 
 //Mesh-related:
 #include <src/Mesh/Vertex.h>
-#include <src/Mesh/MeshFactory.h>
 
 //Camera
 #include <src/Graphics/Renderer/Camera/PerspectiveCamera.h>
@@ -49,6 +48,7 @@
 //ECS
 #include <src/Scene/Scene.h>
 #include <src/ECS/EntityManager.h>
+#include <src/ECS/ECSCommon.h>
 
 //Serialization
 #include <src/Scene/SceneSerializer.h>

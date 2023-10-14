@@ -15,8 +15,9 @@ namespace Relentless
 		};
 		IndexBuffer(const Specification* specification) noexcept;
 		virtual ~IndexBuffer() noexcept override final = default;
-		[[nodiscard]] const uint32_t GetNrOfIndices() const noexcept { return m_NrOfIndices; }
+		[[nodiscard]] const uint32_t GetNrOfIndices() const noexcept { return m_Specification.NrOfIndices; }
+		[[nodiscard]] Specification& GetSpecification() noexcept { return m_Specification; }
 	private:
-		uint32_t m_NrOfIndices;
+		Specification m_Specification;
 	};
 }

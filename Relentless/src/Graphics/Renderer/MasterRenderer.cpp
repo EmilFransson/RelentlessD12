@@ -109,13 +109,15 @@ namespace Relentless
 
 	void MasterRenderer::WaitAndSyncAllFramesInFlight() noexcept
 	{
-		auto WaitForPreviousFrame = [&](UINT frameIndex) {
+		auto WaitForPreviousFrame = [&](UINT frameIndex) 
+		{
 			const UINT64 currentFenceValue = s_Data.pFenceValues[frameIndex];
 			DXCall(D3D12Core::GetCommandQueue()->Signal(s_Data.pFence.Get(), currentFenceValue));
 			s_Data.pFenceValues[frameIndex] = currentFenceValue + 1;
 
 			// If the next frame is not ready to be rendered yet, wait until the fence to complete.
-			if (s_Data.pFence->GetCompletedValue() < currentFenceValue) {
+			if (s_Data.pFence->GetCompletedValue() < currentFenceValue) 
+			{
 				DXCall(s_Data.pFence->SetEventOnCompletion(currentFenceValue, s_Data.fenceEvent));
 				WaitForSingleObject(s_Data.fenceEvent, INFINITE);
 			}
@@ -129,6 +131,8 @@ namespace Relentless
 
 	void MasterRenderer::WaitForGPU() noexcept
 	{
+		PROFILE_FUNC;
+
 		// Schedule a Signal command in the queue.
 		DXCall(D3D12Core::GetCommandQueue()->Signal(s_Data.pFence.Get(), s_Data.pFenceValues[s_Data.currentFrameIndex]));
 
@@ -208,7 +212,7 @@ namespace Relentless
 				RenderCommand::TransitionResource(depthOutput.Output, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 		}
 		
-		DXCall_STD(D3D12Core::GetCommandList()->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), hasDepthAttachment ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE));
+		D3D12Core::GetCommandList()->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), hasDepthAttachment ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE);
 
 		RenderCommand::SetRootSignature(pPipeline->GetRootSig());
 		RenderCommand::SetPipelineState(pPipeline->GetInterface2());
@@ -222,6 +226,8 @@ namespace Relentless
 
 	void MasterRenderer::PrepareBackBuffer() noexcept
 	{
+		PROFILE_FUNC;
+
 		//Transition the back buffer back to present state now that is is finished:
 		BackBuffer& backBuffer{ Window::GetCurrentBackBuffer() };
 		RenderCommand::TransitionResource(backBuffer.pBackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);

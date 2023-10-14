@@ -1,9 +1,7 @@
 #include "Material.h"
-#include "../MemoryManager.h"
 #include "AssetManager.h"
-#include "MaterialSerializer.h"
+#include "../MemoryManager.h"
 #include "../D3D12Core.h"
-
 namespace Relentless
 {
 	Material::Material() noexcept
@@ -429,21 +427,21 @@ namespace Relentless
 	}
 
 	inline static std::mutex g_CreateMutex;
-	
+
 	Material& MaterialManager::GetMaterial(const MaterialHandle& materialHandle) noexcept
 	{
 		const std::lock_guard<std::mutex> lock(g_CreateMutex);
 
 		RLS_ASSERT(m_Materials.size() > materialHandle.Index, "Material handle is invalid.");
-		
+
 		return m_Materials[materialHandle.Index];
 	}
 
 	MaterialHandle& MaterialManager::GetMaterialHandleByName(const std::string& materialName) noexcept
 	{
-		const std::lock_guard<std::mutex> lock(g_CreateMutex);
-
 		RLS_ASSERT(Exists(materialName), "Material does not exist.");
+
+		const std::lock_guard<std::mutex> lock(g_CreateMutex);
 		return m_StringToMaterialHandleMap[materialName];
 	}
 
@@ -476,32 +474,35 @@ namespace Relentless
 
 	MaterialHandle MaterialManager::CreateWithUUID(const UUID& uuid, const std::string& name, const Material& material) noexcept
 	{
-		const std::lock_guard<std::mutex> lock(g_CreateMutex);
-
 		if (Exists(name))
 		{
 			return m_StringToMaterialHandleMap[name];
 		}
-		
+
 		//A new material handle should be created, using the uuid:
 		MaterialHandle materialHandle;
 		materialHandle.UUID = uuid;
 
-		if (!m_FreeList.empty())
 		{
-			materialHandle.Index = m_FreeList.front();
-			m_FreeList.pop();
-			m_Materials[materialHandle.Index] = material;
+			const std::lock_guard<std::mutex> lock(g_CreateMutex);
+
+			if (!m_FreeList.empty())
+			{
+				materialHandle.Index = m_FreeList.front();
+				m_FreeList.pop();
+				m_Materials[materialHandle.Index] = material;
+			}
+			else
+			{
+				materialHandle.Index = static_cast<uint16_t>(m_Materials.size());
+				m_Materials.emplace_back(material);
+			}
+
+			m_StringToMaterialHandleMap[name] = materialHandle;
 		}
-		else
-		{
-			materialHandle.Index = m_Materials.size();
-			m_Materials.emplace_back(material);
-		}
+
 		m_Materials[materialHandle.Index].m_Name = name;
 		m_Materials[materialHandle.Index].m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
-
-		m_StringToMaterialHandleMap[name] = materialHandle;
 
 		SetDirty(materialHandle);
 		return materialHandle;
@@ -533,12 +534,14 @@ namespace Relentless
 
 		if (!foundMaterial)
 		{
-			m_DirtyMaterials.push_back({materialHandle, D3D12Core::GetNrOfBufferedFrames()});
+			m_DirtyMaterials.push_back({ materialHandle, D3D12Core::GetNrOfBufferedFrames() });
 		}
 	}
 
 	bool MaterialManager::Exists(const std::string& materialName) noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_CreateMutex);
+
 		return m_StringToMaterialHandleMap.contains(materialName);
 	}
 }

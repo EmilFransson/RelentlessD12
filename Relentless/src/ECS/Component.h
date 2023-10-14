@@ -4,29 +4,33 @@
 #include "../Graphics/D3D12Core.h"
 #include "../Graphics/Resources/Material.h"
 #include "../Mesh/Mesh.h"
+#include "ECSCommon.h"
 
 namespace Relentless
 {
-	/*! @brief Invalid entity alias. */
-	#define NULL_ENTITY (std::numeric_limits<uint32_t>::max() << 12)
-
-	/*! @brief Opaque entity type. */
-	using entity = uint32_t;
-
 	struct TransformComponent
 	{
 		TransformComponent()
 			: Translation{ 0.0f, 0.0f, 0.0f },
 			  Rotation{ 0.0f, 0.0f, 0.0f },
 			  Scale{ 1.0f, 1.0f, 1.0f },
+			  LocalTranslation{ 0.0f, 0.0f, 0.0f },
+			  LocalRotation{0.0f, 0.0f, 0.0f },
+			  LocalScale{ 1.0f, 1.0f, 1.0f },
 			  ConstantBufferID{ static_cast<size_t>(-1) }
 		{
 			DirectX::XMStoreFloat4x4(&Transform, DirectX::XMMatrixIdentity());
+			DirectX::XMStoreFloat4x4(&LocalTransform, DirectX::XMMatrixIdentity());
 		}
 		DirectX::XMFLOAT4X4 Transform;
 		DirectX::XMFLOAT3 Translation;
 		DirectX::XMFLOAT3 Rotation;
 		DirectX::XMFLOAT3 Scale;
+
+		DirectX::XMFLOAT4X4 LocalTransform;
+		DirectX::XMFLOAT3 LocalTranslation;
+		DirectX::XMFLOAT3 LocalRotation;
+		DirectX::XMFLOAT3 LocalScale;
 
 		size_t ConstantBufferID;
 	};
@@ -35,11 +39,13 @@ namespace Relentless
 	{
 		DirtyTransformComponent()
 			: Updates{ D3D12Core::GetNrOfBufferedFrames() },
-			  AdjustedWorldSpace{true}
+			  AdjustedWorldSpace{true},
+			  OnlyUpload{false}
 		{}
 
 		uint32_t Updates;
 		bool AdjustedWorldSpace;
+		bool OnlyUpload;
 	};
 
 	struct NameComponent
@@ -165,20 +171,20 @@ namespace Relentless
 	struct IsChildComponent
 	{
 		explicit IsChildComponent() noexcept
-			: Parent{ NULL_ENTITY },
-			LocalTranslation{ 0.0f, 0.0f, 0.0f },
-			LocalRotation{ 0.0f, 0.0f, 0.0f },
-			LocalScale{ 1.0f, 1.0f, 1.0f }
+			: Parent{ NULL_ENTITY }//,
+			//LocalTranslation{ 0.0f, 0.0f, 0.0f },
+			//LocalRotation{ 0.0f, 0.0f, 0.0f },
+			//LocalScale{ 1.0f, 1.0f, 1.0f }
 		{
-			DirectX::XMStoreFloat4x4(&LocalTransform, DirectX::XMMatrixIdentity());
+			//DirectX::XMStoreFloat4x4(&LocalTransform, DirectX::XMMatrixIdentity());
 		} 
 
 		entity Parent;
 
-		DirectX::XMFLOAT4X4 LocalTransform;
-		DirectX::XMFLOAT3 LocalTranslation;
-		DirectX::XMFLOAT3 LocalRotation;
-		DirectX::XMFLOAT3 LocalScale;
+		//DirectX::XMFLOAT4X4 LocalTransform;
+		//DirectX::XMFLOAT3 LocalTranslation;
+		//DirectX::XMFLOAT3 LocalRotation;
+		//DirectX::XMFLOAT3 LocalScale;
 	};
 
 	struct SelectedInEditorComponent

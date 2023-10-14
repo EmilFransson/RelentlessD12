@@ -175,20 +175,21 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
     if (material.combinedRoughnessMetalnessMap == 1)
     {
         Texture2D metallicTexture = ResourceDescriptorHeap[material.metallicIndex];
-        roughness = metallicTexture.Sample(sampler_LINEAR, adjustedUV).g;
-        metallic = metallicTexture.Sample(sampler_LINEAR, adjustedUV).b;
+        float3 sampledTexel = metallicTexture.Sample(sampler_ANISOTROPIC, adjustedUV).rgb;
+        roughness = sampledTexel.g;
+        metallic = sampledTexel.b;
     }
     else
     {
         if (material.metallicIndex != NO_USE)
         {
             Texture2D metallicTexture = ResourceDescriptorHeap[material.metallicIndex];
-            metallic = metallicTexture.Sample(sampler_LINEAR, adjustedUV).r;
+            metallic = metallicTexture.Sample(sampler_ANISOTROPIC, adjustedUV).r;
         }
         if (material.roughnessIndex != NO_USE)
         {
             Texture2D roughnessTexture = ResourceDescriptorHeap[material.roughnessIndex];
-            roughness = roughnessTexture.Sample(sampler_LINEAR, adjustedUV).r;
+            roughness = roughnessTexture.Sample(sampler_ANISOTROPIC, adjustedUV).r;
         }
     }
     metallic = clamp(metallic, 0.0f, 1.0f);
@@ -198,14 +199,20 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
     float3 normal = normalize(psIn.inNormalWS);
     if (material.normalIndex != NO_USE)
     {
-        Texture2D normalMap = ResourceDescriptorHeap[material.normalIndex];
-        float3 sampledNormal = normalMap.Sample(sampler_LINEAR, adjustedUV).rgb;
-        sampledNormal = normalize(sampledNormal * 2.0f - 1.0f);
-        sampledNormal.y = -sampledNormal.y;
-
         const float3 tangent = normalize(psIn.inTangentWS);
         const float3 biTangent = normalize(psIn.inBiTangentWS);
         float3x3 tbn = float3x3(tangent, biTangent, normal);
+        
+        Texture2D normalMap = ResourceDescriptorHeap[material.normalIndex];
+        float3 sampledNormal = normalMap.Sample(sampler_ANISOTROPIC, adjustedUV).rgb;
+        
+        //sampledNormal = normalize(sampledNormal * 2.0f - 1.0f);
+        //sampledNormal.y = -sampledNormal.y;
+        sampledNormal.x = sampledNormal.x * 2.0f - 1.0f;
+        sampledNormal.y = -sampledNormal.y * 2.0f + 1.0f;
+        sampledNormal.z = sampledNormal.z;
+        
+       
         normal = normalize(mul(sampledNormal, tbn).xyz);
     }
 
@@ -213,7 +220,7 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
     if (material.ambientOcclusionIndex != NO_USE)
     {
         Texture2D aoMap = ResourceDescriptorHeap[material.ambientOcclusionIndex];
-        ambientOcclusion = aoMap.Sample(sampler_LINEAR, adjustedUV).r;
+        ambientOcclusion = aoMap.Sample(sampler_ANISOTROPIC, adjustedUV).r;
         ambientOcclusion = lerp(1.0f, ambientOcclusion, material.aoScale);
     }
 
@@ -221,7 +228,7 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
     if (material.emissionIndex != NO_USE)
     {
         Texture2D emissionTexture = ResourceDescriptorHeap[material.emissionIndex];
-        emissionColor = emissionTexture.Sample(sampler_LINEAR, adjustedUV);
+        emissionColor = emissionTexture.Sample(sampler_ANISOTROPIC, adjustedUV);
     }
     emissionColor.rgb *= material.emissionIntensity;
 
@@ -275,6 +282,7 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
     float3 diffuse = environment.backgroundColor * albedoColor.xyz * kD;
     
     float3 prefilteredColor = environment.backgroundColor;
+    
     Texture2D brdfLutTexture = ResourceDescriptorHeap[perFrameData.brdfLutTextureIndex];
     float u = NoV;
     float v = 1.0f - roughness;
@@ -286,7 +294,7 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
    // return float4(specular, 1.0f);
 
     float3 finalAmbientColor = ((diffuse + specular) * ambientOcclusion) + emissionColor.rgb; // ao is from ambient occlusion map
-
+   
     //const float3 finalAmbientColor = (float3(albedoColor.xyz) * ambientLight * ambientOcclusion) + emissionColor;
     
     float3 outColor = finalAmbientColor + lightOut;

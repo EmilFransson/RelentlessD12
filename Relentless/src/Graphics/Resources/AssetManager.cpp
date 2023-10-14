@@ -13,7 +13,6 @@ namespace Relentless
 		EstablishGUIDToFilepathMapping(EDITOR_ASSET_DIRECTORY);
 
 		s_Data.MaterialManager.Intitialize();
-		s_Data.MeshManager.Initialize();
 		//s_Data.TextureManager.Initialize();
 	}
 
@@ -32,17 +31,32 @@ namespace Relentless
 		return s_Data.TextureManager; 
 	}
 
-	const std::string& AssetManager::GetAssetPath(const AssetHandle& assetHandle) noexcept
-	{
-		RLS_ASSERT(s_Data.UUIDToPathMap.contains(assetHandle.UUID), "Asset handle is invalid.");
+	//SceneManager& AssetManager::GetSceneManager() noexcept
+	//{
+	//	return s_Data.SceneManager;
+	//}
 
-		return s_Data.UUIDToPathMap[assetHandle.UUID];
+	const std::string AssetManager::GetAssetPath(const UUID& uuid) noexcept
+	{
+		RLS_ASSERT(s_Data.UUIDToPathMap.contains(uuid), "UUID is invalid or rasset file is missing.");
+
+		std::filesystem::path pathToAsset = s_Data.UUIDToPathMap[uuid];
+		pathToAsset.replace_extension("");
+        return pathToAsset.string();
+	}
+
+	bool AssetManager::IsAssetPathMapped(const std::string& path) noexcept
+	{
+		const std::lock_guard<std::mutex> lock(g_MainCreateMutex);
+
+		return s_Data.PathToUUIDMap.contains(path + ".rasset");
 	}
 
 	void AssetManager::MapGUIDToFilepath(const UUID& uuid, const std::string& path) noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_MainCreateMutex);
 		RLS_ASSERT(!s_Data.UUIDToPathMap.contains(uuid), "UUID already has a filepath mapping established");
-		//What about when multiple UUIDS lead to same .rasset??
+		RLS_ASSERT(!s_Data.PathToUUIDMap.contains(path + ASSET_EXTENSION), "Filepath already has a UUID mapping established");
 
 		s_Data.UUIDToPathMap[uuid] = path + ASSET_EXTENSION;
 		s_Data.PathToUUIDMap[path + ASSET_EXTENSION] = uuid;
@@ -125,13 +139,14 @@ namespace Relentless
 
 				if (currentFileExtension == ".jpg" || currentFileExtension == ".png")
 				{
-					TextureSerializer::SerializeDefault(entry.path().string());
+					UUID uuid = TextureSerializer::SerializeDefault(entry.path().string());
+					MapGUIDToFilepath(uuid, entry.path().string());
 				}
 				else if (currentFileExtension == ".rmat")
 				{
-					MaterialSerializer::SerializeDefault(entry.path().string());
+					UUID uuid = MaterialSerializer::SerializeDefault(entry.path().string());
+					MapGUIDToFilepath(uuid, entry.path().string());
 				}
-
 				continue;
 			}
 			

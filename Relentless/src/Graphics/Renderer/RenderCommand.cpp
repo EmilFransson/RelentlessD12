@@ -36,6 +36,12 @@ namespace Relentless
 		DXCall_STD(D3D12Core::GetCommandList()->ResourceBarrier(1u, &resourceTransitionBarrier));
 	}
 
+	void RenderCommand::FlushResourceTransitionBatch(std::vector<D3D12_RESOURCE_BARRIER>& batchedResourceStateTransitions) noexcept
+	{
+		DXCall_STD(D3D12Core::GetCommandList()->ResourceBarrier(batchedResourceStateTransitions.size(), batchedResourceStateTransitions.data()));
+		batchedResourceStateTransitions.clear();
+	}
+
 	void RenderCommand::ResolveMSAA(const std::shared_ptr<RenderTexture>& pSource, const std::shared_ptr<RenderTexture>& pDestination) noexcept
 	{
 		RLS_ASSERT(pSource && pDestination, "Texture pointers are invalid.");

@@ -3,34 +3,6 @@ namespace Relentless
 {
 	static std::filesystem::path currentDirectory = EDITOR_ASSET_DIRECTORY;
 
-	static void LoadAssets(const std::filesystem::path& directory, const std::string& fileExtension) noexcept
-	{
-		RLS_ASSERT(std::filesystem::exists(directory) && std::filesystem::is_directory(directory), "Directory is invalid.");
-
-		for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
-		{
-			if (!std::filesystem::is_regular_file(entry.path()))
-			{
-				continue;
-			}
-
-			std::string extension = entry.path().filename().extension().string();
-			if (extension != fileExtension)
-			{
-				continue;
-			}
-			
-			if (extension == ".jpg" || extension == ".png")
-			{
-				TextureSerializer::Deserialize(entry.path().string());
-			}
-			else if (extension == ".rmat")
-			{
-				MaterialSerializer::Deserialize(entry.path().string());
-			}
-		}
-	}
-
 	ContentBrowserPanel::ContentBrowserPanel() noexcept
 		: m_ThumbnailWidth{100.0f},
 		  m_SelectedDirectory{"Assets"},
@@ -40,14 +12,7 @@ namespace Relentless
 		m_SceneTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.jpg");
 		m_MaterialTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.jpg");
 
-		std::string directory = currentDirectory.string();
-		currentDirectory = directory.substr(0u, directory.size() - 1);
-
-		//Textures -> Materials -> ... necessary loading order at initialization!
-
-		//LoadAssets(currentDirectory, ".jpg");
-		//LoadAssets(currentDirectory, ".png");
-		//LoadAssets(currentDirectory, ".rmat");
+		currentDirectory = currentDirectory.string().substr(0u, currentDirectory.string().size() - 1);
 	}
 
 	void ContentBrowserPanel::OnImGuiRender(const bool show) noexcept
@@ -242,10 +207,12 @@ namespace Relentless
 		}
 
 		m_LocationStringPosition[0] = ImGui::GetCursorScreenPos().x;
+
+		//Directories should always display first:
 		for (auto const& dir_entry : std::filesystem::directory_iterator{ currentDirectory })
 		{
 			std::string entry = dir_entry.path().filename().string();
-			
+
 			if (dir_entry.is_directory())
 			{
 				ImGui::TableNextColumn();
@@ -262,49 +229,55 @@ namespace Relentless
 
 				RenderThumbnailText(entry, ImGui::IsItemHovered());
 			}
-			else
+		}
+
+
+		for (auto const& dir_entry : std::filesystem::directory_iterator{ currentDirectory })
+		{
+			std::string entry = dir_entry.path().filename().string();
+			
+			std::string entryPath = dir_entry.path().string();
+			std::string entryStem = dir_entry.path().filename().stem().string();
+			std::string extension = dir_entry.path().filename().extension().string();
+
+			if (extension == ".jpg" || extension == ".png")
 			{
-				std::string entryPath = dir_entry.path().string();
-				std::string entryStem = dir_entry.path().filename().stem().string();
-				std::string extension = dir_entry.path().filename().extension().string();
+				ImGui::TableNextColumn();
 
-				if (extension == ".jpg" || extension == ".png")
+				TextureHandle textureHandle = AssetManager::Load<Texture2D>(entryPath);
+				RenderAssetThumbnail<Texture2D>(textureHandle, textureHandle, textureHandle, entry, m_ThumbnailWidth);
+			}
+			else if (extension == ".Relentless")
+			{
+				ImGui::TableNextColumn();
+
+				ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+
+				if (ImGui::BeginDragDropSource())
 				{
-					ImGui::TableNextColumn();
-
-					TextureHandle textureHandle = AssetManager::Load<Texture2D>(entryPath);
-					RenderAssetThumbnail<Texture2D>(textureHandle, textureHandle, textureHandle, entry, m_ThumbnailWidth);
+					const char* path = entryPath.c_str();
+					ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+					ImGui::BeginTooltip();
+					ImGui::Image((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+					ImGui::EndTooltip();
+					ImGui::PopStyleVar(1);
+					ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_SCENE", path, strlen(path) + 1, ImGuiCond_::ImGuiCond_Once);
+					ImGui::EndDragDropSource();
 				}
-				else if (extension == ".Relentless")
-				{
-					ImGui::TableNextColumn();
 
-					ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+				ImGui::SameLine();
+				ImGui::NewLine();
 
-					if (ImGui::BeginDragDropSource())
-					{
-						const char* path = entryPath.c_str();
-						ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-						ImGui::BeginTooltip();
-						ImGui::Image((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
-						ImGui::EndTooltip();
-						ImGui::PopStyleVar(1);
-						ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_SCENE", path, strlen(path) + 1, ImGuiCond_::ImGuiCond_Once);
-						ImGui::EndDragDropSource();
-					}
 
-					ImGui::SameLine();
-					ImGui::NewLine();
+				
+				RenderThumbnailText(entry, ImGui::IsItemHovered());
+			}
+			else if (extension == ".rmat")
+			{
+				ImGui::TableNextColumn();
 
-					RenderThumbnailText(entry, ImGui::IsItemHovered());
-				}
-				else if (extension == ".rmat")
-				{
-					ImGui::TableNextColumn();
-
-					const MaterialHandle& materialHandle = AssetManager::Load<Material>(entryPath);
-					RenderAssetThumbnail<Material>(m_MaterialTextureHandle, m_MaterialTextureHandle, materialHandle, AssetManager::Get<Material>(materialHandle).GetName(), m_ThumbnailWidth);
-				}
+				const MaterialHandle& materialHandle = AssetManager::Load<Material>(entryPath);
+				RenderAssetThumbnail<Material>(m_MaterialTextureHandle, m_MaterialTextureHandle, materialHandle, AssetManager::Get<Material>(materialHandle).GetName(), m_ThumbnailWidth);
 			}
 		}
 		ImGui::EndTable();
@@ -321,14 +294,11 @@ namespace Relentless
 
 				if (extension == ".jpg" || extension == ".png")
 				{
-					if (!AssetManager::Exists<Texture2D>(filePath.string()))
-					{
-						std::filesystem::copy(filePath, currentDirectory, std::filesystem::copy_options::overwrite_existing);
-						std::filesystem::path copiedTexturePath = currentDirectory / filePath.filename();
-						UUID uuid = TextureSerializer::SerializeDefault(copiedTexturePath.string());
-						AssetManager::MapGUIDToFilepath(uuid, copiedTexturePath.string());
-						AssetManager::Load<Texture2D>(copiedTexturePath.string());
-					}
+					std::filesystem::copy(filePath, currentDirectory, std::filesystem::copy_options::overwrite_existing);
+					std::filesystem::path copiedTexturePath = currentDirectory / filePath.filename();
+					UUID uuid = TextureSerializer::SerializeDefault(copiedTexturePath.string());
+					AssetManager::MapGUIDToFilepath(uuid, copiedTexturePath.string());
+					AssetManager::Load<Texture2D>(copiedTexturePath.string());
 				}
 			}
 			if (ImGui::MenuItem("New Material"))

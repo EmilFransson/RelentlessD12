@@ -15,8 +15,9 @@ namespace Relentless
 		};
 		VertexBuffer(const Specification* specification) noexcept;
 		virtual ~VertexBuffer() noexcept override final = default;
-		[[nodiscard]] const uint32_t GetNrOfVertices() const noexcept { return m_NrOfVertices; }
+		[[nodiscard]] const uint32_t GetNrOfVertices() const noexcept { return m_Specification.NrOfVertices; }
+		[[nodiscard]] Specification& GetSpecification() noexcept { return m_Specification; }
 	private:
-		uint32_t m_NrOfVertices;
+		Specification m_Specification;
 	};
 }

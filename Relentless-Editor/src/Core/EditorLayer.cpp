@@ -10,6 +10,7 @@ namespace Relentless
 		  m_HoveredEntity{ NULL_ENTITY },
 		  m_SelectedEntity{ NULL_ENTITY },
 		  m_CurrentGizmoType{ GizmoType::NONE },
+		  m_CurrentGizmoMode{ GizmoMode::LOCAL },
 		  m_DisplaySceneHierarchyPanel{ true },
 		  m_DisplayContentBrowserPanel{ true },
 		  m_DisplayPropertiesPanel{ true },
@@ -99,10 +100,32 @@ namespace Relentless
 					m_CurrentGizmoType = (GizmoType)ImGuizmo::ROTATE;
 				else if (key == RLS_KEY::R)
 					m_CurrentGizmoType = (GizmoType)ImGuizmo::SCALE;
+				else if (key == RLS_KEY::T)
+					m_CurrentGizmoMode = (GizmoMode)!(bool)m_CurrentGizmoMode;
 				else if (key == RLS_KEY::D && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
 					CopySelectedEntity();
 				else if (key == RLS_KEY::Delete)
 					DestroySelectedEntity();
+				else if (key == RLS_KEY::N && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+					m_CreateNewScene = true;
+				else if (key == RLS_KEY::O && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+				{
+					std::string filepath = FileDialogs::OpenFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
+					if (!filepath.empty())
+					{
+						m_Path = filepath;
+					}
+					//ForceReset Keyboard!
+				}
+				else if (key == RLS_KEY::S && (Keyboard::IsKeyPressed(RLS_KEY::LCtrl) && Keyboard::IsKeyPressed(RLS_KEY::LShift)))
+				{
+					std::string filepath = FileDialogs::SaveFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
+					if (!filepath.empty())
+					{
+						SceneSerializer::Serialize(m_pScene, filepath);
+					}
+					//ForceReset Keyboard!
+				}
 				else if (key == RLS_KEY::I)
 				{
 					if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
@@ -129,7 +152,35 @@ namespace Relentless
 			{
 				if (ImGui::BeginMenu("File"))
 				{
+					if (ImGui::MenuItem("New", "Ctrl+N"))
+					{
+						m_CreateNewScene = true;
+					}
+
+					if (ImGui::MenuItem("Open...", "Ctrl+O"))
+					{
+						std::string filepath = FileDialogs::OpenFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
+						if (!filepath.empty())
+						{
+							m_Path = filepath;
+						}
+					}
+
+					if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S"))
+					{
+						std::string filepath = FileDialogs::SaveFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
+						if (!filepath.empty())
+						{
+							SceneSerializer::Serialize(m_pScene, filepath);
+						}
+					}
+
 					//TODO: Make it so the application can be exited here!
+					if (ImGui::MenuItem("Exit"))
+					{
+						//TODO
+					}
+
 					ImGui::EndMenu();
 				}
 				if (ImGui::BeginMenu("View"))
@@ -205,9 +256,7 @@ namespace Relentless
 			if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_SCENE"))
 			{
 				const char* path = (const char*)payLoad->Data;
-				
 				m_Path = std::string(path);
-				//LoadScene(path);
 			}
 			ImGui::EndDragDropTarget();
 		}
@@ -267,99 +316,13 @@ namespace Relentless
 		m_PropertiesPanel.OnImGuiRender(m_DisplayPropertiesPanel && !m_ImmersiveModeEnabled);
 		m_ContentBrowserPanel.OnImGuiRender(m_DisplayContentBrowserPanel && !m_ImmersiveModeEnabled);
 		m_MetricsPanel.OnImGuiRender(m_DisplayMetricsPanel && !m_ImmersiveModeEnabled);
-
-		//if (!m_ImmersiveModeEnabled)
-		//{
-		//	ImGui::Begin("Developer Panel");
-		//	if (ImGui::Button("Load Full Sponza Model"))
-		//	{
-		//		std::vector<std::string> starterMeshes
-		//		{
-		//			"Sponza/NewSponza_Main_glTF_002.gltf",
-		//			"PKG_B_Ivy/NewSponza_IvyGrowth_glTF.gltf",
-		//			"PKG_A_Curtains/NewSponza_Curtains_glTF.gltf",
-		//			"PKG_C.1_Trees/NewSponza_CypressTree_glTF.gltf"
-		//		};
-		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
-		//
-		//		//Saves ~5 seconds (lol)
-		//		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
-		//			{
-		//				std::string fullMeshPath(meshPath + std::string(starterMeshName));
-		//				mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
-		//			});
-		//		MemoryManager::Get().GetUploadBuffer()->Upload();
-		//	}
-		//	if (ImGui::Button("Load main Sponza model"))
-		//	{
-		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
-		//
-		//		std::string fullMeshPath(meshPath + "Sponza/NewSponza_Main_glTF_002.gltf");
-		//		mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
-		//		
-		//		MemoryManager::Get().GetUploadBuffer()->Upload();
-		//	}
-		//	if (ImGui::Button("Load Sponza curtains model"))
-		//	{
-		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
-		//
-		//		std::string fullMeshPath(meshPath + "PKG_A_Curtains/NewSponza_Curtains_glTF.gltf");
-		//		mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
-		//
-		//		MemoryManager::Get().GetUploadBuffer()->Upload();
-		//	}
-		//	if (ImGui::Button("Load Sponza ivy model"))
-		//	{
-		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
-		//
-		//		std::string fullMeshPath(meshPath + "PKG_B_Ivy/NewSponza_IvyGrowth_glTF.gltf");
-		//		mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
-		//
-		//		MemoryManager::Get().GetUploadBuffer()->Upload();
-		//	}
-		//	if (ImGui::Button("Load Sponza cypress tree model"))
-		//	{
-		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
-		//
-		//		std::string fullMeshPath(meshPath + "PKG_C.1_Trees/NewSponza_CypressTree_glTF.gltf");
-		//		mm.LoadModelFromFile(fullMeshPath, m_pScene.get());
-		//
-		//		MemoryManager::Get().GetUploadBuffer()->Upload();
-		//	}
-		//
-		//	if (ImGui::Button("Load Bartholomew The Great"))
-		//	{
-		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
-		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-		//
-		//		mm.LoadModelFromFile(meshPath + "Bartholomew/scene.gltf", m_pScene.get());
-		//
-		//		MemoryManager::Get().GetUploadBuffer()->Upload();
-		//	}
-		//
-		//	if (ImGui::Button("Load San Miguel"))
-		//	{
-		//		MeshManager& mm = AssetManager::Get().GetMeshManager();
-		//		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/");
-		//
-		//		mm.LoadModelFromFile(meshPath + "San_Miguel/san-miguel-low-poly.obj", m_pScene.get());
-		//
-		//		MemoryManager::Get().GetUploadBuffer()->Upload();
-		//	}
-		//	ImGui::End();
-		//}
-		
 	}
 
 	void EditorLayer::OnAttach() noexcept
 	{
 		m_pScene = std::make_shared<Scene>();
-		//LoadStarterMeshes();
+		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
+		LoadStarterMeshes();
 		CreateStartScene();
 		m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pScene);
 
@@ -428,16 +391,18 @@ namespace Relentless
 				}
 			});
 
-		MemoryManager::Get().GetUploadBuffer()->Upload();
-		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
 
-		//MeshManager& mm = AssetManager::GetMeshManager();
+
+		MeshManager& mm = AssetManager::GetMeshManager();
 		//std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\PKG_C.1_Trees\\NewSponza_CypressTree_glTF.gltf");
 		//mm.LoadModelFromFile(meshPath, m_pScene.get());
 		//std::cout << "Loaded Tree" << "\n";
-		// meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\Main.1_Sponza\\NewSponza_Main_glTF_002.gltf");
+		//std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\Main.1_Sponza\\NewSponza_Main_glTF_002.gltf");
 		//mm.LoadModelFromFile(meshPath, m_pScene.get());
 		//std::cout << "Loaded Main Sponza" << "\n";
+		//std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\Parenting\\parenting.gltf");
+		//mm.LoadModelFromFile(meshPath, m_pScene.get());
+		//std::cout << "Loaded Parenting" << "\n";
 		//
 		//meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\PKG_A_Curtains\\NewSponza_Curtains_glTF.gltf");
 		//mm.LoadModelFromFile(meshPath, m_pScene.get());
@@ -446,9 +411,6 @@ namespace Relentless
 		//meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\PKG_B_Ivy\\NewSponza_IvyGrowth_glTF.gltf");
 		//mm.LoadModelFromFile(meshPath, m_pScene.get());
 		//std::cout << "Loaded Ivy growth" << "\n";
-
-		
-		MemoryManager::Get().GetUploadBuffer()->Upload();
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -491,6 +453,8 @@ namespace Relentless
 	//To be specific: It should be assumed it is not
 	void EditorLayer::OnPostRender() noexcept
 	{
+		PROFILE_FUNC;
+
 		if (m_HoveringSceneViewport)
 		{
 			m_HoveredEntity = m_pSceneRenderer->GetHoveredEntity();
@@ -506,60 +470,54 @@ namespace Relentless
 			LoadScene(m_Path);
 			m_Path = {};
 		}
+		else if (m_CreateNewScene)
+		{
+			MasterRenderer::WaitAndSyncAllFramesInFlight();
+			m_pScene = std::make_shared<Scene>();
+			m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
+			m_pSceneRenderer->SetContext(m_pScene);
+
+			m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
+			m_PropertiesPanel.SetActiveScene(m_pScene.get());
+
+			m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
+			m_SceneHierarchyPanel.SetActiveScene(m_pScene.get());
+
+			m_SelectedEntity = m_HoveredEntity = NULL_ENTITY;
+
+			m_SceneViewportChanged = true;
+			m_CreateNewScene = false;
+		}
 	}
 
 	void EditorLayer::LoadStarterMeshes() noexcept
 	{
-		//std::vector<std::string> starterMeshes
-		//{
-		//	"Cube.obj",
-		//	"Capsule.gltf",
-		//	"Cone.gltf",
-		//	"Cylinder.gltf",
-		//	"Icosphere.obj",
-		//	"Plane.gltf",
-		//	"Quad.gltf",
-		//	"Sphere.obj",
-		//	"Torus.obj",
-		//	"Triangle.obj",
-		//	"UtahTeapot.gltf"
-		//};
-		//
-		//std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models/StarterContent/");
-		//MeshManager& mm = AssetManager::GetMeshManager();
-		//
-		//std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
-		//	{
-		//		std::string fullMeshPath(meshPath + std::string(starterMeshName));
-		//		mm.LoadModelFromFile(fullMeshPath);
-		//	});
+		std::vector<std::string> starterMeshes
+		{
+			"Cube.rmesh",
+			"Capsule.rmesh",
+			"Cone.rmesh",
+			"Cylinder.rmesh",
+			"Icosphere.rmesh",
+			"Plane.rmesh",
+			"Quad.rmesh",
+			"Sphere.rmesh",
+			"Torus.rmesh",
+			"Triangle.rmesh",
+			"UtahTeapot.rmesh"
+		};
+
+		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\StarterContent\\");
+		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
+			{
+				std::string fullMeshPath(meshPath + std::string(starterMeshName));
+				ModelSerializer::Deserialize(fullMeshPath);
+			});
 	}
 
 	void EditorLayer::CreateStartScene() noexcept
 	{
-		SceneSerializer::Deserialize(m_pScene, ENGINE_ASSET_DIRECTORY + std::string("Scenes/StarterScene.Relentless"));
-
-		//m_pScene->CreateLight("Directional Light", LightType::Directional);
-		//
-		//{
-		//	auto ground = m_pScene->CreateShape<Shape::Cube>();
-		//	m_pScene->GetEntityManager().Get<NameComponent>(ground).Name = "Ground";
-		//	
-		//	auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(ground);
-		//	mrc.MaterialHandle = AssetManager::Create<Material>("M_Ground");
-		//
-		//	Material& material = AssetManager::Get<Material>(mrc.MaterialHandle);
-		//	material.m_AlbedoColor = { 42.0f / 255.0f, 88.0f / 255.0f, 26.0f / 255.0f, 1.0f };
-		//
-		//	auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(ground);
-		//	tc.Scale = DirectX::XMFLOAT3{ 6.4f, 0.1f, 6.4f };
-		//}
-		//
-		//{
-		//	auto cube = m_pScene->CreateShape<Shape::Cube>();
-		//	auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(cube);
-		//	tc.Translation = { 0.0f, 0.55f, 0.0f };
-		//}
+		SceneSerializer::Deserialize(m_pScene, ENGINE_ASSET_DIRECTORY + std::string("Scenes\\StarterScene.Relentless"));
 	}
 
 	void EditorLayer::OnSceneViewportChanged() noexcept
@@ -647,81 +605,62 @@ namespace Relentless
 		ImGuizmo::SetDrawlist();
 		ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 
-		auto& transformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
-
-		static DirectX::XMFLOAT3 snapTranslationScale{ 1.0f, 1.0f, 1.0f };
-		static float snapRotation{ 10.0f };
-
-		DirectX::XMFLOAT4X4 visualizationMatrix = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Transform;
-		float translationBefore[3]	= { 0.0f };
-		float rotationBefore[3]		= { 0.0f };
-		float scaleBefore[3]		= { 0.0f };
-
-		ImGuizmo::DecomposeMatrixToComponents(*visualizationMatrix.m, translationBefore, rotationBefore, scaleBefore);
-
 		ImGuizmo::MODE mode;
-		if (!m_pScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
-			mode = ImGuizmo::WORLD;
-		else
-			mode = (ImGuizmo::OPERATION)m_CurrentGizmoType == ImGuizmo::OPERATION::SCALE ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
-
-		if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
-			ImGuizmo::Manipulate(*m_pScene->GetEditorCamera()->GetViewMatrix().m, *m_pScene->GetEditorCamera()->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m, nullptr, (m_CurrentGizmoType == GizmoType::ROTATE) ? &snapRotation : &snapTranslationScale.x);
+		if (m_CurrentGizmoType == GizmoType::SCALE)
+		{
+			mode = ImGuizmo::LOCAL;
+		}
 		else
 		{
-			ImGuizmo::Manipulate(*m_pScene->GetEditorCamera()->GetViewMatrix().m, *m_pScene->GetEditorCamera()->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m);
+			mode = (ImGuizmo::MODE)m_CurrentGizmoMode;
 		}
+
+		auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
+
+		DirectX::XMFLOAT4X4 visualizationMatrix;
+		visualizationMatrix = tc.Transform;
+		ImGuizmo::Manipulate(*m_pScene->GetEditorCamera()->GetViewMatrix().m, *m_pScene->GetEditorCamera()->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m);
 		if (ImGuizmo::IsUsing())
 		{
-			float translationAfter[3]	= { 0.0f };
-			float rotationAfter[3]		= { 0.0f };
-			float scaleAfter[3]			= { 0.0f };
-
-			ImGuizmo::DecomposeMatrixToComponents(*visualizationMatrix.m, translationAfter, rotationAfter, scaleAfter);
-		
-			float translationOffsetX = translationAfter[0] - translationBefore[0];
-			float translationOffsetY = translationAfter[1] - translationBefore[1];
-			float translationOffsetZ = translationAfter[2] - translationBefore[2];
-
-			float rotationOffsetX = rotationAfter[0] - rotationBefore[0];
-			float rotationOffsetY = rotationAfter[1] - rotationBefore[1];
-			float rotationOffsetZ = rotationAfter[2] - rotationBefore[2];
-
-			float scaleOffsetX = scaleAfter[0] - scaleBefore[0];
-			float scaleOffsetY = scaleAfter[1] - scaleBefore[1];
-			float scaleOffsetZ = scaleAfter[2] - scaleBefore[2];
-
-			if (m_pScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity))
+			if (m_pScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity) && mode == ImGuizmo::LOCAL)
 			{
-				auto& parentScale = m_pScene->GetEntityManager().Get<TransformComponent>(m_pScene->GetEntityManager().Get<IsChildComponent>(m_SelectedEntity).Parent).Scale;
-				
-				translationOffsetX /= parentScale.x;
-				translationOffsetY /= parentScale.y;
-				translationOffsetZ /= parentScale.z;
-
-				rotationOffsetX /= parentScale.x;
-				rotationOffsetY /= parentScale.y;
-				rotationOffsetZ /= parentScale.z;
-
-				scaleOffsetX /= parentScale.x;
-				scaleOffsetY /= parentScale.y;
-				scaleOffsetZ /= parentScale.z;
-
+				entity parent = m_pScene->GetEntityManager().Get<IsChildComponent>(m_SelectedEntity).Parent;
+				auto& parentTC = m_pScene->GetEntityManager().Get<TransformComponent>(parent);
+				DirectX::XMMATRIX parentTransform = DirectX::XMLoadFloat4x4(&parentTC.Transform);
+				DirectX::XMMATRIX inverseParentTransform = DirectX::XMMatrixInverse(nullptr, parentTransform);
+				DirectX::XMMATRIX visMatrix = DirectX::XMLoadFloat4x4(&visualizationMatrix);
+				DirectX::XMMATRIX result = DirectX::XMMatrixMultiply(visMatrix, inverseParentTransform);
+				DirectX::XMStoreFloat4x4(&visualizationMatrix, result);
 			}
 
-			transformComponent.Translation.x += translationOffsetX;
-			transformComponent.Translation.y += translationOffsetY;
-			transformComponent.Translation.z += translationOffsetZ;
+			DirectX::XMFLOAT3 translation, rotation, scale;
+			ImGuizmo::DecomposeMatrixToComponents(&visualizationMatrix.m[0][0], &translation.x, &rotation.x, &scale.x);
+			if (mode == ImGuizmo::WORLD)
+			{
+				tc.Translation = translation;
+				float deltaRotationX = rotation.x - tc.Rotation.x;
+				float deltaRotationY = rotation.y - tc.Rotation.y;
+				float deltaRotationZ = rotation.z - tc.Rotation.z;
+				tc.Rotation.x += deltaRotationX;
+				tc.Rotation.y += deltaRotationY;
+				tc.Rotation.z += deltaRotationZ;
+				tc.Scale = scale;
 
-			transformComponent.Scale.x += std::clamp(scaleOffsetX, -0.5f, 0.5f);
-			transformComponent.Scale.y += std::clamp(scaleOffsetY, -0.5f, 0.5f);
-			transformComponent.Scale.z += std::clamp(scaleOffsetZ, -0.5f, 0.5f);
+				m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
+			}
+			else
+			{
+				tc.LocalTranslation = translation;
+				float deltaRotationX = rotation.x - tc.LocalRotation.x;
+				float deltaRotationY = rotation.y - tc.LocalRotation.y;
+				float deltaRotationZ = rotation.z - tc.LocalRotation.z;
+				tc.LocalRotation.x += deltaRotationX;
+				tc.LocalRotation.y += deltaRotationY;
+				tc.LocalRotation.z += deltaRotationZ;
+				tc.LocalScale = scale;
 
-			transformComponent.Rotation.x += rotationOffsetX;
-			transformComponent.Rotation.y += rotationOffsetY;
-			transformComponent.Rotation.z += rotationOffsetZ;
-
-			m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
+				m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = false;
+			}
 		}
 	}
 

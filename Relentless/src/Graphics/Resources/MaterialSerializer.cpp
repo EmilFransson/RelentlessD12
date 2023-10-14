@@ -43,7 +43,7 @@ namespace Relentless
 		out << YAML::EndMap;
 		out << YAML::EndMap;
 
-		std::ofstream outFile(path + MATERIAL_EXTENSION);
+		std::ofstream outFile(path);
 		RLS_ASSERT(outFile.is_open(), "Unable to open/create material file to write to.");
 
 		outFile << out.c_str();
@@ -52,9 +52,9 @@ namespace Relentless
 		//Corresponding rasset-file, if it not already exists:
 		//Otherwise, the guid is preserved and only the material is re-serealized.
 		//(For materials, the rasset-file only contains the guid!)
-		if (!std::filesystem::exists(path + MATERIAL_EXTENSION + ASSET_EXTENSION))
+		if (!std::filesystem::exists(path + ASSET_EXTENSION))
 		{
-			std::string pathWithExtension = path + MATERIAL_EXTENSION + ASSET_EXTENSION;
+			std::string pathWithExtension = path + ASSET_EXTENSION;
 			YAML::Emitter outAsset;
 
 			outAsset << YAML::BeginMap;
@@ -71,11 +71,11 @@ namespace Relentless
 
 		if (!toReplace.empty())
 		{
-			RLS_ASSERT(std::filesystem::exists(toReplace + MATERIAL_EXTENSION), ".rmat file to replace does not exist.");
-			RLS_ASSERT(std::filesystem::exists(toReplace + MATERIAL_EXTENSION + ASSET_EXTENSION), ".rasset file to replace does not exist.");
+			RLS_ASSERT(std::filesystem::exists(toReplace), ".rmat file to replace does not exist.");
+			RLS_ASSERT(std::filesystem::exists(toReplace + ASSET_EXTENSION), ".rasset file to replace does not exist.");
 		
-			std::filesystem::remove(toReplace + MATERIAL_EXTENSION);
-			std::filesystem::remove(toReplace + MATERIAL_EXTENSION + ASSET_EXTENSION);
+			std::filesystem::remove(toReplace);
+			std::filesystem::remove(toReplace + ASSET_EXTENSION);
 		}
 	}
 
@@ -119,23 +119,21 @@ namespace Relentless
 			out << YAML::EndMap;
 			out << YAML::EndMap;
 
-			std::ofstream outFile(path + ".rmat");
+			std::ofstream outFile(path);
 			RLS_ASSERT(outFile.is_open(), "Unable to open/create material file to write to.");
 
 			outFile << out.c_str();
 			outFile.close();
 		}
 
-
-		UUID uuid = CreateUUID();
-		std::string pathWithExtension = path + MATERIAL_EXTENSION + ASSET_EXTENSION;
-
 		YAML::Emitter outAsset;
+		UUID uuid = CreateUUID();
 
 		outAsset << YAML::BeginMap;
 		outAsset << YAML::Key << "GUID" << YAML::Value << uuid;
 		outAsset << YAML::EndMap;
 
+		std::string pathWithExtension = path + ASSET_EXTENSION;
 		std::ofstream outFile(pathWithExtension);
 		RLS_ASSERT(outFile.is_open(), "Unable to open/create material asset file to write to.");
 		outFile << outAsset.c_str();
@@ -194,29 +192,55 @@ namespace Relentless
 		material.m_HeightScale = mat["Heightmap Scale"].as<float>();
 		material.m_AOScale = mat["AO Scale"].as<float>();
 		material.m_CombinedRoughnessMetallnesMap = mat["Combined RoughnessMetalness"].as<bool>();
-
-		TextureManager& textureManager = AssetManager::GetTextureManager();
 		
 		uuid = ConvertStringToGUID(mat["Maps"]["Albedo"].as<std::string>());
-		material.m_AlbedoTextureHandle = (uuid == NULL_UUID) ? NULL_HANDLE : textureManager.PromoteToHandle(uuid);
+		if (uuid != NULL_UUID)
+		{
+			const std::string path = AssetManager::GetAssetPath(uuid);
+			material.SetAlbedoTexture(AssetManager::Load<Texture2D>(path));
+		}
 		
 		uuid = ConvertStringToGUID(mat["Maps"]["Metallic"].as<std::string>());
-		material.m_MetallicTextureHandle = (uuid == NULL_UUID) ? NULL_HANDLE : textureManager.PromoteToHandle(uuid);
+		if (uuid != NULL_UUID)
+		{
+			const std::string path = AssetManager::GetAssetPath(uuid);
+			material.SetMetallicTexture(AssetManager::Load<Texture2D>(path));
+		}
 
 		uuid = ConvertStringToGUID(mat["Maps"]["Roughness"].as<std::string>());
-		material.m_RoughnessTextureHandle = (uuid == NULL_UUID) ? NULL_HANDLE : textureManager.PromoteToHandle(uuid);
+		if (uuid != NULL_UUID)
+		{
+			const std::string path = AssetManager::GetAssetPath(uuid);
+			material.SetRoughnessTexture(AssetManager::Load<Texture2D>(path));
+		}
 
 		uuid = ConvertStringToGUID(mat["Maps"]["Normal"].as<std::string>());
-		material.m_NormalMapHandle = (uuid == NULL_UUID) ? NULL_HANDLE : textureManager.PromoteToHandle(uuid);
+		if (uuid != NULL_UUID)
+		{
+			const std::string path = AssetManager::GetAssetPath(uuid);
+			material.SetNormalMap(AssetManager::Load<Texture2D>(path));
+		}
 
 		uuid = ConvertStringToGUID(mat["Maps"]["Height"].as<std::string>());
-		material.m_HeightMapHandle = (uuid == NULL_UUID) ? NULL_HANDLE : textureManager.PromoteToHandle(uuid);
+		if (uuid != NULL_UUID)
+		{
+			const std::string path = AssetManager::GetAssetPath(uuid);
+			material.SetHeightMap(AssetManager::Load<Texture2D>(path));
+		}
 
 		uuid = ConvertStringToGUID(mat["Maps"]["AO"].as<std::string>());
-		material.m_AmbientOcclusionTextureHandle = (uuid == NULL_UUID) ? NULL_HANDLE : textureManager.PromoteToHandle(uuid);
+		if (uuid != NULL_UUID)
+		{
+			const std::string path = AssetManager::GetAssetPath(uuid);
+			material.SetAmbientOcclusionTexture(AssetManager::Load<Texture2D>(path));
+		}
 
 		uuid = ConvertStringToGUID(mat["Maps"]["Emission"].as<std::string>());
-		material.m_EmissionTextureHandle = (uuid == NULL_UUID) ? NULL_HANDLE : textureManager.PromoteToHandle(uuid);
+		if (uuid != NULL_UUID)
+		{
+			const std::string path = AssetManager::GetAssetPath(uuid);
+			material.SetEmissionTexture(AssetManager::Load<Texture2D>(path));
+		}
 
 		RLS_CORE_INFO("Deserialized material \"{0}\"", materialName);
 

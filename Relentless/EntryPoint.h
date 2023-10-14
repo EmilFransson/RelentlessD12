@@ -6,9 +6,12 @@ int main(int, char**)
 {
 	INITIALIZE_DEBUG_MEMORY_LEAK_DETECTION;
 
+#if defined RLS_DEBUG
 	HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 	RLS_ASSERT(!FAILED(hr), "Call to CoinitializeEx failed.");
-
+#else
+	CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+#endif
 
 	auto app = Relentless::CreateApplication();
 	app->Run();

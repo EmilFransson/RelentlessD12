@@ -102,6 +102,12 @@ namespace Relentless
 			ImGui::PopItemWidth();
 			ImGui::PopStyleVar();
 
+			bool combined = material.m_CombinedRoughnessMetallnesMap;
+			if (ImGui::Checkbox("Combined Roughness & Metalness", &combined))
+			{
+				material.m_CombinedRoughnessMetallnesMap = combined;
+				changedMaterial = true;
+			}
 
 			ImGui::Columns(1);
 			ImGui::Separator();
@@ -129,6 +135,15 @@ namespace Relentless
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
+				}
+				else
+				{
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::BeginTooltip();
+						ImGui::Text(albedoTexture.GetName().c_str());
+						ImGui::EndTooltip();
+					}
 				}
 
 				ImGui::SameLine();
@@ -204,6 +219,16 @@ namespace Relentless
 					}
 					ImGui::EndDragDropTarget();
 				}
+				else
+				{
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::BeginTooltip();
+						ImGui::Text(metallicTexture.GetName().c_str());
+						ImGui::EndTooltip();
+					}
+				}
+
 				ImGui::SameLine();
 				ImGui::Text("Metallic");
 				if (ImGui::BeginPopupContextItem("MetallicContextMenu"))
@@ -256,6 +281,15 @@ namespace Relentless
 						changedMaterial = true;
 					}
 					ImGui::EndDragDropTarget();
+				}
+				else
+				{
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::BeginTooltip();
+						ImGui::Text(roughnessTexture.GetName().c_str());
+						ImGui::EndTooltip();
+					}
 				}
 
 				ImGui::SameLine();
@@ -312,6 +346,16 @@ namespace Relentless
 					}
 					ImGui::EndDragDropTarget();
 				}
+				else
+				{
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::BeginTooltip();
+						ImGui::Text(normalMap.GetName().c_str());
+						ImGui::EndTooltip();
+					}
+				}
+
 				ImGui::SameLine();
 				ImGui::Text("Normal");
 				if (ImGui::BeginPopupContextItem("NormalContextMenu"))
@@ -364,6 +408,16 @@ namespace Relentless
 					}
 					ImGui::EndDragDropTarget();
 				}
+				else
+				{
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::BeginTooltip();
+						ImGui::Text(heightMap.GetName().c_str());
+						ImGui::EndTooltip();
+					}
+				}
+
 				ImGui::SameLine();
 				ImGui::Text("Height");
 				if (ImGui::BeginPopupContextItem("HeightContextMenu"))
@@ -421,6 +475,16 @@ namespace Relentless
 					}
 					ImGui::EndDragDropTarget();
 				}
+				else
+				{
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::BeginTooltip();
+						ImGui::Text(ambientOcclusionTexture.GetName().c_str());
+						ImGui::EndTooltip();
+					}
+				}
+
 				ImGui::SameLine();
 				ImGui::Text("AO");
 				if (ImGui::BeginPopupContextItem("AOContextMenu"))
@@ -476,6 +540,16 @@ namespace Relentless
 					}
 					ImGui::EndDragDropTarget();
 				}
+				else
+				{
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::BeginTooltip();
+						ImGui::Text(emissionTexture.GetName().c_str());
+						ImGui::EndTooltip();
+					}
+				}
+
 				ImGui::SameLine();
 				ImGui::Text("Emission");
 				if (ImGui::BeginPopupContextItem("EmissionContextMenu"))

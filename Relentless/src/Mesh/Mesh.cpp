@@ -9,6 +9,8 @@
 
 namespace Relentless
 {
+	inline static std::mutex g_LoadMutex2;
+
 	Mesh::Mesh(const std::string& name, const VertexBuffer::Specification& vbSpec, const IndexBuffer::Specification& ibSpec) noexcept
 		:m_Name{ name }
 	{
@@ -21,31 +23,6 @@ namespace Relentless
 		m_Name = name;
 	}
 
-	void MeshManager::Initialize() noexcept
-	{
-		std::vector<std::string> starterMeshes
-		{
-			"Cube.obj",
-			"Capsule.gltf",
-			"Cone.gltf",
-			"Cylinder.gltf",
-			"Icosphere.obj",
-			"Plane.gltf",
-			"Quad.gltf",
-			"Sphere.obj",
-			"Torus.obj",
-			"Triangle.obj",
-			"UtahTeapot.gltf"
-		};
-		
-		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\StarterContent\\");
-		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
-			{
-				std::string fullMeshPath(meshPath + std::string(starterMeshName));
-				ModelSerializer::Deserialize(fullMeshPath);
-			});
-	}
-
 	Mesh& MeshManager::GetMesh(const MeshHandle& meshHandle) noexcept
 	{
 		RLS_ASSERT(m_Meshes.size() > meshHandle.Index, "Mesh handle is invalid.");
@@ -54,6 +31,8 @@ namespace Relentless
 
 	Mesh& MeshManager::GetByString(const std::string& meshString) noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_LoadMutex2);
+
 		MeshHandle& meshHandle = GetHandleByString(meshString);
 		RLS_ASSERT(m_Meshes.size() > meshHandle.Index, "Mesh \"" + meshString + "\" does not exist.");
 		return m_Meshes[meshHandle.Index];
@@ -61,12 +40,16 @@ namespace Relentless
 
 	MeshHandle& MeshManager::GetHandleByString(const std::string& meshString) noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_LoadMutex2);
+
 		RLS_ASSERT(m_MeshNameToHandleMap.contains(meshString), "Mesh \"" + meshString + "\" does not exist.");
 		return m_MeshNameToHandleMap[meshString];
 	}
 
 	MeshHandle MeshManager::PromoteToHandle(const UUID& uuid) noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_LoadMutex2);
+
 		for (auto& [name, handle] : m_MeshNameToHandleMap)
 		{
 			if (handle.UUID == uuid)
@@ -79,33 +62,97 @@ namespace Relentless
 		return NULL_HANDLE;
 	}
 
-	void MeshManager::LoadModelFromFile(const std::string& fullPath, Scene* pScene, YAML::Node* pYamlNode) noexcept
+	MeshHandle MeshManager::LoadMeshBinary(const std::string& path, const UUID& uuid) noexcept
+	{
+		RLS_ASSERT(std::filesystem::exists(path), "Path is invalid");
+
+		std::string meshName = std::filesystem::path(path).filename().stem().string();
+
+		std::ifstream inFile(path, std::ios::binary);
+
+		MeshDataHeader readHeader;
+
+		inFile.read(reinterpret_cast<char*>(&readHeader), sizeof(readHeader));
+
+		std::vector<char> readVertexData(readHeader.VertexBufferSizeInBytes);
+		std::vector<char> readIndexData(readHeader.IndexBufferSizeInBytes);
+
+		inFile.read(reinterpret_cast<char*>(readVertexData.data()), readHeader.VertexBufferSizeInBytes);
+		inFile.read(reinterpret_cast<char*>(readIndexData.data()), readHeader.IndexBufferSizeInBytes);
+
+		VertexBuffer::Specification vbSpec
+		{
+			.NrOfVertices = (uint32_t)readHeader.VertexCount,
+			.TotalSizeInBytes = (uint32_t)readHeader.VertexBufferSizeInBytes,
+			.Stride = sizeof(SimpleVertex),
+			.pBuffer = (void*)readVertexData.data(),
+			.Name = meshName + std::string(" Vertex Buffer")
+		};
+
+		IndexBuffer::Specification ibSpec
+		{
+			.NrOfIndices = (uint32_t)readHeader.IndexCount,
+			.TotalSizeInBytes = (uint32_t)readHeader.IndexBufferSizeInBytes,
+			.Stride = sizeof(uint32_t),
+			.pBuffer = (void*)readIndexData.data(),
+			.Name = meshName + std::string(" Index Buffer")
+		};
+
+		MeshHandle meshHandle;
+		meshHandle.UUID = uuid;
+
+		{
+			const std::lock_guard<std::mutex> lock(g_LoadMutex2);
+
+			if (!m_FreeList.empty())
+			{
+				meshHandle.Index = m_FreeList.front();
+				m_FreeList.pop();
+				m_Meshes[meshHandle.Index] = Mesh(meshName, vbSpec, ibSpec);
+			}
+			else
+			{
+				meshHandle.Index = static_cast<uint16_t>(m_Meshes.size());
+				m_Meshes.emplace_back(Mesh(meshName, vbSpec, ibSpec));
+			}
+
+			m_MeshNameToHandleMap[meshName] = meshHandle;
+		}
+		
+		RLS_CORE_INFO("Loaded mesh '{0}' with GUID: {1}", meshName, GetAssetHandleAsString(meshHandle));
+
+		return meshHandle;
+	}
+
+	void MeshManager::LoadModelFromFile(const std::string& fullPath, Scene* pScene) noexcept
 	{
 		RLS_ASSERT(std::filesystem::exists(fullPath), "File does not exist.");
 		std::filesystem::path workingDirectory = fullPath;
 		workingDirectory = workingDirectory.remove_filename();
 
-		std::string tPAth = fullPath;
-		size_t pos = 0;
-		while ((pos = tPAth.find("\\", pos)) != std::string::npos) {
-			tPAth.replace(pos, 1, "/");
-			pos += 1;
-		}
-
 		Assimp::Importer importer;
 		constexpr const uint32_t flags = (uint32_t)(aiProcess_ConvertToLeftHanded | aiProcess_GenSmoothNormals | aiProcess_Triangulate
 			| aiProcess_ImproveCacheLocality | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace | aiProcess_GenBoundingBoxes);
-		const aiScene* pAssimpScene = importer.ReadFile(tPAth, flags);
+		const aiScene* pAssimpScene = importer.ReadFile(fullPath, flags);
 		RLS_ASSERT(pAssimpScene && !(pAssimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && pAssimpScene->mRootNode, importer.GetErrorString());
 
 		DirectX::XMFLOAT4X4 identity;
 		DirectX::XMStoreFloat4x4(&identity, DirectX::XMMatrixIdentity());
 
-		ProcessNode(pAssimpScene->mRootNode, pAssimpScene, pScene, identity, workingDirectory, pYamlNode);
+		if (pScene && pAssimpScene->mNumMeshes > 1)
+		{
+			ProcessNode(pAssimpScene->mRootNode, pAssimpScene, pScene, identity, workingDirectory, pScene->CreateEntity(std::filesystem::path(fullPath).filename().stem().string().c_str()));
+		}
+		else
+		{
+			ProcessNode(pAssimpScene->mRootNode, pAssimpScene, pScene, identity, workingDirectory);
+		}
 	}
 
 	bool MeshManager::Exists(const std::string& path) noexcept
 	{
+		const std::lock_guard<std::mutex> lock(g_LoadMutex2);
+
 		return (m_MeshNameToHandleMap.find(path) != m_MeshNameToHandleMap.end());
 	}
 
@@ -131,63 +178,70 @@ namespace Relentless
 	}
 
 	inline static std::mutex g_CreateEntityMutex;
-	void MeshManager::ProcessNode(aiNode* pNode, const aiScene* pAssimpScene, Scene* pScene, const DirectX::XMFLOAT4X4& transform, const std::filesystem::path& workingDirectory, YAML::Node* pYamlNode) noexcept
+	void MeshManager::ProcessNode(aiNode* pNode, const aiScene* pAssimpScene, Scene* pScene, const DirectX::XMFLOAT4X4& transform, const std::filesystem::path& workingDirectory, entity parent) noexcept
 	{
-		//First time the root node should be made, which would otherwise be the only node!
 		RLS_ASSERT(pNode && pAssimpScene, "Assimp data is invalid.");
 
 		DirectX::XMMATRIX aiTransform = ConvertMatrix(pNode->mTransformation);
+		DirectX::XMMATRIX transformMatrix = aiTransform;
 		DirectX::XMMATRIX accumulatedTransform = DirectX::XMMatrixMultiply(aiTransform, DirectX::XMLoadFloat4x4(&transform));
 		DirectX::XMFLOAT4X4 currentTransform;
 		DirectX::XMStoreFloat4x4(&currentTransform, accumulatedTransform);
 
+		entity aParent = parent;
 		for (uint32_t i{ 0u }; i < pNode->mNumMeshes; ++i)
 		{
 			aiMesh* pMesh = pAssimpScene->mMeshes[pNode->mMeshes[i]];
-			MeshHandle meshHandle = ProcessMesh(pMesh, pAssimpScene, pYamlNode);
-			MaterialHandle materialHandle = ProcessMaterial(pMesh, pAssimpScene, workingDirectory);
+			const MeshHandle meshHandle = ProcessMesh(pMesh, workingDirectory);
+			const MaterialHandle materialHandle = ProcessMaterial(pMesh, pAssimpScene, workingDirectory);
 			
 			if (pScene)
 			{
 				const std::lock_guard<std::mutex> lock(g_CreateEntityMutex);
 
-				auto e = pScene->CreateEntity(pMesh->mName.C_Str());
+				auto entity = pScene->CreateEntity(pMesh->mName.C_Str());
 
-				pScene->GetEntityManager().AddOrReplace<OpaquePassComponent>(e);
-				pScene->GetEntityManager().Get<DirtyTransformComponent>(e).AdjustedWorldSpace = false;
-				auto& tc = pScene->GetEntityManager().Get<TransformComponent>(e);
+				pScene->GetEntityManager().AddOrReplace<OpaquePassComponent>(entity);
+				pScene->GetEntityManager().Get<DirtyTransformComponent>(entity).AdjustedWorldSpace = true;
+				auto& tc = pScene->GetEntityManager().Get<TransformComponent>(entity);
 				tc.Transform = currentTransform;
+
 				ImGuizmo::DecomposeMatrixToComponents(*tc.Transform.m, &tc.Translation.x, &tc.Rotation.x, &tc.Scale.x);
 
-				auto& mrc = pScene->GetEntityManager().Add<MeshRendererComponent>(e);
-				mrc.MaterialHandle = materialHandle;
-				auto& mfc = pScene->GetEntityManager().Add<MeshFilterComponent>(e);
-				mfc.MeshHandle = meshHandle;
+				pScene->GetEntityManager().Add<MeshRendererComponent>(entity).MaterialHandle = materialHandle;
+				pScene->GetEntityManager().Add<MeshFilterComponent>(entity).MeshHandle = meshHandle;
 
+				if (parent != NULL_ENTITY)
+				{
+					pScene->ParentEntity(entity, parent);
+				}
+				aParent = entity;
 			}
 		}
 
 		for (uint32_t i{ 0u }; i < pNode->mNumChildren; ++i)
 		{
-			ProcessNode(pNode->mChildren[i], pAssimpScene, pScene, currentTransform, workingDirectory, pYamlNode);
+			ProcessNode(pNode->mChildren[i], pAssimpScene, pScene, currentTransform, workingDirectory, aParent);
 		}
 	}
 
-	inline static std::mutex g_LoadMutex2;
-	MeshHandle MeshManager::ProcessMesh(aiMesh* pMesh, const aiScene* pAssimpScene, YAML::Node* pYamlNode) noexcept
+	
+	MeshHandle MeshManager::ProcessMesh(aiMesh* pMesh, const std::filesystem::path& workingDirectory) noexcept
 	{
-		RLS_ASSERT(pMesh && pAssimpScene, "Assimp data is invalid.");
+		RLS_ASSERT(pMesh, "Assimp data is invalid.");
 		RLS_ASSERT(pMesh->HasPositions(), "Mesh contains no position data.");
 		RLS_ASSERT(pMesh->HasFaces(), "Mesh contains no faces data.");
 		RLS_ASSERT(pMesh->HasNormals(), "Mesh contains no normal data.");
 		RLS_ASSERT(pMesh->HasTangentsAndBitangents(), "Mesh contains no tangent and/or bitangent data.");
 		RLS_ASSERT(pMesh->HasTextureCoords(0u), "Mesh contains no texture coordinate data.");
 
-		const std::lock_guard<std::mutex> lock(g_LoadMutex2);
-
 		if (Exists(pMesh->mName.C_Str()))
 		{
 			return m_MeshNameToHandleMap[pMesh->mName.C_Str()];
+		}
+		else if (AssetManager::IsAssetPathMapped(workingDirectory.string() + pMesh->mName.C_Str() + ".rmesh"))
+		{
+			return ModelSerializer::Deserialize(workingDirectory.string() + pMesh->mName.C_Str() + ".rmesh");
 		}
 
 		std::vector<SimpleVertex> vertices;
@@ -243,29 +297,26 @@ namespace Relentless
 		};
 
 		MeshHandle meshHandle;
-		if (pYamlNode)
+		meshHandle.UUID = CreateUUID();
+
 		{
-			std::string guidString = (*pYamlNode)["Meshes"][pMesh->mName.C_Str()]["GUID"].as<std::string>();
-			meshHandle.UUID = ConvertStringToGUID(guidString);
-		}
-		else
-		{
-			meshHandle.UUID = CreateUUID();
+			const std::lock_guard<std::mutex> lock(g_LoadMutex2);
+
+			if (!m_FreeList.empty())
+			{
+				meshHandle.Index = m_FreeList.front();
+				m_FreeList.pop();
+				m_Meshes[meshHandle.Index] = Mesh(pMesh->mName.C_Str(), vbSpec, ibSpec);
+			}
+			else
+			{
+				meshHandle.Index = static_cast<uint16_t>(m_Meshes.size());
+				m_Meshes.emplace_back(Mesh(pMesh->mName.C_Str(), vbSpec, ibSpec));
+			}
+			m_MeshNameToHandleMap[std::string(pMesh->mName.C_Str())] = meshHandle;
 		}
 
-		if (!m_FreeList.empty())
-		{
-			meshHandle.Index = m_FreeList.front();
-			m_FreeList.pop();
-			m_Meshes[meshHandle.Index] = Mesh(pMesh->mName.C_Str(), vbSpec, ibSpec);
-		}
-		else
-		{
-			meshHandle.Index = m_Meshes.size();
-			m_Meshes.emplace_back(Mesh(pMesh->mName.C_Str(), vbSpec, ibSpec));
-		}
-
-		m_MeshNameToHandleMap[std::string(pMesh->mName.C_Str())] = meshHandle;
+		ModelSerializer::SerializeBinary(meshHandle, workingDirectory.string());
 
 		RLS_CORE_INFO("Loaded mesh '{0}' with GUID: {1}", pMesh->mName.C_Str(), GetAssetHandleAsString(meshHandle));
 
@@ -275,7 +326,9 @@ namespace Relentless
 	MaterialHandle MeshManager::ProcessMaterial(aiMesh* pMesh, const aiScene* pAssimpScene, const std::filesystem::path& workingDirectory) noexcept
 	{
 		aiMaterial* m = pAssimpScene->mMaterials[pMesh->mMaterialIndex];
-		MaterialHandle materialHandle = AssetManager::Create<Material>(m->GetName().C_Str());
+		MaterialHandle materialHandle = AssetManager::Load<Material>(std::string(workingDirectory.string() + m->GetName().C_Str() + ".rmat"));
+
+		//MaterialHandle materialHandle = AssetManager::Create<Material>(m->GetName().C_Str());
 		auto& materialManager = AssetManager::GetMaterialManager();
 		Material& mat = materialManager.GetMaterial(materialHandle);
 
@@ -373,6 +426,9 @@ namespace Relentless
 			AssetHandle heightID = AssetManager::Load<Texture2D>(fullPath.string());
 			mat.SetHeightMap(heightID);
 		}
+
+		MaterialSerializer::Serialize(materialHandle, std::string(workingDirectory.string() + m->GetName().C_Str() + ".rmat"));
+
 		return materialHandle;
 	}
 	

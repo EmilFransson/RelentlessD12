@@ -10,10 +10,22 @@
 
 #pragma once
 
-#if (defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)) || (defined(_XBOX_ONE) && defined(_TITLE))
-#ifndef USING_COREWINDOW
+#if !defined(USING_XINPUT) && !defined(USING_GAMEINPUT) && !defined(USING_COREWINDOW)
+
+#ifdef _GAMING_DESKTOP
+#include <grdk.h>
+#endif
+
+#if (defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_GAMES)) || (defined(_GAMING_DESKTOP) && (_GRDK_EDITION >= 220600))
+#define USING_GAMEINPUT
+#elif (defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)) || (defined(_XBOX_ONE) && defined(_TITLE))
 #define USING_COREWINDOW
 #endif
+
+#endif // !USING_XINPUT && !USING_GAMEINPUT && !USING_WINDOWS_GAMING_INPUT
+
+#if defined(USING_GAMEINPUT) && !defined(_GAMING_XBOX)
+#pragma comment(lib,"gameinput.lib")
 #endif
 
 #include <cstdint>
@@ -414,6 +426,12 @@ namespace DirectX
             bool OemClear : 1;          // VK_OEM_CLEAR, 0xFE
             bool Reserved26 : 1;
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-warning-option"
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+#endif
+
             bool __cdecl IsKeyDown(Keys key) const noexcept
             {
                 if (key <= 0xfe)
@@ -435,6 +453,10 @@ namespace DirectX
                 }
                 return false;
             }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
         };
 
         class KeyboardStateTracker
