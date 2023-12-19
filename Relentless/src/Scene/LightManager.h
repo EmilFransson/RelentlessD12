@@ -1,5 +1,5 @@
 #pragma once
-#include "..\ECS\EntityManager.h"
+#include "ECS/EntityManager.h"
 class StructuredBuffer;
 namespace Relentless
 {

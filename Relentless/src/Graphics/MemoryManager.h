@@ -1,9 +1,11 @@
 #pragma once
+#include "Assets/AssetMeta.h"
 #include "DescriptorHeap.h"
+#include "Renderer/MasterRenderer.h"
+#include "Resources/StructuredBuffer.h"
 #include "Resources/Texture.h"
 #include "Resources/UploadBuffer.h"
-#include "Resources/StructuredBuffer.h"
-#include "Renderer/MasterRenderer.h"
+#include "Utility/Common.h"
 namespace Relentless
 {
 	class ConstantBuffer;
@@ -30,6 +32,8 @@ namespace Relentless
 		[[nodiscard]] std::unique_ptr<ConstantBuffer>& GetConstantBuffer(size_t ID) noexcept { return m_ConstantBuffers[ID]; }
 		[[nodiscard]] uint32_t GetCBDescriptorIndex(const size_t constantBufferHandle) noexcept;
 		void FreeConstantBuffer(size_t cbHandle) noexcept;
+		void SetDirtyMaterial(const AssetHandle& handle) noexcept;
+		void UpdateDirtyMaterials();
 	private:
 		MemoryManager() noexcept = default;
 		~MemoryManager() noexcept = default;
@@ -45,5 +49,6 @@ namespace Relentless
 
 		std::queue<size_t> m_FreeConstantBufferHandles;
 		std::vector<std::unique_ptr<ConstantBuffer>> m_ConstantBuffers;
+		std::unordered_map<UUID, std::pair<AssetHandle, uint32_t>> m_DirtyMaterials; // UUID -> Remaining updates map
 	};
 }

@@ -1,5 +1,5 @@
 #pragma once
-#include "../../Utility/ManagerUtilities.h"
+#include "../../Assets/AssetMeta.h"
 
 namespace Relentless
 {
@@ -51,7 +51,7 @@ namespace Relentless
 		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
 		[[nodiscard]] const RenderMode GetRenderMode() const noexcept;
 		[[nodiscard]] uint32_t GetConstantBufferIndex() const noexcept;
-		static void UploadToGPU(const MaterialHandle& materialHandle) noexcept;
+		static void UploadToGPU(const AssetHandle& materialHandle) noexcept;
 		void ToggleAlbedoTextureUsage() noexcept;
 		void ToggleMetallicTextureUsage() noexcept;
 		void ToggleRoughnessTextureUsage() noexcept;
@@ -86,13 +86,13 @@ namespace Relentless
 		DirectX::XMFLOAT2 m_Offset;
 	private:
 		std::string m_Name;
-		TextureHandle m_AlbedoTextureHandle;
-		TextureHandle m_MetallicTextureHandle;
-		TextureHandle m_RoughnessTextureHandle;
-		TextureHandle m_NormalMapHandle;
-		TextureHandle m_HeightMapHandle;
-		TextureHandle m_AmbientOcclusionTextureHandle;
-		TextureHandle m_EmissionTextureHandle;
+		AssetHandle m_AlbedoTextureHandle;
+		AssetHandle m_MetallicTextureHandle;
+		AssetHandle m_RoughnessTextureHandle;
+		AssetHandle m_NormalMapHandle;
+		AssetHandle m_HeightMapHandle;
+		AssetHandle m_AmbientOcclusionTextureHandle;
+		AssetHandle m_EmissionTextureHandle;
 
 		bool m_UseAlbedoTexture;
 		bool m_UseMetallicTexture;
@@ -106,31 +106,32 @@ namespace Relentless
 		RenderMode m_RenderMode;
 
 		friend class MaterialSerializer;
+		friend class Serializer;
 	};
 
-	class MaterialManager
-	{
-	public:
-		MaterialManager() noexcept = default;
-		~MaterialManager() noexcept = default;
-		void Intitialize() noexcept;
-		[[nodiscard]] Material& GetMaterial(const MaterialHandle& materialHandle) noexcept;
-		[[nodiscard]] MaterialHandle& GetMaterialHandleByName(const std::string& materialname) noexcept;
-		[[nodiscard]] MaterialHandle PromoteToHandle(const UUID& uuid) noexcept;
-		void OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept;
-		[[nodiscard]] MaterialHandle Create(const std::string& name, const Material & = Material()) noexcept;
-		MaterialHandle CreateWithUUID(const UUID& materialHandle, const std::string& name, const Material & = Material()) noexcept;
-		__forceinline void Upload(const MaterialHandle& materialHandle) noexcept;
-		void SetDirty(const MaterialHandle& materialHandle) noexcept;
-		[[nodiscard]] std::vector<std::pair<MaterialHandle, uint8_t>>& GetDirtyMaterials() noexcept { return m_DirtyMaterials; }
-		[[nodiscard]] MaterialHandle& GetDefaultMaterialHandle() noexcept { return m_DefaultMaterialHandle; }
-		[[nodiscard]] bool Exists(const std::string& materialName) noexcept;
-	private:
-		std::queue<uint16_t> m_FreeList;
-		std::vector<Material> m_Materials;
-		std::unordered_map<std::string, MaterialHandle> m_StringToMaterialHandleMap;
-		std::vector<std::pair<MaterialHandle, uint8_t>> m_DirtyMaterials;
-
-		MaterialHandle m_DefaultMaterialHandle;
-	};
+	//class MaterialManager
+	//{
+	//public:
+	//	MaterialManager() noexcept = default;
+	//	~MaterialManager() noexcept = default;
+	//	void Intitialize() noexcept;
+	//	[[nodiscard]] Material& GetMaterial(const MaterialHandle& materialHandle) noexcept;
+	//	[[nodiscard]] MaterialHandle& GetMaterialHandleByName(const std::string& materialname) noexcept;
+	//	[[nodiscard]] MaterialHandle PromoteToHandle(const UUID& uuid) noexcept;
+	//	void OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept;
+	//	[[nodiscard]] MaterialHandle Create(const std::string& name, const Material & = Material()) noexcept;
+	//	MaterialHandle CreateWithUUID(const UUID& materialHandle, const std::string& name, const Material & = Material()) noexcept;
+	//	__forceinline void Upload(const MaterialHandle& materialHandle) noexcept;
+	//	void SetDirty(const MaterialHandle& materialHandle) noexcept;
+	//	[[nodiscard]] std::vector<std::pair<MaterialHandle, uint8_t>>& GetDirtyMaterials() noexcept { return m_DirtyMaterials; }
+	//	[[nodiscard]] AssetHandle GetDefaultMaterialHandle() noexcept { return m_DefaultMaterialHandle; }
+	//	[[nodiscard]] bool Exists(const std::string& materialName) noexcept;
+	//private:
+	//	std::queue<uint16_t> m_FreeList;
+	//	std::vector<Material> m_Materials;
+	//	std::unordered_map<std::string, MaterialHandle> m_StringToMaterialHandleMap;
+	//	std::vector<std::pair<MaterialHandle, uint8_t>> m_DirtyMaterials;
+	//
+	//	AssetHandle m_DefaultMaterialHandle;
+	//};
 }

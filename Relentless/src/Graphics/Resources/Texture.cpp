@@ -12,15 +12,51 @@ namespace Relentless
 		 :m_Width{textureSpecification.Width},
 	      m_Height{ textureSpecification.Height},
 		  m_Format{ textureSpecification.Format },
-		   m_ClearColor{ textureSpecification.ClearColor },
-		  m_MSAACount{ textureSpecification.MultiSampleCount },
+		  m_Samples{ textureSpecification.MultiSampleCount },
 		  IResource(name),
 		  m_SRVDescriptorHandle{}
 	{}
 
+	Texture::Texture()
+		: m_SRVDescriptorHandle{ },
+		  m_Width{ 0u },
+		  m_Height{ 0u },
+		  m_Format{ },
+		  m_Samples{ 0u },
+		  m_MipCount{ 0u }
+	{}
+
+	Texture::Texture(Texture&& otherTexture) noexcept
+		: IResource(std::move(otherTexture)),
+		m_SRVDescriptorHandle{ otherTexture.m_SRVDescriptorHandle },
+		m_Width{ otherTexture.m_Width },
+		m_Height{ otherTexture.m_Height },
+		m_Format{ otherTexture.m_Format },
+		m_Samples{ otherTexture.m_Samples },
+		m_MipCount{ otherTexture.m_MipCount }
+	{}
+
+	Texture& Texture::operator=(Texture&& otherTexture) noexcept
+	{
+		RLS_ASSERT(this != &otherTexture, "Redundant move assignment operation performed.");
+		if (this != &otherTexture)
+		{
+			IResource::operator=(std::move(otherTexture));
+
+			m_Width = otherTexture.m_Width;
+			m_Height = otherTexture.m_Height;
+			m_Format = otherTexture.m_Format;
+			m_Samples = otherTexture.m_Samples;
+			m_MipCount = otherTexture.m_MipCount;
+		}
+
+		return *this;
+	}
+
 	RenderTexture::RenderTexture(const RenderTextureSpecification& textureSpecification, const std::string& name) noexcept
 		: Texture(textureSpecification, name),
-		  m_RTVDescriptorHandle{}
+		  m_RTVDescriptorHandle{},
+		  m_ClearColor{ textureSpecification.ClearColor }
 	{
 		RLS_ASSERT(textureSpecification.Width > 0 && textureSpecification.Height > 0, "Texture dimension is not valid.");
 		
@@ -103,120 +139,8 @@ namespace Relentless
 
 	Texture2D::Texture2D(const std::string& fileName, bool srgb) noexcept
 	{
-	//	// Create WIC factory
-	//	Microsoft::WRL::ComPtr<IWICImagingFactory> pFactory = nullptr;
-	//	DXCall(CoCreateInstance(
-	//		CLSID_WICImagingFactory,
-	//		NULL,
-	//		CLSCTX_INPROC_SERVER,
-	//		IID_PPV_ARGS(&pFactory)
-	//	));
-	//
-	//	std::wstring wstr = ConvertStringToWstring(fileName);
-	//
-	//	Microsoft::WRL::ComPtr<IWICBitmapDecoder> decoder;
-	//	DXCall(pFactory->CreateDecoderFromFilename(
-	//		wstr.c_str(),  // Change to your image path
-	//		NULL,
-	//		GENERIC_READ,
-	//		WICDecodeMetadataCacheOnDemand,
-	//		&decoder
-	//	));
-	//
-	//	Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> frame;
-	//	DXCall(decoder->GetFrame(0, &frame));
-	//
-	//	WICPixelFormatGUID pixelFormat;
-	//	DXCall(frame->GetPixelFormat(&pixelFormat));
-	//
-	//	UINT nrofchannels;
-	//
-	//	if (pixelFormat == GUID_WICPixelFormat32bppPBGRA)
-	//	{
-	//		nrofchannels = 4; // The image has pre-multiplied Red, Green, Blue, and Alpha channels
-	//	}
-	//	else if(pixelFormat == GUID_WICPixelFormat32bppRGBA || pixelFormat == GUID_WICPixelFormat32bppBGRA)
-	//	{
-	//		nrofchannels = 4; // The image has Red, Green, Blue, and Alpha channels
-	//	}
-	//	else if (pixelFormat == GUID_WICPixelFormat24bppBGR || pixelFormat == GUID_WICPixelFormat24bppRGB)
-	//	{
-	//		nrofchannels = 3; // The image has Red, Green, and Blue channels
-	//	}
-	//	else if (pixelFormat == GUID_WICPixelFormat8bppGray)
-	//	{
-	//		nrofchannels = 1; // The image is a grayscale image with a single channel
-	//	}
-	//	else
-	//	{
-	//		// Handle other pixel formats or report an error
-	//		nrofchannels = 0; // Set to 0 to indicate an unknown/unsupported format
-	//	}
-	//
-	//	UINT width, height;
-	//	DXCall(frame->GetSize(&width, &height));
-	//	
-	//	std::unique_ptr<BYTE[]> data(RLS_NEW BYTE[width * height * nrofchannels]);  // Adjust the 4 depending on your format
-	//	DXCall(frame->CopyPixels(NULL, width * nrofchannels, width * height * nrofchannels, data.get()));
-	//
-	//	UINT largestDimension = std::max(width, height);
-	//	UINT mipmapLevels = 1;  // Start counting from the base level
-	//
-	//	while (largestDimension > 1) 
-	//	{
-	//		largestDimension /= 2;
-	//		++mipmapLevels;
-	//	}
-	//
-	//DirectX::ResourceUploadBatch upload(D3D12Core::GetDevice().Get());
-	//
-	//	upload.Begin();
-	//
-	//	D3D12_RESOURCE_DESC desc = {};
-	//	desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	//	desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-	//	desc.Width = width;
-	//	desc.Height = height;
-	//	desc.DepthOrArraySize = 1;
-	//	desc.MipLevels = mipmapLevels;
-	//	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	//	desc.SampleDesc.Count = 1;
-	//	desc.SampleDesc.Quality = 0;
-	//	desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-	//	desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-	//
-	//	D3D12_HEAP_PROPERTIES defaultHeapProperties = {};
-	//	defaultHeapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
-	//	defaultHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	//	defaultHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	//	defaultHeapProperties.CreationNodeMask = 1;
-	//	defaultHeapProperties.VisibleNodeMask = 1;
-	//
-	//	DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
-	//		&defaultHeapProperties,
-	//		D3D12_HEAP_FLAG_NONE,
-	//		&desc,
-	//		D3D12_RESOURCE_STATE_COPY_DEST,
-	//		nullptr,
-	//		IID_PPV_ARGS(&m_pResource)));
-	//
-	//	D3D12_SUBRESOURCE_DATA initData = { data.get() , width * nrofchannels, 0 };
-	//	DXCall_STD(upload.Upload(m_pResource.Get(), 0, &initData, 1));
-	//
-	//	DXCall_STD(upload.Transition(m_pResource.Get(),
-	//		D3D12_RESOURCE_STATE_COPY_DEST,
-	//		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-	//
-	//	DXCall_STD(upload.GenerateMips(m_pResource.Get()));
-	//
-	//		// Upload the resources to the GPU.
-	//		auto finish = upload.End(D3D12Core::GetCommandQueue().Get());
-	//
-	//	// Wait for the upload thread to terminate
-	//	finish.wait();
-
 		DirectX::ResourceUploadBatch resourceUpload(D3D12Core::GetDevice().Get());
-		//
+
 		std::filesystem::path fullPath = fileName;
 		RLS_ASSERT(std::filesystem::exists(fullPath), "File path is invalid.");
 		m_Name = fullPath.string();
@@ -234,7 +158,7 @@ namespace Relentless
 		}
 
 		resourceUpload.Begin();
-		//
+
 		DXCall(DirectX::CreateWICTextureFromFileEx(
 			D3D12Core::GetDevice().Get(),
 			resourceUpload, 
@@ -242,11 +166,10 @@ namespace Relentless
 			&m_pResource)
 		);
 		
-		
 		// Upload the resources to the GPU.
 		 auto uploadResourcesFinished = resourceUpload.End(D3D12Core::GetCommandQueue().Get());
-		//
-		//// Wait for the upload thread to terminate
+
+		// Wait for the upload thread to terminate
 		uploadResourcesFinished.wait();
 
 		auto textureDescriptor = m_pResource->GetDesc();
@@ -263,8 +186,46 @@ namespace Relentless
 		m_SRVDescriptorHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::SRV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_SRVDescriptorHandle.CPUHandle));
 		
+		m_Width = static_cast<uint32_t>(textureDescriptor.Width);
+		m_Height = textureDescriptor.Height;
+		m_Format = textureDescriptor.Format;
+		m_Samples = static_cast<uint8_t>(textureDescriptor.SampleDesc.Count);
+		m_MipCount = textureDescriptor.MipLevels;
+
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(m_Name).c_str());
 		RLS_CORE_INFO("Created Texture2D '{0}' of size [width, height]=[{1},{2}]", m_Name, textureDescriptor.Width, textureDescriptor.Height);
+	}
+
+	Texture2D::Texture2D(Texture2D&& otherTexture2D) noexcept
+		: Texture(std::move(otherTexture2D)),
+		  m_IsSRGB{ otherTexture2D.m_IsSRGB } {}
+
+	Texture2D::Texture2D(const Texture2DSpecification& specification) noexcept
+	{
+		m_pResource = specification.pResource;
+		m_SRVDescriptorHandle = specification.DescriptorHandleSRV;
+		m_Name = specification.Name;
+		m_IsSRGB = specification.IsSRGB;
+		m_Width = specification.Width;
+		m_Height = specification.Height;
+		m_MipCount = specification.MipCount;
+		m_Samples = specification.SampleCount;
+		m_Format = specification.Format;
+
+		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring("[Texture2D] - " + m_Name).c_str());
+		RLS_CORE_INFO("Created Texture2D '{0}' of size [width, height]=[{1},{2}]", m_Name, m_Width, m_Height);
+	}
+
+	Texture2D& Texture2D::operator=(Texture2D&& otherTexture) noexcept
+	{
+		RLS_ASSERT(this != &otherTexture, "Redundant move assignment operation performed.");
+		if (this != &otherTexture)
+		{
+			Texture::operator=(std::move(otherTexture));
+			m_IsSRGB = otherTexture.m_IsSRGB;
+		}
+
+		return *this;
 	}
 
 	std::shared_ptr<Texture2D> Texture2D::Create(const std::string& fileName, bool srgb) noexcept
@@ -272,8 +233,8 @@ namespace Relentless
 		return std::make_shared<Texture2D>(fileName, srgb);
 	}
 
-	std::shared_ptr<Texture2D> Texture2D::CreateFromPath(const std::filesystem::path& filePath, bool srgb) noexcept
+	[[nodiscard]] Texture2D Texture2D::LoadFromFile(const std::filesystem::path& filePath) noexcept
 	{
-		return std::make_shared<Texture2D>(filePath.string(), srgb);
+		return Texture2D(filePath.string());
 	}
 }

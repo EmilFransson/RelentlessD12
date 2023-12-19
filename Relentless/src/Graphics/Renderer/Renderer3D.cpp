@@ -8,7 +8,7 @@
 #include "../MemoryManager.h"
 #include "Camera/PerspectiveCamera.h"
 #include "../Shaders/ShaderLibrary.h"
-#include "../Resources/AssetManager.h"
+#include "Assets/AssetManager.h"
 #include "../../Scene/Scene.h"
 #include "RenderPass.h"
 

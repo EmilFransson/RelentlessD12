@@ -1,6 +1,6 @@
+#include "Graphics/MemoryManager.h"
+#include "Graphics/Resources/StructuredBuffer.h"
 #include "LightManager.h"
-#include "..\Graphics\Resources\StructuredBuffer.h"
-#include "..\Graphics\MemoryManager.h"
 
 namespace Relentless
 {

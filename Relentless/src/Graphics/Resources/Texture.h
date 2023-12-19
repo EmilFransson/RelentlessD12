@@ -4,19 +4,28 @@ namespace Relentless
 {
 	struct TextureSpecification
 	{
-		uint32_t Width;
-		uint32_t Height;
-		DXGI_FORMAT Format;
-		DirectX::XMFLOAT4 ClearColor;
+		uint32_t Width{ 0u };
+		uint32_t Height{ 0u };
+		DXGI_FORMAT Format{ DXGI_FORMAT::DXGI_FORMAT_UNKNOWN };
 	};
 
 	struct RenderTextureSpecification : public TextureSpecification
 	{
-		DXGI_FORMAT Format;
 		uint8_t MultiSampleCount;
 		bool CreateSRV;
 		bool isSRGB{true};
-		D3D12_RESOURCE_FLAGS Flags = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+		D3D12_RESOURCE_FLAGS Flags{ D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET };
+		DirectX::XMFLOAT4 ClearColor;
+	};
+
+	struct Texture2DSpecification : public TextureSpecification
+	{
+		Microsoft::WRL::ComPtr<ID3D12Resource> pResource{ nullptr };
+		DescriptorHandle DescriptorHandleSRV;
+		std::string Name{ "?" };
+		bool IsSRGB{ true };
+		uint32_t MipCount{0u};
+		uint32_t SampleCount{0u};
 	};
 
 	class Texture : public IResource
@@ -26,23 +35,24 @@ namespace Relentless
 		[[nodiscard]] constexpr const uint32_t GetHeight() const noexcept { return m_Height; }
 		[[nodiscard]] constexpr const std::pair<uint32_t, uint32_t>& GetDimensions() const noexcept { return { m_Width, m_Height }; }
 		[[nodiscard]] constexpr const DXGI_FORMAT GetFormat() const noexcept { return m_Format; }
-		[[nodiscard]] constexpr const uint8_t GetMultiSampleCount() const noexcept { return m_MSAACount; }
-		[[nodiscard]] constexpr const DirectX::XMFLOAT4& GetClearColor() const noexcept { return m_ClearColor; }
+		[[nodiscard]] constexpr const uint8_t GetMultiSampleCount() const noexcept { return m_Samples; }
+		
 		[[nodiscard]] constexpr const DescriptorHandle& GetSRVDescriptorHandle() const noexcept { return m_SRVDescriptorHandle; }
+		[[nodiscard]] constexpr const uint32_t GetMipCount() const noexcept { return m_MipCount; }
 	protected:
 		Texture(const RenderTextureSpecification& textureSpecification, const std::string& name = "?") noexcept;
-		Texture() noexcept = default;
+		Texture();
+		Texture(Texture& otherTexture) noexcept = delete;
 		virtual ~Texture() noexcept override = default;
-		Texture(Texture&& other) noexcept = default;
-		Texture& operator=(Texture&& other) noexcept = default;
+		Texture(Texture&& otherTexture) noexcept;
+		Texture& operator=(Texture&& otherTexture) noexcept;
 	protected:
 		DescriptorHandle m_SRVDescriptorHandle;
-	private:
 		uint32_t m_Width;
 		uint32_t m_Height;
 		DXGI_FORMAT m_Format;
-		DirectX::XMFLOAT4 m_ClearColor;
-		uint8_t m_MSAACount;
+		uint8_t m_Samples;
+		uint32_t m_MipCount;
 	};
 
 	class RenderTexture : public Texture
@@ -52,20 +62,24 @@ namespace Relentless
 		virtual ~RenderTexture() noexcept override final = default;
 		[[nodiscard]] static std::shared_ptr<RenderTexture> Create(RenderTextureSpecification& textureSpecification, const std::string& name = "?") noexcept;
 		[[nodiscard]] constexpr const DescriptorHandle& GetRTVDescriptorHandle() const noexcept { return m_RTVDescriptorHandle; }
+		[[nodiscard]] constexpr const DirectX::XMFLOAT4& GetClearColor() const noexcept { return m_ClearColor; }
 	private:
 		DescriptorHandle m_RTVDescriptorHandle;
+		DirectX::XMFLOAT4 m_ClearColor;
 	};
 
 	class Texture2D : public Texture 
 	{
 	public:
 		explicit Texture2D(const std::string& fileName, bool srgb = false) noexcept;
-		Texture2D() noexcept {}
 		virtual ~Texture2D() noexcept override final = default;
-		Texture2D(Texture2D&& other) noexcept = default;
-		Texture2D& operator=(Texture2D&& other) noexcept = default;
+		Texture2D(Texture2D& otherTexture2D) noexcept = delete;
+		Texture2D(Texture2D&& otherTexture2D) noexcept;
+		explicit Texture2D(const Texture2DSpecification& specification) noexcept;
+		Texture2D& operator=(Texture2D&& otherTexture) noexcept;
 		[[nodiscard]] static std::shared_ptr<Texture2D> Create(const std::string& fileName, bool srgb = false) noexcept;
-		[[nodiscard]] static std::shared_ptr<Texture2D> CreateFromPath(const std::filesystem::path& filePath, bool srgb = false) noexcept;
-		[[nodiscard]] static Texture2D LoadFromFile(const std::filesystem::path& filePath) noexcept { return {}; }
+		[[nodiscard]] static Texture2D LoadFromFile(const std::filesystem::path& filePath) noexcept;
+	private:
+		bool m_IsSRGB;
 	};
 }

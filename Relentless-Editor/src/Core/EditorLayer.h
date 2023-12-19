@@ -69,5 +69,7 @@ namespace Relentless
 
 		std::string m_Path{};
 		bool m_CreateNewScene{ false };
+
+		AssetHandle aex;
 	};
 }

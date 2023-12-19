@@ -126,7 +126,7 @@ namespace Relentless
 
 		std::shared_ptr<ReadBackBuffer> m_pIdentifierReadbackBuffer{ nullptr };
 		std::shared_ptr<RenderTexture> m_pResolvedTexture{ nullptr };
-		TextureHandle m_BRDFLutTextureHandle;
+		AssetHandle m_BRDFLutTextureHandle;
 		
 		GFSDK_SSAO_Parameters m_HBAOPlusParameters;
 

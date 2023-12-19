@@ -10,7 +10,7 @@ namespace Relentless
 		void OnImGuiRender(const bool show) noexcept;
 		void SetSelectedEntity(const entity entityID) noexcept;
 		void SetActiveScene(Scene* const pScene) noexcept;
-		void SetOnMaterialSelectedCallback(std::function<void(const MaterialHandle& materialHandle)> callback) noexcept;
+		void SetOnMaterialSelectedCallback(std::function<void(const AssetHandle& materialHandle)> callback) noexcept;
 	private:
 		void DrawAllComponentNodes();
 		template<typename Component, typename ContextFunction>
@@ -22,6 +22,6 @@ namespace Relentless
 		entity m_SelectedEntity;
 		Scene* m_pScene;
 
-		std::function<void(const MaterialHandle& materialHandle)> m_OnMaterialSelectedCallback;
+		std::function<void(const AssetHandle& materialHandle)> m_OnMaterialSelectedCallback;
 	};
 }

@@ -1,13 +1,13 @@
-#include "Window.h"
-#include "../EventSystem/MouseEvents.h"
-#include "../EventSystem/KeyboardEvents.h"
-#include "../EventSystem/WindowEvents.h"
+#include "EventSystem/MouseEvents.h"
+#include "EventSystem/KeyboardEvents.h"
+#include "EventSystem/WindowEvents.h"
+#include "Graphics/D3D12Core.h"
+#include "Graphics/MemoryManager.h"
+#include "Input/Mouse.h"
+#include "Input/Keyboard.h"
 #include "Utility.h"
-#include "../Input/Mouse.h"
-#include "../Input/Keyboard.h"
-#include "../Graphics/D3D12Core.h"
-#include "../Graphics/MemoryManager.h"
 #include "../../vendor/includes/ImGUI/imgui.h"
+#include "Window.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 

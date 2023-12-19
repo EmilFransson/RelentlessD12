@@ -1,4 +1,5 @@
 #include "Scene.h"
+#include "../Assets/AssetManager.h"
 namespace Relentless
 {
 	Scene::Scene(const char* name) noexcept
@@ -425,18 +426,7 @@ namespace Relentless
 			//});
 
 		/*MATERIALS*/
-		auto& dirtyMaterials = AssetManager::GetMaterialManager().GetDirtyMaterials();
-		for (uint32_t i{0u}; i < dirtyMaterials.size(); ++i)
-		{
-			Material::UploadToGPU(dirtyMaterials[i].first);
-			dirtyMaterials[i].second--;
-
-			if (dirtyMaterials[i].second == 0u)
-			{
-				dirtyMaterials.erase(dirtyMaterials.begin() + i);
-				i--;
-			}
-		}
+		MemoryManager::Get().UpdateDirtyMaterials();
 
 		/****LIGHTS****/
 		m_EntityManager.Collect<DirectionalLightComponent, DirtyTransformComponent>().Do([&](entity entityID, DirectionalLightComponent& lc)
@@ -513,6 +503,112 @@ namespace Relentless
 		return lightEntity;
 	}
 
+	entity Scene::CreateShape(const Shape shape) noexcept
+	{
+		std::filesystem::path fullPath = GetFullShapePath(shape);
+		std::string nameString = fullPath.stem().string();
+
+		AssetHandle meshHandle = AssetManager::GetHandleByPath(nameString);
+
+		auto entity = CreateEntity(nameString.c_str());
+
+		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
+		mfc.HandleEX = meshHandle;
+
+		m_EntityManager.Add<OpaquePassComponent>(entity);
+
+		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
+
+		mrc.HandleEX = AssetManager::GetDefaultMaterialHandle();
+
+		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
+
+		return entity;
+	}
+
+	entity Scene::CreateExtra(const Extra extra) noexcept
+	{
+		std::filesystem::path fullPath = GetFullExtraPath(extra);
+		std::string nameString = fullPath.stem().string();
+
+		auto entity = CreateEntity(nameString.c_str());
+
+		AssetHandle meshHandle = AssetManager::GetHandleByPath(nameString);
+
+		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
+		mfc.HandleEX = meshHandle;
+
+		m_EntityManager.Add<OpaquePassComponent>(entity);
+		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
+
+		mrc.HandleEX = AssetManager::GetDefaultMaterialHandle();
+		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
+
+		return entity;
+	}
+
+	std::string Scene::GetFullShapePath(const Shape shape) noexcept
+	{
+		if (shape == Shape::Triangle)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Triangle.obj";
+		}
+		else if (shape == Shape::Cube)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Cube.obj";
+		}
+		else if (shape == Shape::Cylinder)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Cylinder.gltf";
+		}
+		else if  (shape == Shape::Capsule)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Capsule.gltf";
+		}
+		else if (shape == Shape::Cone)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Cone.gltf";
+		}
+		else if (shape == Shape::Sphere)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Sphere.obj";
+		}
+		else if (shape == Shape::IcoSphere)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Icosphere.obj";
+		}
+		else if (shape == Shape::Torus)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Torus.obj";
+		}
+		else if (shape == Shape::Quad)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Quad.gltf";
+		}
+		else if (shape == Shape::Plane)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Plane.gltf";
+		}
+		else
+		{
+			RLS_ASSERT(false, "Unknown shape type.");
+			return {};
+		}
+	}
+
+	std::string Scene::GetFullExtraPath(const Extra extra) noexcept
+	{
+		if (extra == Extra::UtahTeapot)
+		{
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/UtahTeapot.gltf";
+		}
+		else
+		{
+			RLS_ASSERT(false, "Unknown extra type.");
+			return {};
+		}
+	}
+
 	entity Scene::CreateCamera(const char* name) noexcept
 	{
 		auto camera = CreateEntity(name);
@@ -575,6 +671,15 @@ namespace Relentless
 		MemoryManager::Get().FreeConstantBuffer(m_EntityManager.Get<TransformComponent>(entityHandle).ConstantBufferID);
 
 		m_EntityManager.DestroyEntity(entityHandle);
+	}
+
+	void Scene::SetViewportPanelSize(const ImVec2& viewportPanelSize) noexcept
+	{
+		m_ViewportPanelSize = viewportPanelSize;
+		m_Viewport.Width = m_ViewportPanelSize.x;
+		m_Viewport.Height = m_ViewportPanelSize.y;
+		m_ScissorRect.right = static_cast<LONG>(m_ViewportPanelSize.x);
+		m_ScissorRect.bottom = static_cast<LONG>(m_ViewportPanelSize.y);
 	}
 
 	bool Scene::EntityIsDescendant(const entity ancestor, const entity descendant) noexcept

@@ -130,7 +130,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetAlbedoTexture(*textureHandle);
 						changedMaterial = true;
 					}
@@ -153,7 +153,8 @@ namespace Relentless
 					if (ImGui::MenuItem("Reset"))
 					{
 						material.RemoveAlbedoTexture();
-						Material::UploadToGPU(m_InspectedAssetHandle);
+						RLS_ASSERT(false, "PROBLEM BRO, SEE BELOW");
+						//Material::UploadToGPU(m_InspectedAssetHandle);
 					}
 					ImGui::EndPopup();
 				}
@@ -167,7 +168,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetAlbedoTexture(*textureHandle);
 						changedMaterial = true;
 					}
@@ -213,7 +214,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetMetallicTexture(*textureHandle);
 						changedMaterial = true;
 					}
@@ -236,7 +237,8 @@ namespace Relentless
 					if (ImGui::MenuItem("Reset"))
 					{
 						material.RemoveMetallicTexture();
-						Material::UploadToGPU(m_InspectedAssetHandle);
+						RLS_ASSERT(false, "PROBLEM BRO, SEE BELOW");
+						//Material::UploadToGPU(m_InspectedAssetHandle);
 					}
 					ImGui::EndPopup();
 				}
@@ -250,7 +252,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetMetallicTexture(*textureHandle);
 						changedMaterial = true;
 					}
@@ -276,7 +278,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetRoughnessTexture(*textureHandle);
 						changedMaterial = true;
 					}
@@ -299,7 +301,8 @@ namespace Relentless
 					if (ImGui::MenuItem("Reset"))
 					{
 						material.RemoveRoughnessTexture();
-						Material::UploadToGPU(m_InspectedAssetHandle);
+						RLS_ASSERT(false, "PROBLEM BRO, see below");
+						//Material::UploadToGPU(m_InspectedAssetHandle);
 					}
 					ImGui::EndPopup();
 				}
@@ -313,7 +316,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetRoughnessTexture(*textureHandle);
 						changedMaterial = true;
 					}
@@ -340,7 +343,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetNormalMap(*textureHandle);
 						changedMaterial = true;
 					}
@@ -363,7 +366,8 @@ namespace Relentless
 					if (ImGui::MenuItem("Reset"))
 					{
 						material.RemoveNormalMap();
-						Material::UploadToGPU(m_InspectedAssetHandle);
+						RLS_ASSERT(false, "SEE BELOW");
+						//Material::UploadToGPU(m_InspectedAssetHandle);
 					}
 					ImGui::EndPopup();
 				}
@@ -377,7 +381,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetNormalMap(*textureHandle);
 						changedMaterial = true;
 					}
@@ -402,7 +406,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetHeightMap(*textureHandle);
 						changedMaterial = true;
 					}
@@ -425,7 +429,8 @@ namespace Relentless
 					if (ImGui::MenuItem("Reset"))
 					{
 						material.RemoveHeightMap();
-						Material::UploadToGPU(m_InspectedAssetHandle);
+						RLS_ASSERT(false, "SEE BELOW");
+						//Material::UploadToGPU(m_InspectedAssetHandle);
 					}
 					ImGui::EndPopup();
 				}
@@ -439,7 +444,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetHeightMap(*textureHandle);
 						changedMaterial = true;
 					}
@@ -469,7 +474,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetAmbientOcclusionTexture(*textureHandle);
 						changedMaterial = true;
 					}
@@ -492,7 +497,8 @@ namespace Relentless
 					if (ImGui::MenuItem("Reset"))
 					{
 						material.RemoveAmbientOcclusionTexture();
-						Material::UploadToGPU(m_InspectedAssetHandle);
+						RLS_ASSERT(false, "SEE BELOW");
+						//Material::UploadToGPU(m_InspectedAssetHandle);
 					}
 					ImGui::EndPopup();
 				}
@@ -506,7 +512,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetAmbientOcclusionTexture(*textureHandle);
 						changedMaterial = true;
 					}
@@ -534,7 +540,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetEmissionTexture(*textureHandle);
 						changedMaterial = true;
 					}
@@ -557,7 +563,8 @@ namespace Relentless
 					if (ImGui::MenuItem("Reset"))
 					{
 						material.RemoveEmissionTexture();
-						Material::UploadToGPU(m_InspectedAssetHandle);
+						RLS_ASSERT(false, "SEE BELOW");
+						//Material::UploadToGPU(m_InspectedAssetHandle);
 					}
 					ImGui::EndPopup();
 				}
@@ -571,7 +578,7 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
 					{
-						TextureHandle* textureHandle = (TextureHandle*)payLoad->Data;
+						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
 						material.SetEmissionTexture(*textureHandle);
 						changedMaterial = true;
 					}
@@ -629,7 +636,10 @@ namespace Relentless
 			
 			
 			if (changedMaterial)
-				AssetManager::GetMaterialManager().SetDirty(m_InspectedAssetHandle);
+			{
+				RLS_ASSERT(false, "SEE BELOW");
+				//AssetManager::GetMaterialManager().SetDirty(m_InspectedAssetHandle);
+			}
 
 			if (material.GetName() == "Default-Material")
 			{

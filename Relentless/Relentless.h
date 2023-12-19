@@ -10,6 +10,8 @@
 
 //Utility:
 #include <src/Utility/FileDialogs.h>
+#include <src/Utility/Common.h>
+
 
 //Events:
 #include <src/ImGui/ImguiLayer.h>
@@ -30,7 +32,7 @@
 #include <src/Graphics/Resources/Texture.h>
 #include <src/Graphics/Resources/VertexBuffer.h>
 #include <src/Graphics/Resources/IndexBuffer.h>
-#include <src/Graphics/Resources/AssetManager.h>
+#include <src/Assets/AssetManager.h>
 #include <src/Mesh/Mesh.h>
 
 //IO
@@ -52,5 +54,4 @@
 
 //Serialization
 #include <src/Scene/SceneSerializer.h>
-#include <src/Graphics/Resources/MaterialSerializer.h>
 #include <src/Graphics/Resources/TextureSerializer.h>

@@ -57,52 +57,52 @@ namespace Relentless
 				if (ImGui::MenuItem("Triangle"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape<Shape::Triangle>();
+					m_SelectedEntity = m_pScene->CreateShape(Shape::Triangle);
 				}
 				if (ImGui::MenuItem("Cube"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape<Shape::Cube>();
+					m_SelectedEntity = m_pScene->CreateShape(Shape::Cube);
 				}
 				if (ImGui::MenuItem("Cylinder"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape<Shape::Cylinder>();
+					m_SelectedEntity = m_pScene->CreateShape(Shape::Cylinder);
 				}
 				if (ImGui::MenuItem("Capsule"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape<Shape::Capsule>();
+					m_SelectedEntity = m_pScene->CreateShape(Shape::Capsule);
 				}
 				if (ImGui::MenuItem("Cone"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape<Shape::Cone>();
+					m_SelectedEntity = m_pScene->CreateShape(Shape::Cone);
 				}
 				if (ImGui::MenuItem("Sphere"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape<Shape::Sphere>();
+					m_SelectedEntity = m_pScene->CreateShape(Shape::Sphere);
 				}
 				if (ImGui::MenuItem("IcoSphere"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape<Shape::IcoSphere>();
+					m_SelectedEntity = m_pScene->CreateShape(Shape::IcoSphere);
 				}
 				if (ImGui::MenuItem("Torus"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape<Shape::Torus>();
+					m_SelectedEntity = m_pScene->CreateShape(Shape::Torus);
 				}
 				if ( ImGui::MenuItem("Quad"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape<Shape::Quad>();
+					m_SelectedEntity = m_pScene->CreateShape(Shape::Quad);
 				}
 				if (ImGui::MenuItem("Plane"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape<Shape::Plane>();
+					m_SelectedEntity = m_pScene->CreateShape(Shape::Plane);
 				}
 				ImGui::EndMenu();
 			}
@@ -112,7 +112,7 @@ namespace Relentless
 				if (ImGui::MenuItem("Utah Teapot"))
 				{
 					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateExtra<Extra::UtahTeapot>();
+					m_SelectedEntity = m_pScene->CreateExtra(Extra::UtahTeapot);
 				}
 				ImGui::EndMenu();
 			}

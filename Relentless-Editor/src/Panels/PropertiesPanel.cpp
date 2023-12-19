@@ -33,7 +33,7 @@ namespace Relentless
 		m_pScene = pScene;
 	}
 
-	void PropertiesPanel::SetOnMaterialSelectedCallback(std::function<void(const MaterialHandle& materialHandle)> callback) noexcept
+	void PropertiesPanel::SetOnMaterialSelectedCallback(std::function<void(const AssetHandle& materialHandle)> callback) noexcept
 	{
 		m_OnMaterialSelectedCallback = callback;
 	}
@@ -216,9 +216,9 @@ namespace Relentless
 				auto& mfc = m_pScene->GetEntityManager().Get<MeshFilterComponent>(m_SelectedEntity);
 
 				char input[40];
-				if (mfc.MeshHandle != NULL_HANDLE)
+				if (mfc.HandleEX != NULL_HANDLE)
 				{
-					Mesh& mesh = AssetManager::GetMeshManager().GetMesh(mfc.MeshHandle);
+					Mesh& mesh = AssetManager::Get<Mesh>(mfc.HandleEX);
 					std::string name = mesh.GetName();
 					strcpy_s(input, sizeof(input), name.c_str());
 				}
@@ -298,7 +298,7 @@ namespace Relentless
 		DrawComponentNode<MeshRendererComponent>("Mesh Renderer", [this]()
 			{
 				auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(m_SelectedEntity);
-				std::string materialName = mrc.MaterialHandle != NULL_HANDLE ? AssetManager::Get<Material>(mrc.MaterialHandle).GetName() : "Empty";
+				std::string materialName = mrc.HandleEX != NULL_HANDLE ? AssetManager::Get<Material>(mrc.HandleEX).GetName() : "Empty";
 
 				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 				ImGui::InputText("Material", (char*)materialName.c_str(), materialName.size(), ImGuiInputTextFlags_ReadOnly);
@@ -307,8 +307,8 @@ namespace Relentless
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_MATERIAL"))
 					{
-						const MaterialHandle* pMaterialHandle = (MaterialHandle*)payLoad->Data;
-						mrc.MaterialHandle = *pMaterialHandle;
+						const AssetHandle* pMaterialHandle = (AssetHandle*)payLoad->Data;
+						mrc.HandleEX = *pMaterialHandle;
 					}
 					ImGui::EndDragDropTarget();
 				}
@@ -321,9 +321,9 @@ namespace Relentless
 				ImGui::InvisibleButton("##overlay", size);
 				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
 				{
-					if (mrc.MaterialHandle != NULL_HANDLE)
+					if (mrc.HandleEX != NULL_HANDLE)
 					{
-						m_OnMaterialSelectedCallback(mrc.MaterialHandle);
+						m_OnMaterialSelectedCallback(mrc.HandleEX);
 					}
 				}
 

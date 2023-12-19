@@ -1,5 +1,5 @@
 #pragma once
-#include "../EventSystem/EventPublisher.h"
+#include "EventSystem/EventPublisher.h"
 namespace Relentless
 {
 	enum class RLS_KEY : uint8_t 

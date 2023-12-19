@@ -9,7 +9,7 @@ set (ExternalLibPath "${CMAKE_SOURCE_DIR}/Relentless-Editor/vendor/libs")
 
 add_executable("${ExecutableName}" "${SourceFiles}")
 
-target_include_directories("${ExecutableName}" PRIVATE "src/")
+target_include_directories("${ExecutableName}" PRIVATE "${CMAKE_SOURCE_DIR}/Relentless/src/")
 target_include_directories("${ExecutableName}" PRIVATE "${CMAKE_SOURCE_DIR}/Relentless/" "${ExternalIncludePath}")
 
 target_link_libraries("${ExecutableName}" PRIVATE "Relentless")

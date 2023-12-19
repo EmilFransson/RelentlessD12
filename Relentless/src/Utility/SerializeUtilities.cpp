@@ -32,12 +32,4 @@ namespace Relentless
 		out << s;
 		return out;
 	}
-
-	UUID ConvertStringToGUID(const std::string& guidString) noexcept
-	{
-		std::wstring GUIDAsWString = ConvertStringToWstring(guidString);
-		GUID uuid;
-		IIDFromString(GUIDAsWString.c_str(), &uuid);
-		return uuid;
-	}
 }

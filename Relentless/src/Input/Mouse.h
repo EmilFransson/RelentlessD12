@@ -1,5 +1,5 @@
 #pragma once
-#include "../EventSystem/EventPublisher.h"
+#include "EventSystem/EventPublisher.h"
 namespace Relentless
 {
 	enum class RLS_BUTTON : uint8_t {Left = 0u, Right, Wheel};

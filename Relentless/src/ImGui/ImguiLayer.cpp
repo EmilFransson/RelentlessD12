@@ -1,7 +1,7 @@
+#include "Core/Window.h"
+#include "Graphics/MemoryManager.h"
+#include "Graphics/D3D12Core.h"
 #include "ImguiLayer.h"
-#include "../Graphics/D3D12Core.h"
-#include "../Core/Window.h"
-#include "../Graphics/MemoryManager.h"
 namespace Relentless
 {
 	ImguiLayer::ImguiLayer() noexcept

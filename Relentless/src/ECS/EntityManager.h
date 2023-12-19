@@ -1,7 +1,7 @@
 #pragma once
-#include "../../vendor/includes/DenseHashMap/dense_hash_map.hpp"
-#include <StaticTypeInfo/type_index.h>
 #include "Component.h"
+#include <StaticTypeInfo/type_index.h>
+#include "../../vendor/includes/DenseHashMap/dense_hash_map.hpp"
 
 namespace Relentless
 {

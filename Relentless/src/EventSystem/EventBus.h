@@ -1,5 +1,5 @@
 #pragma once
-#include "../Core/Application.h"
+#include "Core/Application.h"
 namespace Relentless
 {
 	class IEvent;

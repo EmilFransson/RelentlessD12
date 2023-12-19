@@ -2,7 +2,7 @@
 #include "D3D12Core.h"
 #include "../Core/Window.h"
 #include "Resources/ConstantBuffer.h"
-#include "Resources/AssetManager.h"
+#include "Assets/AssetManager.h"
 namespace Relentless
 {
 	MemoryManager MemoryManager::s_Instance;
@@ -244,5 +244,27 @@ namespace Relentless
 		
 		m_ConstantBuffers[cbHandle]->ReleaseHandles();
 		m_FreeConstantBufferHandles.push(cbHandle);
+	}
+
+	void MemoryManager::SetDirtyMaterial(const AssetHandle& handle) noexcept
+	{
+		if (m_DirtyMaterials.contains(handle.Uuid))
+		{
+			m_DirtyMaterials[handle.Uuid].second = D3D12Core::GetNrOfBufferedFrames();
+		}
+		else
+		{
+			m_DirtyMaterials[handle.Uuid] = {handle, D3D12Core::GetNrOfBufferedFrames()};
+		}
+	}
+
+	void MemoryManager::UpdateDirtyMaterials()
+	{
+		for (auto& [UUID, handleUpdatesPair] : m_DirtyMaterials)
+		{
+			Material& material = AssetManager::Get<Material>(handleUpdatesPair.first);
+			uint32_t constantBufferIndex = material.GetConstantBufferIndex();
+			UpdateConstantBuffer(constantBufferIndex, &material);
+		}
 	}
 }

@@ -1,43 +1,43 @@
 #include "AssetMeta.h"
-#include "AssetManagerEx.h"
+#include "AssetManager.h"
 
 namespace Relentless
 {
-	AssetHandle_EX::AssetHandle_EX(AssetType assetType, UUID uuid, uint32_t index) noexcept
+	AssetHandle::AssetHandle(AssetType assetType, UUID uuid, uint32_t index) noexcept
 		: Type{assetType},
 		  Uuid{uuid},
 		  Index{index}
 	{
-		AssetManagerEx::IncreaseReferenceCount(*this);
+		AssetManager::IncreaseReferenceCount(*this);
 	}
 
-	AssetHandle_EX::~AssetHandle_EX() noexcept
+	AssetHandle::~AssetHandle() noexcept
 	{
-		AssetManagerEx::DecreaseReferenceCount(*this);
+		AssetManager::DecreaseReferenceCount(*this);
 	}
 
-	AssetHandle_EX::AssetHandle_EX(const AssetHandle_EX& otherHandle) noexcept
+	AssetHandle::AssetHandle(const AssetHandle& otherHandle) noexcept
 		: Type{otherHandle.Type},
 		  Uuid{otherHandle.Uuid},
 		  Index{otherHandle.Index }
 	{
-		AssetManagerEx::IncreaseReferenceCount(*this);
+		AssetManager::IncreaseReferenceCount(*this);
 	}
 
-	AssetHandle_EX& AssetHandle_EX::operator=(const AssetHandle_EX& otherHandle) noexcept
+	AssetHandle& AssetHandle::operator=(const AssetHandle& otherHandle) noexcept
 	{
 		if (this == &otherHandle)
 		{
 			return *this;
 		}
 		
-		AssetManagerEx::DecreaseReferenceCount(*this);
+		AssetManager::DecreaseReferenceCount(*this);
 			
 		Type = otherHandle.Type;
 		Uuid = otherHandle.Uuid;
 		Index = otherHandle.Index;
 	
-		AssetManagerEx::IncreaseReferenceCount(*this);
+		AssetManager::IncreaseReferenceCount(*this);
 
 		return *this;
 	}

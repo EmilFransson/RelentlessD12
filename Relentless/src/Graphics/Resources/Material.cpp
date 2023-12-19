@@ -1,5 +1,5 @@
 #include "Material.h"
-#include "AssetManager.h"
+#include "Assets/AssetManager.h"
 #include "../MemoryManager.h"
 #include "../D3D12Core.h"
 namespace Relentless
@@ -23,13 +23,13 @@ namespace Relentless
 		  m_TilingFactor{1.0f, 1.0f},
 		  m_Offset{ 0.0f, 0.0f },
 		  m_Name{"Unnamed Material"},
-		  m_AlbedoTextureHandle{0},
-		  m_MetallicTextureHandle{0},
-		  m_RoughnessTextureHandle{0},
-		  m_NormalMapHandle{0},
-		  m_HeightMapHandle{0},
-		  m_AmbientOcclusionTextureHandle{ 0 },
-		  m_EmissionTextureHandle{ 0 },
+		  m_AlbedoTextureHandle{ NULL_HANDLE },
+		  m_MetallicTextureHandle{ NULL_HANDLE },
+		  m_RoughnessTextureHandle{ NULL_HANDLE },
+		  m_NormalMapHandle{NULL_HANDLE},
+		  m_HeightMapHandle{ NULL_HANDLE },
+		  m_AmbientOcclusionTextureHandle{ NULL_HANDLE },
+		  m_EmissionTextureHandle{ NULL_HANDLE },
 		  m_UseAlbedoTexture{true},
 		  m_UseMetallicTexture{true},
 		  m_UseRoughnessTexture{true},
@@ -303,9 +303,11 @@ namespace Relentless
 		return MemoryManager::Get().GetCBDescriptorIndex(m_ConstantBufferID);
 	}
 
-	void Material::UploadToGPU(const MaterialHandle& materialHandle) noexcept
+	void Material::UploadToGPU(const AssetHandle& materialHandle) noexcept
 	{
-		AssetManager::GetMaterialManager().Upload(materialHandle);
+		RLS_ASSERT(materialHandle != NULL_HANDLE, "Material handle is invalid.");
+		Material& material = AssetManager::Get<Material>(materialHandle);
+		MemoryManager::Get().UpdateConstantBuffer(material.m_ConstantBufferID, &material);
 	}
 
 	void Material::ToggleAlbedoTextureUsage() noexcept
@@ -420,128 +422,128 @@ namespace Relentless
 		}
 	}
 
-	void MaterialManager::Intitialize() noexcept
-	{
-		m_DefaultMaterialHandle = MaterialSerializer::Deserialize(std::string(ENGINE_ASSET_DIRECTORY) + "Materials/Default-Material.rmat");
-		MaterialSerializer::Deserialize(std::string(ENGINE_ASSET_DIRECTORY) + "Materials/M_Ground.rmat");
-	}
-
-	inline static std::mutex g_CreateMutex;
-
-	Material& MaterialManager::GetMaterial(const MaterialHandle& materialHandle) noexcept
-	{
-		const std::lock_guard<std::mutex> lock(g_CreateMutex);
-
-		RLS_ASSERT(m_Materials.size() > materialHandle.Index, "Material handle is invalid.");
-
-		return m_Materials[materialHandle.Index];
-	}
-
-	MaterialHandle& MaterialManager::GetMaterialHandleByName(const std::string& materialName) noexcept
-	{
-		RLS_ASSERT(Exists(materialName), "Material does not exist.");
-
-		const std::lock_guard<std::mutex> lock(g_CreateMutex);
-		return m_StringToMaterialHandleMap[materialName];
-	}
-
-	MaterialHandle MaterialManager::PromoteToHandle(const UUID& uuid) noexcept
-	{
-		for (auto& [name, handle] : m_StringToMaterialHandleMap)
-		{
-			if (handle.UUID == uuid)
-			{
-				return handle;
-			}
-		}
-
-		RLS_ASSERT(false, "UUID does not exist in unordered_map.");
-		return NULL_HANDLE;
-	}
-
-	void MaterialManager::OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept
-	{
-		RLS_ASSERT(Exists(previousName), "Material does not exist.");
-		auto it = m_StringToMaterialHandleMap.find(previousName);
-		m_StringToMaterialHandleMap[newName] = it->second;
-		m_StringToMaterialHandleMap.erase(it);
-	}
-
-	MaterialHandle MaterialManager::Create(const std::string& name, const Material& material) noexcept
-	{
-		return CreateWithUUID(CreateUUID(), name, material);
-	}
-
-	MaterialHandle MaterialManager::CreateWithUUID(const UUID& uuid, const std::string& name, const Material& material) noexcept
-	{
-		if (Exists(name))
-		{
-			return m_StringToMaterialHandleMap[name];
-		}
-
-		//A new material handle should be created, using the uuid:
-		MaterialHandle materialHandle;
-		materialHandle.UUID = uuid;
-
-		{
-			const std::lock_guard<std::mutex> lock(g_CreateMutex);
-
-			if (!m_FreeList.empty())
-			{
-				materialHandle.Index = m_FreeList.front();
-				m_FreeList.pop();
-				m_Materials[materialHandle.Index] = material;
-			}
-			else
-			{
-				materialHandle.Index = static_cast<uint16_t>(m_Materials.size());
-				m_Materials.emplace_back(material);
-			}
-
-			m_StringToMaterialHandleMap[name] = materialHandle;
-		}
-
-		m_Materials[materialHandle.Index].m_Name = name;
-		m_Materials[materialHandle.Index].m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
-
-		SetDirty(materialHandle);
-		return materialHandle;
-	}
-
-	void MaterialManager::Upload(const MaterialHandle& materialHandle) noexcept
-	{
-		RLS_ASSERT(materialHandle != NULL_HANDLE, "Material handle is invalid.");
-		const std::lock_guard<std::mutex> lock(g_CreateMutex);
-		RLS_ASSERT(m_Materials.size() > materialHandle.Index, "Material index is invalid.");
-
-		Material& material = m_Materials[materialHandle.Index];
-		MemoryManager::Get().UpdateConstantBuffer(material.m_ConstantBufferID, &material);
-	}
-
-	void MaterialManager::SetDirty(const MaterialHandle& materialHandle) noexcept
-	{
-		bool foundMaterial = false;
-		for (auto& [handle, remainingUpdates] : m_DirtyMaterials)
-		{
-			const bool alreadyDirty = (materialHandle.UUID == handle.UUID);
-			if (alreadyDirty)
-			{
-				remainingUpdates = D3D12Core::GetNrOfBufferedFrames();
-				foundMaterial = true;
-				break;
-			}
-		}
-
-		if (!foundMaterial)
-		{
-			m_DirtyMaterials.push_back({ materialHandle, D3D12Core::GetNrOfBufferedFrames() });
-		}
-	}
-
-	bool MaterialManager::Exists(const std::string& materialName) noexcept
-	{
-		const std::lock_guard<std::mutex> lock(g_CreateMutex);
-
-		return m_StringToMaterialHandleMap.contains(materialName);
-	}
+	//void MaterialManager::Intitialize() noexcept
+	//{
+	//	m_DefaultMaterialHandle = MaterialSerializer::Deserialize(std::string(ENGINE_ASSET_DIRECTORY) + "Materials/Default-Material.rmat");
+	//	MaterialSerializer::Deserialize(std::string(ENGINE_ASSET_DIRECTORY) + "Materials/M_Ground.rmat");
+	//}
+	//
+	//inline static std::mutex g_CreateMutex;
+	//
+	//Material& MaterialManager::GetMaterial(const MaterialHandle& materialHandle) noexcept
+	//{
+	//	const std::lock_guard<std::mutex> lock(g_CreateMutex);
+	//
+	//	RLS_ASSERT(m_Materials.size() > materialHandle.Index, "Material handle is invalid.");
+	//
+	//	return m_Materials[materialHandle.Index];
+	//}
+	//
+	//MaterialHandle& MaterialManager::GetMaterialHandleByName(const std::string& materialName) noexcept
+	//{
+	//	RLS_ASSERT(Exists(materialName), "Material does not exist.");
+	//
+	//	const std::lock_guard<std::mutex> lock(g_CreateMutex);
+	//	return m_StringToMaterialHandleMap[materialName];
+	//}
+	//
+	//MaterialHandle MaterialManager::PromoteToHandle(const UUID& uuid) noexcept
+	//{
+	//	for (auto& [name, handle] : m_StringToMaterialHandleMap)
+	//	{
+	//		if (handle.UUID == uuid)
+	//		{
+	//			return handle;
+	//		}
+	//	}
+	//
+	//	RLS_ASSERT(false, "UUID does not exist in unordered_map.");
+	//	return NULL_HANDLE;
+	//}
+	//
+	//void MaterialManager::OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept
+	//{
+	//	RLS_ASSERT(Exists(previousName), "Material does not exist.");
+	//	auto it = m_StringToMaterialHandleMap.find(previousName);
+	//	m_StringToMaterialHandleMap[newName] = it->second;
+	//	m_StringToMaterialHandleMap.erase(it);
+	//}
+	//
+	//MaterialHandle MaterialManager::Create(const std::string& name, const Material& material) noexcept
+	//{
+	//	return CreateWithUUID(CreateUUID(), name, material);
+	//}
+	//
+	//MaterialHandle MaterialManager::CreateWithUUID(const UUID& uuid, const std::string& name, const Material& material) noexcept
+	//{
+	//	if (Exists(name))
+	//	{
+	//		return m_StringToMaterialHandleMap[name];
+	//	}
+	//
+	//	//A new material handle should be created, using the uuid:
+	//	MaterialHandle materialHandle;
+	//	materialHandle.UUID = uuid;
+	//
+	//	{
+	//		const std::lock_guard<std::mutex> lock(g_CreateMutex);
+	//
+	//		if (!m_FreeList.empty())
+	//		{
+	//			materialHandle.Index = m_FreeList.front();
+	//			m_FreeList.pop();
+	//			m_Materials[materialHandle.Index] = material;
+	//		}
+	//		else
+	//		{
+	//			materialHandle.Index = static_cast<uint16_t>(m_Materials.size());
+	//			m_Materials.emplace_back(material);
+	//		}
+	//
+	//		m_StringToMaterialHandleMap[name] = materialHandle;
+	//	}
+	//
+	//	m_Materials[materialHandle.Index].m_Name = name;
+	//	m_Materials[materialHandle.Index].m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
+	//
+	//	SetDirty(materialHandle);
+	//	return materialHandle;
+	//}
+	//
+	//void MaterialManager::Upload(const MaterialHandle& materialHandle) noexcept
+	//{
+	//	RLS_ASSERT(materialHandle != NULL_HANDLE, "Material handle is invalid.");
+	//	const std::lock_guard<std::mutex> lock(g_CreateMutex);
+	//	RLS_ASSERT(m_Materials.size() > materialHandle.Index, "Material index is invalid.");
+	//
+	//	Material& material = m_Materials[materialHandle.Index];
+	//	MemoryManager::Get().UpdateConstantBuffer(material.m_ConstantBufferID, &material);
+	//}
+	//
+	//void MaterialManager::SetDirty(const MaterialHandle& materialHandle) noexcept
+	//{
+	//	bool foundMaterial = false;
+	//	for (auto& [handle, remainingUpdates] : m_DirtyMaterials)
+	//	{
+	//		const bool alreadyDirty = (materialHandle.UUID == handle.UUID);
+	//		if (alreadyDirty)
+	//		{
+	//			remainingUpdates = D3D12Core::GetNrOfBufferedFrames();
+	//			foundMaterial = true;
+	//			break;
+	//		}
+	//	}
+	//
+	//	if (!foundMaterial)
+	//	{
+	//		m_DirtyMaterials.push_back({ materialHandle, D3D12Core::GetNrOfBufferedFrames() });
+	//	}
+	//}
+	//
+	//bool MaterialManager::Exists(const std::string& materialName) noexcept
+	//{
+	//	const std::lock_guard<std::mutex> lock(g_CreateMutex);
+	//
+	//	return m_StringToMaterialHandleMap.contains(materialName);
+	//}
 }

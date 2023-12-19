@@ -94,13 +94,7 @@ namespace YAML
 namespace Relentless
 {
 	YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT4& v);
-
 	YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT3& v);
-
 	YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT2& v);
-
 	YAML::Emitter& operator<<(YAML::Emitter& out, UUID& id);
-
-	[[nodiscard]] UUID ConvertStringToGUID(const std::string& guidString) noexcept;
-
 }

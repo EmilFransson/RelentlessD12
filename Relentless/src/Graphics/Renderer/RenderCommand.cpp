@@ -38,7 +38,7 @@ namespace Relentless
 
 	void RenderCommand::FlushResourceTransitionBatch(std::vector<D3D12_RESOURCE_BARRIER>& batchedResourceStateTransitions) noexcept
 	{
-		DXCall_STD(D3D12Core::GetCommandList()->ResourceBarrier(batchedResourceStateTransitions.size(), batchedResourceStateTransitions.data()));
+		DXCall_STD(D3D12Core::GetCommandList()->ResourceBarrier(static_cast<UINT>(batchedResourceStateTransitions.size()), batchedResourceStateTransitions.data()));
 		batchedResourceStateTransitions.clear();
 	}
 

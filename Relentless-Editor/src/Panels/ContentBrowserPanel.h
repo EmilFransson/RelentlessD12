@@ -27,7 +27,7 @@ namespace Relentless
 		template<typename AssetType>
 		void RenderAssetThumbnail(const AssetHandle& imageButtonTextureHandle, const AssetHandle& tooltipImageTextureHandle, const AssetHandle& payloadAssetHandle, const std::string& name, float thumbnailWidth) noexcept
 		{
-			ImGui::PushID(GetAssetHandleAsString(payloadAssetHandle).c_str());
+			ImGui::PushID(ConvertUUIDToString(payloadAssetHandle.Uuid).c_str());
 			Texture2D& imageButtonTexture = AssetManager::Get<Texture2D>(imageButtonTextureHandle);
 			ImGui::ImageButton((ImTextureID)imageButtonTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(thumbnailWidth, thumbnailWidth));
 
@@ -75,9 +75,9 @@ namespace Relentless
 
 	private:
 		float m_ThumbnailWidth;
-		TextureHandle m_DirectoryTextureHandle;
-		TextureHandle m_SceneTextureHandle;
-		TextureHandle m_MaterialTextureHandle;
+		AssetHandle m_DirectoryTextureHandle;
+		AssetHandle m_SceneTextureHandle;
+		AssetHandle m_MaterialTextureHandle;
 		std::string m_SelectedDirectory;
 		float m_LocationStringPosition[2];
 		bool m_FirstTimeEditingThumbnail{ true };
@@ -87,5 +87,6 @@ namespace Relentless
 		AssetHandle m_AssetToName;
 
 		std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> m_OnAssetSelectedCallback;
+		AssetHandle aex;
 	};
 }

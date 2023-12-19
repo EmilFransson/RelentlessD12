@@ -1,10 +1,10 @@
 #pragma once
-#include "../Graphics/Resources/AssetManager.h"
-#include "../Graphics/Resources/ConstantBuffer.h"
-#include "../Graphics/D3D12Core.h"
-#include "../Graphics/Resources/Material.h"
-#include "../Mesh/Mesh.h"
+#include "Assets/AssetMeta.h"
 #include "ECSCommon.h"
+#include "Graphics/Resources/ConstantBuffer.h"
+#include "Graphics/D3D12Core.h"
+#include "Graphics/Resources/Material.h"
+#include "Mesh/Mesh.h"
 
 namespace Relentless
 {
@@ -60,17 +60,21 @@ namespace Relentless
 	struct MeshFilterComponent
 	{
 		MeshFilterComponent()
-			: MeshHandle{ NULL_HANDLE }
+			: //MeshHandle{ NULL_HANDLE },
+			  HandleEX{ NULL_HANDLE }
 		{}
-		MeshHandle MeshHandle;
+		//MeshHandle MeshHandle;
+		AssetHandle HandleEX;
 	};
 
 	struct MeshRendererComponent
 	{
 		MeshRendererComponent()
-			: MaterialHandle{ NULL_HANDLE }
+			:// MaterialHandle{ NULL_HANDLE },
+			  HandleEX{ NULL_HANDLE }
 		{}
-		MaterialHandle MaterialHandle;
+		//MaterialHandle MaterialHandle;
+		AssetHandle HandleEX;
 	};
 
 	struct DirtyMeshRendererComponent

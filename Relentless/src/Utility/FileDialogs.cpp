@@ -1,5 +1,5 @@
+#include "Core/Window.h"
 #include "FileDialogs.h"
-#include "../Core/Window.h"
 
 namespace Relentless
 {

@@ -1,6 +1,6 @@
 #pragma once
 #include "IEvent.h"
-#include "../Input/Keyboard.h"
+#include "Input/Keyboard.h"
 
 namespace Relentless
 {

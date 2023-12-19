@@ -1,9 +1,10 @@
 #include "TextureSerializer.h"
-#include "AssetManager.h"
+#include "Assets/AssetManager.h"
 #include "../../Utility/SerializeUtilities.h"
+#include "../../Assets/AssetManager.h"
 namespace Relentless
 {
-	void TextureSerializer::Serialize(TextureHandle& textureHandle, const std::string& path, const std::string& toReplace) noexcept
+	void TextureSerializer::Serialize(AssetHandle& textureHandle, const std::string& path, const std::string& toReplace) noexcept
 	{
 		RLS_ASSERT(textureHandle != NULL_HANDLE, "Texture handle is invalid.");
 
@@ -13,7 +14,7 @@ namespace Relentless
 		out << YAML::BeginMap;
 
 		out << YAML::Key << "Texture" << YAML::Value << YAML::BeginMap;
-		out << YAML::Key << "GUID" << YAML::Value << textureHandle.UUID;
+		out << YAML::Key << "GUID" << YAML::Value << textureHandle.Uuid;
 		out << YAML::Key << "Name" << YAML::Value << texture.GetName();
 
 		out << YAML::EndMap;
@@ -64,7 +65,7 @@ namespace Relentless
 		return uuid;
 	}
 
-	TextureHandle TextureSerializer::Deserialize(const std::string& fullPath) noexcept
+	AssetHandle TextureSerializer::Deserialize(const std::string& fullPath) noexcept
 	{
 		RLS_ASSERT(std::filesystem::exists(fullPath), "Path is not valid for texture deserialization.");
 		const std::string rassetFilePath = fullPath + ASSET_EXTENSION;
@@ -88,7 +89,7 @@ namespace Relentless
 		std::string textureName = texture["Name"].as<std::string>();
 
 		//TODO: Load various texture types!
-		const TextureHandle textureHandle = AssetManager::LoadWithUUID<Texture2D>(uuid, fullPath);
+		const AssetHandle textureHandle = AssetManager::LoadFromFile<Texture2D>(fullPath, {}, uuid);
 
 		RLS_CORE_INFO("Deserialized texture \"{0}\"", textureName);
 

@@ -8,11 +8,15 @@ namespace Relentless
 		  m_SelectedDirectory{"Assets"},
 		  m_AssetToName{ NULL_HANDLE }
 	{
-		m_DirectoryTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Directory.jpg");
-		m_SceneTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.jpg");
-		m_MaterialTextureHandle = AssetManager::Load<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.jpg");
+		m_DirectoryTextureHandle = AssetManager::LoadFromFile<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Directory.jpg");
+		m_SceneTextureHandle = AssetManager::LoadFromFile<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.jpg");
+		m_MaterialTextureHandle = AssetManager::LoadFromFile<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.jpg");
 
 		currentDirectory = currentDirectory.string().substr(0u, currentDirectory.string().size() - 1);
+
+		//TextureImportSettings importSettings;
+		//importSettings.TextureCompressionType = ETextureCompressionType::BC7_Quick;
+		//aex = AssetManager::LoadFromFile<Texture2D>(EDITOR_ASSET_DIRECTORY + std::string("Textures\\bright_grid.png"), &importSettings);
 	}
 
 	void ContentBrowserPanel::OnImGuiRender(const bool show) noexcept
@@ -218,6 +222,8 @@ namespace Relentless
 				ImGui::TableNextColumn();
 
 				ImGui::ImageButton((void*)AssetManager::Get<Texture2D>(m_DirectoryTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth), ImVec2(0, 0), ImVec2(1, 1), -1, ImGui::GetStyle().Colors[ImGuiCol_WindowBg]);
+				
+				//ImGui::ImageButton((void*)AssetManager::GetAsset<Texture2D>(aex).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth), ImVec2(0, 0), ImVec2(1, 1), -1, ImGui::GetStyle().Colors[ImGuiCol_WindowBg]);
 				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
 				{
 					currentDirectory /= entry;
@@ -244,7 +250,7 @@ namespace Relentless
 			{
 				ImGui::TableNextColumn();
 
-				TextureHandle textureHandle = AssetManager::Load<Texture2D>(entryPath);
+				AssetHandle textureHandle = AssetManager::LoadFromFile<Texture2D>(entryPath);
 				RenderAssetThumbnail<Texture2D>(textureHandle, textureHandle, textureHandle, entry, m_ThumbnailWidth);
 			}
 			else if (extension == ".Relentless")
@@ -276,8 +282,9 @@ namespace Relentless
 			{
 				ImGui::TableNextColumn();
 
-				const MaterialHandle& materialHandle = AssetManager::Load<Material>(entryPath);
-				RenderAssetThumbnail<Material>(m_MaterialTextureHandle, m_MaterialTextureHandle, materialHandle, AssetManager::Get<Material>(materialHandle).GetName(), m_ThumbnailWidth);
+				RLS_ASSERT(false, "TODO!!!");
+				//const AssetHandle materialHandle = AssetManager::LoadFromFile<Material>(entryPath);
+				//RenderAssetThumbnail<Material>(m_MaterialTextureHandle, m_MaterialTextureHandle, materialHandle, AssetManager::Get<Material>(materialHandle).GetName(), m_ThumbnailWidth);
 			}
 		}
 		ImGui::EndTable();
@@ -294,11 +301,13 @@ namespace Relentless
 
 				if (extension == ".jpg" || extension == ".png")
 				{
+					RLS_ASSERT(false, "STOP");
 					std::filesystem::copy(filePath, currentDirectory, std::filesystem::copy_options::overwrite_existing);
 					std::filesystem::path copiedTexturePath = currentDirectory / filePath.filename();
-					UUID uuid = TextureSerializer::SerializeDefault(copiedTexturePath.string());
-					AssetManager::MapGUIDToFilepath(uuid, copiedTexturePath.string());
-					AssetManager::Load<Texture2D>(copiedTexturePath.string());
+					//UUID uuid = TextureSerializer::SerializeDefault(copiedTexturePath.string());
+					//AssetManager::MapGUIDToFilepath(uuid, copiedTexturePath.string());
+					AssetHandle textureHandle = AssetManager::LoadFromFile<Texture2D>(copiedTexturePath.string());
+					AssetRegistry::MapAssetToFilepath({ textureHandle.Uuid, AssetType::Texture2D }, copiedTexturePath.string());
 				}
 			}
 			if (ImGui::MenuItem("New Material"))
@@ -306,12 +315,21 @@ namespace Relentless
 				static uint32_t createdMaterialCounter{ 0u };
 				createdMaterialCounter = 0u;
 				std::string name = "New Material[" + std::to_string(++createdMaterialCounter) + "]";
-				while (AssetManager::Exists<Material>(name))
+				std::filesystem::path path = currentDirectory / name;
+				path.append(".rasset");
+				while (AssetManager::IsLoaded(path.string()))
 				{
 					name = "New Material[" + std::to_string(++createdMaterialCounter) + "]";
+					path = currentDirectory / name;
+					path.append(".rasset");
 				}
 
-				m_AssetToName = AssetManager::Load<Material>((currentDirectory / name).string());
+				//m_AssetToName = AssetManager::LoadFromFile<Material>((currentDirectory / name).string());
+				m_AssetToName = AssetManager::CreateNew<Material>();
+				Material& newMaterial = AssetManager::Get<Material>(m_AssetToName);
+				newMaterial.SetName(name);
+				//MaterialSerializer::Serialize(m_AssetToName, path.string());
+				Serializer::Serialize<Material>(m_AssetToName, path.string());
 			}
 			ImGui::EndPopup();
 		}
@@ -366,7 +384,7 @@ namespace Relentless
 
 		if (m_FirstTimeEditingThumbnail)
 		{
-			std::string materialName = AssetManager::GetMaterialManager().GetMaterial(handle).GetName();
+			std::string materialName = AssetManager::Get<Material>(handle).GetName();
 			std::size_t lengthToCopy = std::min(materialName.size(), sizeof(newName) - 1);
 			std::memcpy(newName, materialName.c_str(), lengthToCopy);
 			newName[lengthToCopy] = '\0';
@@ -382,20 +400,22 @@ namespace Relentless
 
 			if (!nameAsString.empty() && !std::filesystem::exists(fullPath))
 			{
-				MaterialManager& materialManager = AssetManager::GetMaterialManager();
-				const std::string materialNametoReplace = materialManager.GetMaterial(handle).GetName();
-				materialManager.GetMaterial(handle).SetName(newName);
+				const std::string materialNametoReplace = AssetManager::Get<Material>(handle).GetName();
+				const std::string materialFilename = materialNametoReplace + ".rasset";
+				AssetManager::Get<Material>(handle).SetName(newName);
 
 				std::filesystem::path fullPathToSave = currentDirectory;
-				fullPathToSave.append(std::string(newName));
+				fullPathToSave.append(std::string(newName) + ".rasset");
 				std::filesystem::path fullPathToDelete = currentDirectory;
-				fullPathToDelete.append(materialNametoReplace);
+				fullPathToDelete.append(materialFilename);
 
-				MaterialSerializer::Serialize(m_AssetToName, fullPathToSave.string(), fullPathToDelete.string());
+				Serializer::Serialize<Material>(m_AssetToName, fullPathToSave.string());
+				std::filesystem::remove(fullPathToDelete.string());
 				memset(newName, 0, 64);
-				materialManager.OnMaterialNameChange(materialNametoReplace, std::string(newName));
-				AssetManager::DeleteGUIDToFilepathMapping(m_AssetToName.UUID, ((currentDirectory / materialNametoReplace).concat(".rmat")).string());
-				AssetManager::MapGUIDToFilepath(m_AssetToName.UUID, fullPathToSave.string() + ".rmat");
+
+				AssetManager::OnFileMoved(m_AssetToName, fullPathToSave.string());
+				AssetRegistry::RemoveUUIDToFilepathMap(m_AssetToName.Uuid, fullPathToDelete.string());
+				AssetRegistry::MapAssetToFilepath({ m_AssetToName.Uuid, AssetType::Material }, fullPathToSave.string());
 				m_AssetToName = NULL_HANDLE;
 			}
 			m_FirstTimeEditingThumbnail = true;

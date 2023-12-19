@@ -1,14 +1,13 @@
 #include "Application.h"
-#include "Window.h"
-#include "../Graphics/D3D12Core.h"
-#include "../EventSystem/LayerStack.h"
-#include "../EventSystem/EventBus.h"
-#include "../Graphics/Renderer/MasterRenderer.h"
-#include "../Graphics/MemoryManager.h"
+#include "Assets/AssetManager.h"
+#include "EventSystem/LayerStack.h"
+#include "EventSystem/EventBus.h"
+#include "Graphics/D3D12Core.h"
+#include "Graphics/Renderer/MasterRenderer.h"
+#include "Graphics/MemoryManager.h"
+#include "Input/Mouse.h"
 #include "Timer.h"
-#include "../Input/Mouse.h"
-#include "../Graphics/Resources/AssetManager.h"
-#include "../Assets/AssetManagerEx.h"
+#include "Window.h"
 namespace Relentless
 {
 	Application::Application(const ApplicationSpecification& applicationSpecification) noexcept
@@ -112,6 +111,7 @@ namespace Relentless
 		D3D12Core::Initialize();
 		MemoryManager::Get().Initialize();
 		AssetManager::Initialize();
+		AssetRegistry::RecursiveScanDirectoryForAssets("F:\\RelentlessD12\\Relentless\\Assets\\Materials");
 
 		std::string engineIni = std::string(MAIN_ENGINE_DIRECTORY) + std::string("engine.ini");
 
@@ -140,8 +140,17 @@ namespace Relentless
 
 		m_IsRunning = true;
 
-		AssetHandle_EX aex = AssetManagerEx::LoadFromFile<Texture2D>(EDITOR_ASSET_DIRECTORY + std::string("Textures\\bright_grid.jpg"));
-		Texture2D& tex = AssetManagerEx::GetAsset<Texture2D>(aex);
+		MeshImportSettings settings;
+
+		AssetManager::LoadFromFile<Mesh>(ENGINE_ASSET_DIRECTORY + std::string("Models\\PKG_B_Ivy\\NewSponza_IvyGrowth_glTF.gltf"), settings);
+		//AssetHandle handle = AssetManager::CreateNew<Material>();
+		//Material& material = AssetManager::Get<Material>(handle);
+		//material.SetName("Default-Material");
+		//material.m_AlbedoColor = {1.0f, 1.0f, 1.0f, 1.0f};
+		//Serializer::Serialize<Material>(handle, std::string(EDITOR_ASSET_DIRECTORY) + "M_DefaultMaterial.rasset");
+		//AssetHandle newHandle = Serializer::Deserialize<Material>(std::string(EDITOR_ASSET_DIRECTORY) + "M_DefaultMaterial.rasset");
+
+		//AssetHandle texHandle = AssetManager::LoadFromFile<Texture2D>("F:\\RelentlessD12\\Relentless\\Assets\\Textures\\SceneThumbnail.jpg");
 	}
 
 	void Application::ShutDown() noexcept

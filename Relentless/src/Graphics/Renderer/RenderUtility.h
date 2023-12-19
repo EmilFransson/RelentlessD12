@@ -1,8 +1,8 @@
 #pragma once
 namespace Relentless
 {
-
 	class Texture;
+
 	class RenderUtility
 	{
 	public:

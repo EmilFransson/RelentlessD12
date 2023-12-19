@@ -1,6 +1,6 @@
 #pragma once
-#include "../EventSystem/EventPublisher.h"
-#include "../Graphics/DescriptorHeap.h"
+#include "EventSystem/EventPublisher.h"
+#include "Graphics/DescriptorHeap.h"
 namespace Relentless
 {
 	struct BackBuffer

@@ -372,7 +372,7 @@ namespace Relentless
 				}
 			});
 
-		m_PropertiesPanel.SetOnMaterialSelectedCallback([this](const MaterialHandle& materialHandle)
+		m_PropertiesPanel.SetOnMaterialSelectedCallback([this](const AssetHandle& materialHandle)
 			{
 				m_InspectorPanel.SetContext(materialHandle, InspectedAssetType::MATERIAL);
 				m_DisplayInspectorPanel = true;
@@ -390,27 +390,6 @@ namespace Relentless
 					m_DisplayInspectorPanel = true;
 				}
 			});
-
-
-
-		MeshManager& mm = AssetManager::GetMeshManager();
-		//std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\PKG_C.1_Trees\\NewSponza_CypressTree_glTF.gltf");
-		//mm.LoadModelFromFile(meshPath, m_pScene.get());
-		//std::cout << "Loaded Tree" << "\n";
-		//std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\Main.1_Sponza\\NewSponza_Main_glTF_002.gltf");
-		//mm.LoadModelFromFile(meshPath, m_pScene.get());
-		//std::cout << "Loaded Main Sponza" << "\n";
-		//std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\Parenting\\parenting.gltf");
-		//mm.LoadModelFromFile(meshPath, m_pScene.get());
-		//std::cout << "Loaded Parenting" << "\n";
-		//
-		//meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\PKG_A_Curtains\\NewSponza_Curtains_glTF.gltf");
-		//mm.LoadModelFromFile(meshPath, m_pScene.get());
-		//std::cout << "Loaded Curtains" << "\n";
-		//
-		//meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\PKG_B_Ivy\\NewSponza_IvyGrowth_glTF.gltf");
-		//mm.LoadModelFromFile(meshPath, m_pScene.get());
-		//std::cout << "Loaded Ivy growth" << "\n";
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -492,27 +471,49 @@ namespace Relentless
 
 	void EditorLayer::LoadStarterMeshes() noexcept
 	{
-		std::vector<std::string> starterMeshes
+		//const std::array<std::string, 11> starterMeshes
+		//{
+		//	"Cube.rasset",
+		//	"Capsule.rasset",
+		//	"Cone.rasset",
+		//	"Cylinder.rasset",
+		//	"Icosphere.rasset",
+		//	"Plane.rasset",
+		//	"Quad.rasset",
+		//	"Sphere.rasset",
+		//	"Torus.rasset",
+		//	"Triangle.rasset",
+		//	"UtahTeapot.rasset"
+		//};
+		
+		const std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\StarterContent\\");
+
+		//std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
+		//	{
+		//		std::string fullMeshPath(meshPath + std::string(starterMeshName));
+		//		Serializer::Deserialize<Mesh>(fullMeshPath);
+		//	});
+
+		const std::array<std::string, 11> starterMeshes
 		{
-			"Cube.rmesh",
-			"Capsule.rmesh",
-			"Cone.rmesh",
-			"Cylinder.rmesh",
-			"Icosphere.rmesh",
-			"Plane.rmesh",
-			"Quad.rmesh",
-			"Sphere.rmesh",
-			"Torus.rmesh",
-			"Triangle.rmesh",
-			"UtahTeapot.rmesh"
+			"Cube.obj",
+			"Capsule.gltf",
+			"Cone.gltf",
+			"Cylinder.gltf",
+			"Icosphere.obj",
+			"Plane.gltf",
+			"Quad.gltf",
+			"Sphere.obj",
+			"Torus.obj",
+			"Triangle.obj",
+			"UtahTeapot.gltf"
 		};
 
-		std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\StarterContent\\");
-		std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
-			{
-				std::string fullMeshPath(meshPath + std::string(starterMeshName));
-				ModelSerializer::Deserialize(fullMeshPath);
-			});
+		for (auto& mesh : starterMeshes)
+		{
+			const std::string fullMeshPath(meshPath + std::string(mesh));
+			AssetManager::LoadFromFile<Mesh>(fullMeshPath);
+		}
 	}
 
 	void EditorLayer::CreateStartScene() noexcept
@@ -563,13 +564,13 @@ namespace Relentless
 			auto& mfcNew = mgr.Add<MeshFilterComponent>(newEntity);
 			auto& mfc = mgr.Get<MeshFilterComponent>(m_SelectedEntity);
 
-			mfcNew.MeshHandle = mfc.MeshHandle;
+			mfcNew.HandleEX = mfc.HandleEX;
 		}
 		if (mgr.Has<MeshRendererComponent>(m_SelectedEntity))
 		{
 			auto& mrcNew = mgr.Add<MeshRendererComponent>(newEntity);
 			auto& mrc = mgr.Get<MeshRendererComponent>(m_SelectedEntity);
-			mrcNew.MaterialHandle = mrc.MaterialHandle;
+			mrcNew.HandleEX = mrc.HandleEX;
 			mgr.Add<DirtyMeshRendererComponent>(newEntity);
 		}
 		if (mgr.Has<OpaquePassComponent>(m_SelectedEntity))

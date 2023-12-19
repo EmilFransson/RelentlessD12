@@ -1,5 +1,5 @@
 #include "Mouse.h"
-#include "../EventSystem/MouseEvents.h"
+#include "EventSystem/MouseEvents.h"
 namespace Relentless
 {
 	std::bitset<BUTTON_COUNT> Mouse::s_buttons;

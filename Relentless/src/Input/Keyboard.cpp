@@ -1,5 +1,5 @@
 #include "Keyboard.h"
-#include "../EventSystem/KeyboardEvents.h"
+#include "EventSystem/KeyboardEvents.h"
 namespace Relentless
 {
 	std::bitset<KEY_COUNT> Keyboard::s_keys;
