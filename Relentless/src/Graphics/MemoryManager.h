@@ -8,6 +8,8 @@
 #include "Utility/Common.h"
 namespace Relentless
 {
+	constexpr size_t INVALID_CONSTANT_BUFFER_ID = static_cast<size_t>(-1);
+
 	class ConstantBuffer;
 	class MemoryManager
 	{

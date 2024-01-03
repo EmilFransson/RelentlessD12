@@ -301,9 +301,9 @@ namespace Relentless
 
 				if (importSettings.ImportMaterialsAndTextures)
 				{
-					importSettings.pScene->GetEntityManager().Add<MeshRendererComponent>(entity).HandleEX = materialHandle;
+					importSettings.pScene->GetEntityManager().Add<MeshRendererComponent>(entity).AssetHandle = materialHandle;
 				}
-				importSettings.pScene->GetEntityManager().Add<MeshFilterComponent>(entity).HandleEX = meshHandle;
+				importSettings.pScene->GetEntityManager().Add<MeshFilterComponent>(entity).AssetHandle = meshHandle;
 
 				if (parent != NULL_ENTITY)
 				{

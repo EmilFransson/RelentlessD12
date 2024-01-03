@@ -22,6 +22,48 @@ namespace Relentless
 		  m_pIndexBuffer{nullptr}
 	{}
 
+	Mesh::Mesh(const Mesh& otherMesh) noexcept
+		: m_Name{ otherMesh.m_Name },
+		  m_pVertexBuffer{ std::make_unique<VertexBuffer>(*otherMesh.m_pVertexBuffer)},
+		  m_pIndexBuffer{ std::make_unique<IndexBuffer>(*otherMesh.m_pIndexBuffer)}
+	{}
+
+	Mesh::Mesh(Mesh&& otherMesh) noexcept
+		: m_Name{std::move(otherMesh.m_Name)},
+		  m_pVertexBuffer{std::move(otherMesh.m_pVertexBuffer)},
+		  m_pIndexBuffer{std::move(otherMesh.m_pIndexBuffer)}
+	{
+		otherMesh.m_pVertexBuffer = nullptr;
+		otherMesh.m_pIndexBuffer = nullptr;
+	}
+
+	Mesh& Mesh::operator=(Mesh&& otherMesh) noexcept
+	{
+		if (this != &otherMesh)
+		{
+			m_Name = std::move(otherMesh.m_Name);
+			m_pVertexBuffer = std::move(otherMesh.m_pVertexBuffer);
+			m_pIndexBuffer = std::move(otherMesh.m_pIndexBuffer);
+
+			otherMesh.m_pVertexBuffer = nullptr;
+			otherMesh.m_pIndexBuffer = nullptr;
+		}
+
+		return *this;
+	}
+
+	Mesh& Mesh::operator=(const Mesh& otherMesh) noexcept
+	{
+		if (this != &otherMesh)
+		{
+			m_Name = otherMesh.m_Name;
+			m_pVertexBuffer = std::make_unique<VertexBuffer>(*otherMesh.m_pVertexBuffer);
+			m_pIndexBuffer = std::make_unique<IndexBuffer>(*otherMesh.m_pIndexBuffer);
+		}
+
+		return *this;
+	}
+
 	void Mesh::SetName(const std::string& name) noexcept
 	{
 		m_Name = name;

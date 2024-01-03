@@ -31,6 +31,7 @@ namespace Relentless
 	{
 		RLS_ASSERT(pScene, "Entity manager is nullptr.");
 		m_pScene = pScene;
+		m_SelectedEntity = NULL_ENTITY;
 	}
 
 	void PropertiesPanel::SetOnMaterialSelectedCallback(std::function<void(const AssetHandle& materialHandle)> callback) noexcept
@@ -216,9 +217,9 @@ namespace Relentless
 				auto& mfc = m_pScene->GetEntityManager().Get<MeshFilterComponent>(m_SelectedEntity);
 
 				char input[40];
-				if (mfc.HandleEX != NULL_HANDLE)
+				if (mfc.AssetHandle != NULL_HANDLE)
 				{
-					Mesh& mesh = AssetManager::Get<Mesh>(mfc.HandleEX);
+					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 					std::string name = mesh.GetName();
 					strcpy_s(input, sizeof(input), name.c_str());
 				}
@@ -298,7 +299,7 @@ namespace Relentless
 		DrawComponentNode<MeshRendererComponent>("Mesh Renderer", [this]()
 			{
 				auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(m_SelectedEntity);
-				std::string materialName = mrc.HandleEX != NULL_HANDLE ? AssetManager::Get<Material>(mrc.HandleEX).GetName() : "Empty";
+				std::string materialName = mrc.AssetHandle != NULL_HANDLE ? AssetManager::Get<Material>(mrc.AssetHandle).GetName() : "Empty";
 
 				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 				ImGui::InputText("Material", (char*)materialName.c_str(), materialName.size(), ImGuiInputTextFlags_ReadOnly);
@@ -308,7 +309,7 @@ namespace Relentless
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_MATERIAL"))
 					{
 						const AssetHandle* pMaterialHandle = (AssetHandle*)payLoad->Data;
-						mrc.HandleEX = *pMaterialHandle;
+						mrc.AssetHandle = *pMaterialHandle;
 					}
 					ImGui::EndDragDropTarget();
 				}
@@ -321,9 +322,9 @@ namespace Relentless
 				ImGui::InvisibleButton("##overlay", size);
 				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
 				{
-					if (mrc.HandleEX != NULL_HANDLE)
+					if (mrc.AssetHandle != NULL_HANDLE)
 					{
-						m_OnMaterialSelectedCallback(mrc.HandleEX);
+						m_OnMaterialSelectedCallback(mrc.AssetHandle);
 					}
 				}
 

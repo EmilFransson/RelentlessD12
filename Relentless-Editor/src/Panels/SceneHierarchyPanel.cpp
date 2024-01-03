@@ -219,6 +219,7 @@ namespace Relentless
 	{
 		RLS_ASSERT(pScene, "Scene is nullptr.");
 		m_pScene = pScene;
+		m_SelectedEntity = NULL_ENTITY;
 	}
 
 	void SceneHierarchyPanel::DrawEntityNode(const entity entityID) noexcept

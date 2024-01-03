@@ -6,13 +6,11 @@ namespace Relentless
 {
 	Material::Material() noexcept
 		: m_AlbedoColor{1.0f, 1.0f, 1.0f, 1.0f},
-		  m_Metallic{0.0f},
-		  m_Roughness{0.5f},
 		  m_EmissionColor{0.0f, 0.0f, 0.0f, 1.0f},
+		  m_Metallic{0.0f},
+		  m_Padding{0.0f},
 		  m_EmissionIntensity{0.0f},
-		  m_HeightScale{0.02f},
-		  m_AOScale{1.0f},
-		  m_CombinedRoughnessMetallnesMap{false},
+		  m_Roughness{0.5f},
 		  m_AlbedoTextureIndex{0xFFFFFFFF},
 		  m_MetallicTextureIndex{0xFFFFFFFF},
 		  m_RoughnessTextureIndex{0xFFFFFFFF},
@@ -20,6 +18,9 @@ namespace Relentless
 		  m_HeightMapIndex{0xFFFFFFFF},
 		  m_AmbientOcclusionTextureIndex{ 0xFFFFFFFF },
 		  m_EmissionTextureIndex{ 0xFFFFFFFF },
+		  m_HeightScale{0.02f},
+		  m_AOScale{1.0f},
+		  m_CombinedRoughnessMetallnesMap{false},
 		  m_TilingFactor{1.0f, 1.0f},
 		  m_Offset{ 0.0f, 0.0f },
 		  m_Name{"Unnamed Material"},
@@ -37,9 +38,183 @@ namespace Relentless
 		  m_UseNormalMap{true},
 		  m_UseAmbientOcclusionTexture{ true },
 	 	  m_UseEmissionTexture{ true },
-		  m_ConstantBufferID{static_cast<uint32_t>(-1)},
+		  m_ConstantBufferID{INVALID_CONSTANT_BUFFER_ID},
 		  m_RenderMode{ RenderMode::Opaque }
 	{
+		m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
+	}
+
+	Material::Material(const Material& otherMaterial) noexcept
+	{
+		m_AlbedoColor = otherMaterial.m_AlbedoColor;
+		m_Metallic = otherMaterial.m_Metallic;
+		m_Roughness = otherMaterial.m_Roughness;
+		m_EmissionColor = otherMaterial.m_EmissionColor;
+		m_EmissionIntensity = otherMaterial.m_EmissionIntensity;
+		m_HeightScale = otherMaterial.m_HeightScale;
+		m_AOScale = otherMaterial.m_AOScale;
+		m_CombinedRoughnessMetallnesMap = otherMaterial.m_CombinedRoughnessMetallnesMap;
+		m_AlbedoTextureIndex = otherMaterial.m_AlbedoTextureIndex;
+		m_MetallicTextureIndex = otherMaterial.m_MetallicTextureIndex;
+		m_RoughnessTextureIndex = otherMaterial.m_RoughnessTextureIndex;
+		m_NormalMapIndex = otherMaterial.m_NormalMapIndex;
+		m_HeightMapIndex = otherMaterial.m_HeightMapIndex;
+		m_AmbientOcclusionTextureIndex = otherMaterial.m_AmbientOcclusionTextureIndex;
+		m_EmissionTextureIndex = otherMaterial.m_EmissionTextureIndex;
+		m_TilingFactor = otherMaterial.m_TilingFactor;
+		m_Offset = otherMaterial.m_Offset;
+		m_Name = otherMaterial.m_Name;
+		m_AlbedoTextureHandle = otherMaterial.m_AlbedoTextureHandle;
+		m_MetallicTextureHandle = otherMaterial.m_MetallicTextureHandle;
+		m_RoughnessTextureHandle = otherMaterial.m_RoughnessTextureHandle;
+		m_NormalMapHandle = otherMaterial.m_NormalMapHandle;
+		m_HeightMapHandle = otherMaterial.m_HeightMapHandle;
+		m_AmbientOcclusionTextureHandle = otherMaterial.m_AmbientOcclusionTextureHandle;
+		m_EmissionTextureHandle = otherMaterial.m_EmissionTextureHandle;
+		m_UseAlbedoTexture = otherMaterial.m_UseAlbedoTexture;
+		m_UseMetallicTexture = otherMaterial.m_UseMetallicTexture;
+		m_UseRoughnessTexture = otherMaterial.m_UseRoughnessTexture;
+		m_UseHeightMap = otherMaterial.m_UseHeightMap;
+		m_UseNormalMap = otherMaterial.m_UseNormalMap;
+		m_UseAmbientOcclusionTexture = otherMaterial.m_UseAmbientOcclusionTexture;
+		m_UseEmissionTexture = otherMaterial.m_UseEmissionTexture;
+		m_RenderMode = otherMaterial.m_RenderMode;
+
+		m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
+	}
+
+	Material& Material::operator=(const Material& otherMaterial) noexcept
+	{
+		if (this != &otherMaterial)
+		{
+			m_AlbedoColor = otherMaterial.m_AlbedoColor;
+			m_Metallic = otherMaterial.m_Metallic;
+			m_Roughness = otherMaterial.m_Roughness;
+			m_EmissionColor = otherMaterial.m_EmissionColor;
+			m_EmissionIntensity = otherMaterial.m_EmissionIntensity;
+			m_HeightScale = otherMaterial.m_HeightScale;
+			m_AOScale = otherMaterial.m_AOScale;
+			m_CombinedRoughnessMetallnesMap = otherMaterial.m_CombinedRoughnessMetallnesMap;
+			m_AlbedoTextureIndex = otherMaterial.m_AlbedoTextureIndex;
+			m_MetallicTextureIndex = otherMaterial.m_MetallicTextureIndex;
+			m_RoughnessTextureIndex = otherMaterial.m_RoughnessTextureIndex;
+			m_NormalMapIndex = otherMaterial.m_NormalMapIndex;
+			m_HeightMapIndex = otherMaterial.m_HeightMapIndex;
+			m_AmbientOcclusionTextureIndex = otherMaterial.m_AmbientOcclusionTextureIndex;
+			m_EmissionTextureIndex = otherMaterial.m_EmissionTextureIndex;
+			m_TilingFactor = otherMaterial.m_TilingFactor;
+			m_Offset = otherMaterial.m_Offset;
+			m_Name = otherMaterial.m_Name;
+			m_AlbedoTextureHandle = otherMaterial.m_AlbedoTextureHandle;
+			m_MetallicTextureHandle = otherMaterial.m_MetallicTextureHandle;
+			m_RoughnessTextureHandle = otherMaterial.m_RoughnessTextureHandle;
+			m_NormalMapHandle = otherMaterial.m_NormalMapHandle;
+			m_HeightMapHandle = otherMaterial.m_HeightMapHandle;
+			m_AmbientOcclusionTextureHandle = otherMaterial.m_AmbientOcclusionTextureHandle;
+			m_EmissionTextureHandle = otherMaterial.m_EmissionTextureHandle;
+			m_UseAlbedoTexture = otherMaterial.m_UseAlbedoTexture;
+			m_UseMetallicTexture = otherMaterial.m_UseMetallicTexture;
+			m_UseRoughnessTexture = otherMaterial.m_UseRoughnessTexture;
+			m_UseHeightMap = otherMaterial.m_UseHeightMap;
+			m_UseNormalMap = otherMaterial.m_UseNormalMap;
+			m_UseAmbientOcclusionTexture = otherMaterial.m_UseAmbientOcclusionTexture;
+			m_UseEmissionTexture = otherMaterial.m_UseEmissionTexture;
+			m_RenderMode = otherMaterial.m_RenderMode;
+
+			m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
+		}
+
+		return *this;
+	}
+
+	Material::Material(Material&& otherMaterial) noexcept
+	{
+		m_AlbedoColor = std::move(otherMaterial.m_AlbedoColor);
+		m_Metallic = std::move(otherMaterial.m_Metallic);
+		m_Roughness = std::move(otherMaterial.m_Roughness);
+		m_EmissionColor = std::move(otherMaterial.m_EmissionColor);
+		m_EmissionIntensity = std::move(otherMaterial.m_EmissionIntensity);
+		m_HeightScale = std::move(otherMaterial.m_HeightScale);
+		m_AOScale = std::move(otherMaterial.m_AOScale);
+		m_CombinedRoughnessMetallnesMap = std::move(otherMaterial.m_CombinedRoughnessMetallnesMap);
+		m_AlbedoTextureIndex = std::move(otherMaterial.m_AlbedoTextureIndex);
+		m_MetallicTextureIndex = std::move(otherMaterial.m_MetallicTextureIndex);
+		m_RoughnessTextureIndex = std::move(otherMaterial.m_RoughnessTextureIndex);
+		m_NormalMapIndex = std::move(otherMaterial.m_NormalMapIndex);
+		m_HeightMapIndex = std::move(otherMaterial.m_HeightMapIndex);
+		m_AmbientOcclusionTextureIndex = std::move(otherMaterial.m_AmbientOcclusionTextureIndex);
+		m_EmissionTextureIndex = std::move(otherMaterial.m_EmissionTextureIndex);
+		m_TilingFactor = std::move(otherMaterial.m_TilingFactor);
+		m_Offset = std::move(otherMaterial.m_Offset);
+		m_Name = std::move(otherMaterial.m_Name);
+		m_AlbedoTextureHandle = std::move(otherMaterial.m_AlbedoTextureHandle);
+		m_MetallicTextureHandle = std::move(otherMaterial.m_MetallicTextureHandle);
+		m_RoughnessTextureHandle = std::move(otherMaterial.m_RoughnessTextureHandle);
+		m_NormalMapHandle = std::move(otherMaterial.m_NormalMapHandle);
+		m_HeightMapHandle = std::move(otherMaterial.m_HeightMapHandle);
+		m_AmbientOcclusionTextureHandle = std::move(otherMaterial.m_AmbientOcclusionTextureHandle);
+		m_EmissionTextureHandle = std::move(otherMaterial.m_EmissionTextureHandle);
+		m_UseAlbedoTexture = std::move(otherMaterial.m_UseAlbedoTexture);
+		m_UseMetallicTexture = std::move(otherMaterial.m_UseMetallicTexture);
+		m_UseRoughnessTexture = std::move(otherMaterial.m_UseRoughnessTexture);
+		m_UseHeightMap = std::move(otherMaterial.m_UseHeightMap);
+		m_UseNormalMap = std::move(otherMaterial.m_UseNormalMap);
+		m_UseAmbientOcclusionTexture = std::move(otherMaterial.m_UseAmbientOcclusionTexture);
+		m_UseEmissionTexture = std::move(otherMaterial.m_UseEmissionTexture);
+		m_RenderMode = std::move(otherMaterial.m_RenderMode);
+		m_ConstantBufferID = std::move(otherMaterial.m_ConstantBufferID);
+
+		otherMaterial.m_ConstantBufferID = INVALID_CONSTANT_BUFFER_ID;
+	}
+
+	Material& Material::operator=(Material&& otherMaterial) noexcept
+	{
+		if (this != &otherMaterial)
+		{
+			m_AlbedoColor = std::move(otherMaterial.m_AlbedoColor);
+			m_Metallic = std::move(otherMaterial.m_Metallic);
+			m_Roughness = std::move(otherMaterial.m_Roughness);
+			m_EmissionColor = std::move(otherMaterial.m_EmissionColor);
+			m_EmissionIntensity = std::move(otherMaterial.m_EmissionIntensity);
+			m_HeightScale = std::move(otherMaterial.m_HeightScale);
+			m_AOScale = std::move(otherMaterial.m_AOScale);
+			m_CombinedRoughnessMetallnesMap = std::move(otherMaterial.m_CombinedRoughnessMetallnesMap);
+			m_AlbedoTextureIndex = std::move(otherMaterial.m_AlbedoTextureIndex);
+			m_MetallicTextureIndex = std::move(otherMaterial.m_MetallicTextureIndex);
+			m_RoughnessTextureIndex = std::move(otherMaterial.m_RoughnessTextureIndex);
+			m_NormalMapIndex = std::move(otherMaterial.m_NormalMapIndex);
+			m_HeightMapIndex = std::move(otherMaterial.m_HeightMapIndex);
+			m_AmbientOcclusionTextureIndex = std::move(otherMaterial.m_AmbientOcclusionTextureIndex);
+			m_EmissionTextureIndex = std::move(otherMaterial.m_EmissionTextureIndex);
+			m_TilingFactor = std::move(otherMaterial.m_TilingFactor);
+			m_Offset = std::move(otherMaterial.m_Offset);
+			m_Name = std::move(otherMaterial.m_Name);
+			m_AlbedoTextureHandle = std::move(otherMaterial.m_AlbedoTextureHandle);
+			m_MetallicTextureHandle = std::move(otherMaterial.m_MetallicTextureHandle);
+			m_RoughnessTextureHandle = std::move(otherMaterial.m_RoughnessTextureHandle);
+			m_NormalMapHandle = std::move(otherMaterial.m_NormalMapHandle);
+			m_HeightMapHandle = std::move(otherMaterial.m_HeightMapHandle);
+			m_AmbientOcclusionTextureHandle = std::move(otherMaterial.m_AmbientOcclusionTextureHandle);
+			m_EmissionTextureHandle = std::move(otherMaterial.m_EmissionTextureHandle);
+			m_UseAlbedoTexture = std::move(otherMaterial.m_UseAlbedoTexture);
+			m_UseMetallicTexture = std::move(otherMaterial.m_UseMetallicTexture);
+			m_UseRoughnessTexture = std::move(otherMaterial.m_UseRoughnessTexture);
+			m_UseHeightMap = std::move(otherMaterial.m_UseHeightMap);
+			m_UseNormalMap = std::move(otherMaterial.m_UseNormalMap);
+			m_UseAmbientOcclusionTexture = std::move(otherMaterial.m_UseAmbientOcclusionTexture);
+			m_UseEmissionTexture = std::move(otherMaterial.m_UseEmissionTexture);
+			m_RenderMode = std::move(otherMaterial.m_RenderMode);
+			m_ConstantBufferID = std::move(otherMaterial.m_ConstantBufferID);
+
+			otherMaterial.m_ConstantBufferID = INVALID_CONSTANT_BUFFER_ID;
+		}
+
+		return *this;
+	}
+
+	Material::~Material() noexcept
+	{
+		Invalidate();
 	}
 
 	void Material::SetAlbedoTexture(const AssetHandle& albedoTextureHandle) noexcept
@@ -222,41 +397,6 @@ namespace Relentless
 		return m_EmissionTextureHandle != NULL_HANDLE;
 	}
 
-	bool Material::ShouldUseAlbedoTexture() const noexcept
-	{
-		return m_UseAlbedoTexture;
-	}
-
-	bool Material::ShouldUseMetallicTexture() const noexcept
-	{
-		return m_UseMetallicTexture;
-	}
-
-	bool Material::ShouldUseRoughnessTexture() const noexcept
-	{
-		return m_UseRoughnessTexture;
-	}
-
-	bool Material::ShouldUseNormalMap() const noexcept
-	{
-		return m_UseNormalMap;
-	}
-
-	bool Material::ShouldUseHeightMap() const noexcept
-	{
-		return m_UseHeightMap;
-	}
-
-	bool Material::ShouldUseAmbientOcclusionTexture() const noexcept
-	{
-		return m_UseAmbientOcclusionTexture;
-	}
-
-	bool Material::ShouldUseEmissionTexture() const noexcept
-	{
-		return m_UseEmissionTexture;
-	}
-
 	Texture2D& Material::GetAlbedoTexture() const noexcept
 	{
 		return AssetManager::Get<Texture2D>(m_AlbedoTextureHandle);
@@ -406,6 +546,14 @@ namespace Relentless
 		}
 	}
 
+	void Material::Invalidate() noexcept
+	{
+		if (m_ConstantBufferID != INVALID_CONSTANT_BUFFER_ID)
+		{
+			MemoryManager::Get().FreeConstantBuffer(m_ConstantBufferID);
+		}
+	}
+
 	void Material::ToggleAmbientOcclusionTextureUsage() noexcept
 	{
 		m_UseAmbientOcclusionTexture = !m_UseAmbientOcclusionTexture;
@@ -421,129 +569,4 @@ namespace Relentless
 			m_AmbientOcclusionTextureIndex = 0xFFFFFFFF;
 		}
 	}
-
-	//void MaterialManager::Intitialize() noexcept
-	//{
-	//	m_DefaultMaterialHandle = MaterialSerializer::Deserialize(std::string(ENGINE_ASSET_DIRECTORY) + "Materials/Default-Material.rmat");
-	//	MaterialSerializer::Deserialize(std::string(ENGINE_ASSET_DIRECTORY) + "Materials/M_Ground.rmat");
-	//}
-	//
-	//inline static std::mutex g_CreateMutex;
-	//
-	//Material& MaterialManager::GetMaterial(const MaterialHandle& materialHandle) noexcept
-	//{
-	//	const std::lock_guard<std::mutex> lock(g_CreateMutex);
-	//
-	//	RLS_ASSERT(m_Materials.size() > materialHandle.Index, "Material handle is invalid.");
-	//
-	//	return m_Materials[materialHandle.Index];
-	//}
-	//
-	//MaterialHandle& MaterialManager::GetMaterialHandleByName(const std::string& materialName) noexcept
-	//{
-	//	RLS_ASSERT(Exists(materialName), "Material does not exist.");
-	//
-	//	const std::lock_guard<std::mutex> lock(g_CreateMutex);
-	//	return m_StringToMaterialHandleMap[materialName];
-	//}
-	//
-	//MaterialHandle MaterialManager::PromoteToHandle(const UUID& uuid) noexcept
-	//{
-	//	for (auto& [name, handle] : m_StringToMaterialHandleMap)
-	//	{
-	//		if (handle.UUID == uuid)
-	//		{
-	//			return handle;
-	//		}
-	//	}
-	//
-	//	RLS_ASSERT(false, "UUID does not exist in unordered_map.");
-	//	return NULL_HANDLE;
-	//}
-	//
-	//void MaterialManager::OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept
-	//{
-	//	RLS_ASSERT(Exists(previousName), "Material does not exist.");
-	//	auto it = m_StringToMaterialHandleMap.find(previousName);
-	//	m_StringToMaterialHandleMap[newName] = it->second;
-	//	m_StringToMaterialHandleMap.erase(it);
-	//}
-	//
-	//MaterialHandle MaterialManager::Create(const std::string& name, const Material& material) noexcept
-	//{
-	//	return CreateWithUUID(CreateUUID(), name, material);
-	//}
-	//
-	//MaterialHandle MaterialManager::CreateWithUUID(const UUID& uuid, const std::string& name, const Material& material) noexcept
-	//{
-	//	if (Exists(name))
-	//	{
-	//		return m_StringToMaterialHandleMap[name];
-	//	}
-	//
-	//	//A new material handle should be created, using the uuid:
-	//	MaterialHandle materialHandle;
-	//	materialHandle.UUID = uuid;
-	//
-	//	{
-	//		const std::lock_guard<std::mutex> lock(g_CreateMutex);
-	//
-	//		if (!m_FreeList.empty())
-	//		{
-	//			materialHandle.Index = m_FreeList.front();
-	//			m_FreeList.pop();
-	//			m_Materials[materialHandle.Index] = material;
-	//		}
-	//		else
-	//		{
-	//			materialHandle.Index = static_cast<uint16_t>(m_Materials.size());
-	//			m_Materials.emplace_back(material);
-	//		}
-	//
-	//		m_StringToMaterialHandleMap[name] = materialHandle;
-	//	}
-	//
-	//	m_Materials[materialHandle.Index].m_Name = name;
-	//	m_Materials[materialHandle.Index].m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
-	//
-	//	SetDirty(materialHandle);
-	//	return materialHandle;
-	//}
-	//
-	//void MaterialManager::Upload(const MaterialHandle& materialHandle) noexcept
-	//{
-	//	RLS_ASSERT(materialHandle != NULL_HANDLE, "Material handle is invalid.");
-	//	const std::lock_guard<std::mutex> lock(g_CreateMutex);
-	//	RLS_ASSERT(m_Materials.size() > materialHandle.Index, "Material index is invalid.");
-	//
-	//	Material& material = m_Materials[materialHandle.Index];
-	//	MemoryManager::Get().UpdateConstantBuffer(material.m_ConstantBufferID, &material);
-	//}
-	//
-	//void MaterialManager::SetDirty(const MaterialHandle& materialHandle) noexcept
-	//{
-	//	bool foundMaterial = false;
-	//	for (auto& [handle, remainingUpdates] : m_DirtyMaterials)
-	//	{
-	//		const bool alreadyDirty = (materialHandle.UUID == handle.UUID);
-	//		if (alreadyDirty)
-	//		{
-	//			remainingUpdates = D3D12Core::GetNrOfBufferedFrames();
-	//			foundMaterial = true;
-	//			break;
-	//		}
-	//	}
-	//
-	//	if (!foundMaterial)
-	//	{
-	//		m_DirtyMaterials.push_back({ materialHandle, D3D12Core::GetNrOfBufferedFrames() });
-	//	}
-	//}
-	//
-	//bool MaterialManager::Exists(const std::string& materialName) noexcept
-	//{
-	//	const std::lock_guard<std::mutex> lock(g_CreateMutex);
-	//
-	//	return m_StringToMaterialHandleMap.contains(materialName);
-	//}
 }

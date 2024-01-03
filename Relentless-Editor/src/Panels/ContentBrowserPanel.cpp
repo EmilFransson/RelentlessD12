@@ -8,15 +8,11 @@ namespace Relentless
 		  m_SelectedDirectory{"Assets"},
 		  m_AssetToName{ NULL_HANDLE }
 	{
-		m_DirectoryTextureHandle = AssetManager::LoadFromFile<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Directory.jpg");
-		m_SceneTextureHandle = AssetManager::LoadFromFile<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.jpg");
-		m_MaterialTextureHandle = AssetManager::LoadFromFile<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.jpg");
+		m_DirectoryTextureHandle  = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Directory.rasset");
+		m_SceneTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.rasset");
+		m_MaterialTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.rasset");
 
 		currentDirectory = currentDirectory.string().substr(0u, currentDirectory.string().size() - 1);
-
-		//TextureImportSettings importSettings;
-		//importSettings.TextureCompressionType = ETextureCompressionType::BC7_Quick;
-		//aex = AssetManager::LoadFromFile<Texture2D>(EDITOR_ASSET_DIRECTORY + std::string("Textures\\bright_grid.png"), &importSettings);
 	}
 
 	void ContentBrowserPanel::OnImGuiRender(const bool show) noexcept
@@ -274,17 +270,22 @@ namespace Relentless
 				ImGui::SameLine();
 				ImGui::NewLine();
 
-
-				
 				RenderThumbnailText(entry, ImGui::IsItemHovered());
 			}
-			else if (extension == ".rmat")
+			else if (extension == ".rasset")
 			{
 				ImGui::TableNextColumn();
 
-				RLS_ASSERT(false, "TODO!!!");
-				//const AssetHandle materialHandle = AssetManager::LoadFromFile<Material>(entryPath);
-				//RenderAssetThumbnail<Material>(m_MaterialTextureHandle, m_MaterialTextureHandle, materialHandle, AssetManager::Get<Material>(materialHandle).GetName(), m_ThumbnailWidth);
+				const AssetType assetType = AssetRegistry::GetMetaData(entryPath).AssetType;
+				switch (assetType)
+				{
+				case AssetType::Material:
+				{
+					AssetHandle materialHandle = Serializer::Deserialize<Material>(entryPath);
+					RenderAssetThumbnail<Material>(m_MaterialTextureHandle, m_MaterialTextureHandle, materialHandle, AssetManager::Get<Material>(materialHandle).GetName(), m_ThumbnailWidth);
+					break;
+				}
+				}
 			}
 		}
 		ImGui::EndTable();
@@ -301,13 +302,9 @@ namespace Relentless
 
 				if (extension == ".jpg" || extension == ".png")
 				{
-					RLS_ASSERT(false, "STOP");
 					std::filesystem::copy(filePath, currentDirectory, std::filesystem::copy_options::overwrite_existing);
 					std::filesystem::path copiedTexturePath = currentDirectory / filePath.filename();
-					//UUID uuid = TextureSerializer::SerializeDefault(copiedTexturePath.string());
-					//AssetManager::MapGUIDToFilepath(uuid, copiedTexturePath.string());
-					AssetHandle textureHandle = AssetManager::LoadFromFile<Texture2D>(copiedTexturePath.string());
-					AssetRegistry::MapAssetToFilepath({ textureHandle.Uuid, AssetType::Texture2D }, copiedTexturePath.string());
+					AssetManager::LoadFromFile<Texture2D>(copiedTexturePath.string());
 				}
 			}
 			if (ImGui::MenuItem("New Material"))
@@ -316,7 +313,7 @@ namespace Relentless
 				createdMaterialCounter = 0u;
 				std::string name = "New Material[" + std::to_string(++createdMaterialCounter) + "]";
 				std::filesystem::path path = currentDirectory / name;
-				path.append(".rasset");
+				path += ".rasset";
 				while (AssetManager::IsLoaded(path.string()))
 				{
 					name = "New Material[" + std::to_string(++createdMaterialCounter) + "]";
@@ -324,12 +321,15 @@ namespace Relentless
 					path.append(".rasset");
 				}
 
-				//m_AssetToName = AssetManager::LoadFromFile<Material>((currentDirectory / name).string());
 				m_AssetToName = AssetManager::CreateNew<Material>();
 				Material& newMaterial = AssetManager::Get<Material>(m_AssetToName);
 				newMaterial.SetName(name);
-				//MaterialSerializer::Serialize(m_AssetToName, path.string());
 				Serializer::Serialize<Material>(m_AssetToName, path.string());
+				
+				AssetMetaData amd;
+				amd.AssetType = AssetType::Material;
+				amd.Uuid = m_AssetToName.Uuid;
+				AssetRegistry::MapAssetToFilepath(amd, path.string());
 			}
 			ImGui::EndPopup();
 		}

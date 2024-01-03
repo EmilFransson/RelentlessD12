@@ -29,7 +29,7 @@ namespace Relentless
 		{
 			const bool isNavigatingScene = (m_HoveringSceneViewport && Mouse::IsButtonPressed(RLS_BUTTON::Right));
 			if (isNavigatingScene)
-				m_pScene->GetEditorCamera()->OnMouseMove();
+				m_pActiveScene->GetEditorCamera()->OnMouseMove();
 			event.StopPropagation();
 			break;
 		}
@@ -67,7 +67,7 @@ namespace Relentless
 			{
 				if (m_SelectedEntity != NULL_ENTITY)
 				{
-					m_pScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+					m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
 				}
 				m_SelectedEntity = NULL_ENTITY;
 				m_CurrentGizmoType = GizmoType::NONE;
@@ -75,10 +75,10 @@ namespace Relentless
 			else
 			{
 				if (m_SelectedEntity != NULL_ENTITY)
-					m_pScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+					m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
 
 				m_SelectedEntity = m_HoveredEntity;
-				m_pScene->GetEntityManager().Add<SelectedInEditorComponent>(m_SelectedEntity);
+				m_pActiveScene->GetEntityManager().Add<SelectedInEditorComponent>(m_SelectedEntity);
 				m_CurrentGizmoType = GizmoType::TRANSLATE;
 			}
 			m_SceneHierarchyPanel.SetSelectedEntity(m_SelectedEntity);
@@ -122,7 +122,7 @@ namespace Relentless
 					std::string filepath = FileDialogs::SaveFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
 					if (!filepath.empty())
 					{
-						SceneSerializer::Serialize(m_pScene, filepath);
+						SceneSerializer::Serialize(m_pActiveScene, filepath);
 					}
 					//ForceReset Keyboard!
 				}
@@ -146,72 +146,16 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
-		if (!m_ImmersiveModeEnabled)
-		{
-			if (ImGui::BeginMainMenuBar())
-			{
-				if (ImGui::BeginMenu("File"))
-				{
-					if (ImGui::MenuItem("New", "Ctrl+N"))
-					{
-						m_CreateNewScene = true;
-					}
+		UI_DrawMainMenuBar();
 
-					if (ImGui::MenuItem("Open...", "Ctrl+O"))
-					{
-						std::string filepath = FileDialogs::OpenFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
-						if (!filepath.empty())
-						{
-							m_Path = filepath;
-						}
-					}
-
-					if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S"))
-					{
-						std::string filepath = FileDialogs::SaveFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
-						if (!filepath.empty())
-						{
-							SceneSerializer::Serialize(m_pScene, filepath);
-						}
-					}
-
-					//TODO: Make it so the application can be exited here!
-					if (ImGui::MenuItem("Exit"))
-					{
-						//TODO
-					}
-
-					ImGui::EndMenu();
-				}
-				if (ImGui::BeginMenu("View"))
-				{
-					ImGui::MenuItem("Scene Hierarchy Panel", nullptr, &m_DisplaySceneHierarchyPanel);
-					ImGui::MenuItem("Content Browser Panel", nullptr, &m_DisplayContentBrowserPanel);
-					ImGui::MenuItem("Properties Panel", nullptr, &m_DisplayPropertiesPanel);
-					ImGui::MenuItem("Inspector Panel", nullptr, &m_DisplayInspectorPanel);
-					ImGui::MenuItem("Metrics Panel", nullptr, &m_DisplayMetricsPanel);
-					ImGui::MenuItem("Scene Renderer Panel", nullptr, &m_DisplaySceneRendererPanel);
-					ImGui::MenuItem("Statistics Panel", nullptr, &m_DisplayStatisticsPanel);
-
-					ImGui::MenuItem("Immersive Mode", "Ctrl + i", &m_ImmersiveModeEnabled);
-					if (ImGui::MenuItem("Full Screen", "Alt + Enter", Window::IsFullScreen()))
-					{
-						Window::PrepareForFullScreenToggling();
-					}
-
-					ImGui::EndMenu();
-				}
-
-				ImGui::EndMainMenuBar();
-			}
-		}
-
-		ImGuiWindowClass window_class;
-		window_class.DockNodeFlagsOverrideSet = m_ImmersiveModeEnabled ? ImGuiDockNodeFlags_NoTabBar : 0;
-		ImGui::SetNextWindowClass(&window_class);
+		ImGuiWindowClass viewportWindowClass;
+		viewportWindowClass.DockNodeFlagsOverrideSet = m_ImmersiveModeEnabled ? ImGuiDockNodeFlags_NoTabBar : 0;
+		ImGui::SetNextWindowClass(&viewportWindowClass);
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Scene");
+
+		UI_DrawSceneStateIcons();
 
 		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
 		{
@@ -231,7 +175,7 @@ namespace Relentless
 		ImVec2 mousePosition = ImGui::GetMousePos();
 		ImVec2 windowPosition = ImGui::GetWindowPos();
 		ImVec2 mousePositionInSceneClientArea = ImVec2(mousePosition.x - windowPosition.x, mousePosition.y - windowPosition.y - toolBarPadding);
-		m_pScene->SetMousePosition(mousePositionInSceneClientArea);
+		m_pActiveScene->SetMousePosition(mousePositionInSceneClientArea);
 
 		if (m_ViewportPanelSize.x != ImGui::GetContentRegionAvail().x || m_ViewportPanelSize.y != ImGui::GetContentRegionAvail().y)
 		{
@@ -269,46 +213,7 @@ namespace Relentless
 		ImGui::End();
 		ImGui::PopStyleVar();
 
-		if (m_DisplayStatisticsPanel && !m_ImmersiveModeEnabled)
-		{
-			ImGui::Begin("Stats");
-			ImGui::Text("Hovered entity:");
-			ImGui::SameLine();
-
-			if (m_HoveredEntity != NULL_ENTITY && m_pScene->GetEntityManager().Exists(m_HoveredEntity))
-			{
-				ImGui::Text("%s (%d)", m_pScene->GetEntityManager().Get<NameComponent>(m_HoveredEntity).Name.c_str(), (m_HoveredEntity >> 12));
-			}
-			else
-			{
-				ImGui::Text("None");
-			}
-			ImGui::Text("Selected entity:");
-			ImGui::SameLine();
-			m_SelectedEntity == NULL_ENTITY ? ImGui::Text("None") : ImGui::Text("%s (%d)", m_pScene->GetEntityManager().Get<NameComponent>(m_SelectedEntity).Name.c_str(), (m_SelectedEntity >> 12));
-			
-			ImGui::Text("#Shader bindable descriptors: ");
-			ImGui::SameLine(); 
-			ImGui::Text("%d", MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetNrOfDescriptorsInUse());
-
-			ImGui::Text("#CBV/SRV/UAV descriptors: ");
-			ImGui::SameLine();
-			ImGui::Text("%d", MemoryManager::Get().GetCBVSRVUAVDescriptorHeap()->GetNrOfDescriptorsInUse());
-
-			ImGui::Text("#RTV descriptors: ");
-			ImGui::SameLine();
-			ImGui::Text("%d", MemoryManager::Get().GetRTVDescriptorHeap()->GetNrOfDescriptorsInUse());
-
-			ImGui::Text("#DSV descriptors: ");
-			ImGui::SameLine();
-			ImGui::Text("%d", MemoryManager::Get().GetDSVDescriptorHeap()->GetNrOfDescriptorsInUse());
-
-			ImGui::Text("#Constant buffer sets: ");
-			ImGui::SameLine();
-			ImGui::Text("%d", MemoryManager::Get().GetNrOfConstantBuffersInUse());
-
-			ImGui::End();
-		}
+		UI_DrawStatisticsPanel();
 
 		m_SceneHierarchyPanel.OnImGuiRender(m_DisplaySceneHierarchyPanel && !m_ImmersiveModeEnabled);
 		m_InspectorPanel.OnImGuiRender(m_DisplayInspectorPanel && !m_ImmersiveModeEnabled);
@@ -320,15 +225,17 @@ namespace Relentless
 
 	void EditorLayer::OnAttach() noexcept
 	{
-		m_pScene = std::make_shared<Scene>();
-		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
+		m_pActiveScene = std::make_shared<Scene>();
+		m_pActiveScene->SetViewportPanelSize(m_ViewportPanelSize);
 		LoadStarterMeshes();
 		CreateStartScene();
-		m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pScene);
+		m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pActiveScene);
 
-		m_PropertiesPanel.SetActiveScene(m_pScene.get());
-		m_SceneHierarchyPanel.SetActiveScene(m_pScene.get());
+		m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
+		m_SceneHierarchyPanel.SetActiveScene(m_pActiveScene.get());
 		m_SceneRendererPanel.SetActiveRenderer(m_pSceneRenderer);
+
+		m_pEditorScene = m_pActiveScene;
 
 		//TODO: Collapse into one switch-case-callback-function
 		m_SceneHierarchyPanel.SetOnEntityDestroyFunction([this](entity entityID)
@@ -345,9 +252,9 @@ namespace Relentless
 			{
 				if (m_SelectedEntity != NULL_ENTITY)
 				{
-					m_pScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+					m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
 				}
-				m_pScene->GetEntityManager().Add<SelectedInEditorComponent>(entityID);
+				m_pActiveScene->GetEntityManager().Add<SelectedInEditorComponent>(entityID);
 				m_PropertiesPanel.SetSelectedEntity(entityID);
 				m_SelectedEntity = entityID;
 
@@ -360,9 +267,9 @@ namespace Relentless
 			{
 				if (m_SelectedEntity != NULL_ENTITY)
 				{
-					m_pScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+					m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
 				}
-				m_pScene->GetEntityManager().Add<SelectedInEditorComponent>(entityID);
+				m_pActiveScene->GetEntityManager().Add<SelectedInEditorComponent>(entityID);
 				m_PropertiesPanel.SetSelectedEntity(entityID);
 				m_SelectedEntity = entityID;
 
@@ -390,6 +297,12 @@ namespace Relentless
 					m_DisplayInspectorPanel = true;
 				}
 			});
+
+		m_PlayButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PlayButton.png"));
+		m_StopButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StopButton.png"));
+		m_PauseButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PauseButton.png"));
+		m_SimulateButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\SimulateButton.png"));
+		m_StepButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StepButton.png"));
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -409,13 +322,13 @@ namespace Relentless
 				||  Keyboard::IsKeyPressed(RLS_KEY::Q)
 				||  Keyboard::IsKeyPressed(RLS_KEY::E)))
 		{
-			m_pScene->GetEditorCamera()->Update(deltaTime);
+			m_pActiveScene->GetEditorCamera()->Update(deltaTime);
 		}
 
-		auto& cb = *m_pScene->GetEditorCamera()->m_pConstantBuffer;
-		MemoryManager::Get().UpdateConstantBuffer(cb, &m_pScene->GetEditorCamera()->GetPosition());
+		auto& cb = *m_pActiveScene->GetEditorCamera()->m_pConstantBuffer;
+		MemoryManager::Get().UpdateConstantBuffer(cb, &m_pActiveScene->GetEditorCamera()->GetPosition());
 
-		m_pScene->OnUpdate(deltaTime);
+		m_pActiveScene->OnUpdate(deltaTime);
 	}
 
 	void EditorLayer::OnRender() noexcept
@@ -452,15 +365,15 @@ namespace Relentless
 		else if (m_CreateNewScene)
 		{
 			MasterRenderer::WaitAndSyncAllFramesInFlight();
-			m_pScene = std::make_shared<Scene>();
-			m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
-			m_pSceneRenderer->SetContext(m_pScene);
+			m_pActiveScene = std::make_shared<Scene>();
+			m_pActiveScene->SetViewportPanelSize(m_ViewportPanelSize);
+			m_pSceneRenderer->SetContext(m_pActiveScene);
 
 			m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
-			m_PropertiesPanel.SetActiveScene(m_pScene.get());
+			m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
 
 			m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
-			m_SceneHierarchyPanel.SetActiveScene(m_pScene.get());
+			m_SceneHierarchyPanel.SetActiveScene(m_pActiveScene.get());
 
 			m_SelectedEntity = m_HoveredEntity = NULL_ENTITY;
 
@@ -471,20 +384,20 @@ namespace Relentless
 
 	void EditorLayer::LoadStarterMeshes() noexcept
 	{
-		//const std::array<std::string, 11> starterMeshes
-		//{
-		//	"Cube.rasset",
-		//	"Capsule.rasset",
-		//	"Cone.rasset",
-		//	"Cylinder.rasset",
-		//	"Icosphere.rasset",
-		//	"Plane.rasset",
-		//	"Quad.rasset",
-		//	"Sphere.rasset",
-		//	"Torus.rasset",
-		//	"Triangle.rasset",
-		//	"UtahTeapot.rasset"
-		//};
+		const std::array<std::string, 11> starterMeshes
+		{
+			"Cube.rasset",
+			"Capsule.rasset",
+			"Cone.rasset",
+			"Cylinder.rasset",
+			"Icosphere.rasset",
+			"Plane.rasset",
+			"Quad.rasset",
+			"Sphere.rasset",
+			"Torus.rasset",
+			"Triangle.rasset",
+			"UtahTeapot.rasset"
+		};
 		
 		const std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\StarterContent\\");
 
@@ -494,40 +407,27 @@ namespace Relentless
 		//		Serializer::Deserialize<Mesh>(fullMeshPath);
 		//	});
 
-		const std::array<std::string, 11> starterMeshes
-		{
-			"Cube.obj",
-			"Capsule.gltf",
-			"Cone.gltf",
-			"Cylinder.gltf",
-			"Icosphere.obj",
-			"Plane.gltf",
-			"Quad.gltf",
-			"Sphere.obj",
-			"Torus.obj",
-			"Triangle.obj",
-			"UtahTeapot.gltf"
-		};
-
+		MeshImportSettings importSettings = {};
+		importSettings.ImportMaterialsAndTextures = false;
 		for (auto& mesh : starterMeshes)
 		{
 			const std::string fullMeshPath(meshPath + std::string(mesh));
-			AssetManager::LoadFromFile<Mesh>(fullMeshPath);
+			Serializer::Deserialize<Mesh>(fullMeshPath);
 		}
 	}
 
 	void EditorLayer::CreateStartScene() noexcept
 	{
-		SceneSerializer::Deserialize(m_pScene, ENGINE_ASSET_DIRECTORY + std::string("Scenes\\StarterScene.Relentless"));
+		SceneSerializer::Deserialize(m_pActiveScene, ENGINE_ASSET_DIRECTORY + std::string("Scenes\\StarterScene.Relentless"));
 	}
 
 	void EditorLayer::OnSceneViewportChanged() noexcept
 	{
 		m_ViewportPanelSize.x = std::max(1.0f, m_ViewportPanelSize.x);
 		m_ViewportPanelSize.y = std::max(1.0f, m_ViewportPanelSize.y);
-		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
+		m_pActiveScene->SetViewportPanelSize(m_ViewportPanelSize);
 
-		m_pScene->GetEditorCamera()->RecalculateProjectionMatrix(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
+		m_pActiveScene->GetEditorCamera()->RecalculateProjectionMatrix(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		m_pSceneRenderer->OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		m_SceneViewportChanged = false;
 	}
@@ -537,7 +437,7 @@ namespace Relentless
 		if (m_SelectedEntity == NULL_ENTITY)
 			return;
 
-		m_pScene->DestroyEntity(m_SelectedEntity);
+		m_pActiveScene->DestroyEntity(m_SelectedEntity);
 		m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
 		m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
 		m_SelectedEntity = NULL_ENTITY;
@@ -550,8 +450,8 @@ namespace Relentless
 		if (m_SelectedEntity == NULL_ENTITY)
 			return;
 
-		auto& mgr = m_pScene->GetEntityManager();
-		auto newEntity = m_pScene->CreateEntityWithUUID(mgr.Get<NameComponent>(m_SelectedEntity).Name.c_str(), IDComponent().UuId);
+		auto& mgr = m_pActiveScene->GetEntityManager();
+		auto newEntity = m_pActiveScene->CreateEntityWithUUID(mgr.Get<NameComponent>(m_SelectedEntity).Name.c_str(), IDComponent().UuId);
 		auto& tc1 = mgr.Get<TransformComponent>(m_SelectedEntity);
 		auto& tc2 = mgr.Get<TransformComponent>(newEntity);
 		tc2.Translation = tc1.Translation;
@@ -564,13 +464,13 @@ namespace Relentless
 			auto& mfcNew = mgr.Add<MeshFilterComponent>(newEntity);
 			auto& mfc = mgr.Get<MeshFilterComponent>(m_SelectedEntity);
 
-			mfcNew.HandleEX = mfc.HandleEX;
+			mfcNew.AssetHandle = mfc.AssetHandle;
 		}
 		if (mgr.Has<MeshRendererComponent>(m_SelectedEntity))
 		{
 			auto& mrcNew = mgr.Add<MeshRendererComponent>(newEntity);
 			auto& mrc = mgr.Get<MeshRendererComponent>(m_SelectedEntity);
-			mrcNew.HandleEX = mrc.HandleEX;
+			mrcNew.AssetHandle = mrc.AssetHandle;
 			mgr.Add<DirtyMeshRendererComponent>(newEntity);
 		}
 		if (mgr.Has<OpaquePassComponent>(m_SelectedEntity))
@@ -579,7 +479,7 @@ namespace Relentless
 		{
 			auto& newDlc = mgr.Add<DirectionalLightComponent>(newEntity);
 			auto& dlc = mgr.Get<DirectionalLightComponent>(m_SelectedEntity);
-			m_pScene->GetLightManager().AllocateDirectionalLight(newEntity);
+			m_pActiveScene->GetLightManager().AllocateDirectionalLight(newEntity);
 			newDlc.Color = dlc.Color;
 			newDlc.Intensity = dlc.Intensity;
 		}
@@ -587,7 +487,7 @@ namespace Relentless
 		{
 			auto& newPlc = mgr.Add<PointLightComponent>(newEntity);
 			auto& plc = mgr.Get<PointLightComponent>(m_SelectedEntity);
-			m_pScene->GetLightManager().AllocatePointLight(newEntity);
+			m_pActiveScene->GetLightManager().AllocatePointLight(newEntity);
 			newPlc.Color = plc.Color;
 			newPlc.Intensity = plc.Intensity;
 		}
@@ -616,17 +516,17 @@ namespace Relentless
 			mode = (ImGuizmo::MODE)m_CurrentGizmoMode;
 		}
 
-		auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
+		auto& tc = m_pActiveScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
 
 		DirectX::XMFLOAT4X4 visualizationMatrix;
 		visualizationMatrix = tc.Transform;
-		ImGuizmo::Manipulate(*m_pScene->GetEditorCamera()->GetViewMatrix().m, *m_pScene->GetEditorCamera()->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m);
+		ImGuizmo::Manipulate(*m_pActiveScene->GetEditorCamera()->GetViewMatrix().m, *m_pActiveScene->GetEditorCamera()->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m);
 		if (ImGuizmo::IsUsing())
 		{
-			if (m_pScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity) && mode == ImGuizmo::LOCAL)
+			if (m_pActiveScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity) && mode == ImGuizmo::LOCAL)
 			{
-				entity parent = m_pScene->GetEntityManager().Get<IsChildComponent>(m_SelectedEntity).Parent;
-				auto& parentTC = m_pScene->GetEntityManager().Get<TransformComponent>(parent);
+				entity parent = m_pActiveScene->GetEntityManager().Get<IsChildComponent>(m_SelectedEntity).Parent;
+				auto& parentTC = m_pActiveScene->GetEntityManager().Get<TransformComponent>(parent);
 				DirectX::XMMATRIX parentTransform = DirectX::XMLoadFloat4x4(&parentTC.Transform);
 				DirectX::XMMATRIX inverseParentTransform = DirectX::XMMatrixInverse(nullptr, parentTransform);
 				DirectX::XMMATRIX visMatrix = DirectX::XMLoadFloat4x4(&visualizationMatrix);
@@ -647,7 +547,7 @@ namespace Relentless
 				tc.Rotation.z += deltaRotationZ;
 				tc.Scale = scale;
 
-				m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
+				m_pActiveScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
 			}
 			else
 			{
@@ -660,7 +560,7 @@ namespace Relentless
 				tc.LocalRotation.z += deltaRotationZ;
 				tc.LocalScale = scale;
 
-				m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = false;
+				m_pActiveScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = false;
 			}
 		}
 	}
@@ -668,16 +568,16 @@ namespace Relentless
 	void EditorLayer::LoadScene(const std::filesystem::path& filepath) noexcept
 	{
 		MasterRenderer::WaitAndSyncAllFramesInFlight();
-		m_pScene = std::make_shared<Scene>();
-		m_pScene->SetViewportPanelSize(m_ViewportPanelSize);
-		SceneSerializer::Deserialize(m_pScene, filepath.string());
-		m_pSceneRenderer->SetContext(m_pScene);
+		m_pActiveScene = std::make_shared<Scene>();
+		m_pActiveScene->SetViewportPanelSize(m_ViewportPanelSize);
+		SceneSerializer::Deserialize(m_pActiveScene, filepath.string());
+		m_pSceneRenderer->SetContext(m_pActiveScene);
 
 		m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
-		m_PropertiesPanel.SetActiveScene(m_pScene.get());
+		m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
 
 		m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
-		m_SceneHierarchyPanel.SetActiveScene(m_pScene.get());
+		m_SceneHierarchyPanel.SetActiveScene(m_pActiveScene.get());
 
 		m_SelectedEntity = m_HoveredEntity = NULL_ENTITY;
 
@@ -686,6 +586,260 @@ namespace Relentless
 
 	void EditorLayer::SaveScene(const std::filesystem::path& filepath) noexcept
 	{
-		SceneSerializer::Serialize(m_pScene, filepath.string());
+		SceneSerializer::Serialize(m_pActiveScene, filepath.string());
+	}
+
+	void EditorLayer::OnScenePlay() noexcept
+	{
+		Application::Get().SubmitToMainThread([&]()
+			{
+				MasterRenderer::WaitAndSyncAllFramesInFlight();
+
+				m_SceneState = SceneState::Play;
+
+				if (m_SelectedEntity != NULL_ENTITY)
+				{
+					m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+					m_SelectedEntity = NULL_ENTITY;
+				}
+
+				m_pActiveScene = Scene::Copy(m_pEditorScene);
+				m_pActiveScene->OnRuntimeStart();
+				
+				SetSceneContext(m_pActiveScene);
+			});
+	}
+
+	void EditorLayer::OnSceneStop() noexcept
+	{
+		Application::Get().SubmitToMainThread([&]()
+			{
+				MasterRenderer::WaitAndSyncAllFramesInFlight();
+
+				m_SceneState = SceneState::Edit;
+				m_pActiveScene->OnRuntimeStop();
+				m_pActiveScene = m_pEditorScene;
+
+				SetSceneContext(m_pActiveScene);
+
+				m_SelectedEntity = NULL_ENTITY;
+			});
+	}
+
+	void EditorLayer::SetSceneContext(std::shared_ptr<Scene> pScene) noexcept
+	{
+		RLS_ASSERT(pScene, "Scene is invalid.");
+
+		m_pSceneRenderer->SetContext(pScene);
+
+		m_PropertiesPanel.SetActiveScene(pScene.get());
+		m_SceneHierarchyPanel.SetActiveScene(pScene.get());
+
+		pScene->GetEditorCamera()->RecalculateProjectionMatrix(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
+	}
+
+	void EditorLayer::UI_DrawStatisticsPanel() noexcept
+	{
+		if (!m_DisplayStatisticsPanel || m_ImmersiveModeEnabled)
+			return;
+
+		ImGui::Begin("Stats");
+		ImGui::Text("Hovered entity:");
+		ImGui::SameLine();
+
+		if (m_HoveredEntity != NULL_ENTITY && m_pActiveScene->GetEntityManager().Exists(m_HoveredEntity))
+		{
+			ImGui::Text("%s (%d)", m_pActiveScene->GetEntityManager().Get<NameComponent>(m_HoveredEntity).Name.c_str(), (m_HoveredEntity >> 12));
+		}
+		else
+		{
+			ImGui::Text("None");
+		}
+		ImGui::Text("Selected entity:");
+		ImGui::SameLine();
+		m_SelectedEntity == NULL_ENTITY ? ImGui::Text("None") : ImGui::Text("%s (%d)", m_pActiveScene->GetEntityManager().Get<NameComponent>(m_SelectedEntity).Name.c_str(), (m_SelectedEntity >> 12));
+
+		ImGui::Text("#Shader bindable descriptors: ");
+		ImGui::SameLine();
+		ImGui::Text("%d", MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetNrOfDescriptorsInUse());
+
+		ImGui::Text("#CBV/SRV/UAV descriptors: ");
+		ImGui::SameLine();
+		ImGui::Text("%d", MemoryManager::Get().GetCBVSRVUAVDescriptorHeap()->GetNrOfDescriptorsInUse());
+
+		ImGui::Text("#RTV descriptors: ");
+		ImGui::SameLine();
+		ImGui::Text("%d", MemoryManager::Get().GetRTVDescriptorHeap()->GetNrOfDescriptorsInUse());
+
+		ImGui::Text("#DSV descriptors: ");
+		ImGui::SameLine();
+		ImGui::Text("%d", MemoryManager::Get().GetDSVDescriptorHeap()->GetNrOfDescriptorsInUse());
+
+		ImGui::Text("#Constant buffer sets: ");
+		ImGui::SameLine();
+		ImGui::Text("%d", MemoryManager::Get().GetNrOfConstantBuffersInUse());
+
+		ImGui::End();
+	}
+
+	void EditorLayer::UI_DrawMainMenuBar() noexcept
+	{
+		if (m_ImmersiveModeEnabled)
+			return;
+
+		if (!ImGui::BeginMainMenuBar())
+			return;
+
+		if (ImGui::BeginMenu("File"))
+		{
+			if (ImGui::MenuItem("New", "Ctrl+N"))
+			{
+				m_CreateNewScene = true;
+			}
+
+			if (ImGui::MenuItem("Open...", "Ctrl+O"))
+			{
+				std::string filepath = FileDialogs::OpenFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
+				if (!filepath.empty())
+				{
+					m_Path = filepath;
+				}
+			}
+
+			if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S"))
+			{
+				std::string filepath = FileDialogs::SaveFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
+				if (!filepath.empty())
+				{
+					SceneSerializer::Serialize(m_pActiveScene, filepath);
+				}
+			}
+
+			//TODO: Make it so the application can be exited here!
+			if (ImGui::MenuItem("Exit"))
+			{
+				//TODO
+			}
+
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("View"))
+		{
+			ImGui::MenuItem("Scene Hierarchy Panel", nullptr, &m_DisplaySceneHierarchyPanel);
+			ImGui::MenuItem("Content Browser Panel", nullptr, &m_DisplayContentBrowserPanel);
+			ImGui::MenuItem("Properties Panel", nullptr, &m_DisplayPropertiesPanel);
+			ImGui::MenuItem("Inspector Panel", nullptr, &m_DisplayInspectorPanel);
+			ImGui::MenuItem("Metrics Panel", nullptr, &m_DisplayMetricsPanel);
+			ImGui::MenuItem("Scene Renderer Panel", nullptr, &m_DisplaySceneRendererPanel);
+			ImGui::MenuItem("Statistics Panel", nullptr, &m_DisplayStatisticsPanel);
+
+			ImGui::MenuItem("Immersive Mode", "Ctrl + i", &m_ImmersiveModeEnabled);
+			if (ImGui::MenuItem("Full Screen", "Alt + Enter", Window::IsFullScreen()))
+			{
+				Window::PrepareForFullScreenToggling();
+			}
+
+			ImGui::EndMenu();
+		}
+
+		ImGui::EndMainMenuBar();
+	}
+
+	void EditorLayer::UI_DrawSceneStateIcons() noexcept
+	{
+		constexpr const ImVec2 sceneStateIconsWindowSize = ImVec2(190.0f, 50.0f);
+
+		const float mainViewportPanelWidth = ImGui::GetWindowContentRegionWidth();
+		const float offsetX = (mainViewportPanelWidth / 2.0f) - (sceneStateIconsWindowSize.x / 2.0f);
+		constexpr const float offsetY = 30.0f;
+
+		ImVec2 windowPosition = ImGui::GetWindowPos();
+		windowPosition = ImVec2(windowPosition.x + offsetX, windowPosition.y + offsetY);
+
+		auto& colors = ImGui::GetStyle().Colors;
+		const auto& windowBGColor = colors[ImGuiCol_WindowBg];
+		const auto& buttonColor = colors[ImGuiCol_Button];
+		const auto& buttonActiveColor = colors[ImGuiCol_ButtonActive];
+		const auto& buttonHoveredColor = colors[ImGuiCol_ButtonHovered];
+		
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(windowBGColor.x, windowBGColor.y, windowBGColor.z, 0.6f));
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(buttonColor.x, buttonColor.y, buttonColor.z, 0.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(buttonActiveColor.x, buttonActiveColor.y, buttonActiveColor.z, 0.5f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(buttonHoveredColor.x, buttonHoveredColor.y, buttonHoveredColor.z, 0.5f));
+
+		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowRounding, 10.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_ItemInnerSpacing, ImVec2(0.0f, 0.0f));
+
+		ImGui::SetNextWindowSize(sceneStateIconsWindowSize);
+		ImGui::Begin("##SceneStateIcons", nullptr, ImGuiWindowFlags_NoDecoration);
+		ImGui::SetWindowPos(windowPosition);
+
+		const ImVec2 playStopButtonPosition = ImVec2(ImGui::GetCursorPosX() + 10.0f, ImGui::GetCursorPosY());
+		ImGui::SetCursorPosX(playStopButtonPosition.x);
+		
+		constexpr const ImVec2 buttonSize = ImVec2(50.0f, 50.0f);
+		constexpr const float buttonGap = 10.0f;
+
+		//Draw Play/Stop button
+		const Texture2D& IconTexture = AssetManager::Get<Texture2D>(m_SceneState == SceneState::Edit ? m_PlayButtonTextureHandle : m_StopButtonTextureHandle);
+		if (ImGui::ImageButton((ImTextureID)IconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
+		{
+			if (m_SceneState == SceneState::Edit)
+			{
+				OnScenePlay();
+			}
+			else
+			{
+				OnSceneStop();
+			}
+		}
+
+		//Simulate button:
+		ImVec2 simulateButtonPosition = playStopButtonPosition;
+		if (m_SceneState == SceneState::Edit)
+		{
+			simulateButtonPosition = ImVec2(simulateButtonPosition.x + buttonSize.x + buttonGap, simulateButtonPosition.y);
+			ImGui::SetCursorPos(simulateButtonPosition);
+
+			const Texture2D& simulateIconTexture = AssetManager::Get<Texture2D>(m_SimulateButtonTextureHandle);
+			if (ImGui::ImageButton((ImTextureID)simulateIconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
+			{
+				m_SceneState = SceneState::Simulate;
+			}
+		}
+
+		//Pause button:
+		ImVec2 pauseButtonPosition = simulateButtonPosition;
+		if (m_SceneState == SceneState::Play || m_SceneState == SceneState::Simulate)
+		{
+			pauseButtonPosition = ImVec2(pauseButtonPosition.x + buttonSize.x + buttonGap, pauseButtonPosition.y);
+			ImGui::SetCursorPos(pauseButtonPosition);
+
+			const Texture2D& pauseIconTexture = AssetManager::Get<Texture2D>(m_PauseButtonTextureHandle);
+			if (ImGui::ImageButton((ImTextureID)pauseIconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
+			{
+				m_pActiveScene->SetPaused(!m_pActiveScene->IsPaused());
+			}
+		}
+
+		//Step button:
+		if (m_pActiveScene->IsPaused())
+		{
+			ImVec2 stepButtonPosition = pauseButtonPosition;
+			stepButtonPosition = ImVec2(stepButtonPosition.x + buttonSize.x + buttonGap, stepButtonPosition.y);
+			ImGui::SetCursorPos(stepButtonPosition);
+
+			const Texture2D& stepIconTexture = AssetManager::Get<Texture2D>(m_StepButtonTextureHandle);
+			if (ImGui::ImageButton((ImTextureID)stepIconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
+			{
+				//TODO: Send step signal to scene....
+			}
+		}
+
+		ImGui::PopStyleColor(4);
+		ImGui::PopStyleVar(3);
+		ImGui::End();
 	}
 }

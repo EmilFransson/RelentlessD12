@@ -11,7 +11,7 @@ namespace Relentless
 
 	std::string ConvertUUIDToString(const UUID& uuid) noexcept
 	{
-		wchar_t* wszUuid = nullptr;
+		wchar_t wszUuid[39] = { 0 };
 		std::string strUuid = {};
 
 		if (::StringFromGUID2(uuid, wszUuid, 39) > 0)
@@ -21,7 +21,6 @@ namespace Relentless
 
 			strUuid = chUuid;
 		}
-		::CoTaskMemFree(wszUuid);
 
 		return strUuid;
 	}

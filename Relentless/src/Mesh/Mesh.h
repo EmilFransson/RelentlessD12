@@ -9,6 +9,10 @@ namespace Relentless
 	public:
 		explicit Mesh(const std::string& name, const VertexBuffer::Specification& vbSpec, const IndexBuffer::Specification& ibSpec) noexcept;
 		Mesh();
+		Mesh(const Mesh& otherMesh) noexcept;
+		Mesh& operator=(const Mesh& otherMesh) noexcept;
+		Mesh(Mesh&& otherMesh) noexcept;
+		Mesh& operator=(Mesh&& otherMesh) noexcept;
 		void SetName(const std::string& name) noexcept;
 		void SetVertexBuffer(std::unique_ptr<VertexBuffer>&& pVertexBuffer) noexcept;
 		void SetIndexBuffer(std::unique_ptr<IndexBuffer>&& pIndexBuffer) noexcept;

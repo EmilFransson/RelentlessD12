@@ -11,9 +11,9 @@ Entities:
       Local Rotation: [0, 0, 0]
       Local Scale: [1, 1, 1]
     MeshFilterComponent:
-      MeshHandle: "{00000000-0000-0000-0000-000000000005}"
+      MeshHandle: "{AFB3E741-3D0D-4535-A840-BDB7048F6990}"
     MeshRendererComponent:
-      MaterialHandle: "{00000000-0000-0000-0000-000000000001}"
+      MaterialHandle: "{C7BA945A-23FB-4119-91DA-7F5D0278BCB9}"
     OpaquePassComponent:
       ForwardPass: true
     RootComponent:
@@ -29,9 +29,9 @@ Entities:
       Local Rotation: [0, 0, 0]
       Local Scale: [6.4000001, 0.100000001, 6.4000001]
     MeshFilterComponent:
-      MeshHandle: "{00000000-0000-0000-0000-000000000005}"
+      MeshHandle: "{AFB3E741-3D0D-4535-A840-BDB7048F6990}"
     MeshRendererComponent:
-      MaterialHandle: "{00000000-0000-0000-0000-000000000002}"
+      MaterialHandle: "{0CAA95D3-94A1-4497-8A34-AC1F0CED81C4}"
     OpaquePassComponent:
       ForwardPass: true
     RootComponent:

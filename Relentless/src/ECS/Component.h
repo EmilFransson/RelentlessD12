@@ -10,18 +10,85 @@ namespace Relentless
 {
 	struct TransformComponent
 	{
-		TransformComponent()
+		TransformComponent() noexcept
 			: Translation{ 0.0f, 0.0f, 0.0f },
 			  Rotation{ 0.0f, 0.0f, 0.0f },
 			  Scale{ 1.0f, 1.0f, 1.0f },
 			  LocalTranslation{ 0.0f, 0.0f, 0.0f },
 			  LocalRotation{0.0f, 0.0f, 0.0f },
 			  LocalScale{ 1.0f, 1.0f, 1.0f },
-			  ConstantBufferID{ static_cast<size_t>(-1) }
+			  ConstantBufferID{ INVALID_CONSTANT_BUFFER_ID }
 		{
 			DirectX::XMStoreFloat4x4(&Transform, DirectX::XMMatrixIdentity());
 			DirectX::XMStoreFloat4x4(&LocalTransform, DirectX::XMMatrixIdentity());
+
+			ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(Transform));
 		}
+
+		~TransformComponent() noexcept 
+		{
+			if (ConstantBufferID != INVALID_CONSTANT_BUFFER_ID)
+			{
+				MemoryManager::Get().FreeConstantBuffer(ConstantBufferID);
+			}
+		}
+
+		TransformComponent(const TransformComponent& otherComponent) noexcept
+		{
+			Transform = otherComponent.Transform;
+			Translation = otherComponent.Translation;
+			Rotation = otherComponent.Rotation;
+			Scale = otherComponent.Scale;
+
+			LocalTransform = otherComponent.LocalTransform;
+			LocalTranslation = otherComponent.LocalTranslation;
+			LocalRotation = otherComponent.LocalRotation;
+			LocalScale = otherComponent.LocalScale;
+
+			ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(Transform));
+		}
+
+		TransformComponent(TransformComponent&& otherComponent) noexcept
+		{
+			Transform = std::move(otherComponent.Transform);
+			Translation = std::move(otherComponent.Translation);
+			Rotation = std::move(otherComponent.Rotation);
+			Scale = std::move(otherComponent.Scale);
+
+			LocalTransform = std::move(otherComponent.LocalTransform);
+			LocalTranslation = std::move(otherComponent.LocalTranslation);
+			LocalRotation = std::move(otherComponent.LocalRotation);
+			LocalScale = std::move(otherComponent.LocalScale);
+
+			ConstantBufferID = std::move(otherComponent.ConstantBufferID);
+
+			//Invalidate the moved from constant buffer ID to catch any misuse:
+			otherComponent.ConstantBufferID = INVALID_CONSTANT_BUFFER_ID;
+		}
+
+		TransformComponent& operator=(TransformComponent&& otherComponent) noexcept
+		{
+			if (this != &otherComponent)
+			{
+				Transform = std::move(otherComponent.Transform);
+				Translation = std::move(otherComponent.Translation);
+				Rotation = std::move(otherComponent.Rotation);
+				Scale = std::move(otherComponent.Scale);
+
+				LocalTransform = std::move(otherComponent.LocalTransform);
+				LocalTranslation = std::move(otherComponent.LocalTranslation);
+				LocalRotation = std::move(otherComponent.LocalRotation);
+				LocalScale = std::move(otherComponent.LocalScale);
+
+				ConstantBufferID = std::move(otherComponent.ConstantBufferID);
+
+				//Invalidate the moved from constant buffer ID to catch any misuse:
+				otherComponent.ConstantBufferID = INVALID_CONSTANT_BUFFER_ID;
+			}
+
+			return *this;
+		}
+
 		DirectX::XMFLOAT4X4 Transform;
 		DirectX::XMFLOAT3 Translation;
 		DirectX::XMFLOAT3 Rotation;
@@ -60,21 +127,19 @@ namespace Relentless
 	struct MeshFilterComponent
 	{
 		MeshFilterComponent()
-			: //MeshHandle{ NULL_HANDLE },
-			  HandleEX{ NULL_HANDLE }
+			: AssetHandle{ NULL_HANDLE }
 		{}
-		//MeshHandle MeshHandle;
-		AssetHandle HandleEX;
+
+		AssetHandle AssetHandle;
 	};
 
 	struct MeshRendererComponent
 	{
 		MeshRendererComponent()
-			:// MaterialHandle{ NULL_HANDLE },
-			  HandleEX{ NULL_HANDLE }
+			: AssetHandle{ NULL_HANDLE }
 		{}
-		//MaterialHandle MaterialHandle;
-		AssetHandle HandleEX;
+
+		AssetHandle AssetHandle;
 	};
 
 	struct DirtyMeshRendererComponent
@@ -91,20 +156,11 @@ namespace Relentless
 		//ID
 	};
 
-	struct TransparentPassComponent
-	{
-		//ID
-	};
-
 	struct IDComponent
 	{
 		IDComponent()
 		{
-			#if defined RLS_DEBUG
-			RLS_ASSERT(UuidCreate(&UuId) == RPC_S_OK, "Failed to generate UUID.");
-			#else
-			UuidCreate(&UuId);
-			#endif
+			UuId = CreateUUID();
 		}
 		
 		IDComponent(const UUID& id)
@@ -175,20 +231,10 @@ namespace Relentless
 	struct IsChildComponent
 	{
 		explicit IsChildComponent() noexcept
-			: Parent{ NULL_ENTITY }//,
-			//LocalTranslation{ 0.0f, 0.0f, 0.0f },
-			//LocalRotation{ 0.0f, 0.0f, 0.0f },
-			//LocalScale{ 1.0f, 1.0f, 1.0f }
-		{
-			//DirectX::XMStoreFloat4x4(&LocalTransform, DirectX::XMMatrixIdentity());
-		} 
+			: Parent{ NULL_ENTITY }
+		{} 
 
 		entity Parent;
-
-		//DirectX::XMFLOAT4X4 LocalTransform;
-		//DirectX::XMFLOAT3 LocalTranslation;
-		//DirectX::XMFLOAT3 LocalRotation;
-		//DirectX::XMFLOAT3 LocalScale;
 	};
 
 	struct SelectedInEditorComponent

@@ -63,7 +63,7 @@ namespace Relentless
 
 	void AssetManager::Initialize() noexcept
 	{
-		m_DefaultMaterialHandle = Serializer::Deserialize<Material>(std::string(ENGINE_ASSET_DIRECTORY) + "Materials\\m_DefaultMaterial.rasset");
+		m_DefaultMaterialHandle = Serializer::Deserialize<Material>(std::string(ENGINE_ASSET_DIRECTORY) + "Materials\\M_DefaultMaterial.rasset");
 	}
 
 	bool AssetManager::IsLoaded(const std::string& filepath) noexcept

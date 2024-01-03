@@ -223,11 +223,15 @@ namespace Relentless
 			size_t handle = m_FreeConstantBufferHandles.front();
 			m_FreeConstantBufferHandles.pop();
 			m_ConstantBuffers[handle] = std::make_unique<ConstantBuffer>(sizeInBytes);
+
+			RLS_CORE_INFO("Created Constant Buffer with handle {0}", handle);
 			return handle;
 		}
 		else
 		{
 			m_ConstantBuffers.emplace_back(std::make_unique<ConstantBuffer>(sizeInBytes));
+
+			RLS_CORE_INFO("Created Constant Buffer with handle {0}", m_ConstantBuffers.size() - 1);
 			return m_ConstantBuffers.size() - 1;
 		}
 	}
@@ -244,6 +248,8 @@ namespace Relentless
 		
 		m_ConstantBuffers[cbHandle]->ReleaseHandles();
 		m_FreeConstantBufferHandles.push(cbHandle);
+
+		RLS_CORE_INFO("Destroyed constant buffer with handle {0}", cbHandle);
 	}
 
 	void MemoryManager::SetDirtyMaterial(const AssetHandle& handle) noexcept
@@ -263,8 +269,22 @@ namespace Relentless
 		for (auto& [UUID, handleUpdatesPair] : m_DirtyMaterials)
 		{
 			Material& material = AssetManager::Get<Material>(handleUpdatesPair.first);
-			uint32_t constantBufferIndex = material.GetConstantBufferIndex();
+			const size_t constantBufferIndex = material.m_ConstantBufferID;
 			UpdateConstantBuffer(constantBufferIndex, &material);
+
+			handleUpdatesPair.second--;
+		}
+
+		for (auto it = m_DirtyMaterials.begin(); it != m_DirtyMaterials.end();)
+		{
+			if (it->second.second <= 0) 
+			{
+				it = m_DirtyMaterials.erase(it); 
+			}
+			else 
+			{
+				++it; 
+			}
 		}
 	}
 }

@@ -12,6 +12,8 @@ namespace Relentless
 	enum class GizmoType : int8_t { NONE = -1, TRANSLATE = 0, ROTATE = 1, SCALE = 2 };
 	enum class GizmoMode : uint8_t { LOCAL = 0, WORLD };
 
+	enum class SceneState : uint8_t { Edit = 0, Play, Simulate };
+
 	class EditorLayer : public Layer
 	{
 	public:
@@ -33,6 +35,15 @@ namespace Relentless
 		void ManipulateTransformGizmo() noexcept;
 		void LoadScene(const std::filesystem::path& filepath) noexcept;
 		void SaveScene(const std::filesystem::path& filepath) noexcept;
+
+		void OnScenePlay() noexcept;
+		void OnSceneStop() noexcept;
+
+		void SetSceneContext(std::shared_ptr<Scene> pScene) noexcept;
+
+		void UI_DrawStatisticsPanel() noexcept;
+		void UI_DrawMainMenuBar() noexcept;
+		void UI_DrawSceneStateIcons() noexcept;
 	private:
 		bool m_SceneViewportChanged;
 		bool m_HoveringSceneViewport;
@@ -52,11 +63,10 @@ namespace Relentless
 		SceneRendererPanel m_SceneRendererPanel;
 		InspectorPanel m_InspectorPanel;
 
-		std::shared_ptr<Scene> m_pScene;
+		std::shared_ptr<Scene> m_pActiveScene = nullptr;
+		std::shared_ptr<Scene> m_pEditorScene = nullptr;
 		std::shared_ptr<SceneRenderer> m_pSceneRenderer;
 	
-		std::queue<std::function<void()>> m_DeferredFunctions;
-		
 		bool m_DisplaySceneHierarchyPanel;
 		bool m_DisplayContentBrowserPanel;
 		bool m_DisplayPropertiesPanel;
@@ -70,6 +80,12 @@ namespace Relentless
 		std::string m_Path{};
 		bool m_CreateNewScene{ false };
 
-		AssetHandle aex;
+		AssetHandle m_PlayButtonTextureHandle = NULL_HANDLE;
+		AssetHandle m_StopButtonTextureHandle = NULL_HANDLE;
+		AssetHandle m_PauseButtonTextureHandle = NULL_HANDLE;
+		AssetHandle m_SimulateButtonTextureHandle = NULL_HANDLE;
+		AssetHandle m_StepButtonTextureHandle = NULL_HANDLE;
+
+		SceneState m_SceneState = SceneState::Edit;
 	};
 }

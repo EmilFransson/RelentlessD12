@@ -1,0 +1,54 @@
+Scene: Starter Scene
+Entities:
+  - Entity: "{B2B81C91-2FBB-4C8A-9248-BD1F884FA935}"
+    NameComponent:
+      Name: Cube
+    TransformComponent:
+      Translation: [0, 0.550000012, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+      Local Translation: [0, 0.550000012, 0]
+      Local Rotation: [0, 0, 0]
+      Local Scale: [1, 1, 1]
+    MeshFilterComponent:
+      MeshHandle: "{AFB3E741-3D0D-4535-A840-BDB7048F6990}"
+    MeshRendererComponent:
+      MaterialHandle: "{C7BA945A-23FB-4119-91DA-7F5D0278BCB9}"
+    OpaquePassComponent:
+      ForwardPass: true
+    RootComponent:
+      Root: true
+  - Entity: "{8E90432F-A667-4F31-9EF8-A493445E1615}"
+    NameComponent:
+      Name: Ground
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [6.4000001, 0.100000001, 6.4000001]
+      Local Translation: [0, 0, 0]
+      Local Rotation: [0, 0, 0]
+      Local Scale: [6.4000001, 0.100000001, 6.4000001]
+    MeshFilterComponent:
+      MeshHandle: "{AFB3E741-3D0D-4535-A840-BDB7048F6990}"
+    MeshRendererComponent:
+      MaterialHandle: "{0CAA95D3-94A1-4497-8A34-AC1F0CED81C4}"
+    OpaquePassComponent:
+      ForwardPass: true
+    RootComponent:
+      Root: true
+  - Entity: "{32A450E3-3DFD-4BBF-8B6D-079768AB5CB5}"
+    NameComponent:
+      Name: Directional Light
+    TransformComponent:
+      Translation: [0, 3, 0]
+      Rotation: [50, -30, 0]
+      Scale: [1, 1, 1]
+      Local Translation: [0, 3, 0]
+      Local Rotation: [50, -30, 0]
+      Local Scale: [1, 1, 1]
+    DirectionalLightComponent:
+      Direction: [0, 0, 0]
+      Intensity: 1
+      Color: [1, 0.956862748, 0.839215696]
+    RootComponent:
+      Root: true

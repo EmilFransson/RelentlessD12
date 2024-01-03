@@ -11,6 +11,8 @@ namespace Relentless
 		[[nodiscard]] constexpr const std::string& GetName() const { return m_Name; }
 	protected:
 		IResource(const std::string& name = "?") noexcept;
+		IResource(const IResource& otherResource) noexcept;
+		IResource& operator=(const IResource& otherResource) noexcept;
 		IResource(IResource&& otherResource) noexcept;
 		IResource& operator=(IResource&& otherResource) noexcept;
 		virtual ~IResource() noexcept = default;

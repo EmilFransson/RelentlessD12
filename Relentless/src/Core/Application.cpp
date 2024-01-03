@@ -10,9 +10,19 @@
 #include "Window.h"
 namespace Relentless
 {
+	Application* Application::s_Instance = nullptr;
+
+	Application& Application::Get() noexcept
+	{
+		return *s_Instance;
+	}
+
 	Application::Application(const ApplicationSpecification& applicationSpecification) noexcept
 		: m_ApplicationSpecification{ applicationSpecification }
 	{
+		RLS_ASSERT(!s_Instance, "Application already exists!");
+		s_Instance = this;
+
 		OnStartUp();
 	}
 
@@ -23,6 +33,8 @@ namespace Relentless
 		while (m_IsRunning)
 		{
 			PROFILE_FUNC;
+
+			ExecuteMainThreadQueue();
 
 			Timer::Update();
 			
@@ -104,6 +116,12 @@ namespace Relentless
 		}
 	}
 
+	void Application::SubmitToMainThread(const std::function<void()>& func)
+	{
+		std::scoped_lock(m_MainThreadFunctionQueueMutex);
+		m_MainThreadFunctionQueue.push(func);
+	}
+
 	void Application::OnStartUp() noexcept
 	{
 		EventBus::Get().SetMainApplication(this);
@@ -111,7 +129,8 @@ namespace Relentless
 		D3D12Core::Initialize();
 		MemoryManager::Get().Initialize();
 		AssetManager::Initialize();
-		AssetRegistry::RecursiveScanDirectoryForAssets("F:\\RelentlessD12\\Relentless\\Assets\\Materials");
+		AssetRegistry::RecursiveScanDirectoryForAssets(ENGINE_ASSET_DIRECTORY);
+		AssetRegistry::RecursiveScanDirectoryForAssets(EDITOR_ASSET_DIRECTORY);
 
 		std::string engineIni = std::string(MAIN_ENGINE_DIRECTORY) + std::string("engine.ini");
 
@@ -142,7 +161,7 @@ namespace Relentless
 
 		MeshImportSettings settings;
 
-		AssetManager::LoadFromFile<Mesh>(ENGINE_ASSET_DIRECTORY + std::string("Models\\PKG_B_Ivy\\NewSponza_IvyGrowth_glTF.gltf"), settings);
+		//AssetManager::LoadFromFile<Mesh>(ENGINE_ASSET_DIRECTORY + std::string("Models\\PKG_B_Ivy\\NewSponza_IvyGrowth_glTF.gltf"), settings);
 		//AssetHandle handle = AssetManager::CreateNew<Material>();
 		//Material& material = AssetManager::Get<Material>(handle);
 		//material.SetName("Default-Material");
@@ -167,4 +186,18 @@ namespace Relentless
 
 		m_IsRunning = false;
 	}
+
+	void Application::ExecuteMainThreadQueue() noexcept
+	{
+		std::scoped_lock(m_MainThreadFunctionQueueMutex);
+
+		while (m_MainThreadFunctionQueue.size() > 0)
+		{
+			auto& func = m_MainThreadFunctionQueue.front();
+			func();
+
+			m_MainThreadFunctionQueue.pop();
+		}
+	}
+
 }

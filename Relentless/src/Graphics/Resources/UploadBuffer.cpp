@@ -90,11 +90,6 @@ namespace Relentless
 		}
 		m_MappedPtr -= offset;
 		m_CurrentSize = 0u;
-
-		
-		//MasterRenderer::ExecuteCommands();
-		//MasterRenderer::WaitForGPU();
-		//MasterRenderer::ResetFrameCommandUnits(MasterRenderer::GetCurrentFrameIndex());
 	}
 
 	void UploadBuffer::Copy(const uint64_t size, void* pSrc, IResource* pDst, const D3D12_RESOURCE_STATES stateAfterCopy) noexcept

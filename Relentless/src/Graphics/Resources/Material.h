@@ -1,5 +1,5 @@
 #pragma once
-#include "../../Assets/AssetMeta.h"
+#include "Assets/AssetMeta.h"
 
 namespace Relentless
 {
@@ -10,7 +10,11 @@ namespace Relentless
 	{
 	public:
 		explicit Material() noexcept;
-		~Material() noexcept = default;
+		Material(const Material& otherMaterial) noexcept;
+		Material& operator=(const Material& otherMaterial) noexcept;
+		Material(Material&& otherMaterial) noexcept;
+		Material& operator=(Material&& otherMaterial) noexcept;
+		~Material() noexcept;
 		void SetAlbedoTexture(const AssetHandle& albedoTextureHandle) noexcept;
 		void SetMetallicTexture(const AssetHandle& metallicTextureHandle) noexcept;
 		void SetRoughnessTexture(const AssetHandle& roughnessTextureHandle) noexcept;
@@ -34,13 +38,6 @@ namespace Relentless
 		[[nodiscard]] bool HasHeightMap() const noexcept;
 		[[nodiscard]] bool HasAmbientOcclusionTexture() const noexcept;
 		[[nodiscard]] bool HasEmissionTexture() const noexcept;
-		[[nodiscard]] bool ShouldUseAlbedoTexture() const noexcept;
-		[[nodiscard]] bool ShouldUseMetallicTexture() const noexcept;
-		[[nodiscard]] bool ShouldUseRoughnessTexture() const noexcept;
-		[[nodiscard]] bool ShouldUseNormalMap() const noexcept;
-		[[nodiscard]] bool ShouldUseHeightMap() const noexcept;
-		[[nodiscard]] bool ShouldUseAmbientOcclusionTexture() const noexcept;
-		[[nodiscard]] bool ShouldUseEmissionTexture() const noexcept;
 		[[nodiscard]] Texture2D& GetAlbedoTexture() const noexcept;
 		[[nodiscard]] Texture2D& GetMetallicTexture() const noexcept;
 		[[nodiscard]] Texture2D& GetRoughnessTexture() const noexcept;
@@ -59,9 +56,8 @@ namespace Relentless
 		void ToggleHeightMapUsage() noexcept;
 		void ToggleAmbientOcclusionTextureUsage() noexcept;
 		void ToggleEmissionTextureUsage() noexcept;
+		void Invalidate() noexcept;
 	public:
-		friend class MaterialManager;
-		
 		DirectX::XMFLOAT4 m_AlbedoColor;
 		DirectX::XMFLOAT4 m_EmissionColor;
 		float m_Metallic;
@@ -101,37 +97,10 @@ namespace Relentless
 		bool m_UseHeightMap;
 		bool m_UseAmbientOcclusionTexture;
 		bool m_UseEmissionTexture;
-
+	public:
 		size_t m_ConstantBufferID;
 		RenderMode m_RenderMode;
 
-		friend class MaterialSerializer;
 		friend class Serializer;
 	};
-
-	//class MaterialManager
-	//{
-	//public:
-	//	MaterialManager() noexcept = default;
-	//	~MaterialManager() noexcept = default;
-	//	void Intitialize() noexcept;
-	//	[[nodiscard]] Material& GetMaterial(const MaterialHandle& materialHandle) noexcept;
-	//	[[nodiscard]] MaterialHandle& GetMaterialHandleByName(const std::string& materialname) noexcept;
-	//	[[nodiscard]] MaterialHandle PromoteToHandle(const UUID& uuid) noexcept;
-	//	void OnMaterialNameChange(const std::string& previousName, const std::string& newName) noexcept;
-	//	[[nodiscard]] MaterialHandle Create(const std::string& name, const Material & = Material()) noexcept;
-	//	MaterialHandle CreateWithUUID(const UUID& materialHandle, const std::string& name, const Material & = Material()) noexcept;
-	//	__forceinline void Upload(const MaterialHandle& materialHandle) noexcept;
-	//	void SetDirty(const MaterialHandle& materialHandle) noexcept;
-	//	[[nodiscard]] std::vector<std::pair<MaterialHandle, uint8_t>>& GetDirtyMaterials() noexcept { return m_DirtyMaterials; }
-	//	[[nodiscard]] AssetHandle GetDefaultMaterialHandle() noexcept { return m_DefaultMaterialHandle; }
-	//	[[nodiscard]] bool Exists(const std::string& materialName) noexcept;
-	//private:
-	//	std::queue<uint16_t> m_FreeList;
-	//	std::vector<Material> m_Materials;
-	//	std::unordered_map<std::string, MaterialHandle> m_StringToMaterialHandleMap;
-	//	std::vector<std::pair<MaterialHandle, uint8_t>> m_DirtyMaterials;
-	//
-	//	AssetHandle m_DefaultMaterialHandle;
-	//};
 }

@@ -47,7 +47,7 @@ namespace Relentless
 			out << YAML::Key << "MeshFilterComponent";
 			out << YAML::BeginMap;
 		
-			out << YAML::Key << "MeshHandle" << YAML::Value << mfc.HandleEX.Uuid;
+			out << YAML::Key << "MeshHandle" << YAML::Value << mfc.AssetHandle.Uuid;
 		
 			out << YAML::EndMap;
 		}
@@ -56,9 +56,8 @@ namespace Relentless
 			out << YAML::Key << "MeshRendererComponent";
 			out << YAML::BeginMap;
 		
-			out << YAML::Key << "MaterialHandle" << YAML::Value << manager.Get<MeshRendererComponent>(entity).HandleEX.Uuid;
-			//MaterialSerializer::Serialize(manager.Get<MeshRendererComponent>(entity).HandleEX, AssetRegistry::GetFilepath(manager.Get<MeshRendererComponent>(entity).HandleEX.Uuid));
-			Serializer::Serialize<Material>(manager.Get<MeshRendererComponent>(entity).HandleEX, AssetRegistry::GetFilepath(manager.Get<MeshRendererComponent>(entity).HandleEX.Uuid));
+			out << YAML::Key << "MaterialHandle" << YAML::Value << manager.Get<MeshRendererComponent>(entity).AssetHandle.Uuid;
+			Serializer::Serialize<Material>(manager.Get<MeshRendererComponent>(entity).AssetHandle, AssetRegistry::GetFilepath(manager.Get<MeshRendererComponent>(entity).AssetHandle.Uuid));
 
 
 			out << YAML::EndMap;
@@ -277,7 +276,7 @@ namespace Relentless
 				IIDFromString(vertexBufferIDAsString.c_str(), &uuid);
 				
 				std::string meshPath = AssetRegistry::GetFilepath(uuid);
-				mfc.HandleEX = Serializer::Deserialize<Mesh>(meshPath);
+				mfc.AssetHandle = Serializer::Deserialize<Mesh>(meshPath);
 			}
 		
 			auto meshRendererComponent = entity["MeshRendererComponent"];
@@ -289,7 +288,7 @@ namespace Relentless
 				IIDFromString(materialHandleIDAsString.c_str(), &uuid);
 				
 				std::string materialPath = AssetRegistry::GetFilepath(uuid);
-				mrc.HandleEX = Serializer::Deserialize<Material>(materialPath);
+				mrc.AssetHandle = Serializer::Deserialize<Material>(materialPath);
 				pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(deserializedEntity);
 			}
 		

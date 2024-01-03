@@ -1,13 +1,12 @@
-#include "SceneRenderer.h"
-#include "../../Assets/AssetManager.h"
-#include "../D3D12Core.h"
+#include "Assets/AssetManager.h"
+#include "Core/Window.h"
+#include "Graphics/MemoryManager.h"
+#include "Graphics/Shaders/ShaderLibrary.h"
+#include "Graphics/D3D12Core.h"
 #include "MasterRenderer.h"
 #include "RenderCommand.h"
 #include "RenderUtility.h"
-#include "../MemoryManager.h"
-#include "../Shaders/ShaderLibrary.h"
-#include "../../Core/Window.h"
-
+#include "SceneRenderer.h"
 
 namespace Relentless
 {
@@ -428,10 +427,10 @@ namespace Relentless
 
 		m_pScene->GetEntityManager().Collect<MeshRendererComponent, MeshFilterComponent>().Do([&](entity e, MeshRendererComponent& mrc, MeshFilterComponent& mfc)
 			{
-				if (mrc.HandleEX == NULL_HANDLE || mfc.HandleEX == NULL_HANDLE)
+				if (!mrc.AssetHandle.IsValid() || !mfc.AssetHandle.IsValid())
 					return;
 
-				const Material& material = AssetManager::Get<Material>(mrc.HandleEX);
+				const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 				switch (material.GetRenderMode())
 				{
 				case RenderMode::Opaque:
@@ -563,17 +562,12 @@ namespace Relentless
 		{
 			AddToResourceTransitionBatch(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		}
-		else
-		{
 
-		}
-		//RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		AddToResourceTransitionBatch(MasterRenderer::GetFrameBuffer()->GetOutput(0), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		RenderCommand::FlushResourceTransitionBatch(m_ResourceBarrierBatch);
 
 		//Set UI-texture as pixel shader resource and prepare back buffer as render target for imgui:
 		{
-			//RenderCommand::TransitionResource(MasterRenderer::GetFrameBuffer()->GetOutput(0), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			RenderCommand::SetRenderTarget(Window::GetCurrentBackBuffer());
 		}
 	}
@@ -608,7 +602,6 @@ namespace Relentless
 		m_PreZRenderPass->Upload("vpConstantBuffer", &m_VPData);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-		//MeshManager& m = AssetManager::GetMeshManager();
 
 		auto verticesIndex = m_PreZRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_PreZRenderPass->GetInputSlot("indices");
@@ -620,13 +613,12 @@ namespace Relentless
 		{
 			const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
 
-			//Mesh& mesh = m.GetMesh(mfc.MeshHandle);
-			Mesh& mesh = AssetManager::Get<Mesh>(mfc.HandleEX);
+			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
-			const Material& material = AssetManager::Get<Material>(mrc.HandleEX);
+			const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
@@ -692,7 +684,6 @@ namespace Relentless
 			m_OpaqueGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
 			EntityManager& entityManager = m_pScene->GetEntityManager();
-			//MeshManager& m = AssetManager::GetMeshManager();
 
 			auto verticesIndex = m_OpaqueGeometryRenderPass->GetInputSlot("vertices");
 			auto indicesIndex = m_OpaqueGeometryRenderPass->GetInputSlot("indices");
@@ -704,13 +695,12 @@ namespace Relentless
 			{
 				const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
 
-				//Mesh& mesh = m.GetMesh(mfc.MeshHandle);
-				Mesh& mesh = AssetManager::Get<Mesh>(mfc.HandleEX);
+				Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
-				const Material& material = AssetManager::Get<Material>(mrc.HandleEX);
+				const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 				m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 				m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
@@ -739,7 +729,6 @@ namespace Relentless
 		m_CutOutGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-		//MeshManager& m = AssetManager::GetMeshManager();
 
 		auto verticesIndex = m_CutOutGeometryRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_CutOutGeometryRenderPass->GetInputSlot("indices");
@@ -751,13 +740,12 @@ namespace Relentless
 		{
 			const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
 
-			//Mesh& mesh = m.GetMesh(mfc.MeshHandle);
-			Mesh& mesh = AssetManager::Get<Mesh>(mfc.HandleEX);
+			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
-			const Material& material = AssetManager::Get<Material>(mrc.HandleEX);
+			const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
@@ -785,7 +773,6 @@ namespace Relentless
 		m_TransparentGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-		//MeshManager& m = AssetManager::GetMeshManager();
 
 		auto verticesIndex = m_TransparentGeometryRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_TransparentGeometryRenderPass->GetInputSlot("indices");
@@ -797,13 +784,12 @@ namespace Relentless
 		{
 			const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
 
-			//Mesh& mesh = m.GetMesh(mfc.MeshHandle);
-			Mesh& mesh = AssetManager::Get<Mesh>(mfc.HandleEX);
+			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
-			const Material& material = AssetManager::Get<Material>(mrc.HandleEX);
+			const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
@@ -831,8 +817,6 @@ namespace Relentless
 
 		m_WireFrameRenderPass->Upload("vpConstantBuffer", &m_VPData);
 
-		//MeshManager& m = AssetManager::GetMeshManager();
-
 		auto verticesIndex = m_WireFrameRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_WireFrameRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_WireFrameRenderPass->GetInputSlot("perDrawData");
@@ -841,15 +825,15 @@ namespace Relentless
 
 		entityManager.Collect<OpaquePassComponent, SelectedInEditorComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (mfc.HandleEX != NULL_HANDLE)
+				if (mfc.AssetHandle.IsValid())
 				{
-					Mesh& mesh = AssetManager::Get<Mesh>(mfc.HandleEX);
+					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get<Material>(mrc.HandleEX);
+					const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
@@ -927,9 +911,9 @@ namespace Relentless
 
 		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (mfc.HandleEX != NULL_HANDLE)
+				if (mfc.AssetHandle.IsValid())
 				{
-					Mesh& mesh = AssetManager::Get<Mesh>(mfc.HandleEX);
+					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
@@ -938,7 +922,7 @@ namespace Relentless
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get<Material>(mrc.HandleEX);
+					const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
@@ -966,7 +950,6 @@ namespace Relentless
 
 		if (m_Options.MSAASamples > 1)
 		{
-			//RenderCommand::TransitionResource(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			m_CompositeData.PostProcessTextureIndex = m_pResolvedTexture->GetSRVDescriptorHandle().Index;
 		}
 		else
@@ -1003,9 +986,9 @@ namespace Relentless
 
 		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
-				if (mfc.HandleEX != NULL_HANDLE)
+				if (mfc.AssetHandle.IsValid())
 				{
-					Mesh& mesh = AssetManager::Get<Mesh>(mfc.HandleEX);
+					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
@@ -1014,7 +997,7 @@ namespace Relentless
 					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get<Material>(mrc.HandleEX);
+					const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 

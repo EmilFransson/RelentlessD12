@@ -5,6 +5,7 @@ namespace Relentless
 	class Mesh;
 	class Material;
 	class Scene;
+	class Texture2D;
 	struct AssetHandle;
 
 #pragma pack(push, 1)
@@ -42,10 +43,16 @@ namespace Relentless
 	void Serializer::Serialize<Material>(const AssetHandle& assetHandle, const std::string& path) noexcept;
 
 	template<>
-	void Serializer::Serialize<Mesh>(const AssetHandle& assetHandle, const std::string& path) noexcept;
+	void Serializer::Serialize<Texture2D>(const AssetHandle& assetHandle, const std::string& path) noexcept;
+
+	template<>
+	void Serializer::Serialize<Mesh>(const AssetHandle& assetHandle, const std::string& directoryPath) noexcept;
 
 	template<>
 	AssetHandle Serializer::Deserialize<Mesh>(const std::string& filepath) noexcept;
+
+	template<>
+	AssetHandle Serializer::Deserialize<Texture2D>(const std::string& filepath) noexcept;
 
 	template<>
 	AssetHandle Serializer::Deserialize<Material>(const std::string& filepath) noexcept;

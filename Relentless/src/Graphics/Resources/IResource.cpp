@@ -14,6 +14,25 @@ namespace Relentless
 		  m_CurrentState{ otherResource.m_CurrentState }
 	{}
 
+
+	IResource::IResource(const IResource& otherResource) noexcept
+		: m_pResource{ otherResource.m_pResource },
+		  m_Name{ otherResource.m_Name },
+		  m_CurrentState{ otherResource.m_CurrentState }
+	{}
+
+	IResource& IResource::operator=(const IResource& otherResource) noexcept
+	{
+		if (this != &otherResource)
+		{
+			m_pResource = otherResource.m_pResource;
+			m_Name = otherResource.m_Name;
+			m_CurrentState = otherResource.m_CurrentState;
+		}
+
+		return *this;
+	}
+
 	IResource& IResource::operator=(IResource&& otherResource) noexcept
 	{
 		RLS_ASSERT(this != &otherResource, "Redundant move operation performed.");

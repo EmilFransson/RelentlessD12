@@ -23,6 +23,9 @@ namespace Relentless
 		[[nodiscard]] std::string GetFullShapePath(const Shape shape) noexcept;
 		[[nodiscard]] std::string GetFullExtraPath(const Extra extra) noexcept;
 
+		void OnRuntimeStart() noexcept;
+		void OnRuntimeStop() noexcept;
+
 		entity CreateCamera(const char* name) noexcept;
 		void DestroyEntity(const entity entityHandle) noexcept;
 		[[nodiscard]] EntityManager& GetEntityManager() noexcept { return m_EntityManager; }
@@ -39,6 +42,11 @@ namespace Relentless
 
 		void SetMousePosition(const ImVec2& newMousePosition) noexcept { m_MousePosition = newMousePosition; }
 		[[nodiscard]] const ImVec2& GetMousePosition() const noexcept { return m_MousePosition; }
+
+		void SetPaused(bool paused) noexcept { m_IsPaused = paused; }
+		[[nodiscard]] bool IsPaused() const noexcept { return m_IsPaused; }
+
+		static [[nodiscard]] std::shared_ptr<Scene> Copy(std::shared_ptr<Scene> pSrcScene) noexcept;
 	private:
 		EntityManager m_EntityManager;
 		LightManager m_LightManager;
@@ -49,5 +57,7 @@ namespace Relentless
 		RECT m_ScissorRect;
 		std::shared_ptr<PerspectiveCamera> m_pEditorCamera{ nullptr };
 		friend class SceneSerializer;
+
+		bool m_IsPaused = false;
 	};
 }

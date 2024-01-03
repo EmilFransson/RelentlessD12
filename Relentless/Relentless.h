@@ -54,4 +54,3 @@
 
 //Serialization
 #include <src/Scene/SceneSerializer.h>
-#include <src/Graphics/Resources/TextureSerializer.h>

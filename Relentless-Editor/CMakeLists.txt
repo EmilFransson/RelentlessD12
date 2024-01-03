@@ -42,3 +42,6 @@ endforeach()
 
 string(REPLACE "/" "\\\\" WINDOWS_STYLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Assets/")
 target_compile_definitions(${ExecutableName} PUBLIC "EDITOR_ASSET_DIRECTORY=\"${WINDOWS_STYLE_PATH}\"")
+
+string(REPLACE "/" "\\\\" WINDOWS_STYLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Resources/")
+target_compile_definitions(${ExecutableName} PUBLIC "EDITOR_RESOURCE_DIRECTORY=\"${WINDOWS_STYLE_PATH}\"")

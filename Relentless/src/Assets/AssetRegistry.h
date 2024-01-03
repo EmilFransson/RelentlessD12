@@ -20,5 +20,6 @@ namespace Relentless
 		static [[nodiscard]] const UUID& GetUUID(const std::string& filepath) noexcept;
 		static void RecursiveScanDirectoryForAssets(const std::filesystem::path& startingDirectory) noexcept;
 		static [[nodiscard]] const AssetType GetAssetTypeFromPath(const std::filesystem::path& filepath);
+		static [[nodiscard]] const AssetMetaData& GetMetaData(const std::filesystem::path& filepath) noexcept;
 	};
 }

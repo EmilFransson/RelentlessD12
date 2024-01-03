@@ -24,7 +24,7 @@ namespace Relentless
 
 	Scene::~Scene() noexcept
 	{
-		m_EntityManager.Collect<TransformComponent>().Do([this](entity e, TransformComponent& tc)
+		m_EntityManager.Collect<TransformComponent>().Do([this](entity e)
 			{
 				if (m_EntityManager.Has<PointLightComponent>(e))
 				{
@@ -34,8 +34,6 @@ namespace Relentless
 				{
 					m_LightManager.DeallocateDirectionalLight(e);
 				}
-
-				MemoryManager::Get().FreeConstantBuffer(tc.ConstantBufferID);
 			});
 	}
 
@@ -425,6 +423,13 @@ namespace Relentless
 				//MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
 			//});
 
+
+		m_EntityManager.Collect<MeshRendererComponent, DirtyMeshRendererComponent>().Do([this](entity e, MeshRendererComponent& mrc)
+			{
+				MemoryManager::Get().SetDirtyMaterial(mrc.AssetHandle);
+				m_EntityManager.Remove<DirtyMeshRendererComponent>(e);
+			});
+
 		/*MATERIALS*/
 		MemoryManager::Get().UpdateDirtyMaterials();
 
@@ -470,7 +475,6 @@ namespace Relentless
 	{
 		auto entity = m_EntityManager.CreateEntity();
 		auto& tc = m_EntityManager.Add<TransformComponent>(entity);
-		tc.ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT4X4));
 		m_EntityManager.Add<DirtyTransformComponent>(entity);
 		m_EntityManager.Add<NameComponent>(entity, name);
 		m_EntityManager.Add<IDComponent>(entity, guid);
@@ -508,18 +512,18 @@ namespace Relentless
 		std::filesystem::path fullPath = GetFullShapePath(shape);
 		std::string nameString = fullPath.stem().string();
 
-		AssetHandle meshHandle = AssetManager::GetHandleByPath(nameString);
+		AssetHandle meshHandle = AssetManager::GetHandleByPath(fullPath);
 
 		auto entity = CreateEntity(nameString.c_str());
 
 		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
-		mfc.HandleEX = meshHandle;
+		mfc.AssetHandle = meshHandle;
 
 		m_EntityManager.Add<OpaquePassComponent>(entity);
 
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
 
-		mrc.HandleEX = AssetManager::GetDefaultMaterialHandle();
+		mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
 
 		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
 
@@ -536,12 +540,12 @@ namespace Relentless
 		AssetHandle meshHandle = AssetManager::GetHandleByPath(nameString);
 
 		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
-		mfc.HandleEX = meshHandle;
+		mfc.AssetHandle = meshHandle;
 
 		m_EntityManager.Add<OpaquePassComponent>(entity);
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
 
-		mrc.HandleEX = AssetManager::GetDefaultMaterialHandle();
+		mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
 		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
 
 		return entity;
@@ -551,43 +555,43 @@ namespace Relentless
 	{
 		if (shape == Shape::Triangle)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Triangle.obj";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Triangle.rasset";
 		}
 		else if (shape == Shape::Cube)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Cube.obj";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Cube.rasset";
 		}
 		else if (shape == Shape::Cylinder)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Cylinder.gltf";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Cylinder.rasset";
 		}
 		else if  (shape == Shape::Capsule)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Capsule.gltf";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Capsule.rasset";
 		}
 		else if (shape == Shape::Cone)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Cone.gltf";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Cone.rasset";
 		}
 		else if (shape == Shape::Sphere)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Sphere.obj";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Sphere.rasset";
 		}
 		else if (shape == Shape::IcoSphere)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Icosphere.obj";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Icosphere.rasset";
 		}
 		else if (shape == Shape::Torus)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Torus.obj";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Torus.rasset";
 		}
 		else if (shape == Shape::Quad)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Quad.gltf";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Quad.rasset";
 		}
 		else if (shape == Shape::Plane)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/Plane.gltf";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Plane.rasset";
 		}
 		else
 		{
@@ -600,12 +604,41 @@ namespace Relentless
 	{
 		if (extra == Extra::UtahTeapot)
 		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes/UtahTeapot.gltf";
+			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes\\UtahTeapot.gltf";
 		}
 		else
 		{
 			RLS_ASSERT(false, "Unknown extra type.");
 			return {};
+		}
+	}
+
+
+	void Scene::OnRuntimeStart() noexcept
+	{
+
+	}
+
+
+	void Scene::OnRuntimeStop() noexcept
+	{
+		SetPaused(false);
+
+		//Here we make sure the copy-created assets are removed (they are duplicates):
+		std::unordered_map<UUID, AssetHandle> assetsToRemove;
+
+		//Materials:
+		m_EntityManager.Collect<MeshRendererComponent>().Do([&assetsToRemove](MeshRendererComponent& mrc)
+			{
+				if (!assetsToRemove.contains(mrc.AssetHandle.Uuid))
+				{
+					assetsToRemove[mrc.AssetHandle.Uuid] = mrc.AssetHandle;
+				}
+			});
+
+		for (auto& [uuid, handle] : assetsToRemove)
+		{
+			AssetManager::Destroy<Material>(handle);
 		}
 	}
 
@@ -668,7 +701,7 @@ namespace Relentless
 			}
 		}
 
-		MemoryManager::Get().FreeConstantBuffer(m_EntityManager.Get<TransformComponent>(entityHandle).ConstantBufferID);
+		//MemoryManager::Get().FreeConstantBuffer(m_EntityManager.Get<TransformComponent>(entityHandle).ConstantBufferID);
 
 		m_EntityManager.DestroyEntity(entityHandle);
 	}
@@ -783,5 +816,112 @@ namespace Relentless
 			});
 
 		return toReturn;
+	}
+
+	template<typename ComponentType>
+	void CopyComponent(std::shared_ptr<Scene> srcScene, std::shared_ptr<Scene> dstScene, std::unordered_map<UUID, entity>& idToEntityMap) noexcept
+	{
+		auto& srcMgr = srcScene->GetEntityManager();
+		auto& dstMgr = dstScene->GetEntityManager();
+
+		if constexpr (std::is_empty_v<ComponentType>)
+		{
+			srcMgr.Collect<ComponentType>().Do([&](entity e)
+				{
+					auto& uuid = srcMgr.Get<IDComponent>(e).UuId;
+					RLS_ASSERT(idToEntityMap.contains(uuid), "Unknown entity UUID encountered.");
+
+					entity entityID = idToEntityMap[uuid];
+
+					dstMgr.AddOrReplace<ComponentType>(entityID);
+				});
+		}
+		else
+		{
+			srcMgr.Collect<ComponentType>().Do([&](entity e, ComponentType& ct)
+				{
+					auto& uuid = srcMgr.Get<IDComponent>(e).UuId;
+					RLS_ASSERT(idToEntityMap.contains(uuid), "Unknown entity UUID encountered.");
+
+					entity entityID = idToEntityMap[uuid];
+
+					dstMgr.AddOrReplace<ComponentType>(entityID, ct);
+
+					if constexpr (std::is_same_v<ComponentType, TransformComponent>)
+					{
+						//Also give DirtyTransformComponent:
+						dstMgr.AddOrReplace<DirtyTransformComponent>(entityID);
+					}
+					else if constexpr (std::is_same_v<ComponentType, DirectionalLightComponent>)
+					{
+						dstScene->GetLightManager().AllocateDirectionalLight(entityID);
+					}
+					else if constexpr (std::is_same_v<ComponentType, PointLightComponent>)
+					{
+						dstScene->GetLightManager().AllocatePointLight(entityID);
+					}
+					else if constexpr (std::is_same_v<ComponentType, IsChildComponent>)
+					{
+						entity actualParent = idToEntityMap[srcMgr.Get<IDComponent>(ct.Parent).UuId];
+						dstMgr.Get<IsChildComponent>(entityID).Parent = actualParent;
+					}
+					else if constexpr (std::is_same_v<ComponentType, MeshRendererComponent>)
+					{
+						const AssetHandle materialHandle = AssetManager::CreateNew<Material>();
+						Material& material = AssetManager::Get<Material>(materialHandle);
+
+						//As it will be copy assigned we first invalidate it:
+						material.Invalidate();
+						material = AssetManager::Get<Material>(ct.AssetHandle);
+
+						dstMgr.Get<MeshRendererComponent>(entityID).AssetHandle = materialHandle;
+						dstMgr.AddOrReplace<DirtyMeshRendererComponent>(entityID);
+					}
+					else if constexpr (std::is_same_v<ComponentType, ParentComponent>)
+					{
+						auto& children = dstMgr.Get<ParentComponent>(entityID).Children;
+						children.clear();
+
+						auto& originalChildren = srcMgr.Get<ParentComponent>(entityID).Children;
+						for (auto child : originalChildren)
+						{
+							entity actualChild = idToEntityMap[srcMgr.Get<IDComponent>(child).UuId];
+							children.push_back(actualChild);
+						}
+					}
+				});
+		}
+	}
+
+	std::shared_ptr<Scene> Scene::Copy(std::shared_ptr<Scene> pSrcScene) noexcept
+	{
+		RLS_ASSERT(pSrcScene, "Scene to copy from is invalid.");
+
+		std::shared_ptr<Scene> pNewScene = std::make_shared<Scene>("Play-In-Editor-Scene");
+		const D3D12_VIEWPORT vp = pSrcScene->GetViewport();
+		pNewScene->SetViewportPanelSize(ImVec2(vp.Width, vp.Height));
+
+		std::unordered_map<UUID, entity> UUIDToEntityMap;
+		
+		auto& mgr = pNewScene->GetEntityManager();
+		pSrcScene->GetEntityManager().Collect<NameComponent, IDComponent>().Do([&UUIDToEntityMap, &mgr](NameComponent& nc, IDComponent& idc)
+			{
+				const auto entity = mgr.CreateEntity();
+				mgr.Add<NameComponent>(entity, nc.Name.c_str());
+				mgr.Add<IDComponent>(entity, idc.UuId);
+				UUIDToEntityMap[idc.UuId] = entity;
+			});
+
+		CopyComponent<RootComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
+		CopyComponent<MeshRendererComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
+		CopyComponent<TransformComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
+		CopyComponent<MeshFilterComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
+		CopyComponent<OpaquePassComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
+		CopyComponent<DirectionalLightComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
+		CopyComponent<PointLightComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
+		CopyComponent<IsChildComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
+		CopyComponent<ParentComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
+
+		return pNewScene;
 	}
 }

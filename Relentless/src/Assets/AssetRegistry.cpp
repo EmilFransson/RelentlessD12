@@ -127,4 +127,11 @@ namespace Relentless
 		RLS_ASSERT(IsFilepathMapped(filepath.string()), "[AssetRegistry]: Filepath is not mapped.");
 		return s_Data.PathToAssetMetaMap[filepath.string()].AssetType;
 	}
+
+	const AssetMetaData& AssetRegistry::GetMetaData(const std::filesystem::path& filepath) noexcept
+	{
+		RLS_ASSERT(std::filesystem::exists(filepath), "[AssetRegistry]: Filepath is invalid.");
+		RLS_ASSERT(IsFilepathMapped(filepath.string()), "[AssetRegistry]: Filepath is not mapped.");
+		return s_Data.PathToAssetMetaMap[filepath.string()];
+	}
 }
