@@ -384,7 +384,7 @@ namespace Relentless
 
 	void EditorLayer::LoadStarterMeshes() noexcept
 	{
-		const std::array<std::string, 11> starterMeshes
+		const std::array<std::string, 6> starterMeshes
 		{
 			"Cube.rasset",
 			"Capsule.rasset",
@@ -392,11 +392,11 @@ namespace Relentless
 			"Cylinder.rasset",
 			"Icosphere.rasset",
 			"Plane.rasset",
-			"Quad.rasset",
-			"Sphere.rasset",
-			"Torus.rasset",
-			"Triangle.rasset",
-			"UtahTeapot.rasset"
+			//"Quad.rasset",
+			//"Sphere.rasset",
+			//"Torus.rasset",
+			//"Triangle.rasset"//,
+			//"UtahTeapot.rasset"
 		};
 		
 		const std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\StarterContent\\");

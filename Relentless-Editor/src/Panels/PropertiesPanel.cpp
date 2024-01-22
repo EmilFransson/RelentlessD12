@@ -369,9 +369,8 @@ namespace Relentless
 			{
 				if (!m_pScene->GetEntityManager().Has<MeshRendererComponent>(m_SelectedEntity))
 				{
-					m_pScene->GetEntityManager().Add<MeshRendererComponent>(m_SelectedEntity);
-					m_pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(m_SelectedEntity);
-					m_pScene->GetEntityManager().AddOrReplace<OpaquePassComponent>(m_SelectedEntity);
+					auto& mrc = m_pScene->GetEntityManager().Add<MeshRendererComponent>(m_SelectedEntity);
+					mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
 				}
 				else
 				{

@@ -4,14 +4,15 @@ namespace Relentless
 	static std::filesystem::path currentDirectory = EDITOR_ASSET_DIRECTORY;
 
 	ContentBrowserPanel::ContentBrowserPanel() noexcept
-		: m_ThumbnailWidth{100.0f},
+		: m_ThumbnailWidth{150.0f},
 		  m_SelectedDirectory{"Assets"},
 		  m_AssetToName{ NULL_HANDLE }
 	{
 		m_DirectoryTextureHandle  = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Directory.rasset");
 		m_SceneTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.rasset");
 		m_MaterialTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.rasset");
-
+		m_MeshTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\meshthumbnail.rasset");
+		
 		currentDirectory = currentDirectory.string().substr(0u, currentDirectory.string().size() - 1);
 	}
 
@@ -27,7 +28,7 @@ namespace Relentless
 		ImGui::Columns(2);
 		ImGui::SetColumnWidth(0, m_ThumbnailWidth * 2.0f);
 		
-		RenderDirectoryHierarchySearchBox();
+		RenderDirectoryHierarchySearchBar();
 		RenderDirectoryHierarchy();
 
 		ImGui::NextColumn();
@@ -50,12 +51,6 @@ namespace Relentless
 	void ContentBrowserPanel::SetOnAssetSelectedCallback(std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> callback) noexcept
 	{
 		m_OnAssetSelectedCallback = callback;
-	}
-
-	void ContentBrowserPanel::SetActiveScene(std::shared_ptr<Scene> pScene) noexcept
-	{
-		RLS_ASSERT(pScene, "Scene is invalid.");
-		m_pScene = pScene;
 	}
 
 	void ContentBrowserPanel::RenderDirectoryHierarchy() noexcept
@@ -145,13 +140,9 @@ namespace Relentless
 		}
 	}
 
-	void ContentBrowserPanel::RenderDirectoryHierarchySearchBox() noexcept
+	void ContentBrowserPanel::RenderDirectoryHierarchySearchBar() noexcept
 	{
-		ImGui::PushItemWidth(ImGui::GetColumnWidth() - ImGui::GetStyle().WindowPadding.x - 4.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
-		static char searchBuf[256] = "";
-		ImGui::InputTextWithHint("##Search", "Search Folders...", searchBuf, IM_ARRAYSIZE(searchBuf));
-		ImGui::PopStyleVar();
+		UI::SearchBar("DirectoryHierarchySearchBar", "Search Paths...");
 	}
 
 	void ContentBrowserPanel::RenderAssetHierarchyOverview() noexcept
@@ -189,24 +180,23 @@ namespace Relentless
 
 	void ContentBrowserPanel::RenderAssetSearchBox() noexcept
 	{
-		static char searchBuf2[256] = "";
-		ImGui::PushItemWidth(ImGui::GetColumnWidth() - ImGui::GetStyle().WindowPadding.x - 4.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
-		ImGui::InputTextWithHint("##AssetSearch", "Search Assets...", searchBuf2, IM_ARRAYSIZE(searchBuf2));
-		ImGui::PopStyleVar();
+		m_ContentFilter = UI::SearchBar("AssetSearchBar", "Search Content...", 600.0f);
 	}
 
 	void ContentBrowserPanel::RenderAssetThumbNails() noexcept
 	{
-		ImGui::BeginTable("ContentBrowserTable", 12, ImGuiTableFlags_::ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_::ImGuiTableFlags_PreciseWidths);
+		static const ImVec2 padding = ImVec2(20.0f, 10.0f);
+		const float cellSize = m_ThumbnailWidth + padding.x;
 
-		if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseClicked(0))
-		{
-			m_AssetToName = NULL_HANDLE;
-			m_FirstTimeEditingThumbnail = true;
-		}
+		const float panelWidth = ImGui::GetContentRegionAvail().x;
+		int columnCount = (int)(panelWidth / cellSize);
 
-		m_LocationStringPosition[0] = ImGui::GetCursorScreenPos().x;
+		if (columnCount < 1)
+			columnCount = 1	;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(0.0f, padding.y)); // Adjust cell padding
+		ImGui::BeginTable("##MyTable", columnCount);
+		ImGui::TableNextColumn();
 
 		//Directories should always display first:
 		for (auto const& dir_entry : std::filesystem::directory_iterator{ currentDirectory })
@@ -215,11 +205,8 @@ namespace Relentless
 
 			if (dir_entry.is_directory())
 			{
-				ImGui::TableNextColumn();
-
 				ImGui::ImageButton((void*)AssetManager::Get<Texture2D>(m_DirectoryTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth), ImVec2(0, 0), ImVec2(1, 1), -1, ImGui::GetStyle().Colors[ImGuiCol_WindowBg]);
 				
-				//ImGui::ImageButton((void*)AssetManager::GetAsset<Texture2D>(aex).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth), ImVec2(0, 0), ImVec2(1, 1), -1, ImGui::GetStyle().Colors[ImGuiCol_WindowBg]);
 				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
 				{
 					currentDirectory /= entry;
@@ -230,65 +217,194 @@ namespace Relentless
 				ImGui::NewLine();
 
 				RenderThumbnailText(entry, ImGui::IsItemHovered());
+				ImGui::TableNextColumn();
 			}
 		}
 
 
 		for (auto const& dir_entry : std::filesystem::directory_iterator{ currentDirectory })
 		{
-			std::string entry = dir_entry.path().filename().string();
-			
-			std::string entryPath = dir_entry.path().string();
-			std::string entryStem = dir_entry.path().filename().stem().string();
+			if (dir_entry.is_directory() )
+				continue;
+
 			std::string extension = dir_entry.path().filename().extension().string();
 
-			if (extension == ".jpg" || extension == ".png")
+			if (extension != ".rasset")
+				continue;
+			
+			std::string entry = dir_entry.path().filename().string();
+			std::string entryPath = dir_entry.path().string();
+			std::string entryStem = dir_entry.path().filename().stem().string();
+			
+			const bool IsUsingFilter = !m_ContentFilter.empty();
+			if (IsUsingFilter)
 			{
-				ImGui::TableNextColumn();
+				std::string entryStemToLower = dir_entry.path().filename().string();
+				std::string contentFilterToLower = m_ContentFilter;
 
-				AssetHandle textureHandle = AssetManager::LoadFromFile<Texture2D>(entryPath);
-				RenderAssetThumbnail<Texture2D>(textureHandle, textureHandle, textureHandle, entry, m_ThumbnailWidth);
+				std::transform(entryStemToLower.begin(), entryStemToLower.end(), entryStemToLower.begin(), ::tolower);
+				std::transform(contentFilterToLower.begin(), contentFilterToLower.end(), contentFilterToLower.begin(), ::tolower);
+
+				if (entryStemToLower.find(contentFilterToLower) == std::string::npos)
+					continue;
 			}
-			else if (extension == ".Relentless")
+
+
+			//if (extension == ".Relentless")
+			//{
+			//	ImGui::TableNextColumn();
+			//
+			//	ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+			//
+			//	if (ImGui::BeginDragDropSource())
+			//	{
+			//		const char* path = entryPath.c_str();
+			//		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+			//		ImGui::BeginTooltip();
+			//		ImGui::Image((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+			//		ImGui::EndTooltip();
+			//		ImGui::PopStyleVar(1);
+			//		ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_SCENE", path, strlen(path) + 1, ImGuiCond_::ImGuiCond_Once);
+			//		ImGui::EndDragDropSource();
+			//	}
+			//
+			//	ImGui::SameLine();
+			//	ImGui::NewLine();
+			//
+			//	RenderThumbnailText(entry, ImGui::IsItemHovered());
+			//}
+			if (extension == ".rasset")
 			{
-				ImGui::TableNextColumn();
+				ImDrawList* pDrawList = ImGui::GetWindowDrawList();
 
-				ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
+				constexpr const float thumbnailHeight = 220.0f;
 
-				if (ImGui::BeginDragDropSource())
+				const ImVec2 vMin(ImGui::GetCursorScreenPos());
+				const ImVec2 vMax(vMin.x + m_ThumbnailWidth, vMin.y + thumbnailHeight);
+
+				const ImVec2 vMinDropShadow(ImGui::GetCursorScreenPos().x + 6.0f, vMin.y + 6.0f);
+				const ImVec2 vMaxDropShadow(vMinDropShadow.x + m_ThumbnailWidth, vMinDropShadow.y + thumbnailHeight);
+				constexpr const ImU32 black = IM_COL32(0, 0, 0, 128);
+				pDrawList->AddRectFilled(vMinDropShadow, vMaxDropShadow, black, 7.0f);
+
+
+				const ImVec2 mousePos = ImGui::GetMousePos();
+
+				bool isHovered = false;
+				if (mousePos.x >= vMin.x && mousePos.x <= vMax.x && mousePos.y >= vMin.y && mousePos.y <= vMax.y)
+					isHovered = true;
+
+				UUID assetUUID = AssetRegistry::GetMetaData(entryPath).Uuid;
+				const bool selected = assetUUID == m_SelectedAsset;
+
+				const ImU32 unrealGrey = selected ? IM_COL32(30, 120, 255, 200) : isHovered ? IM_COL32(80, 80, 80, 255) : IM_COL32(60, 60, 60, 255);
+				
+				const ImVec2 rectMin = ImVec2(vMin.x, vMin.y + m_ThumbnailWidth);
+				const ImVec2 rectMax = ImVec2(vMax.x, vMax.y);
+
+				ImVec4 bgColor = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+				pDrawList->AddRectFilled(vMin, vMax, IM_COL32(bgColor.x, bgColor.y, bgColor.z, bgColor.w), 5.0f);
+				pDrawList->AddRectFilled(rectMin, rectMax, unrealGrey, 5.0f);
+
+				const ImGuiMouseCursor currentMouseCursor = ImGui::GetMouseCursor();
+				if (isHovered || selected)
 				{
-					const char* path = entryPath.c_str();
-					ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-					ImGui::BeginTooltip();
-					ImGui::Image((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
-					ImGui::EndTooltip();
-					ImGui::PopStyleVar(1);
-					ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_SCENE", path, strlen(path) + 1, ImGuiCond_::ImGuiCond_Once);
-					ImGui::EndDragDropSource();
+					if (isHovered)
+						ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_Hand);
+
+					const ImVec2 topLineMinPosition = ImVec2(vMin.x, vMin.y - 2.0f);
+					const ImVec2 topLineMaxPosition = ImVec2(vMax.x, vMin.y - 2.0f);
+					const ImVec2 leftLineMinPosition = ImVec2(vMin.x, vMin.y - 2.0f + m_ThumbnailWidth);
+					const ImVec2 rightLineMinPosition = ImVec2(vMax.x, vMin.y - 2.0f + m_ThumbnailWidth);
+					pDrawList->AddLine(topLineMinPosition, topLineMaxPosition, unrealGrey, 0.5f);
+					pDrawList->AddLine(topLineMinPosition, leftLineMinPosition, unrealGrey, 0.5f);
+					pDrawList->AddLine(topLineMaxPosition, rightLineMinPosition, unrealGrey, 0.5f);
 				}
 
-				ImGui::SameLine();
-				ImGui::NewLine();
-
-				RenderThumbnailText(entry, ImGui::IsItemHovered());
-			}
-			else if (extension == ".rasset")
-			{
-				ImGui::TableNextColumn();
+				const ImVec2 vMinLine(vMin.x + 0.8f, vMin.y + m_ThumbnailWidth);
+				const ImVec2 vMaxLine(vMinLine.x + m_ThumbnailWidth - 1.6f, vMin.y + m_ThumbnailWidth);
 
 				const AssetType assetType = AssetRegistry::GetMetaData(entryPath).AssetType;
-				switch (assetType)
+				ImU32 lineColor; 
+				if (assetType == AssetType::Texture2D)
+					lineColor = IM_COL32(180, 0, 0, 255);
+				else if (assetType == AssetType::Mesh)
+					lineColor = IM_COL32(54, 214, 198, 255);
+				else if (assetType == AssetType::Material)
+					lineColor = IM_COL32(0, 180, 0, 255);
+
+
+				pDrawList->AddLine(vMinLine, vMaxLine, lineColor, 3.0f);
+
+				const ImVec2 textPosition(vMin.x + 5.0f, vMax.y - 25.0f);
+
+				const ImVec2 windowPos = ImGui::GetWindowPos();
+				const ImVec2 relativePos = ImVec2(vMin.x - windowPos.x + 3.0f, vMin.y - windowPos.y + ImGui::GetScrollY());
+				ImGui::SetCursorPos(relativePos);
+				const ImVec2 assetNameTextPosition = ImVec2(vMinLine.x + 7.0f, vMinLine.y + 3.0f);
+				const float originalBorderSize = ImGui::GetStyle().FrameBorderSize;
+				ImGui::GetStyle().FrameBorderSize = 0.0f;
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+				if (assetType == AssetType::Texture2D)
 				{
-				case AssetType::Material:
+					const AssetHandle textureHandle = Serializer::Deserialize<Texture2D>(entryPath);
+					const Texture2D& texture = AssetManager::Get<Texture2D>(textureHandle);
+					const std::string name = AssetManager::Get<Texture2D>(textureHandle).GetName();
+					const std::string displayName = std::filesystem::path(name).filename().string();
+
+
+					ImGui::ImageButton((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth - 5.0f, m_ThumbnailWidth));
+					if (ImGui::IsItemClicked())
+						m_SelectedAsset = assetUUID;
+					ImGui::PopStyleVar();
+					ImGui::GetStyle().FrameBorderSize = originalBorderSize;
+
+					constexpr const char* text = "Texture";
+					pDrawList->AddText(textPosition, IM_COL32(255, 255, 255, 140), text);
+
+					pDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), assetNameTextPosition, IM_COL32(255, 255, 255, 200), displayName.c_str(), (const char*)0, m_ThumbnailWidth - 14.0f);
+				}
+				else if (assetType == AssetType::Material)
 				{
-					AssetHandle materialHandle = Serializer::Deserialize<Material>(entryPath);
-					RenderAssetThumbnail<Material>(m_MaterialTextureHandle, m_MaterialTextureHandle, materialHandle, AssetManager::Get<Material>(materialHandle).GetName(), m_ThumbnailWidth);
-					break;
+					const Texture2D& texture = AssetManager::Get<Texture2D>(m_MaterialTextureHandle);
+					const std::string displayName = std::filesystem::path(entry).filename().string();
+
+					ImGui::ImageButton((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth - 5.0f, m_ThumbnailWidth));
+					if (ImGui::IsItemClicked())
+						m_SelectedAsset = assetUUID;
+					ImGui::PopStyleVar();
+
+					constexpr const char* text = "Material";
+					pDrawList->AddText(textPosition, IM_COL32(255, 255, 255, 140), text);
+
+					pDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), assetNameTextPosition, IM_COL32(255, 255, 255, 200), displayName.c_str(), (const char*)0, m_ThumbnailWidth - 14.0f);
 				}
+				else if (assetType == AssetType::Mesh)
+				{
+					const Texture2D& texture = AssetManager::Get<Texture2D>(m_MeshTextureHandle);
+					const std::string displayName = std::filesystem::path(entry).filename().string();
+
+					ImGui::ImageButton((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth - 5.0f, m_ThumbnailWidth));
+					if (ImGui::IsItemClicked())
+						m_SelectedAsset = assetUUID;
+					ImGui::PopStyleVar();
+
+					constexpr const char* text = "Mesh";
+					pDrawList->AddText(textPosition, IM_COL32(255, 255, 255, 140), text);
+
+					pDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), assetNameTextPosition, IM_COL32(255, 255, 255, 200), displayName.c_str(), (const char*)0, m_ThumbnailWidth - 14.0f);
 				}
+
+				ImGui::SetCursorPos(relativePos);
+				ImGui::InvisibleButton(entry.c_str(), ImVec2(vMax.x - vMin.x, vMax.y - vMin.y));
+				if (ImGui::IsItemClicked())
+					m_SelectedAsset = assetUUID;
+
+				ImGui::TableNextColumn();
 			}
 		}
 		ImGui::EndTable();
+		ImGui::PopStyleVar();
 	}
 
 	void ContentBrowserPanel::RenderPopUpOptions() noexcept
@@ -333,6 +449,9 @@ namespace Relentless
 			}
 			ImGui::EndPopup();
 		}
+
+		if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
+			m_SelectedAsset = NULL_UUID;
 	}
 
 	void ContentBrowserPanel::RenderThumbnailText(const std::string& text, bool thumbNailHovered) noexcept

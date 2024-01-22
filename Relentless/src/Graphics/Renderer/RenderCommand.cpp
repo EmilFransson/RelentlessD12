@@ -20,6 +20,12 @@ namespace Relentless
 		pResource->SetCurrentState(newState);
 	}
 
+	void RenderCommand::TransitionResource(IResource& resource, const D3D12_RESOURCE_STATES newState) noexcept
+	{
+		TransitionResource(resource.GetInterface(), resource.GetCurrentState(), newState);
+		resource.SetCurrentState(newState);
+	}
+
 	void RenderCommand::TransitionResource(const Microsoft::WRL::ComPtr<ID3D12Resource>& pResource, const D3D12_RESOURCE_STATES currentState, const D3D12_RESOURCE_STATES newState) noexcept
 	{
 		RLS_ASSERT(currentState != newState, "Current state and new state is identical.");

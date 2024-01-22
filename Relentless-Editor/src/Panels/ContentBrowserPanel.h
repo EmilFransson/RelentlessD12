@@ -11,12 +11,11 @@ namespace Relentless
 		~ContentBrowserPanel() noexcept = default;
 		void OnImGuiRender(const bool show) noexcept;
 		void SetOnAssetSelectedCallback(std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> callback) noexcept;
-		void SetActiveScene(std::shared_ptr<Scene> pScene) noexcept;
 	private:
 		void RenderDirectoryHierarchy() noexcept;
 		void DrawDirectoryNode(const std::filesystem::directory_entry& directoryName) noexcept;
 		void RenderMenuBar() noexcept;
-		void RenderDirectoryHierarchySearchBox() noexcept;
+		void RenderDirectoryHierarchySearchBar() noexcept;
 		void RenderAssetHierarchyOverview() noexcept;
 		void RenderAssetSearchBox() noexcept;
 		void RenderAssetThumbNails() noexcept;
@@ -75,18 +74,20 @@ namespace Relentless
 
 	private:
 		float m_ThumbnailWidth;
-		AssetHandle m_DirectoryTextureHandle;
-		AssetHandle m_SceneTextureHandle;
-		AssetHandle m_MaterialTextureHandle;
+		AssetHandle m_DirectoryTextureHandle = NULL_HANDLE;
+		AssetHandle m_SceneTextureHandle = NULL_HANDLE;
+		AssetHandle m_MaterialTextureHandle = NULL_HANDLE;
+		AssetHandle m_MeshTextureHandle = NULL_HANDLE;
+		UUID m_SelectedAsset = NULL_UUID;
+
+		std::string m_ContentFilter = "";
+
 		std::string m_SelectedDirectory;
 		float m_LocationStringPosition[2];
 		bool m_FirstTimeEditingThumbnail{ true };
 
-		std::shared_ptr<Scene> m_pScene;
-
 		AssetHandle m_AssetToName;
 
 		std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> m_OnAssetSelectedCallback;
-		AssetHandle aex;
 	};
 }

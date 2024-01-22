@@ -157,25 +157,6 @@ namespace Relentless
 
 		const uint32_t nrOfMips = textureDescriptor.MipLevels;
 
-		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(nrOfMips);
-		std::vector<uint32_t> nrOfRows(nrOfMips);
-		std::vector<uint64_t> rowSizes(nrOfMips);
-
-		// Get the footprints for each mip level
-		for (uint32_t mipLevel = 0; mipLevel < nrOfMips; ++mipLevel)
-		{
-			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
-			(
-				&textureDescriptor, 
-				mipLevel, 
-				1, 
-				0,
-				&footprints[mipLevel], 
-				&nrOfRows[mipLevel], 
-				&rowSizes[mipLevel], 
-				nullptr));
-		}
-
 		std::ofstream outFile(s_Data.UUIDToStagingResources[handle.Uuid].Path, std::ios::binary);
 		RLS_ASSERT(outFile.is_open(), "Failed to open file for writing.");
 
@@ -202,10 +183,8 @@ namespace Relentless
 		{
 			ComPtr<ID3D12Resource> pStagingResource = s_Data.UUIDToStagingResources[handle.Uuid].StagingBuffers[mipLevel];
 
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT foot;
-			UINT numRows;
-			UINT64 rowSizeInBytes;
-			UINT64 mipSize;
+			D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
+			uint64_t mipSize = 0u;
 
 			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
 			(
@@ -213,9 +192,9 @@ namespace Relentless
 				mipLevel, 
 				1u,
 				0u,
-				&foot,
-				&numRows,
-				&rowSizeInBytes,
+				&mipFootprint,
+				nullptr,
+				nullptr,
 				&mipSize
 			));
 
@@ -226,7 +205,7 @@ namespace Relentless
 
 			outFile.write(reinterpret_cast<const char*>(pData), mipSize);
 			
-			pStagingResource->Unmap(0, nullptr);
+			DXCall_STD(pStagingResource->Unmap(0, nullptr));
 		}
 		outFile.close();
 	}
@@ -239,13 +218,16 @@ namespace Relentless
 
 		using namespace Microsoft::WRL;
 
-		const Texture2D& texture = AssetManager::Get<Texture2D>(assetHandle);
+		Texture2D& texture = AssetManager::Get<Texture2D>(assetHandle);
 		const ComPtr<ID3D12Resource> gpuInterface = texture.GetInterface();
 		const D3D12_RESOURCE_DESC textureDescriptor = gpuInterface->GetDesc();
 
 		const uint32_t mipLevels = textureDescriptor.MipLevels;
 
-		Texture2DSerializationContext context;
+		//Transition resource to be eligible as readback/copy source:
+		RenderCommand::TransitionResource(texture, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+		Texture2DSerializationContext context = {};
 		context.Path = path;
 		for (uint32_t mipLevel = 0u; mipLevel < mipLevels; ++mipLevel)
 		{
@@ -258,16 +240,14 @@ namespace Relentless
 			heapProperties.CreationNodeMask = 1;
 			heapProperties.VisibleNodeMask = 1;
 
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-			UINT num_rows;
-			UINT64 row_size_in_bytes;
-			UINT64 total_bytes;
-			D3D12Core::GetDevice()->GetCopyableFootprints(&textureDescriptor, mipLevel, 1, 0, &footprint, &num_rows, &row_size_in_bytes, &total_bytes);
+			D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = {};
+			uint64_t mipSize = 0u;
+			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&textureDescriptor, mipLevel, 1, 0, &footprint, nullptr, nullptr, &mipSize));
 
 			// Create buffer resource description for staging
 			D3D12_RESOURCE_DESC bufferDesc = {};
 			bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-			bufferDesc.Width = total_bytes;
+			bufferDesc.Width = mipSize;
 			bufferDesc.Height = 1;
 			bufferDesc.DepthOrArraySize = 1;
 			bufferDesc.MipLevels = 1;
@@ -293,31 +273,17 @@ namespace Relentless
 			dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 			dstLocation.PlacedFootprint = footprint;
 		
-			// Transition the resource state to COPY_SOURCE
-			D3D12_RESOURCE_BARRIER barrier = {};
-			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			barrier.Transition.pResource = gpuInterface.Get();
-			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-			D3D12Core::GetCommandList()->ResourceBarrier(1, &barrier);
-
 			DXCall_STD(D3D12Core::GetCommandList()->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
-		
-			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
-			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-
-			D3D12Core::GetCommandList()->ResourceBarrier(1, &barrier);
-
+	
 			context.StagingBuffers.push_back(pStagingResource);
 		}
+
+		RenderCommand::TransitionResource(texture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		s_Data.UUIDToStagingResources[assetHandle.Uuid] = context;
 
 		//Copying will take time, step two is deferred until the point where it is complete:
-		Application::Get().SubmitToMainThread([&assetHandle]()
+		Application::Get().SubmitToMainThread([assetHandle]()
 			{
 				MasterRenderer::WaitAndSyncAllFramesInFlight();
 				FinalizeTexture2DSerialization(assetHandle);
@@ -460,7 +426,6 @@ namespace Relentless
 
 		RassetHeader rassetHeader = {};
 		inFile.read(reinterpret_cast<char*>(&rassetHeader), sizeof(RassetHeader));
-
 		RLS_ASSERT(rassetHeader.AssetType == AssetType::Texture2D, "[Serializer]: Invalid asset type encountered.");
 
 		TextureHeader textureHeader = {};
@@ -499,9 +464,7 @@ namespace Relentless
 		));
 
 		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(textureHeader.NrOfMips);
-		std::vector<UINT> numRows(textureHeader.NrOfMips);
-		std::vector<UINT64> rowSizes(textureHeader.NrOfMips);
-		UINT64 totalSize = 0;
+		uint64_t totalSize = 0;
 
 		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
 		(
@@ -510,25 +473,23 @@ namespace Relentless
 			textureHeader.NrOfMips,
 			0,
 			footprints.data(),
-			numRows.data(),
-			rowSizes.data(),
+			nullptr,
+			nullptr,
 			&totalSize)
 		);
 
 		D3D12_RESOURCE_DESC bufferDesc = {};
 		bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		bufferDesc.Alignment = 0;  // Default alignment
+		bufferDesc.Alignment = 0; 
 		bufferDesc.Width = totalSize;
-		bufferDesc.Height = 1;  // For buffers, Height is always 1
-		bufferDesc.DepthOrArraySize = 1;  // For buffers, DepthOrArraySize is always 1
-		bufferDesc.MipLevels = 1;  // For buffers, MipLevels is always 1
-		bufferDesc.Format = DXGI_FORMAT_UNKNOWN;  // Format must be UNKNOWN for buffers
-		bufferDesc.SampleDesc.Count = 1;  // No multisampling for buffers
+		bufferDesc.Height = 1;  
+		bufferDesc.DepthOrArraySize = 1; 
+		bufferDesc.MipLevels = 1;
+		bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+		bufferDesc.SampleDesc.Count = 1; 
 		bufferDesc.SampleDesc.Quality = 0;
 		bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-		Microsoft::WRL::ComPtr<ID3D12Resource> pUploadBuffer = nullptr;
 
 		D3D12_HEAP_PROPERTIES heapProperties = {};
 		heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -537,13 +498,16 @@ namespace Relentless
 		heapProperties.CreationNodeMask = 1u;
 		heapProperties.VisibleNodeMask = 1u;
 
-		DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
+		Microsoft::WRL::ComPtr<ID3D12Resource> pUploadBuffer = nullptr;
+		DXCall(D3D12Core::GetDevice()->CreateCommittedResource
+		(
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&bufferDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,  // Initial state for upload buffers
-			nullptr,  // No clear value for buffers
-			IID_PPV_ARGS(&pUploadBuffer)));
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&pUploadBuffer))
+		);
 
 		void* pData = nullptr;
 		DXCall(pUploadBuffer->Map(0u, nullptr, &pData));
@@ -551,24 +515,21 @@ namespace Relentless
 
 		for (uint32_t mipLevel = 0u; mipLevel < textureHeader.NrOfMips; ++mipLevel)
 		{
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT foot;
-
-			UINT numRows;
-			UINT64 rowSizeInBytes;
-			UINT64 mipSize;
+			D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
+			uint64_t mipSize = 0u;
+			
 			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
 			(
 				&textureDescriptor,
 				mipLevel,
 				1u,
 				0u,
-				&foot,
-				&numRows,
-				&rowSizeInBytes,
+				&mipFootprint,
+				nullptr,
+				nullptr,
 				&mipSize
 			));
 
-			//const uint64_t mipSize = footprints[mipLevel].Footprint.RowPitch * footprints[mipLevel].Footprint.Height;
 			std::vector<BYTE> mipData(mipSize);
 			inFile.read(reinterpret_cast<char*>(mipData.data()), mipSize);
 
@@ -580,7 +541,6 @@ namespace Relentless
 
 		for (uint32_t mipLevel = 0u; mipLevel < textureHeader.NrOfMips; ++mipLevel)
 		{
-			// Assuming uploadBuffer is your upload buffer and textureResource is your final texture resource
 			D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
 			srcLocation.pResource = pUploadBuffer.Get();
 			srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
@@ -591,7 +551,6 @@ namespace Relentless
 			dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 			dstLocation.SubresourceIndex = mipLevel;
 
-			// Perform the copy
 			DXCall_STD(D3D12Core::GetCommandList()->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
 		}
 
@@ -621,7 +580,7 @@ namespace Relentless
 		
 		s_Data.UUIDToUploadBuffer[rassetHeader.UUID].pUploadBuffer = pUploadBuffer;
 		
-		AssetHandle handle = AssetManager::CreateNew<Texture2D>(specification, rassetHeader.UUID, filepath);
+		const AssetHandle handle = AssetManager::CreateNew<Texture2D>(specification, rassetHeader.UUID, filepath);
 		
 		Application::Get().SubmitToMainThread([handle]()
 			{

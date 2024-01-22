@@ -7,7 +7,9 @@
 #include "Graphics/MemoryManager.h"
 #include "Input/Mouse.h"
 #include "Timer.h"
+#include "UI/UI.h"
 #include "Window.h"
+
 namespace Relentless
 {
 	Application* Application::s_Instance = nullptr;
@@ -131,6 +133,7 @@ namespace Relentless
 		AssetManager::Initialize();
 		AssetRegistry::RecursiveScanDirectoryForAssets(ENGINE_ASSET_DIRECTORY);
 		AssetRegistry::RecursiveScanDirectoryForAssets(EDITOR_ASSET_DIRECTORY);
+		UI::Initialize();
 
 		std::string engineIni = std::string(MAIN_ENGINE_DIRECTORY) + std::string("engine.ini");
 
@@ -158,18 +161,6 @@ namespace Relentless
 		PushOverlay(&m_ImGuiLayer);
 
 		m_IsRunning = true;
-
-		MeshImportSettings settings;
-
-		//AssetManager::LoadFromFile<Mesh>(ENGINE_ASSET_DIRECTORY + std::string("Models\\PKG_B_Ivy\\NewSponza_IvyGrowth_glTF.gltf"), settings);
-		//AssetHandle handle = AssetManager::CreateNew<Material>();
-		//Material& material = AssetManager::Get<Material>(handle);
-		//material.SetName("Default-Material");
-		//material.m_AlbedoColor = {1.0f, 1.0f, 1.0f, 1.0f};
-		//Serializer::Serialize<Material>(handle, std::string(EDITOR_ASSET_DIRECTORY) + "M_DefaultMaterial.rasset");
-		//AssetHandle newHandle = Serializer::Deserialize<Material>(std::string(EDITOR_ASSET_DIRECTORY) + "M_DefaultMaterial.rasset");
-
-		//AssetHandle texHandle = AssetManager::LoadFromFile<Texture2D>("F:\\RelentlessD12\\Relentless\\Assets\\Textures\\SceneThumbnail.jpg");
 	}
 
 	void Application::ShutDown() noexcept

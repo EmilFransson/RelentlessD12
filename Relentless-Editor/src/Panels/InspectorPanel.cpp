@@ -153,8 +153,8 @@ namespace Relentless
 					if (ImGui::MenuItem("Reset"))
 					{
 						material.RemoveAlbedoTexture();
-						RLS_ASSERT(false, "PROBLEM BRO, SEE BELOW");
-						//Material::UploadToGPU(m_InspectedAssetHandle);
+						//RLS_ASSERT(false, "PROBLEM BRO, SEE BELOW");
+						Material::UploadToGPU(m_InspectedAssetHandle);
 					}
 					ImGui::EndPopup();
 				}
@@ -497,8 +497,8 @@ namespace Relentless
 					if (ImGui::MenuItem("Reset"))
 					{
 						material.RemoveAmbientOcclusionTexture();
-						RLS_ASSERT(false, "SEE BELOW");
-						//Material::UploadToGPU(m_InspectedAssetHandle);
+						//RLS_ASSERT(false, "SEE BELOW");
+						Material::UploadToGPU(m_InspectedAssetHandle);
 					}
 					ImGui::EndPopup();
 				}

@@ -13,6 +13,7 @@ namespace Relentless
 	public:
 		static void ResetFrameCommandUnits(const uint32_t frameIndex) noexcept;
 		static void TransitionResource(const std::shared_ptr<IResource>& pResource, const D3D12_RESOURCE_STATES newState) noexcept;
+		static void TransitionResource(IResource& resource, const D3D12_RESOURCE_STATES newState) noexcept;
 		static void TransitionResource(const Microsoft::WRL::ComPtr<ID3D12Resource>& pResource, const D3D12_RESOURCE_STATES currentState, const D3D12_RESOURCE_STATES newState) noexcept;
 		static void FlushResourceTransitionBatch(std::vector<D3D12_RESOURCE_BARRIER>& batchedResourceStateTransitions) noexcept;
 		static void ResolveMSAA(const std::shared_ptr<RenderTexture>& pSource, const std::shared_ptr<RenderTexture>& pDestination) noexcept;

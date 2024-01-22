@@ -38,7 +38,7 @@ namespace Relentless
 			HRESULT hr = LoadFromWICFile(fullPath.c_str(), importFlags, nullptr, image);
 			RLS_ASSERT(SUCCEEDED(hr), "Failed to load image.");
 		}
-
+		
 		bool shouldCompress = importSettings.TextureCompressionType != ETextureCompressionType::Uncompressed;
 		const DXGI_FORMAT textureFormat = shouldCompress ? GetCompressedDXGITextureFormat(importSettings) : image.GetMetadata().format;
 		Microsoft::WRL::ComPtr<ID3D12Resource> pTextureResource{ nullptr };
@@ -60,14 +60,6 @@ namespace Relentless
 				ScratchImage compressedMipChain;
 				HRESULT hr = Compress(mipChain.GetImages(), mipChain.GetImageCount(), mipChain.GetMetadata(), textureFormat, compressFlags, TEX_THRESHOLD_DEFAULT, compressedMipChain);
 				RLS_ASSERT(SUCCEEDED(hr), "Failed to compress.");
-
-				//const Image* compressedtopLevelImage = compressedMipChain.GetImage(0, 0, 0);
-				//
-				//size_t rowPitch;
-				//size_t slicePitch;
-				//ComputePitch(compressedtopLevelImage->format, compressedtopLevelImage->width, compressedtopLevelImage->height, rowPitch, slicePitch);
-				//
-				//std::vector<uint8_t> pixelData(compressedtopLevelImage->pixels, compressedtopLevelImage->pixels + slicePitch);
 
 				pTextureResource = CreateAndUploadTexture2DFromImage(compressedMipChain);
 			}
@@ -124,6 +116,7 @@ namespace Relentless
 
 		//Compiler should utilize RVO to elide copy over move:
 		Texture2D newTexture(specification);
+		newTexture.SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		return newTexture;
 	}
 

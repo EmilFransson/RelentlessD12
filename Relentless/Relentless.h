@@ -19,6 +19,9 @@
 #include <src/EventSystem/IEvent.h>
 #include <src/EventSystem/KeyboardEvents.h>
 
+//UI:
+#include <src/UI/UI.h>
+
 //Graphics:
 #include <src/Graphics/D3D12Core.h>
 #include <src/Graphics/Renderer/RenderCommand.h>
