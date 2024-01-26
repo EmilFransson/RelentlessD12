@@ -120,7 +120,7 @@ namespace Relentless
 		}
 		
 		auto& colors = ImGui::GetStyle().Colors;
-		colors[ImGuiCol_WindowBg] = ImVec4{ 0.1f, 0.105f, 0.11f, 1.0f };
+		colors[ImGuiCol_WindowBg] = ImVec4{ 37.0 / 255.0f, 35.0 / 255.0f, 35.0 / 255.0f, 1.0f };
 		
 		// Headers
 		colors[ImGuiCol_Header] = ImVec4{ 0.2f, 0.205f, 0.21f, 1.0f };
@@ -142,13 +142,23 @@ namespace Relentless
 		colors[ImGuiCol_TabHovered] = ImVec4{ 0.38f, 0.3805f, 0.381f, 1.0f };
 		colors[ImGuiCol_TabActive] = ImVec4{ 0.28f, 0.2805f, 0.281f, 1.0f };
 		colors[ImGuiCol_TabUnfocused] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
-		colors[ImGuiCol_TabUnfocusedActive] = ImVec4{ 0.2f, 0.205f, 0.21f, 1.0f };
-		
-		// Title
-		colors[ImGuiCol_TitleBg] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
-		colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
-		colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
+		//colors[ImGuiCol_TabUnfocusedActive] = ImVec4{ 0.2f, 0.205f, 0.21f, 1.0f };
+		colors[ImGuiCol_TabUnfocusedActive] = colors[ImGuiCol_WindowBg];
 
+
+		// Title
+		colors[ImGuiCol_TitleBg] = ImVec4{ 0.115f, 0.0955f, 0.081f, 1.0f };
+		colors[ImGuiCol_TitleBgActive] = colors[ImGuiCol_TitleBg];
+		colors[ImGuiCol_TitleBgCollapsed] = colors[ImGuiCol_TitleBg];
+
+		colors[ImGuiCol_ScrollbarBg] = colors[ImGuiCol_WindowBg];
+
+
+		style.ScrollbarSize = style.ScrollbarSize - 3.0f;
+
+		float scaleFactor = 1.6f;  // Adjust this scale factor as needed
+		style.ScaleAllSizes(scaleFactor);
+		
 		ImGui_ImplWin32_Init(::GetActiveWindow());
 		ImGui_ImplDX12_Init
 		(
@@ -159,6 +169,7 @@ namespace Relentless
 			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetCPUStartHandle(),
 			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetGPUStartHandle()
 		);
+
 
 	}
 }

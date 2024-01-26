@@ -8,11 +8,11 @@ namespace Relentless
 		  m_SelectedDirectory{"Assets"},
 		  m_AssetToName{ NULL_HANDLE }
 	{
-		m_DirectoryTextureHandle  = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Directory.rasset");
+		m_DirectoryTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\directoryicon.rasset");
 		m_SceneTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.rasset");
 		m_MaterialTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.rasset");
 		m_MeshTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\meshthumbnail.rasset");
-		
+
 		currentDirectory = currentDirectory.string().substr(0u, currentDirectory.string().size() - 1);
 	}
 
@@ -138,6 +138,9 @@ namespace Relentless
 
 			ImGui::EndMenuBar();
 		}
+		ImGuiStyle& style = ImGui::GetStyle();
+		style.Colors[ImGuiCol_Separator] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);  // Black color
+			ImGui::Separator();
 	}
 
 	void ContentBrowserPanel::RenderDirectoryHierarchySearchBar() noexcept
@@ -205,18 +208,62 @@ namespace Relentless
 
 			if (dir_entry.is_directory())
 			{
-				ImGui::ImageButton((void*)AssetManager::Get<Texture2D>(m_DirectoryTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth), ImVec2(0, 0), ImVec2(1, 1), -1, ImGui::GetStyle().Colors[ImGuiCol_WindowBg]);
+				ImDrawList* pDrawList = ImGui::GetWindowDrawList();
+
+				constexpr const float thumbnailHeight = 220.0f;
+
+				const ImVec2 vMin(ImGui::GetCursorScreenPos());
+				const ImVec2 vMax(vMin.x + m_ThumbnailWidth, vMin.y + thumbnailHeight);
+
+				ImGui::InvisibleButton(entry.c_str(), ImVec2(vMax.x - vMin.x, vMax.y - vMin.y));
+				const bool selected = ImGui::IsItemClicked();
+				const bool isHovered = ImGui::IsItemHovered();
+
+				if (isHovered)
+				{
+					const ImVec2 vMinDropShadow(ImGui::GetCursorScreenPos().x + 6.0f, vMin.y + 6.0f);
+					const ImVec2 vMaxDropShadow(vMinDropShadow.x + m_ThumbnailWidth, vMinDropShadow.y + thumbnailHeight);
+					constexpr const ImU32 black = IM_COL32(0, 0, 0, 128);
+					pDrawList->AddRectFilled(vMinDropShadow, vMaxDropShadow, black, 7.0f);
+				}
+
+				const ImU32 unrealGrey = selected ? IM_COL32(30, 120, 255, 200) : isHovered ? IM_COL32(60, 60, 60, 255) : IM_COL32(0, 0, 0, 0);
+
+				pDrawList->AddRectFilled(vMin, vMax, unrealGrey, 5.0f);
+
+				if (isHovered)
+					ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_Hand);
+
+				const ImVec2 vMinLine(vMin.x + 0.8f, vMin.y + m_ThumbnailWidth);
+
+
+				const ImVec2 windowPos = ImGui::GetWindowPos();
+				const ImVec2 relativePos = ImVec2(vMin.x - windowPos.x, vMin.y - windowPos.y + ImGui::GetScrollY());
+				ImGui::SetCursorPos(relativePos);
 				
-				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
+				const float textLength = ImGui::CalcTextSize(entry.c_str()).x;
+				const ImVec2 assetNameTextPosition = ImVec2((vMin.x + (m_ThumbnailWidth / 2.0f)) - (textLength / 2.0f), vMinLine.y + 3.0f); 
+				
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)); 
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+				ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+				ImGui::ImageButton((void*)AssetManager::Get<Texture2D>(m_DirectoryTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0,0,0,0), ImVec4(0.58f, 0.58f, 0.58f, 1.0f));
+				
+				ImGui::PopStyleColor(4);
+				ImGui::PopStyleVar();
+
+				pDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), assetNameTextPosition, IM_COL32(255, 255, 255, 200), entry.c_str(), (const char*)0, m_ThumbnailWidth - 14.0f);
+
+
+				if (isHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
 				{
 					currentDirectory /= entry;
 					m_SelectedDirectory = entry;
 				}
 
-				ImGui::SameLine();
-				ImGui::NewLine();
-
-				RenderThumbnailText(entry, ImGui::IsItemHovered());
 				ImGui::TableNextColumn();
 			}
 		}
@@ -249,30 +296,6 @@ namespace Relentless
 					continue;
 			}
 
-
-			//if (extension == ".Relentless")
-			//{
-			//	ImGui::TableNextColumn();
-			//
-			//	ImGui::ImageButton((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
-			//
-			//	if (ImGui::BeginDragDropSource())
-			//	{
-			//		const char* path = entryPath.c_str();
-			//		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-			//		ImGui::BeginTooltip();
-			//		ImGui::Image((ImTextureID)AssetManager::Get<Texture2D>(m_SceneTextureHandle).GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth));
-			//		ImGui::EndTooltip();
-			//		ImGui::PopStyleVar(1);
-			//		ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM_SCENE", path, strlen(path) + 1, ImGuiCond_::ImGuiCond_Once);
-			//		ImGui::EndDragDropSource();
-			//	}
-			//
-			//	ImGui::SameLine();
-			//	ImGui::NewLine();
-			//
-			//	RenderThumbnailText(entry, ImGui::IsItemHovered());
-			//}
 			if (extension == ".rasset")
 			{
 				ImDrawList* pDrawList = ImGui::GetWindowDrawList();
