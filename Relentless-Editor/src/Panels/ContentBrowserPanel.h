@@ -22,59 +22,26 @@ namespace Relentless
 		void RenderPopUpOptions() noexcept;
 		void RenderThumbnailText(const std::string& text, bool thumbNailHovered) noexcept;
 		void EditThumbnailText(const AssetHandle& handle) noexcept;
+		void DrawDirectoryThumbnail(const std::filesystem::path directoryPath) noexcept;
+		
+		[[nodiscard]] bool IsEntrySelected(const std::string& entryPath) const noexcept;
+		void SelectEntry(const std::string& entryPath) noexcept;
+		void DeselectEntry(const std::string& entryPath) noexcept;
 
-		template<typename AssetType>
-		void RenderAssetThumbnail(const AssetHandle& imageButtonTextureHandle, const AssetHandle& tooltipImageTextureHandle, const AssetHandle& payloadAssetHandle, const std::string& name, float thumbnailWidth) noexcept
-		{
-			ImGui::PushID(ConvertUUIDToString(payloadAssetHandle.Uuid).c_str());
-			Texture2D& imageButtonTexture = AssetManager::Get<Texture2D>(imageButtonTextureHandle);
-			ImGui::ImageButton((ImTextureID)imageButtonTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(thumbnailWidth, thumbnailWidth));
-
-			Texture2D& tooltipImageTexture = AssetManager::Get<Texture2D>(tooltipImageTextureHandle);
-
-			constexpr std::string_view payloadID = std::is_same_v<AssetType, Texture2D> ? "CONTENT_BROWSER_ITEM_TEXTURE" 
-				: std::is_same_v<AssetType, Material> ? "CONTENT_BROWSER_ITEM_MATERIAL" : "CONTENT_BROWSER_ITEM_SCENE";
-
-			if (ImGui::BeginDragDropSource())
-			{
-				ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-				ImGui::BeginTooltip();
-				ImGui::Image((ImTextureID)tooltipImageTexture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(thumbnailWidth, thumbnailWidth));
-				ImGui::EndTooltip();
-				ImGui::PopStyleVar(1);
-				ImGui::SetDragDropPayload(payloadID.data(), (void*)&payloadAssetHandle, sizeof(AssetHandle), ImGuiCond_::ImGuiCond_Once);
-				ImGui::EndDragDropSource();
-			}
-			else if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
-			{
-				if constexpr (std::is_same_v<AssetType, Material>)
-				{
-					m_OnAssetSelectedCallback(payloadAssetHandle, InspectedAssetType::MATERIAL);
-				}
-			}
-
-			ImGui::SameLine();
-			ImGui::NewLine();
-
-			if (payloadAssetHandle == m_AssetToName && !std::is_same_v<AssetType, Texture2D>)
-			{
-				EditThumbnailText(payloadAssetHandle);
-			}
-			else
-			{
-				RenderThumbnailText(name, ImGui::IsItemHovered());
-				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
-				{
-					m_AssetToName = payloadAssetHandle;
-				}
-			}
-
-			ImGui::PopID();
-		}
-
+		[[nodiscard]] bool IsDirectorySelectedInHierarchy(const std::string& directoryPath) const;
+		void SelectHiearchyDirectory(const std::string& directoryPath) noexcept;
+		void DeselectHiearchyDirectory(const std::string& directoryPath) noexcept;
+		void DeselectAllHierarchyDirectories() noexcept;
+		void DeselectAllContentBrowserEntries() noexcept;
+		[[nodiscard]] uint32_t GetSelectedHierarchyDirectoriesCount() const;
+		[[nodiscard]] bool IsAncestorDirectoryToAnySelectedDirectory(const std::filesystem::path& directoryPath) const;
+		[[nodiscard]] std::string ConstructAssetBrowserHintString() const noexcept;
 	private:
-		float m_ThumbnailWidth;
+		float m_ThumbnailWidth = 150.0f;
+		float m_ThumbnailHeight = 220.0f;
+
 		AssetHandle m_DirectoryTextureHandle = NULL_HANDLE;
+		AssetHandle m_OpenDirectoryTextureHandle = NULL_HANDLE;
 		AssetHandle m_SceneTextureHandle = NULL_HANDLE;
 		AssetHandle m_MaterialTextureHandle = NULL_HANDLE;
 		AssetHandle m_MeshTextureHandle = NULL_HANDLE;
@@ -82,11 +49,17 @@ namespace Relentless
 
 		std::string m_ContentFilter = "";
 
-		std::string m_SelectedDirectory;
+		std::string m_SelectedDirectory = "Assets";
 		float m_LocationStringPosition[2];
 		bool m_FirstTimeEditingThumbnail{ true };
+		std::vector<std::string> m_SelectedEntries;
+		std::vector<std::string> m_SelectedHierarchyDirectories;
 
-		AssetHandle m_AssetToName;
+		AssetHandle m_AssetToName = NULL_HANDLE;
+
+		bool m_DirectoryHierarchyFocused = false;
+		float m_DragAmount = 0.0f;
+		uint32_t m_DisplayedEntries = 0u;
 
 		std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> m_OnAssetSelectedCallback;
 	};
