@@ -15,13 +15,6 @@ namespace Relentless
 		int32_t y;
 	};
 
-	struct Vector3f
-	{
-		float x;
-		float y;
-		float z;
-	};
-
 #ifndef DELETE_COPY_CONSTRUCTOR
 #define DELETE_COPY_CONSTRUCTOR(T)	\
 			T(const T&) = delete;	\

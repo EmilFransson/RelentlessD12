@@ -1,4 +1,6 @@
 #pragma once
+#include "Utility/Rules.h"
+
 namespace Relentless
 {
 	inline constexpr char ASSET_EXTENSION[] = ".rasset";
@@ -11,26 +13,44 @@ namespace Relentless
 		Material,
 		Texture2D,
 		Mesh,
-		Scene
+		Scene,
+		Count
 	};
 
 	inline constexpr AssetType NULL_ASSET_TYPE = AssetType::Undefined;
+	
+	enum class AssetFlags : uint32_t
+	{
+		None = 0,
+	};
 
 	struct AssetMetaData
 	{
-		UUID Uuid;
-		AssetType AssetType;
+		std::string Name = "\0";
+		AssetType AssetType = AssetType::Undefined;
+		UUID Uuid = NULL_UUID;
+		std::filesystem::path SourcePath = "\0";
+		std::vector<std::string> Tags;
+		AssetFlags AssetFlags = AssetFlags::None;
+		uint64_t ModificationDateAndTime = 0u;
 	};
 
 #pragma pack(push, 1)
-	struct RassetHeader
+	struct RassetHeader_1
 	{
-		static const uint32_t MagicNumber = 'R' << 24 | 'A' << 16 | 'S' << 8 | 'S';
+		static const uint32_t Signature = 'R' << 24 | 'A' << 16 | 'S' << 8 | 'S';
 		uint8_t Version{1u};
-		AssetType AssetType;
-		UUID UUID;
+		AssetType AssetType = AssetType::Undefined;
+		UUID UUID = NULL_UUID;
+		char Name[Rules::Limits::ASSET_NAME_LENGTH] = "\0";
+		char SourcePath[Rules::Limits::ASSET_SOURCE_PATH_LENGTH] = "\0";
+		AssetFlags AssetFlags = AssetFlags::None;
+		uint64_t ModificationDateAndTime = 0u;
+		uint16_t TagsByteSize = 0u;
 	};
 #pragma pack(pop)
+
+	using LatestRassetHeaderVersion = RassetHeader_1;
 
 	struct AssetHandle
 	{

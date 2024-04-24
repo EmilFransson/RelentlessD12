@@ -20,7 +20,7 @@ namespace Relentless
 	struct MeshImportSettings
 	{
 		bool OptimizeMesh{ true };
-		bool ImportLights{ true };
+		bool ImportLights{ false };
 		//bool ImportCameras{ true };
 		bool ImportMaterialsAndTextures{ true };
 		bool GenerateColliders{ true };

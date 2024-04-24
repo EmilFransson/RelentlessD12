@@ -1,5 +1,8 @@
 #pragma once
 #include "ImGui/ImguiLayer.h"
+#include "Threading/ThreadPool.h"
+
+#include "Callback/Broadcaster.h"
 namespace Relentless
 {
 	struct ApplicationSpecification
@@ -21,6 +24,7 @@ namespace Relentless
 		void OnEvent(IEvent& event) noexcept;
 
 		void SubmitToMainThread(const std::function<void()>& func);
+		[[nodiscard]] ThreadPool& GetThreadPool() noexcept;
 	private:
 		void OnStartUp() noexcept;
 		void ShutDown() noexcept;
@@ -35,6 +39,8 @@ namespace Relentless
 
 		std::queue<std::function<void()>> m_MainThreadFunctionQueue;
 		std::mutex m_MainThreadFunctionQueueMutex;
+
+		ThreadPool m_ThreadPool;
 	};
 
 	//To be defined in client (runtime-project):

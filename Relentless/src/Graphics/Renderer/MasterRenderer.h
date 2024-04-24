@@ -11,6 +11,7 @@ namespace Relentless
 		static void Initialize() noexcept;
 		static [[nodiscard]] ShaderLibrary& GetShaderLibrary() noexcept;
 		static void ExecuteCommands() noexcept;
+		static void ExecuteAllSingleCommands() noexcept;
 		static void WaitAndSync() noexcept;
 		static void WaitAndSyncAllFramesInFlight() noexcept;
 		static void WaitForGPU() noexcept;

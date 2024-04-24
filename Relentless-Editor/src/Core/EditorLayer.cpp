@@ -110,11 +110,14 @@ namespace Relentless
 					m_CreateNewScene = true;
 				else if (key == RLS_KEY::O && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
 				{
-					std::string filepath = FileDialogs::OpenFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
-					if (!filepath.empty())
-					{
-						m_Path = filepath;
-					}
+					//TODO: FIX IMOPORT
+					RLS_ASSERT(false, "FIX!");
+					
+					//std::string filepath = FileDialogs::OpenFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
+					//if (!filepath.empty())
+					//{
+					//	m_Path = filepath;
+					//}
 					//ForceReset Keyboard!
 				}
 				else if (key == RLS_KEY::S && (Keyboard::IsKeyPressed(RLS_KEY::LCtrl) && Keyboard::IsKeyPressed(RLS_KEY::LShift)))
@@ -298,11 +301,13 @@ namespace Relentless
 				}
 			});
 
-		m_PlayButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PlayButton.png"));
-		m_StopButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StopButton.png"));
-		m_PauseButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PauseButton.png"));
-		m_SimulateButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\SimulateButton.png"));
-		m_StepButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StepButton.png"));
+		
+
+		m_PlayButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PlayButton.png"), "");
+		m_StopButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StopButton.png"), "");
+		m_PauseButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PauseButton.png"), "");
+		m_SimulateButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\SimulateButton.png"), "");
+		m_StepButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StepButton.png"), "");
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -412,7 +417,8 @@ namespace Relentless
 		for (auto& mesh : starterMeshes)
 		{
 			const std::string fullMeshPath(meshPath + std::string(mesh));
-			Serializer::Deserialize<Mesh>(fullMeshPath);
+			const bool succeeded = Serializer::Deserialize<Mesh>(fullMeshPath);
+			RLS_VERIFY(succeeded, "Failed to deserialize Mesh engine asset '{0}'", mesh.c_str());
 		}
 	}
 
@@ -699,11 +705,14 @@ namespace Relentless
 
 			if (ImGui::MenuItem("Open...", "Ctrl+O"))
 			{
-				std::string filepath = FileDialogs::OpenFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
-				if (!filepath.empty())
-				{
-					m_Path = filepath;
-				}
+				//TODO: FIX!!
+				RLS_ASSERT(false, "FIX!");
+
+				//std::string filepath = FileDialogs::OpenFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
+				//if (!filepath.empty())
+				//{
+				//	m_Path = filepath;
+				//}
 			}
 
 			if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S"))

@@ -275,8 +275,9 @@ namespace Relentless
 				UUID uuid;
 				IIDFromString(vertexBufferIDAsString.c_str(), &uuid);
 				
-				std::string meshPath = AssetRegistry::GetFilepath(uuid);
-				mfc.AssetHandle = Serializer::Deserialize<Mesh>(meshPath);
+				const std::string meshPath = AssetRegistry::GetFilepath(uuid);
+				if (!Serializer::Deserialize<Mesh>(meshPath, mfc.AssetHandle))
+					RLS_CORE_ERROR("Failed to deserialize mesh with path {0}", meshPath.c_str());
 			}
 		
 			auto meshRendererComponent = entity["MeshRendererComponent"];
@@ -287,9 +288,11 @@ namespace Relentless
 				UUID uuid;
 				IIDFromString(materialHandleIDAsString.c_str(), &uuid);
 				
-				std::string materialPath = AssetRegistry::GetFilepath(uuid);
-				mrc.AssetHandle = Serializer::Deserialize<Material>(materialPath);
-				pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(deserializedEntity);
+				const std::string materialPath = AssetRegistry::GetFilepath(uuid);
+				if (Serializer::Deserialize<Material>(materialPath, mrc.AssetHandle))
+					pScene->GetEntityManager().AddOrReplace<DirtyMeshRendererComponent>(deserializedEntity);
+				else
+					RLS_CORE_ERROR("Failed to deserialize material with path {0}", materialPath.c_str());
 			}
 		
 			auto opaquePassComponent = entity["OpaquePassComponent"];

@@ -1,6 +1,7 @@
 #pragma once
 #include "AssetMeta.h"
 #include "AssetRegistry.h"
+#include "Core/Application.h"
 #include "Graphics/Resources/Texture.h"
 #include "Graphics/Resources/Material.h"
 #include "Importer.h"
@@ -44,15 +45,20 @@ namespace Relentless
 		{
 			RLS_ASSERT(assetHandle.Type == AssetTypeTrait<AssetType>::value, "Asset type mismatch detected.");
 			
+			std::lock_guard<std::mutex> guard(Mutex);
+
 			const uint32_t physicalIndex = SparseArray[assetHandle.Index];
 			RLS_ASSERT(!(physicalIndex > Assets.size()), "Index out of bounds - No asset corresponds to asset handle.");
 
-			return Assets[physicalIndex];
+			return *Assets[physicalIndex];
 		}
 
 		__forceinline [[nodiscard]] uint32_t Add(AssetType assetType) noexcept 
 		{
 			uint32_t sparseIndex = NULL_INDEX;
+
+			std::lock_guard<std::mutex> guard(Mutex);
+
 			const uint32_t physicalIndex = static_cast<uint32_t>(Assets.size());
 
 			if (!FreeList.empty())
@@ -68,7 +74,7 @@ namespace Relentless
 				SparseArray.push_back(sparseIndex);
 			}
 
-			Assets.push_back(std::move(assetType));
+			Assets.push_back(std::make_shared<AssetType>(std::move(assetType)));
 			ReverseLookup.push_back(sparseIndex);
 
 			if (RefCounts.size() > physicalIndex)
@@ -88,6 +94,9 @@ namespace Relentless
 			RLS_ASSERT(handle.Type == AssetTypeTrait<AssetType>::value, "Asset type mismatch detected.");
 
 			const uint32_t sparseIndex = handle.Index;
+
+			std::lock_guard<std::mutex> guard(Mutex);
+
 			const uint32_t assetIndex = SparseArray[sparseIndex];
 
 			RLS_ASSERT(assetIndex < Assets.size(), "Asset index is invalid.");
@@ -115,6 +124,8 @@ namespace Relentless
 		{
 			RLS_ASSERT(assetHandle.Type == AssetTypeTrait<AssetType>::value, "Asset type mismatch detected.");
 			
+			std::lock_guard<std::mutex> guard(Mutex);
+
 			const uint32_t physicalIndex = SparseArray[assetHandle.Index];
 			RLS_ASSERT(physicalIndex < RefCounts.size(), "Index out of bounds - No asset corresponds to asset handle.");
 
@@ -124,7 +135,9 @@ namespace Relentless
 		__forceinline void DecreaseReferenceCount(const AssetHandle& assetHandle) noexcept
 		{
 			RLS_ASSERT(assetHandle.Type == AssetTypeTrait<AssetType>::value, "Asset type mismatch detected.");
-			
+
+			std::lock_guard<std::mutex> guard(Mutex);
+
 			const uint32_t physicalIndex = SparseArray[assetHandle.Index];
 
 			if (physicalIndex < RefCounts.size())
@@ -137,9 +150,11 @@ namespace Relentless
 	public:
 		std::vector<uint32_t> SparseArray;
 		std::vector<uint32_t> ReverseLookup;
-		std::vector<AssetType> Assets;
+		std::vector<std::shared_ptr<AssetType>> Assets;
 		std::vector<ReferenceCount> RefCounts;
 		std::queue<uint32_t> FreeList;
+
+		std::mutex Mutex;
 	};
 
 	class AssetManager
@@ -166,56 +181,134 @@ namespace Relentless
 
 		static [[nodiscard]] AssetHandle GetHandleByPath(const std::filesystem::path& fullPath) noexcept
 		{
+			std::lock_guard<std::mutex> guard(m_LoadedAssetsMapMutex);
+
 			RLS_ASSERT(s_LoadedAssets.contains(fullPath.string()), "Path to asset is invalid.");
 			return s_LoadedAssets2[s_LoadedAssets[fullPath.string()]];
 		}
 
 		template<typename AssetType>
-		[[nodiscard]] static typename std::enable_if<
+		static [[nodiscard]] auto InsertMetaData(const UUID& uuid, uint32_t handleIndex) noexcept
+		{
+			std::lock_guard<std::mutex> guard(m_LoadedAssetsMapMutex);
+
+			auto result = s_LoadedAssets2.emplace(
+				std::piecewise_construct,
+				std::forward_as_tuple(uuid),
+				std::forward_as_tuple(AssetTypeTrait<AssetType>::value, uuid, handleIndex)
+			);
+
+			return result;
+		}
+
+		template<typename AssetType>
+		static void SaveAsRAsset(const AssetHandle& assetHandle, const std::string& fullDestinationPath) noexcept
+		{
+			Serializer::Serialize<AssetType>(assetHandle, fullDestinationPath);
+			
+			RLS_ASSERT(false, "TODO");
+			//AssetRegistry::MapAssetToFilepath({ assetHandle.Uuid, AssetTypeTrait<AssetType>::value }, fullDestinationPath);
+		}
+
+		template<typename AssetType>
+		static typename std::enable_if<
 			std::conjunction<
 			std::negation<std::is_same<AssetType, Mesh>>, 
 			std::negation<std::is_same<AssetType, Material>>>::value, AssetHandle>::type
-		LoadFromFile(const std::string& filepath, const typename AssetTypeInfo<AssetType>::Settings& importSettings = {}, const UUID& uuid = CreateUUID()) noexcept
+		LoadFromFile(const std::string& filepath, const std::string& destinationPath = std::string::empty(), const typename AssetTypeInfo<AssetType>::Settings& importSettings = {}, const UUID& uuid = CreateUUID()) noexcept
 		{
 			RLS_ASSERT(std::filesystem::exists(filepath), "Filepath is invalid.");
-			if (IsLoaded(filepath))
+			
+			const std::string filename = std::filesystem::path(filepath).filename().string();
+			const std::string fullDestinationPath = destinationPath.empty() ? "" : destinationPath + "\\" + filename + ".rasset";
+
+			bool fileIsAlreadyBeingLoaded = false;
 			{
-				return s_LoadedAssets2[s_LoadedAssets[filepath]];
+				std::lock_guard<std::mutex> guard(m_AssetsBeginLoadedMutex);
+				if (!IsAssetFileCurrentlyBeingLoaded(filepath))
+				{
+					AddAssetFileAsCurrentlyBeingLoaded(filepath);
+				}
+				else
+					fileIsAlreadyBeingLoaded = true;
+			}
+
+			if (fileIsAlreadyBeingLoaded)
+			{
+				std::unique_lock<std::mutex> lock(m_AssetsBeginLoadedMutex);
+				m_FilepathToConditionVariableMap[filepath].wait(lock, [&] { return IsLoaded(filepath); });
+
+				return GetHandleByPath(filepath);
+			}
+
+			//Should most likely be changed as it could yield wrong results:
+			if (IsLoaded(fullDestinationPath))
+			{
+				{
+					std::lock_guard<std::mutex> guard(m_AssetsBeginLoadedMutex);
+					if (IsAssetFileCurrentlyBeingLoaded(filepath))
+						RemoveAssetFileAsCurrentlyBeingLoaded(filepath);
+				}
+
+				return GetHandleByPath(fullDestinationPath);
 			}
 			else
 			{
-				uint32_t handleIndex = NULL_INDEX;
+				const uint32_t handleIndex = GetStorage<AssetType>().Add(std::move(Importer::Import<AssetType>(filepath, importSettings)));
+				auto [it, wasInserted] = InsertMetaData<AssetType>(uuid, handleIndex);
+				RLS_ASSERT(wasInserted, "Unable to insert loaded asset meta data.");
 
-				if (AssetRegistry::IsFilepathMapped(filepath))
+				if (!destinationPath.empty())
 				{
-					//handleIndex = GetStorage<AssetType>().Add(std::move(Serializer::Deserialize<AssetType>(filepath)));
-				}
-				else
-				{
-					//The asset is neither loaded nor known. This means it is a freshly added asset that should 
-					//both be loaded and mapped.
-					handleIndex = GetStorage<AssetType>().Add(std::move(Importer::Import<AssetType>(filepath, importSettings)));
-
-					AssetRegistry::MapAssetToFilepath({ uuid, AssetTypeTrait<AssetType>::value }, filepath);
+					Link(fullDestinationPath, uuid);
+					SaveAsRAsset<AssetType>(it->second, fullDestinationPath);
 				}
 
-				s_LoadedAssets[filepath] = uuid;
-				auto [it, inserted] = s_LoadedAssets2.emplace
-				(
-					std::piecewise_construct,
-					std::forward_as_tuple(uuid),
-					std::forward_as_tuple(AssetTypeTrait<AssetType>::value, uuid, handleIndex)
-				);
+				{
+					std::lock_guard<std::mutex> guard(m_AssetsBeginLoadedMutex);
+					RemoveAssetFileAsCurrentlyBeingLoaded(filepath);
+					m_FilepathToConditionVariableMap[filepath].notify_all();
+				}
+
+				if constexpr (std::is_same_v<AssetType, Texture2D>)
+				{
+					SetInvalid(filepath);
+					Application::Get().SubmitToMainThread([filepath]()
+						{
+							MasterRenderer::ExecuteAllSingleCommands();
+							MasterRenderer::WaitAndSyncAllFramesInFlight();
+							SetValid(filepath);
+						});
+				}
 
 				return it->second;
 			}
 		}
 
 		template<typename AssetType>
-		[[nodiscard]] static typename std::enable_if<std::is_same<AssetType, Mesh>::value, void>::type
-			LoadFromFile(const std::string& filepath, const typename AssetTypeInfo<AssetType>::Settings& importSettings = {}) noexcept
+		static typename std::enable_if<std::is_same<AssetType, Mesh>::value, void>::type
+			LoadFromFile(const std::string& filepath, const std::string& destinationPath = std::string::empty(), const typename AssetTypeInfo<AssetType>::Settings& importSettings = {}) noexcept
 		{
-			Importer::Import<Mesh>(filepath, importSettings);
+			bool fileIsAlreadyBeingLoaded = false;
+			{
+				std::lock_guard<std::mutex> guard(m_AssetsBeginLoadedMutex);
+				if (!IsAssetFileCurrentlyBeingLoaded(filepath))
+				{
+					AddAssetFileAsCurrentlyBeingLoaded(filepath);
+				}
+				else
+					fileIsAlreadyBeingLoaded = true;
+			}
+
+			if (fileIsAlreadyBeingLoaded)
+				return;
+
+			Importer::Import<Mesh>(filepath, destinationPath, importSettings);
+			{
+				std::lock_guard<std::mutex> guard(m_AssetsBeginLoadedMutex);
+				RemoveAssetFileAsCurrentlyBeingLoaded(filepath);
+			}
+			
 		}
 
 		template<typename AssetType>
@@ -226,19 +319,11 @@ namespace Relentless
 		CreateNew(const UUID& uuid = CreateUUID(), const std::string& pathToFile = "") noexcept
 		{
 			const uint32_t index = GetStorage<AssetType>().Add(AssetType());
-
-			auto [it, inserted] = s_LoadedAssets2.emplace
-			(
-				std::piecewise_construct,
-				std::forward_as_tuple(uuid),
-				std::forward_as_tuple(AssetTypeTrait<AssetType>::value, uuid, index)
-			);
-			RLS_ASSERT(inserted, "Failed to insert new handle to asset.");
+			auto [it, wasInserted] = InsertMetaData<AssetType>(uuid, index);
+			RLS_ASSERT(wasInserted, "Failed to insert new handle to asset.");
 
 			if (!pathToFile.empty())
-			{
-				s_LoadedAssets[pathToFile] = uuid;
-			}
+				Link(pathToFile, uuid);
 
 			return it->second;
 		}
@@ -249,18 +334,11 @@ namespace Relentless
 		{
 			const uint32_t index = GetStorage<AssetType>().Add(AssetType(specification));
 
-			auto [it, inserted] = s_LoadedAssets2.emplace
-			(
-				std::piecewise_construct,
-				std::forward_as_tuple(uuid),
-				std::forward_as_tuple(AssetTypeTrait<AssetType>::value, uuid, index)
-			);
-			RLS_ASSERT(inserted, "Failed to insert new handle to asset.");
+			auto [it, wasInserted] = InsertMetaData<AssetType>(uuid, index);
+			RLS_ASSERT(wasInserted, "Failed to insert new handle to asset.");
 
 			if (!pathToFile.empty())
-			{
-				s_LoadedAssets[pathToFile] = uuid;
-			}
+				Link(pathToFile, uuid);
 
 			return it->second;
 		}
@@ -272,12 +350,22 @@ namespace Relentless
 		}
 
 		static [[nodiscard]] bool IsLoaded(const std::string& filepath) noexcept;
-		static [[nodiscard]] const AssetHandle& GetDefaultMaterialHandle() noexcept;
+		static [[nodiscard]] const AssetHandle GetDefaultMaterialHandle() noexcept;
+		static [[nodiscard]] const AssetHandle GetInvalidMaterialHandle() noexcept;
+		static [[nodiscard]] const AssetHandle GetInvalidTextureHandle() noexcept;
 		static void OnFileMoved(const AssetHandle& handle, const std::string& newFilepath) noexcept;
 		static void Link(const std::string& path, const UUID& uuid) noexcept;
+		static void Unlink(const std::string& path) noexcept;
+		static void SetInvalid(const std::string& path) noexcept;
+		static void SetValid(const std::string& path) noexcept;
+		static [[nodiscard]] bool IsValid(const std::string& path) noexcept;
 	private:
 		static void IncreaseReferenceCount(const AssetHandle& assetHandle) noexcept;
 		static void DecreaseReferenceCount(const AssetHandle& assetHandle) noexcept;
+
+		static void AddAssetFileAsCurrentlyBeingLoaded(const std::string& filepath) noexcept;
+		static void RemoveAssetFileAsCurrentlyBeingLoaded(const std::string& filepath) noexcept;
+		static [[nodiscard]] bool IsAssetFileCurrentlyBeingLoaded(const std::string& filepath) noexcept;
 		
 		template<typename AssetType>
 		static AssetStorage<AssetType>& GetStorage() noexcept
@@ -296,10 +384,22 @@ namespace Relentless
 		
 		static std::unordered_map<std::string, UUID> s_LoadedAssets;
 		static std::unordered_map<UUID, AssetHandle> s_LoadedAssets2;
+		static std::unordered_map<UUID, std::string> s_UUIDToSrcPathMap;
 
 		friend struct AssetHandle;
 
 		static AssetHandle m_DefaultMaterialHandle;
+		static AssetHandle m_InvalidMaterialHandle;
+		static AssetHandle m_InvalidTextureHandle;
+
+		static std::mutex m_LoadedAssetsMapMutex;
+		static std::mutex m_AssetsBeginLoadedMutex;
+		static std::mutex m_AssetLoadingStatusMutex;
+
+		static std::unordered_set<std::string> m_AssetsCurrentlyBeingLoaded;
+		static std::unordered_map<std::string, std::condition_variable> m_FilepathToConditionVariableMap;
+
+		static std::unordered_set<std::string> m_InvalidAssets;
 	};
 
 	template<>

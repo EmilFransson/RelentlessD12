@@ -80,10 +80,60 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
-		auto pCommandList{ D3D12Core::GetCommandList() };
-		DXCall(pCommandList->Close());
-		ID3D12CommandList* pCommandLists[] = { pCommandList.Get() };
-		DXCall_STD(D3D12Core::GetCommandQueue()->ExecuteCommandLists(ARRAYSIZE(pCommandLists), pCommandLists));
+		std::vector<D3D12SingleCommand> singleCommands = D3D12Core::GetAllUsedCommands();
+
+		// Directly create a vector of raw pointers, starting with the primary command list
+		std::vector<ID3D12CommandList*> rawCommandLists;
+		rawCommandLists.reserve(1 + singleCommands.size()); // Optimize to avoid reallocations
+
+		auto primaryCommandList = D3D12Core::GetCommandList();
+		primaryCommandList->Close(); // Ensure it's closed before execution
+		rawCommandLists.push_back(primaryCommandList.Get()); // Add the primary command list
+
+		// Add single commands
+		for (auto& singleCommand : singleCommands) 
+		{
+			singleCommand.m_pCommandList->Close(); // Ensure each is closed before execution
+			rawCommandLists.push_back(singleCommand.m_pCommandList.Get());
+		}
+
+		// Execute all command lists at once
+		if (!rawCommandLists.empty()) 
+		{
+			D3D12Core::GetCommandQueue()->ExecuteCommandLists(static_cast<UINT>(rawCommandLists.size()), rawCommandLists.data());
+		}
+
+		for (uint32_t i{ 0u }; i < singleCommands.size(); ++i)
+		{
+			D3D12Core::InsertFreshCommand(std::move(singleCommands[i]));
+		}
+	}
+
+	void MasterRenderer::ExecuteAllSingleCommands() noexcept
+	{
+		std::vector<D3D12SingleCommand> singleCommands = D3D12Core::GetAllUsedCommands();
+
+		// Directly create a vector of raw pointers, starting with the primary command list
+		std::vector<ID3D12CommandList*> rawCommandLists;
+		rawCommandLists.reserve(singleCommands.size()); // Optimize to avoid reallocations
+
+		// Add single commands
+		for (auto& singleCommand : singleCommands)
+		{
+			singleCommand.m_pCommandList->Close(); // Ensure each is closed before execution
+			rawCommandLists.push_back(singleCommand.m_pCommandList.Get());
+		}
+
+		// Execute all command lists at once
+		if (!rawCommandLists.empty())
+		{
+			D3D12Core::GetCommandQueue()->ExecuteCommandLists(static_cast<UINT>(rawCommandLists.size()), rawCommandLists.data());
+		}
+
+		for (uint32_t i{ 0u }; i < singleCommands.size(); ++i)
+		{
+			D3D12Core::InsertFreshCommand(std::move(singleCommands[i]));
+		}
 	}
 
 	void MasterRenderer::WaitAndSync() noexcept

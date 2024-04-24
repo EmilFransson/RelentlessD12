@@ -37,7 +37,12 @@ namespace Relentless
 	{
 	public:
 		static void Initialize() noexcept;
-		[[nodiscard]] static std::string SearchBar(const char* uniqueID, const char* hintText, bool displaySearchHistory = false, float width = ImGui::GetContentRegionAvail().x) noexcept;
-
+		static [[nodiscard]] std::string SearchBar(const char* uniqueID, const char* hintText, bool displaySearchHistory = false, float width = ImGui::GetContentRegionAvail().x) noexcept;
+		
+		class Utility
+		{
+		public:
+			static [[nodiscard]] std::string ShortenStringToFitClipRect(const std::string& originalString, const ImVec2& topLeft, const ImVec2& bottomRight) noexcept;
+		};
 	};
 }

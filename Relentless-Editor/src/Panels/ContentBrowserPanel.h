@@ -15,12 +15,20 @@ namespace Relentless
 		void RenderDirectoryHierarchy() noexcept;
 		void DrawDirectoryNode(const std::filesystem::directory_entry& directoryName) noexcept;
 		void RenderMenuBar() noexcept;
+		void RenderLeftChildWindow(float width) noexcept;
+		void RenderRightChildWindow(float width);
 		void RenderDirectoryHierarchySearchBar() noexcept;
 		void RenderAssetHierarchyOverview() noexcept;
+		void RenderAssetFilterButton() noexcept;
+		void RenderAssetFilterPopup() noexcept;
 		void RenderAssetSearchBox() noexcept;
 		void RenderAssetThumbNails() noexcept;
 		void RenderPopUpOptions() noexcept;
 		void RenderThumbnailText(const std::string& text, bool thumbNailHovered) noexcept;
+		void RenderAssetThumbnailTableTopDivider() noexcept;
+		void RenderAssetThumbnailTableBottomDivider() noexcept;
+		void RenderDisplayedAndSelectedEntryCountText() noexcept;
+		void RenderChildWindowsDraggableSplitter(float splitterThickness) noexcept;
 		void EditThumbnailText(const AssetHandle& handle) noexcept;
 		void DrawDirectoryThumbnail(const std::filesystem::path directoryPath) noexcept;
 		
@@ -36,6 +44,8 @@ namespace Relentless
 		[[nodiscard]] uint32_t GetSelectedHierarchyDirectoriesCount() const;
 		[[nodiscard]] bool IsAncestorDirectoryToAnySelectedDirectory(const std::filesystem::path& directoryPath) const;
 		[[nodiscard]] std::string ConstructAssetBrowserHintString() const noexcept;
+
+		void OnImportButtonPressed() noexcept;
 	private:
 		float m_ThumbnailWidth = 150.0f;
 		float m_ThumbnailHeight = 220.0f;
@@ -45,6 +55,9 @@ namespace Relentless
 		AssetHandle m_SceneTextureHandle = NULL_HANDLE;
 		AssetHandle m_MaterialTextureHandle = NULL_HANDLE;
 		AssetHandle m_MeshTextureHandle = NULL_HANDLE;
+		AssetHandle m_ImportIconTextureHandle = NULL_HANDLE;
+		AssetHandle m_FilterIconTextureHandle = NULL_HANDLE;
+		AssetHandle m_DownArrowIconTextureHandle = NULL_HANDLE;
 		UUID m_SelectedAsset = NULL_UUID;
 
 		std::string m_ContentFilter = "";
@@ -60,6 +73,11 @@ namespace Relentless
 		bool m_DirectoryHierarchyFocused = false;
 		float m_DragAmount = 0.0f;
 		uint32_t m_DisplayedEntries = 0u;
+
+		std::unordered_set<AssetType> m_ActiveAssetTypeFilters;
+
+		float m_AssetTableYScrolledDistance = 0.0f;
+		float m_AssetTableMaxYScrolledDistance = 0.0f;
 
 		std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> m_OnAssetSelectedCallback;
 	};

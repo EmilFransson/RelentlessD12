@@ -5,6 +5,8 @@ namespace Relentless
 	struct AssetMetaData;
 	enum class AssetType : uint8_t;
 
+	struct AssetHandle;
+
 	class AssetRegistry
 	{
 	public:
@@ -21,5 +23,9 @@ namespace Relentless
 		static void RecursiveScanDirectoryForAssets(const std::filesystem::path& startingDirectory) noexcept;
 		static [[nodiscard]] const AssetType GetAssetTypeFromPath(const std::filesystem::path& filepath);
 		static [[nodiscard]] const AssetMetaData& GetMetaData(const std::filesystem::path& filepath) noexcept;
+		static [[nodiscard]] const AssetMetaData& GetMetaData(const AssetHandle& handle) noexcept;
+
+	private:
+		static std::mutex m_Mutex;
 	};
 }

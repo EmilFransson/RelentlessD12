@@ -4,6 +4,8 @@
 
 namespace Relentless
 {
+	std::mutex AssetRegistry::m_Mutex{};
+
 	static [[nodiscard]] bool IsFilepathValid(const std::filesystem::path& filepath) noexcept
 	{
 		return std::filesystem::exists(filepath);
@@ -20,24 +22,35 @@ namespace Relentless
 	{
 		RLS_ASSERT(!IsUUIDMapped(metaData.Uuid), "UUID is already mapped.");
 		RLS_ASSERT(!IsFilepathMapped(filepath), "Filepath is already mapped.");
-		RLS_ASSERT(IsFilepathValid(filepath), "Filepath is not valid.");
+		//RLS_ASSERT(IsFilepathValid(filepath), "Filepath is not valid.");
+
+		std::lock_guard<std::mutex> guard(m_Mutex);
 
 		s_Data.UUIDToPathMap[metaData.Uuid] = filepath;
 		s_Data.PathToAssetMetaMap[filepath] = metaData;
+
+		RLS_CORE_INFO("Mapped Asset");
+		RLS_CORE_INFO("Path: {0}", filepath);
+		RLS_CORE_INFO("Type: {0}", std::to_string((int)metaData.AssetType));
+		RLS_CORE_INFO("UUID: {0}", ConvertUUIDToString(metaData.Uuid));
 	}
 	
 	bool AssetRegistry::IsUUIDMapped(const UUID& uuid) noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_Mutex);
 		return s_Data.UUIDToPathMap.contains(uuid);
 	}
 	
 	bool AssetRegistry::IsFilepathMapped(const std::string& filepath) noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_Mutex);
 		return s_Data.PathToAssetMetaMap.contains(filepath);
 	}
 	
 	bool AssetRegistry::IsUUIDToFilepathMapped(const UUID& uuid, const std::string& filepath) noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_Mutex);
+
 		return s_Data.UUIDToPathMap.contains(uuid) 
 			&& s_Data.UUIDToPathMap[uuid] == filepath 
 			&& s_Data.PathToAssetMetaMap.contains(filepath)
@@ -48,12 +61,16 @@ namespace Relentless
 	{
 		RLS_ASSERT(IsUUIDToFilepathMapped(uuid, filepath), "UUID and filepath is not properly mapped..");
 
+		std::lock_guard<std::mutex> guard(m_Mutex);
+		
 		s_Data.UUIDToPathMap.erase(uuid);
 		s_Data.PathToAssetMetaMap.erase(filepath);
 	}
 	
 	void AssetRegistry::Reset() noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_Mutex);
+
 		s_Data.PathToAssetMetaMap.clear();
 		s_Data.UUIDToPathMap.clear();
 	}
@@ -64,22 +81,27 @@ namespace Relentless
 		const std::string currentFilepath = s_Data.UUIDToPathMap[uuid];
 		const AssetMetaData data = s_Data.PathToAssetMetaMap[currentFilepath];
 
-		s_Data.UUIDToPathMap.erase(uuid);
-		s_Data.PathToAssetMetaMap.erase(currentFilepath);
-
-		MapAssetToFilepath({data.Uuid, data.AssetType}, newfilepath);
+		{
+			std::lock_guard<std::mutex> guard(m_Mutex);
+			
+			s_Data.UUIDToPathMap.erase(uuid);
+			s_Data.PathToAssetMetaMap.erase(currentFilepath);
+		}
+		RLS_ASSERT(false, "TODO");
+		//MapAssetToFilepath({data.Uuid, data.AssetType}, newfilepath);
 	}
 	
 	//Checking one is sufficient as it acts as a bidirectional map
 	uint32_t AssetRegistry::GetMappedAssetCount() noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_Mutex);
 		return static_cast<uint32_t>(s_Data.UUIDToPathMap.size());
 	}
 	
 	const std::string& AssetRegistry::GetFilepath(const UUID& uuid) noexcept
 	{
 		RLS_ASSERT(IsUUIDMapped(uuid), "UUID is not mapped to any filepath.");
-	
+		std::lock_guard<std::mutex> guard(m_Mutex);
 		return s_Data.UUIDToPathMap[uuid];
 	}
 	
@@ -87,6 +109,7 @@ namespace Relentless
 	{
 		RLS_ASSERT(IsFilepathMapped(filepath), "filepath is not mapped to any UUID.");
 	
+		std::lock_guard<std::mutex> guard(m_Mutex);
 		return s_Data.PathToAssetMetaMap[filepath].Uuid;
 	}
 	
@@ -103,21 +126,23 @@ namespace Relentless
 		
 			const std::string currentFileExtension = entry.path().filename().extension().string();
 			const bool isRassetFile = (currentFileExtension == ASSET_EXTENSION);
-			if (isRassetFile)
-			{
-				std::ifstream inFile(entry.path().string(), std::ios_base::binary);
-				RLS_ASSERT(inFile.is_open(), "Unable to open rasset file.");
-		
-				RassetHeader readHeader;
-				inFile.read(reinterpret_cast<char*>(&readHeader), sizeof(readHeader));
-		
-				if (!IsUUIDToFilepathMapped(readHeader.UUID, entry.path().string()))
-				{
-					MapAssetToFilepath({ readHeader.UUID, readHeader.AssetType }, entry.path().string());
-				}
-		
-				inFile.close();
-			}
+
+			RLS_ASSERT(false, "TODO");
+			//if (isRassetFile)
+			//{
+			//	std::ifstream inFile(entry.path().string(), std::ios_base::binary);
+			//	RLS_ASSERT(inFile.is_open(), "Unable to open rasset file.");
+			//
+			//	RassetHeader readHeader;
+			//	inFile.read(reinterpret_cast<char*>(&readHeader), sizeof(readHeader));
+			//
+			//	if (!IsUUIDToFilepathMapped(readHeader.UUID, entry.path().string()))
+			//	{
+			//		MapAssetToFilepath({ readHeader.UUID, readHeader.AssetType }, entry.path().string());
+			//	}
+			//
+			//	inFile.close();
+			//}
 		}
 	}
 
@@ -125,6 +150,8 @@ namespace Relentless
 	{
 		RLS_ASSERT(std::filesystem::exists(filepath), "[AssetRegistry]: Filepath is invalid.");
 		RLS_ASSERT(IsFilepathMapped(filepath.string()), "[AssetRegistry]: Filepath is not mapped.");
+		
+		std::lock_guard<std::mutex> guard(m_Mutex);
 		return s_Data.PathToAssetMetaMap[filepath.string()].AssetType;
 	}
 
@@ -132,6 +159,14 @@ namespace Relentless
 	{
 		RLS_ASSERT(std::filesystem::exists(filepath), "[AssetRegistry]: Filepath is invalid.");
 		RLS_ASSERT(IsFilepathMapped(filepath.string()), "[AssetRegistry]: Filepath is not mapped.");
+		
+		std::lock_guard<std::mutex> guard(m_Mutex);
 		return s_Data.PathToAssetMetaMap[filepath.string()];
+	}
+
+	const AssetMetaData& AssetRegistry::GetMetaData(const AssetHandle& handle) noexcept
+	{
+		std::lock_guard<std::mutex> guard(m_Mutex);
+		return s_Data.PathToAssetMetaMap[s_Data.UUIDToPathMap[handle.Uuid]];
 	}
 }

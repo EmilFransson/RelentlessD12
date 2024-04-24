@@ -11,6 +11,25 @@ namespace Relentless
 	Microsoft::WRL::ComPtr<ID3D12InfoQueue> D3D12Core::m_pInfoQueue{nullptr};
 	Microsoft::WRL::ComPtr<ID3D12Debug5> D3D12Core::m_pDebugController{ nullptr };
 #endif
+	std::vector<std::deque<D3D12SingleCommand>> D3D12Core::m_AvailableCommandResources;
+	ThreadSafeQueue<D3D12SingleCommand> D3D12Core::m_UsedCommandResources;
+	std::mutex D3D12Core::m_CommandMutex;
+	std::condition_variable D3D12Core::m_CommandCondition;
+
+
+	D3D12SingleCommand::D3D12SingleCommand(D3D12_COMMAND_LIST_TYPE commandType, uint8_t nrOfBufferedFrames)
+	{
+		RLS_ASSERT(nrOfBufferedFrames > 0, "Number of buffered frames must exceed 0.");
+		m_CommandType = commandType;
+
+		DXCall(D3D12Core::GetDevice()->CreateCommandAllocator(m_CommandType, IID_PPV_ARGS(&m_pCommandAllocator)));
+		NAME_D12_OBJECT(m_pCommandAllocator, L"Command Allocator (Single)");
+
+		DXCall(D3D12Core::GetDevice()->CreateCommandList(0u, m_CommandType, m_pCommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_pCommandList)));
+		NAME_D12_OBJECT(m_pCommandList, L"Command List (Single)");
+
+		DXCall(m_pCommandList->Close());
+	}
 
 	void D3D12Core::Initialize() noexcept
 	{
@@ -48,6 +67,16 @@ namespace Relentless
 		D3D12Debug::Initialize();
 #endif
 		m_DirectCommandInterface.Initialize(D3D12_COMMAND_LIST_TYPE_DIRECT, m_NrOfBufferedFrames);
+
+		m_AvailableCommandResources.resize(GetNrOfBufferedFrames());
+		for (uint8_t i{ 0u }; i < GetNrOfBufferedFrames(); ++i)
+		{
+			for (uint32_t j{ 0u }; j < 40u; ++j)
+			{
+				D3D12SingleCommand command(D3D12_COMMAND_LIST_TYPE_DIRECT, m_NrOfBufferedFrames);
+				m_AvailableCommandResources[i].push_back(command);
+			}
+		}
 
 		m_IsInitialized = true;
 	}

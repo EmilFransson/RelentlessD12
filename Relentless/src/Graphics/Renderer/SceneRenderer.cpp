@@ -22,7 +22,7 @@ namespace Relentless
 		InitializeHBAOPlus();
 
 		m_EnvironmentCBHandle = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT3));
-		m_BRDFLutTextureHandle = AssetManager::LoadFromFile<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\ibl_brdf_lut.png");
+		m_BRDFLutTextureHandle = AssetManager::LoadFromFile<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\ibl_brdf_lut.png", "");
 
 		//Pre-Z Render pass:
 		{
@@ -612,6 +612,8 @@ namespace Relentless
 		for (entity currentEntity : m_OpaqueRenderModeEntities)
 		{
 			const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
+			if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
+				continue;
 
 			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
@@ -694,6 +696,8 @@ namespace Relentless
 			for (entity currentEntity : m_OpaqueRenderModeEntities)
 			{
 				const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
+				if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
+					continue;
 
 				Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
@@ -739,6 +743,8 @@ namespace Relentless
 		for (entity currentEntity : m_CutOutRenderModeEntities)
 		{
 			const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
+			if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
+				continue;
 
 			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
@@ -783,6 +789,8 @@ namespace Relentless
 		for (entity currentEntity : m_TransparentRenderModeEntities)
 		{
 			const auto& [tc, mfc, mrc] = entityManager.Get<TransformComponent, MeshFilterComponent, MeshRendererComponent>(currentEntity);
+			if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
+				continue;
 
 			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 

@@ -247,13 +247,55 @@ namespace Relentless
 
 	void UI::Initialize() noexcept
 	{
-		s_GlobalData.SearchIconTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\searchicon.rasset");
-		s_GlobalData.CancelIconTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\cancelicon.rasset");
-		s_GlobalData.ArrowDownIconTextureHandle = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset");
+		bool succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\searchicon.rasset", s_GlobalData.SearchIconTextureHandle);
+		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'searchicon.rasset'");
+
+		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\cancelicon.rasset", s_GlobalData.CancelIconTextureHandle);
+		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'cancelicon.rasset'");
+
+		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", s_GlobalData.ArrowDownIconTextureHandle);
+		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'arrowdownicon.rasset'");
 	}
 
 	std::string UI::SearchBar(const char* uniqueID, const char* hintText, bool displaySearchHistory, float width) noexcept
 	{
 		return s_UIElements.SearchBars[uniqueID].Draw(width, hintText, displaySearchHistory);
 	}
+
+	std::string UI::Utility::ShortenStringToFitClipRect(const std::string& originalString, const ImVec2& topLeft, const ImVec2& bottomRight) noexcept
+	{
+		// Calculate available width from the provided clip rect
+		const float availableHeight = bottomRight.y - topLeft.y;
+
+		// Measure the original string
+		const ImVec2 textSize = ImGui::CalcTextSize(originalString.c_str());
+		const uint32_t possibleNrOfRows = std::floor(availableHeight / textSize.y);
+		const float availableWidth = (bottomRight.x - topLeft.x) * possibleNrOfRows;
+
+		// If the string fits within the available width, no need to shorten
+		if (textSize.x <= availableWidth) 
+		{
+			return originalString;
+		}
+
+		constexpr const char* ellipsis = "...";
+		const ImVec2 ellipsisSize = ImGui::CalcTextSize(ellipsis);
+
+		// Ensure available width can at least fit the ellipsis
+		if (availableWidth <= ellipsisSize.x) 
+		{
+			// If available width is too small even for ellipsis, return as much as we can fit
+			return "";
+		}
+
+		std::string modified = originalString;
+		// Iteratively remove characters until the string plus ellipsis fits
+		while (!modified.empty() && (ImGui::CalcTextSize((modified + ellipsis).c_str()).x > availableWidth)) 
+		{
+			modified.pop_back(); // Remove one character from the end
+		}
+
+		return modified + ellipsis;
+	}
+
 }

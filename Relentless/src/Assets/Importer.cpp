@@ -106,7 +106,7 @@ namespace Relentless
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(pTextureResource.Get(), &shaderResourceViewDescriptor, specification.DescriptorHandleSRV.CPUHandle));
 
 		specification.pResource = pTextureResource;
-		specification.Name = fullPath.filename().string();
+		specification.Name = fullPath.filename().stem().string();
 		specification.Width = resourceDescriptor.Width;
 		specification.Height = resourceDescriptor.Height;
 		specification.Format = resourceDescriptor.Format;
@@ -117,11 +117,13 @@ namespace Relentless
 		//Compiler should utilize RVO to elide copy over move:
 		Texture2D newTexture(specification);
 		newTexture.SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+
 		return newTexture;
 	}
 
 	template<>
-	void Importer::Import<Mesh>(const std::filesystem::path& fullPath, const AssetTypeInfo<Mesh>::Settings& importSettings) noexcept
+	void Importer::Import<Mesh>(const std::filesystem::path& fullPath, const std::string& destinationDirectory, const AssetTypeInfo<Mesh>::Settings& importSettings) noexcept
 	{
 		RLS_ASSERT(std::filesystem::exists(fullPath), "File does not exist.");
 		std::filesystem::path workingDirectory = fullPath;
@@ -145,7 +147,7 @@ namespace Relentless
 		DirectX::XMStoreFloat4x4(&identity, DirectX::XMMatrixIdentity());
 
 		entity rootEntity = importSettings.pScene ? importSettings.pScene->CreateEntity(std::filesystem::path(fullPath).filename().stem().string().c_str()) : NULL_ENTITY;
-		ProcessAssimpNode(pAssimpScene->mRootNode, pAssimpScene, importSettings, identity, workingDirectory, rootEntity);
+		ProcessAssimpNode(pAssimpScene->mRootNode, pAssimpScene, importSettings, identity, workingDirectory, destinationDirectory, rootEntity);
 	}
 
 	bool Importer::HasImageExtension(const std::string& fileExtension) noexcept
@@ -237,7 +239,19 @@ namespace Relentless
 		auto finish = uploadBatch.End(D3D12Core::GetCommandQueue().Get());
 		finish.wait();
 
-		RenderCommand::TransitionResource(texture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		//RenderCommand::TransitionResource(texture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		resourceTransitionBarrier.Transition.pResource = texture.Get();
+		resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+		D3D12SingleCommand commandResource = D3D12Core::GetCommandResource();
+		DXCall_STD(commandResource.m_pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+		D3D12Core::SubmitCommandResource(commandResource);
 
 		return texture;
 	}
@@ -255,7 +269,7 @@ namespace Relentless
 		return DirectX::XMLoadFloat4x4(&t);
 	}
 
-	void Importer::ProcessAssimpNode(aiNode* pNode, const aiScene* pAssimpScene, const MeshImportSettings& importSettings, const DirectX::XMFLOAT4X4& transform, const std::filesystem::path& workingDirectory, entity parent) noexcept
+	void Importer::ProcessAssimpNode(aiNode* pNode, const aiScene* pAssimpScene, const MeshImportSettings& importSettings, const DirectX::XMFLOAT4X4& transform, const std::filesystem::path& workingDirectory, const std::string& destinationDirectory, entity parent) noexcept
 	{
 		RLS_ASSERT(pNode && pAssimpScene, "Assimp data is invalid.");
 
@@ -269,12 +283,12 @@ namespace Relentless
 		for (uint32_t i{ 0u }; i < pNode->mNumMeshes; ++i)
 		{
 			aiMesh* pMesh = pAssimpScene->mMeshes[pNode->mMeshes[i]];
-			const AssetHandle meshHandle = ProcessMesh(pMesh, workingDirectory);
+			const AssetHandle meshHandle = ProcessMesh(pMesh, workingDirectory, destinationDirectory);
 
 			AssetHandle materialHandle;
 			if (importSettings.ImportMaterialsAndTextures)
 			{
-				materialHandle = ProcessMaterial(pMesh, pAssimpScene, workingDirectory);
+				materialHandle = ProcessMaterial(pMesh, pAssimpScene, workingDirectory, destinationDirectory);
 			}
 			else
 			{
@@ -308,7 +322,7 @@ namespace Relentless
 
 		for (uint32_t i{ 0u }; i < pNode->mNumChildren; ++i)
 		{
-			ProcessAssimpNode(pNode->mChildren[i], pAssimpScene, importSettings, currentTransform, workingDirectory, aParent);
+			ProcessAssimpNode(pNode->mChildren[i], pAssimpScene, importSettings, currentTransform, workingDirectory, destinationDirectory, aParent);
 		}
 	}
 
@@ -323,14 +337,13 @@ namespace Relentless
 		return false;
 	}
 
-	AssetHandle Importer::ProcessMaterial(aiMesh* pMesh, const aiScene* pAssimpScene, const std::filesystem::path& workingDirectory) noexcept
+	AssetHandle Importer::ProcessMaterial(aiMesh* pMesh, const aiScene* pAssimpScene, const std::filesystem::path& workingDirectory, const std::string& destinationDirectory) noexcept
 	{
 		aiMaterial* m = pAssimpScene->mMaterials[pMesh->mMaterialIndex];
 
-		std::filesystem::path inPath = workingDirectory / m->GetName().C_Str();
-		inPath.append(".rasset");
+		const std::string inPath = destinationDirectory + "\\" +  std::string(m->GetName().C_Str()) + ".rasset";
 		
-		if (AssetManager::IsLoaded(inPath.string()))
+		if (AssetManager::IsLoaded(inPath))
 		{
 			return AssetManager::GetHandleByPath(inPath);
 		}
@@ -344,7 +357,8 @@ namespace Relentless
 		if (m->GetTexture(aiTextureType_BASE_COLOR, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = std::filesystem::absolute(workingDirectory / path.C_Str());
-			AssetHandle baseColorID = AssetManager::LoadFromFile<Texture2D>(fullPath.string());
+
+			AssetHandle baseColorID = AssetManager::LoadFromFile<Texture2D>(fullPath.string(), destinationDirectory);
 			mat.SetAlbedoTexture(baseColorID);
 
 			int usesAlpha;
@@ -360,7 +374,7 @@ namespace Relentless
 		else if (m->GetTexture(aiTextureType_DIFFUSE, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = std::filesystem::absolute(workingDirectory / path.C_Str());
-			AssetHandle baseColorID = AssetManager::LoadFromFile<Texture2D>(fullPath.string());
+			AssetHandle baseColorID = AssetManager::LoadFromFile<Texture2D>(fullPath.string(), destinationDirectory);
 			mat.SetAlbedoTexture(baseColorID);
 		}
 		else
@@ -374,47 +388,59 @@ namespace Relentless
 		if (m->GetTexture(aiTextureType_METALNESS, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = std::filesystem::absolute(workingDirectory / path.C_Str());
-			if (IsCombinedRoughnessAndMetalnessMap(fullPath.string()))
-			{
-				mat.m_CombinedRoughnessMetallnesMap = true;
-			}
 
-			AssetHandle metallicID = AssetManager::LoadFromFile<Texture2D>(fullPath.string());
+			TextureImportSettings importSettings;
+			importSettings.IsSRGB = false;
+
+			AssetHandle metallicID = AssetManager::LoadFromFile<Texture2D>(fullPath.string(), destinationDirectory, importSettings);
 			mat.SetMetallicTexture(metallicID);
 		}
 
-		if (!mat.m_CombinedRoughnessMetallnesMap)
+		if (m->GetTexture(aiTextureType::aiTextureType_DIFFUSE_ROUGHNESS, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
-			if (m->GetTexture(aiTextureType::aiTextureType_DIFFUSE_ROUGHNESS, 0, &path) == aiReturn::aiReturn_SUCCESS)
-			{
-				std::filesystem::path fullPath = std::filesystem::absolute(workingDirectory / path.C_Str());
-				AssetHandle roughnessID = AssetManager::LoadFromFile<Texture2D>(fullPath.string());
-				mat.SetRoughnessTexture(roughnessID);
-			}
-		}
+			std::filesystem::path fullPath = std::filesystem::absolute(workingDirectory / path.C_Str());
 
+			TextureImportSettings importSettings;
+			importSettings.IsSRGB = false;
+
+			AssetHandle roughnessID = AssetManager::LoadFromFile<Texture2D>(fullPath.string(), destinationDirectory, importSettings);
+			mat.SetRoughnessTexture(roughnessID);
+		}
+		
 		if (m->GetTexture(aiTextureType::aiTextureType_NORMALS, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = std::filesystem::absolute(workingDirectory / path.C_Str());
-			AssetHandle normalID = AssetManager::LoadFromFile<Texture2D>(fullPath.string());
+
+			TextureImportSettings importSettings;
+			importSettings.IsSRGB = false;
+
+			AssetHandle normalID = AssetManager::LoadFromFile<Texture2D>(fullPath.string(), destinationDirectory, importSettings);
 			mat.SetNormalMap(normalID);
 		}
 		else if (m->GetTexture(aiTextureType::aiTextureType_NORMAL_CAMERA, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = std::filesystem::absolute(workingDirectory / path.C_Str());
-			AssetHandle normalID = AssetManager::LoadFromFile<Texture2D>(fullPath.string());
+
+			TextureImportSettings importSettings;
+			importSettings.IsSRGB = false;
+
+			AssetHandle normalID = AssetManager::LoadFromFile<Texture2D>(fullPath.string(), destinationDirectory, importSettings);
 			mat.SetNormalMap(normalID);
 		}
 		if (m->GetTexture(aiTextureType::aiTextureType_AMBIENT_OCCLUSION, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = std::filesystem::absolute(workingDirectory / path.C_Str());
-			AssetHandle aoID = AssetManager::LoadFromFile<Texture2D>(fullPath.string());
+			AssetHandle aoID = AssetManager::LoadFromFile<Texture2D>(fullPath.string(), destinationDirectory);
 			mat.SetAmbientOcclusionTexture(aoID);
 		}
 		if (m->GetTexture(aiTextureType::aiTextureType_EMISSION_COLOR, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = std::filesystem::absolute(workingDirectory / path.C_Str());
-			AssetHandle emissionID = AssetManager::LoadFromFile<Texture2D>(fullPath.string());
+
+			TextureImportSettings importSettings;
+			importSettings.IsSRGB = false;
+
+			AssetHandle emissionID = AssetManager::LoadFromFile<Texture2D>(fullPath.string(), destinationDirectory, importSettings);
 			mat.SetEmissionTexture(emissionID);
 			mat.m_EmissionIntensity = 1.0f;
 		}
@@ -433,16 +459,24 @@ namespace Relentless
 		if (m->GetTexture(aiTextureType::aiTextureType_DISPLACEMENT, 0, &path) == aiReturn::aiReturn_SUCCESS)
 		{
 			std::filesystem::path fullPath = std::filesystem::absolute(workingDirectory / path.C_Str());
-			AssetHandle heightID = AssetManager::LoadFromFile<Texture2D>(fullPath.string());
+
+			TextureImportSettings importSettings;
+			importSettings.IsSRGB = false;
+
+			AssetHandle heightID = AssetManager::LoadFromFile<Texture2D>(fullPath.string(), destinationDirectory, importSettings);
 			mat.SetHeightMap(heightID);
 		}
 
-		Serializer::Serialize<Material>(materialHandle, std::string(workingDirectory.string() + m->GetName().C_Str() + ".rasset"));
+		if (!destinationDirectory.empty())
+		{
+			const std::string fullDestinationFilepath = destinationDirectory + "\\" + std::string(m->GetName().C_Str()) + ".rasset";
+			Serializer::Serialize<Material>(materialHandle, fullDestinationFilepath);
+		}
 
 		return materialHandle;
 	}
 
-	AssetHandle Importer::ProcessMesh(aiMesh* pMesh, const std::filesystem::path& workingDirectory) noexcept
+	AssetHandle Importer::ProcessMesh(aiMesh* pMesh, const std::filesystem::path& workingDirectory, const std::string& destinationDirectory) noexcept
 	{
 		RLS_ASSERT(pMesh, "Assimp data is invalid.");
 		RLS_ASSERT(pMesh->HasPositions(), "Mesh contains no position data.");
@@ -451,17 +485,11 @@ namespace Relentless
 		RLS_ASSERT(pMesh->HasTangentsAndBitangents(), "Mesh contains no tangent and/or bitangent data.");
 		RLS_ASSERT(pMesh->HasTextureCoords(0u), "Mesh contains no texture coordinate data.");
 
-		std::filesystem::path fullPath = workingDirectory / pMesh->mName.C_Str();
-		fullPath.append(".rasset");
-		if (AssetManager::IsLoaded(fullPath.string()))
+		const std::string fullDestinationPath = destinationDirectory + "\\" + std::string(pMesh->mName.C_Str()) + ".rasset";
+		if (AssetManager::IsLoaded(fullDestinationPath))
 		{
-			return AssetManager::GetHandleByPath(fullPath);
+			return AssetManager::GetHandleByPath(fullDestinationPath);
 		}
-		//TODO:
-		//else if (AssetManager::IsAssetPathMapped(workingDirectory.string() + pMesh->mName.C_Str() + ".rmesh"))
-		//{
-		//	return ModelSerializer::Deserialize(workingDirectory.string() + pMesh->mName.C_Str() + ".rmesh");
-		//}
 
 		std::vector<SimpleVertex> vertices;
 		std::vector<uint32_t> indices;
@@ -521,7 +549,10 @@ namespace Relentless
 		mesh.SetVertexBuffer(std::make_unique<VertexBuffer>(&vbSpec));
 		mesh.SetIndexBuffer(std::make_unique<IndexBuffer>(&ibSpec));
 
-		Serializer::Serialize<Mesh>(meshHandle, workingDirectory.string());
+		if (!destinationDirectory.empty())
+		{
+			Serializer::Serialize<Mesh>(meshHandle, fullDestinationPath);
+		}
 
 		RLS_CORE_INFO("Loaded mesh '{0}' with GUID: {1}", pMesh->mName.C_Str(), ConvertUUIDToString(meshHandle.Uuid));
 

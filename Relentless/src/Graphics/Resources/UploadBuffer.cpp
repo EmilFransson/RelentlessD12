@@ -65,7 +65,7 @@ namespace Relentless
 
 	void UploadBuffer::Upload() noexcept
 	{
-		//const std::lock_guard<std::mutex> lock(g_LoadMutex);
+		const std::lock_guard<std::mutex> lock(g_LoadMutex);
 
 		uint64_t offset = 0u;
 		for (uint32_t i{ 0u }; i < m_UploadQueue.size(); i++)
