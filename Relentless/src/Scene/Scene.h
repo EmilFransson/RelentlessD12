@@ -47,6 +47,8 @@ namespace Relentless
 		[[nodiscard]] bool IsPaused() const noexcept { return m_IsPaused; }
 
 		static [[nodiscard]] std::shared_ptr<Scene> Copy(std::shared_ptr<Scene> pSrcScene) noexcept;
+		void SetHoveredEntity(entity hoveredEntity) noexcept;
+		[[nodiscard]] entity GetHoveredEntity() const noexcept;
 	private:
 		EntityManager m_EntityManager;
 		LightManager m_LightManager;
@@ -59,5 +61,7 @@ namespace Relentless
 		friend class SceneSerializer;
 
 		bool m_IsPaused = false;
+
+		entity m_HoveredEntity = NULL_ENTITY;
 	};
 }

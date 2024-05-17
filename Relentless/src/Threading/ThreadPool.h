@@ -26,6 +26,11 @@ namespace Relentless
 		{
 			m_Done = true;
 			m_Condition.notify_all();
+			for (auto& thread : m_Threads)
+			{
+				if (thread.joinable())
+					thread.join();
+			}
 		}
 
 		template<class FunctionType, class... Args>
@@ -58,7 +63,9 @@ namespace Relentless
 				}
 				std::function<void()> task;
 				if (m_WorkQueue.TryPop(task))
+				{
 					task();
+				}
 			}
 		}
 	private:

@@ -41,7 +41,6 @@ static const float MAX_DISTANCE_TO_CAMERA = 10.0f;
 float4 ps_main(in PS_IN psIn) : SV_TARGET
 {
     ConstantBuffer<Camera> camera = ResourceDescriptorHeap[perFrameData.cameraMetaDataIndex];
-
     float distanceToCamera = length(psIn.inPositionWS - camera.positionWS);
     float t = distanceToCamera / MAX_DISTANCE_TO_CAMERA;
     float finalAlpha = saturate(Remap(MAX_DISTANCE_TO_CAMERA, 0.0f, 0.0f, 0.6f, t));

@@ -14,6 +14,7 @@ namespace Relentless
 			std::string Name;
 		};
 		IndexBuffer(const Specification* specification) noexcept;
+		IndexBuffer(uint32_t nrOfIndices, uint32_t TotalSizeInBytes, uint32_t stride, Microsoft::WRL::ComPtr<ID3D12Resource> pResource, const std::string& name, void* pBuffer) noexcept;
 		virtual ~IndexBuffer() noexcept override final = default;
 		[[nodiscard]] const uint32_t GetNrOfIndices() const noexcept { return m_Specification.NrOfIndices; }
 		[[nodiscard]] Specification& GetSpecification() noexcept { return m_Specification; }

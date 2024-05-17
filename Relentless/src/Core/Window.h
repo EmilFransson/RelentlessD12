@@ -7,6 +7,7 @@ namespace Relentless
 	{
 		Microsoft::WRL::ComPtr<ID3D12Resource> pBackBuffer;
 		DescriptorHandle Handle;
+		D3D12_RESOURCE_STATES CurrentState = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET;
 	};
 	class Window : public EventPublisher
 	{

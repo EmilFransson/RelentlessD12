@@ -25,6 +25,7 @@ namespace Relentless
 		UINT64 GPUFrequency{ 0 };
 
 		std::shared_ptr<FrameBuffer> m_pCompositeFrameBuffer{ nullptr };
+		std::mutex FenceMutex;
 	};
 
 	static MasterRendererData s_Data = {};
@@ -33,7 +34,7 @@ namespace Relentless
 	void MasterRenderer::Initialize() noexcept
 	{
 		//Fence:
-		s_Data.pFenceValues = std::make_unique<uint64_t[]>(D3D12Core::GetNrOfBufferedFrames());
+		s_Data.pFenceValues = std::make_unique<uint64_t[]>(GPUTaskManager::FRAMES_IN_FLIGHT);
 		DXCall(D3D12Core::GetDevice()->CreateFence(0u, D3D12_FENCE_FLAGS::D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&s_Data.pFence)));
 		s_Data.pFenceValues[s_Data.currentFrameIndex]++;
 		s_Data.fenceEvent = ::CreateEvent(nullptr, false, false, nullptr);
@@ -48,7 +49,7 @@ namespace Relentless
 
 		DXCall(D3D12Core::GetDevice()->CreateQueryHeap(&HeapDesc,  IID_PPV_ARGS(&s_Data.m_pQueryHeap)));
 
-		DXCall(D3D12Core::GetCommandQueue()->GetTimestampFrequency(&s_Data.GPUFrequency));
+		DXCall(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct)->GetTimestampFrequency(&s_Data.GPUFrequency));
 
 		s_Data.m_pQueryResultBuffer = ReadBackBuffer::Create(s_Data.NrOfQueries * sizeof(UINT64), "QueryResult Readback Buffer");
 	
@@ -68,7 +69,6 @@ namespace Relentless
 
 			s_Data.m_pCompositeFrameBuffer = FrameBuffer::Create(fbSpec);
 		}
-		
 	}
 
 	ShaderLibrary& MasterRenderer::GetShaderLibrary() noexcept
@@ -76,145 +76,13 @@ namespace Relentless
 		return s_Data.Shaderlibrary;
 	}
 
-	void MasterRenderer::ExecuteCommands() noexcept
-	{
-		PROFILE_FUNC;
-
-		std::vector<D3D12SingleCommand> singleCommands = D3D12Core::GetAllUsedCommands();
-
-		// Directly create a vector of raw pointers, starting with the primary command list
-		std::vector<ID3D12CommandList*> rawCommandLists;
-		rawCommandLists.reserve(1 + singleCommands.size()); // Optimize to avoid reallocations
-
-		auto primaryCommandList = D3D12Core::GetCommandList();
-		primaryCommandList->Close(); // Ensure it's closed before execution
-		rawCommandLists.push_back(primaryCommandList.Get()); // Add the primary command list
-
-		// Add single commands
-		for (auto& singleCommand : singleCommands) 
-		{
-			singleCommand.m_pCommandList->Close(); // Ensure each is closed before execution
-			rawCommandLists.push_back(singleCommand.m_pCommandList.Get());
-		}
-
-		// Execute all command lists at once
-		if (!rawCommandLists.empty()) 
-		{
-			D3D12Core::GetCommandQueue()->ExecuteCommandLists(static_cast<UINT>(rawCommandLists.size()), rawCommandLists.data());
-		}
-
-		for (uint32_t i{ 0u }; i < singleCommands.size(); ++i)
-		{
-			D3D12Core::InsertFreshCommand(std::move(singleCommands[i]));
-		}
-	}
-
-	void MasterRenderer::ExecuteAllSingleCommands() noexcept
-	{
-		std::vector<D3D12SingleCommand> singleCommands = D3D12Core::GetAllUsedCommands();
-
-		// Directly create a vector of raw pointers, starting with the primary command list
-		std::vector<ID3D12CommandList*> rawCommandLists;
-		rawCommandLists.reserve(singleCommands.size()); // Optimize to avoid reallocations
-
-		// Add single commands
-		for (auto& singleCommand : singleCommands)
-		{
-			singleCommand.m_pCommandList->Close(); // Ensure each is closed before execution
-			rawCommandLists.push_back(singleCommand.m_pCommandList.Get());
-		}
-
-		// Execute all command lists at once
-		if (!rawCommandLists.empty())
-		{
-			D3D12Core::GetCommandQueue()->ExecuteCommandLists(static_cast<UINT>(rawCommandLists.size()), rawCommandLists.data());
-		}
-
-		for (uint32_t i{ 0u }; i < singleCommands.size(); ++i)
-		{
-			D3D12Core::InsertFreshCommand(std::move(singleCommands[i]));
-		}
-	}
-
-	void MasterRenderer::WaitAndSync() noexcept
-	{
-		PROFILE_FUNC;
-
-		// Schedule a Signal command in the queue.
-		const UINT64 currentFenceValue = s_Data.pFenceValues[s_Data.currentFrameIndex];
-		DXCall(D3D12Core::GetCommandQueue()->Signal(s_Data.pFence.Get(), currentFenceValue));
-
-		s_Data.currentFrameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
-
-		// If the next frame is not ready to be rendered yet, wait until it is ready.
-		if (s_Data.pFence->GetCompletedValue() < s_Data.pFenceValues[s_Data.currentFrameIndex])
-		{
-			DXCall(s_Data.pFence->SetEventOnCompletion(s_Data.pFenceValues[s_Data.currentFrameIndex], s_Data.fenceEvent));
-			::WaitForSingleObjectEx(s_Data.fenceEvent, INFINITE, FALSE);
-		}
-
-		// Set the fence value for the next frame.
-		s_Data.pFenceValues[s_Data.currentFrameIndex] = currentFenceValue + 1;
-	}
-
-	void MasterRenderer::WaitAndSyncAllFramesInFlight() noexcept
-	{
-		auto WaitForPreviousFrame = [&](UINT frameIndex) 
-		{
-			const UINT64 currentFenceValue = s_Data.pFenceValues[frameIndex];
-			DXCall(D3D12Core::GetCommandQueue()->Signal(s_Data.pFence.Get(), currentFenceValue));
-			s_Data.pFenceValues[frameIndex] = currentFenceValue + 1;
-
-			// If the next frame is not ready to be rendered yet, wait until the fence to complete.
-			if (s_Data.pFence->GetCompletedValue() < currentFenceValue) 
-			{
-				DXCall(s_Data.pFence->SetEventOnCompletion(currentFenceValue, s_Data.fenceEvent));
-				WaitForSingleObject(s_Data.fenceEvent, INFINITE);
-			}
-		};
-
-		for (uint32_t i{ 0u }; i < D3D12Core::GetNrOfBufferedFrames(); ++i)
-		{
-			WaitForPreviousFrame(i);
-		}
-	}
-
-	void MasterRenderer::WaitForGPU() noexcept
-	{
-		PROFILE_FUNC;
-
-		// Schedule a Signal command in the queue.
-		DXCall(D3D12Core::GetCommandQueue()->Signal(s_Data.pFence.Get(), s_Data.pFenceValues[s_Data.currentFrameIndex]));
-
-		// Wait until the fence has been processed.
-		DXCall(s_Data.pFence->SetEventOnCompletion(s_Data.pFenceValues[s_Data.currentFrameIndex], s_Data.fenceEvent));
-		WaitForSingleObjectEx(s_Data.fenceEvent, INFINITE, FALSE);
-
-		// Increment the fence value for the current frame.
-		s_Data.pFenceValues[s_Data.currentFrameIndex]++;
-	}
-
 	void MasterRenderer::OnShutDown() noexcept
 	{
-		WaitForGPU();
-	}
 
-	void MasterRenderer::ResetFrameCommandUnits(const uint32_t frameIndex) noexcept
-	{
-		auto pCommandAllocator{ D3D12Core::GetCommandAllocator(frameIndex) };
-		auto pCommandList{ D3D12Core::GetCommandList(frameIndex) };
-		DXCall(pCommandAllocator->Reset());
-		DXCall(pCommandList->Reset(pCommandAllocator.Get(), nullptr));
-	}
-
-	uint32_t MasterRenderer::GetCurrentFrameIndex() noexcept
-	{
-		return (D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames());
 	}
 
 	void MasterRenderer::Begin() noexcept
 	{
-		ResetFrameCommandUnits(GetCurrentFrameIndex());
 	}
 
 	void MasterRenderer::End() noexcept
@@ -240,7 +108,7 @@ namespace Relentless
 		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 
-	void MasterRenderer::BeginRenderPass(const std::shared_ptr<RenderPass>& pRenderPass) noexcept
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> MasterRenderer::BeginRenderPass(const std::shared_ptr<RenderPass>& pRenderPass) noexcept
 	{
 		auto& pPipeline = pRenderPass->GetPipeline();
 		auto& pipelineSpecification = pPipeline->GetSpecification();
@@ -250,28 +118,56 @@ namespace Relentless
 
 		bool hasDepthAttachment = false;
 
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
+
 		for (uint32_t i{ 0u }; i < outputs.size(); ++i)
 		{
 			if (outputs[i].Output->GetCurrentState() != D3D12_RESOURCE_STATE_RENDER_TARGET)
-				RenderCommand::TransitionResource(outputs[i].Output, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			{
+				D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+				resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+				resourceTransitionBarrier.Transition.pResource = outputs[i].Output->GetInterface().Get();
+				resourceTransitionBarrier.Transition.StateBefore = outputs[i].Output->GetCurrentState();
+				resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+				resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+				DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+				outputs[i].Output->SetCurrentState(D3D12_RESOURCE_STATE_RENDER_TARGET);
+			}
 		}
 		if (depthOutput.Output)
 		{
 			hasDepthAttachment = true;
 			if (depthOutput.Output->GetCurrentState() != D3D12_RESOURCE_STATE_DEPTH_WRITE)
-				RenderCommand::TransitionResource(depthOutput.Output, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			{
+				D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+				resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+				resourceTransitionBarrier.Transition.pResource = depthOutput.Output->GetInterface().Get();
+				resourceTransitionBarrier.Transition.StateBefore = depthOutput.Output->GetCurrentState();
+				resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+				resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+				DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+				depthOutput.Output->SetCurrentState(D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			}
 		}
 		
-		D3D12Core::GetCommandList()->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), hasDepthAttachment ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE);
+		pCommandList->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), hasDepthAttachment ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE);
 
-		RenderCommand::SetRootSignature(pPipeline->GetRootSig());
-		RenderCommand::SetPipelineState(pPipeline->GetInterface2());
-		RenderCommand::SetTopology(RLSTopologyToD3D12Topology(pipelineSpecification.Topology));
+		DXCall_STD(pCommandList->SetGraphicsRootSignature(pPipeline->GetRootSig().Get()));
+		DXCall_STD(pCommandList->SetPipelineState(pPipeline->GetInterface2().Get()));
+		DXCall_STD(pCommandList->IASetPrimitiveTopology(RLSTopologyToD3D12Topology(pipelineSpecification.Topology)));
+
+		return pCommandList;
 	}
 
-	void MasterRenderer::EndRenderPass() noexcept
+	void MasterRenderer::EndRenderPass(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept
 	{
-		DXCall_STD(D3D12Core::GetCommandList()->EndRenderPass());
+		DXCall_STD(pCommandList->EndRenderPass());
+
+		Application::Get().GetGPUTaskManager().ScheduleCommandList(std::move(pCommandList));
 	}
 
 	void MasterRenderer::PrepareBackBuffer() noexcept
@@ -279,8 +175,19 @@ namespace Relentless
 		PROFILE_FUNC;
 
 		//Transition the back buffer back to present state now that is is finished:
-		BackBuffer& backBuffer{ Window::GetCurrentBackBuffer() };
-		RenderCommand::TransitionResource(backBuffer.pBackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+		BackBuffer& backBuffer{ Window::GetBackBuffers()[Application::Get().GetGPUTaskManager().GetCurrentFrameIndex()] };
+
+		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		resourceTransitionBarrier.Transition.pResource = backBuffer.pBackBuffer.Get();
+		resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
+		DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+		Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
 	}
 
 	const std::shared_ptr<FrameBuffer> MasterRenderer::GetFrameBuffer() noexcept

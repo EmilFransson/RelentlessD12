@@ -5,8 +5,6 @@ namespace Relentless
 	Scene::Scene(const char* name) noexcept
 		: m_Name{ name }
 	{
-		m_pEditorCamera = PerspectiveCamera::Create(DirectX::XMVECTORF32{ 5.0f, 5.0f, -5.0f }, static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
-
 		//Viewport:
 		m_Viewport.TopLeftX = 0.0f;
 		m_Viewport.TopLeftY = 0.0f;
@@ -20,6 +18,8 @@ namespace Relentless
 		m_ScissorRect.top = 0u;
 		m_ScissorRect.right = static_cast<LONG>(m_Viewport.Width);
 		m_ScissorRect.bottom = static_cast<LONG>(m_Viewport.Height);
+		
+		m_pEditorCamera = PerspectiveCamera::Create(DirectX::XMVECTORF32{ 5.0f, 5.0f, -5.0f }, static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 	}
 
 	Scene::~Scene() noexcept
@@ -713,6 +713,8 @@ namespace Relentless
 		m_Viewport.Height = m_ViewportPanelSize.y;
 		m_ScissorRect.right = static_cast<LONG>(m_ViewportPanelSize.x);
 		m_ScissorRect.bottom = static_cast<LONG>(m_ViewportPanelSize.y);
+
+		m_pEditorCamera->RecalculateProjectionMatrix(m_Viewport.Width, m_Viewport.Height);
 	}
 
 	bool Scene::EntityIsDescendant(const entity ancestor, const entity descendant) noexcept
@@ -816,6 +818,16 @@ namespace Relentless
 			});
 
 		return toReturn;
+	}
+
+	void Scene::SetHoveredEntity(entity hoveredEntity) noexcept
+	{
+		m_HoveredEntity = hoveredEntity;
+	}
+
+	entity Scene::GetHoveredEntity() const noexcept
+	{
+		return m_HoveredEntity;
 	}
 
 	template<typename ComponentType>

@@ -1,6 +1,7 @@
 #pragma once
 #include "ICamera.h"
 #include "../../Resources/ConstantBuffer.h"
+#include "../../Resources/ConstantBufferSet.h"
 namespace Relentless
 {
 	class PerspectiveCamera : public ICamera
@@ -37,7 +38,7 @@ namespace Relentless
 		[[nodiscard]] constexpr const float& GetYaw() const noexcept { return m_Yaw; }
 		[[nodiscard]] constexpr const float& GetPitch() const noexcept { return m_Pitch; }
 
-		std::unique_ptr<ConstantBuffer> m_pConstantBuffer;
+		std::unique_ptr<ConstantBufferSet> m_pConstantBufferSet = nullptr;
 	private:
 		DirectX::XMFLOAT3 m_Position;
 		DirectX::XMFLOAT3 m_UpVector;

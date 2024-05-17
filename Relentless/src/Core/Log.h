@@ -17,7 +17,7 @@ namespace Relentless
 		//static std::shared_ptr<spdlog::logger> s_ClientLogger;
 	};
 
-#if defined(RLS_DEBUG)
+#if defined(RLS_DEBUG) || defined RLS_RELWITHDEBINFO
 	#define RLS_CORE_TRACE(...)    ::Relentless::Log::GetCoreLogger()->trace(__VA_ARGS__);
 	#define RLS_CORE_INFO(...)     ::Relentless::Log::GetCoreLogger()->info(__VA_ARGS__);
 	#define RLS_CORE_WARN(...)     ::Relentless::Log::GetCoreLogger()->warn(__VA_ARGS__);
@@ -29,8 +29,6 @@ namespace Relentless
 	//#define RLS_WARN(...)          ::Relentless::Log::GetClientLogger()->warn(__VA_ARGS__);
 	//#define RLS_ERROR(...)         ::Relentless::Log::GetClientLogger()->error(__VA_ARGS__);
 	//#define RLS_CRITICAL(...)      ::Relentless::Log::GetClientLogger()->critical(__VA_ARGS__);
-
-	#define RLS_ASSERT(x, ...) {if (!(x)) {RLS_CORE_ERROR("Assertion failed: {0}", __VA_ARGS__); __debugbreak(); } }
 #else
 	#define RLS_CORE_TRACE(...)
 	#define RLS_CORE_INFO(...)
@@ -43,9 +41,14 @@ namespace Relentless
 	//#define RLS_WARN(...)
 	//#define RLS_ERROR(...)
 	//#define RLS_CRITICAL(...)
+#endif
 
+#if defined(RLS_DEBUG)
+	#define RLS_ASSERT(x, ...) {if (!(x)) {RLS_CORE_ERROR("Assertion failed: {0}", __VA_ARGS__); __debugbreak(); } }
+#else
 	#define RLS_ASSERT(x, ...)
 #endif
+
 
 #define RLS_VERIFY(x, ...) {if (!(x)) {RLS_CORE_ERROR("Assertion failed: {0}", __VA_ARGS__); __debugbreak(); } }
 

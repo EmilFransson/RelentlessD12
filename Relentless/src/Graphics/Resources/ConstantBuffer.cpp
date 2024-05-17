@@ -1,5 +1,6 @@
 #include "ConstantBuffer.h"
 #include "../D3D12Core.h"
+#include "Graphics/GPUTaskManager.h"
 namespace Relentless
 {
 	ConstantBuffer::ConstantBuffer(size_t sizeInBytes) noexcept
@@ -39,7 +40,7 @@ namespace Relentless
 		m_NonVisibleHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::CBV_NV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateConstantBufferView(&constantBufferDescriptor, m_NonVisibleHandle.CPUHandle));
 	
-		for (uint32_t i{ 0u }; i < D3D12Core::GetNrOfBufferedFrames(); ++i)
+		for (uint32_t i{ 0u }; i < GPUTaskManager::FRAMES_IN_FLIGHT; ++i)
 		{
 			m_VisibleHandles[i] = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::CBV);
 		}
@@ -53,7 +54,7 @@ namespace Relentless
 	void ConstantBuffer::ReleaseHandles() noexcept
 	{
 		MemoryManager::Get().DestroyDescriptorHandle(m_NonVisibleHandle);
-		for (uint32_t i{ 0u }; i < D3D12Core::GetNrOfBufferedFrames(); ++i)
+		for (uint32_t i{ 0u }; i < GPUTaskManager::FRAMES_IN_FLIGHT; ++i)
 		{
 			MemoryManager::Get().DestroyDescriptorHandle(m_VisibleHandles[i]);
 		}

@@ -312,7 +312,7 @@ namespace Relentless
 		Microsoft::WRL::ComPtr<IDXGISwapChain1> pTempSwapChain{ nullptr };
 		DXCall(pFactory->CreateSwapChainForHwnd
 		(
-			D3D12Core::GetCommandQueue().Get(),
+			Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get(),
 			m_WindowHandle,
 			&swapChainDescriptor,
 			nullptr,

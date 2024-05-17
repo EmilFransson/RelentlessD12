@@ -10,13 +10,16 @@ namespace Relentless
 		m_Pitch{ -35.0f },
 		m_CameraSpeed{ 10.0f },
 		m_TiltSensitivity{ 0.25f },
-		m_FieldOfViewDegrees{ 90.0f },
+		m_FieldOfViewDegrees{ 60.0f },
 		m_NearPlane{0.1f},
 		m_FarPlane{ 1000.f }
 	{
 		DirectX::XMStoreFloat3(&m_Position, position);
-		DirectX::XMStoreFloat3(&m_FrontVector, DirectX::XMVector3Normalize(DirectX::XMVectorSubtract({ 0.0f, 0.0f, 0.0f }, position)));
-		DirectX::XMVECTOR lookAt = DirectX::XMVectorAdd(position, DirectX::XMLoadFloat3(&m_FrontVector));
+
+		DirectX::XMVECTOR frontVector = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(DirectX::XMVectorZero(), position));
+		DirectX::XMStoreFloat3(&m_FrontVector, frontVector);
+
+		DirectX::XMVECTOR lookAt = DirectX::XMVectorAdd(position, frontVector);
 
 		/*View matrix*/
 		DirectX::XMMATRIX viewMatrix = DirectX::XMMatrixLookAtLH(position, lookAt, DirectX::XMLoadFloat3(&m_UpVector));
@@ -32,12 +35,12 @@ namespace Relentless
 		DirectX::XMStoreFloat4x4(&m_ViewMatrix, viewMatrix);
 		DirectX::XMStoreFloat4x4(&m_ProjectionMatrix, projectionMatrix);
 
-		m_pConstantBuffer = std::make_unique<ConstantBuffer>(sizeof(DirectX::XMFLOAT3));
+		m_pConstantBufferSet = std::make_unique<ConstantBufferSet>("Perspective Camera CB Set", sizeof(DirectX::XMFLOAT3));
 	}
 
 	PerspectiveCamera::~PerspectiveCamera() noexcept 
 	{
-		m_pConstantBuffer->ReleaseHandles();
+		//m_pConstantBuffer->ReleaseHandles();
 	}
 
 	void PerspectiveCamera::RecalculateViewProjectionMatrix() noexcept

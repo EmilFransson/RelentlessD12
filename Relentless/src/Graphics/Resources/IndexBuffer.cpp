@@ -52,4 +52,18 @@ namespace Relentless
 
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(m_Name).c_str());
 	}
+
+	IndexBuffer::IndexBuffer(uint32_t nrOfIndices, uint32_t TotalSizeInBytes, uint32_t stride, Microsoft::WRL::ComPtr<ID3D12Resource> pResource, const std::string& name, void* pBuffer) noexcept
+	{
+		m_Specification.Name = name;
+		m_Specification.NrOfIndices = nrOfIndices;
+		m_Specification.pBuffer = pBuffer;
+		m_Specification.TotalSizeInBytes = TotalSizeInBytes;
+		m_pResource = pResource;
+		m_Specification.Stride = stride;
+		m_CurrentState = D3D12_RESOURCE_STATE_COPY_SOURCE;
+
+		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(name).c_str());
+	}
+
 }

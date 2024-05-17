@@ -4,7 +4,7 @@ namespace Relentless
 {
 	EditorLayer::EditorLayer(const std::string& layerName) noexcept
 		: Layer{layerName}, 
-		  m_ViewportPanelSize{100.0f, 100.0f}, 
+		  m_ViewportPanelSize{800.0f, 600.0f}, 
 		  m_SceneViewportChanged{ false },
 		  m_HoveringSceneViewport{ false },
 		  m_HoveredEntity{ NULL_ENTITY },
@@ -158,7 +158,7 @@ namespace Relentless
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Scene");
 
-		UI_DrawSceneStateIcons();
+		//UI_DrawSceneStateIcons();
 
 		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
 		{
@@ -179,8 +179,10 @@ namespace Relentless
 		ImVec2 windowPosition = ImGui::GetWindowPos();
 		ImVec2 mousePositionInSceneClientArea = ImVec2(mousePosition.x - windowPosition.x, mousePosition.y - windowPosition.y - toolBarPadding);
 		m_pActiveScene->SetMousePosition(mousePositionInSceneClientArea);
+		auto xx = ImGui::GetContentRegionAvail().x;
+		auto yy = ImGui::GetContentRegionAvail().y;
 
-		if (m_ViewportPanelSize.x != ImGui::GetContentRegionAvail().x || m_ViewportPanelSize.y != ImGui::GetContentRegionAvail().y)
+		if (m_ViewportPanelSize.x != xx || m_ViewportPanelSize.y != yy)
 		{
 			//Verify values are valid (as is not the case when shutting down the program!)
 			if (!(ImGui::GetContentRegionAvail().x < 0.0f) && !(ImGui::GetContentRegionAvail().y < 0.0f))
@@ -191,12 +193,7 @@ namespace Relentless
 			}
 		}
 
-		auto UITextureHandle = MasterRenderer::GetFrameBuffer()->GetOutput(0)->GetSRVDescriptorHandle().GPUHandle;
-		ImGui::Image
-		(
-			(ImTextureID)UITextureHandle.ptr,
-			ImVec2(m_ViewportPanelSize.x, m_ViewportPanelSize.y)
-		);
+		m_pSceneRenderer->OnImGuiRender(ImVec2(m_ViewportPanelSize.x, m_ViewportPanelSize.y));
 
 		if (ImGui::BeginDragDropTarget())
 		{
@@ -207,17 +204,17 @@ namespace Relentless
 			}
 			ImGui::EndDragDropTarget();
 		}
-
+		
 		if (m_SelectedEntity != NULL_ENTITY && m_CurrentGizmoType != GizmoType::NONE)
 		{
 			ManipulateTransformGizmo();
 		}
-
+		
 		ImGui::End();
 		ImGui::PopStyleVar();
-
+		
 		UI_DrawStatisticsPanel();
-
+		
 		m_SceneHierarchyPanel.OnImGuiRender(m_DisplaySceneHierarchyPanel && !m_ImmersiveModeEnabled);
 		m_InspectorPanel.OnImGuiRender(m_DisplayInspectorPanel && !m_ImmersiveModeEnabled);
 		m_SceneRendererPanel.OnImGuiRender(m_DisplaySceneRendererPanel && !m_ImmersiveModeEnabled);
@@ -301,13 +298,15 @@ namespace Relentless
 				}
 			});
 
-		
+		//Importer::RequestAsyncLoadFromFile();
 
-		m_PlayButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PlayButton.png"), "");
-		m_StopButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StopButton.png"), "");
-		m_PauseButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PauseButton.png"), "");
-		m_SimulateButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\SimulateButton.png"), "");
-		m_StepButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StepButton.png"), "");
+		//m_PlayButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PlayButton.png"), "");
+		//m_StopButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StopButton.png"), "");
+		//m_PauseButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PauseButton.png"), "");
+		//m_SimulateButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\SimulateButton.png"), "");
+		//m_StepButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StepButton.png"), "");
+
+		m_pActiveScene->CreateShape(Shape::Cube);
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -330,9 +329,6 @@ namespace Relentless
 			m_pActiveScene->GetEditorCamera()->Update(deltaTime);
 		}
 
-		auto& cb = *m_pActiveScene->GetEditorCamera()->m_pConstantBuffer;
-		MemoryManager::Get().UpdateConstantBuffer(cb, &m_pActiveScene->GetEditorCamera()->GetPosition());
-
 		m_pActiveScene->OnUpdate(deltaTime);
 	}
 
@@ -354,7 +350,7 @@ namespace Relentless
 
 		if (m_HoveringSceneViewport)
 		{
-			m_HoveredEntity = m_pSceneRenderer->GetHoveredEntity();
+			m_HoveredEntity = m_pActiveScene->GetHoveredEntity();
 		}
 		else
 			m_HoveredEntity = NULL_ENTITY;
@@ -369,7 +365,7 @@ namespace Relentless
 		}
 		else if (m_CreateNewScene)
 		{
-			MasterRenderer::WaitAndSyncAllFramesInFlight();
+			Application::Get().GetGPUTaskManager().WaitForAllFramesComplete();
 			m_pActiveScene = std::make_shared<Scene>();
 			m_pActiveScene->SetViewportPanelSize(m_ViewportPanelSize);
 			m_pSceneRenderer->SetContext(m_pActiveScene);
@@ -389,7 +385,7 @@ namespace Relentless
 
 	void EditorLayer::LoadStarterMeshes() noexcept
 	{
-		const std::array<std::string, 6> starterMeshes
+		const std::array<std::string, 11> starterMeshes
 		{
 			"Cube.rasset",
 			"Capsule.rasset",
@@ -397,34 +393,28 @@ namespace Relentless
 			"Cylinder.rasset",
 			"Icosphere.rasset",
 			"Plane.rasset",
-			//"Quad.rasset",
-			//"Sphere.rasset",
-			//"Torus.rasset",
-			//"Triangle.rasset"//,
-			//"UtahTeapot.rasset"
+			"Quad.rasset",
+			"Sphere.rasset",
+			"Torus.rasset",
+			"Triangle.rasset",
+			"UtahTeapot.rasset"
 		};
 		
 		const std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\StarterContent\\");
-
-		//std::for_each(std::execution::par, starterMeshes.begin(), starterMeshes.end(), [&](std::string& starterMeshName)
-		//	{
-		//		std::string fullMeshPath(meshPath + std::string(starterMeshName));
-		//		Serializer::Deserialize<Mesh>(fullMeshPath);
-		//	});
 
 		MeshImportSettings importSettings = {};
 		importSettings.ImportMaterialsAndTextures = false;
 		for (auto& mesh : starterMeshes)
 		{
 			const std::string fullMeshPath(meshPath + std::string(mesh));
-			const bool succeeded = Serializer::Deserialize<Mesh>(fullMeshPath);
-			RLS_VERIFY(succeeded, "Failed to deserialize Mesh engine asset '{0}'", mesh.c_str());
+			AssetHandle throwAway = NULL_HANDLE;
+			AssetManager::RequestLoadAsset(fullMeshPath, throwAway);
 		}
 	}
 
 	void EditorLayer::CreateStartScene() noexcept
 	{
-		SceneSerializer::Deserialize(m_pActiveScene, ENGINE_ASSET_DIRECTORY + std::string("Scenes\\StarterScene.Relentless"));
+		//SceneSerializer::Deserialize(m_pActiveScene, ENGINE_ASSET_DIRECTORY + std::string("Scenes\\StarterScene.Relentless"));
 	}
 
 	void EditorLayer::OnSceneViewportChanged() noexcept
@@ -433,7 +423,6 @@ namespace Relentless
 		m_ViewportPanelSize.y = std::max(1.0f, m_ViewportPanelSize.y);
 		m_pActiveScene->SetViewportPanelSize(m_ViewportPanelSize);
 
-		m_pActiveScene->GetEditorCamera()->RecalculateProjectionMatrix(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		m_pSceneRenderer->OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 		m_SceneViewportChanged = false;
 	}
@@ -573,7 +562,7 @@ namespace Relentless
 
 	void EditorLayer::LoadScene(const std::filesystem::path& filepath) noexcept
 	{
-		MasterRenderer::WaitAndSyncAllFramesInFlight();
+		Application::Get().GetGPUTaskManager().WaitForAllFramesComplete();
 		m_pActiveScene = std::make_shared<Scene>();
 		m_pActiveScene->SetViewportPanelSize(m_ViewportPanelSize);
 		SceneSerializer::Deserialize(m_pActiveScene, filepath.string());
@@ -599,7 +588,7 @@ namespace Relentless
 	{
 		Application::Get().SubmitToMainThread([&]()
 			{
-				MasterRenderer::WaitAndSyncAllFramesInFlight();
+				Application::Get().GetGPUTaskManager().WaitForAllFramesComplete();
 
 				m_SceneState = SceneState::Play;
 
@@ -620,7 +609,7 @@ namespace Relentless
 	{
 		Application::Get().SubmitToMainThread([&]()
 			{
-				MasterRenderer::WaitAndSyncAllFramesInFlight();
+				Application::Get().GetGPUTaskManager().WaitForAllFramesComplete();
 
 				m_SceneState = SceneState::Edit;
 				m_pActiveScene->OnRuntimeStop();
@@ -757,98 +746,98 @@ namespace Relentless
 
 	void EditorLayer::UI_DrawSceneStateIcons() noexcept
 	{
-		constexpr const ImVec2 sceneStateIconsWindowSize = ImVec2(190.0f, 50.0f);
-
-		const float mainViewportPanelWidth = ImGui::GetWindowContentRegionWidth();
-		const float offsetX = (mainViewportPanelWidth / 2.0f) - (sceneStateIconsWindowSize.x / 2.0f);
-		constexpr const float offsetY = 30.0f;
-
-		ImVec2 windowPosition = ImGui::GetWindowPos();
-		windowPosition = ImVec2(windowPosition.x + offsetX, windowPosition.y + offsetY);
-
-		auto& colors = ImGui::GetStyle().Colors;
-		const auto& windowBGColor = colors[ImGuiCol_WindowBg];
-		const auto& buttonColor = colors[ImGuiCol_Button];
-		const auto& buttonActiveColor = colors[ImGuiCol_ButtonActive];
-		const auto& buttonHoveredColor = colors[ImGuiCol_ButtonHovered];
-		
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(windowBGColor.x, windowBGColor.y, windowBGColor.z, 0.6f));
-		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(buttonColor.x, buttonColor.y, buttonColor.z, 0.0f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(buttonActiveColor.x, buttonActiveColor.y, buttonActiveColor.z, 0.5f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(buttonHoveredColor.x, buttonHoveredColor.y, buttonHoveredColor.z, 0.5f));
-
-		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowRounding, 10.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_ItemInnerSpacing, ImVec2(0.0f, 0.0f));
-
-		ImGui::SetNextWindowSize(sceneStateIconsWindowSize);
-		ImGui::Begin("##SceneStateIcons", nullptr, ImGuiWindowFlags_NoDecoration);
-		ImGui::SetWindowPos(windowPosition);
-
-		const ImVec2 playStopButtonPosition = ImVec2(ImGui::GetCursorPosX() + 10.0f, ImGui::GetCursorPosY());
-		ImGui::SetCursorPosX(playStopButtonPosition.x);
-		
-		constexpr const ImVec2 buttonSize = ImVec2(50.0f, 50.0f);
-		constexpr const float buttonGap = 10.0f;
-
-		//Draw Play/Stop button
-		const Texture2D& IconTexture = AssetManager::Get<Texture2D>(m_SceneState == SceneState::Edit ? m_PlayButtonTextureHandle : m_StopButtonTextureHandle);
-		if (ImGui::ImageButton((ImTextureID)IconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
-		{
-			if (m_SceneState == SceneState::Edit)
-			{
-				OnScenePlay();
-			}
-			else
-			{
-				OnSceneStop();
-			}
-		}
-
-		//Simulate button:
-		ImVec2 simulateButtonPosition = playStopButtonPosition;
-		if (m_SceneState == SceneState::Edit)
-		{
-			simulateButtonPosition = ImVec2(simulateButtonPosition.x + buttonSize.x + buttonGap, simulateButtonPosition.y);
-			ImGui::SetCursorPos(simulateButtonPosition);
-
-			const Texture2D& simulateIconTexture = AssetManager::Get<Texture2D>(m_SimulateButtonTextureHandle);
-			if (ImGui::ImageButton((ImTextureID)simulateIconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
-			{
-				m_SceneState = SceneState::Simulate;
-			}
-		}
-
-		//Pause button:
-		ImVec2 pauseButtonPosition = simulateButtonPosition;
-		if (m_SceneState == SceneState::Play || m_SceneState == SceneState::Simulate)
-		{
-			pauseButtonPosition = ImVec2(pauseButtonPosition.x + buttonSize.x + buttonGap, pauseButtonPosition.y);
-			ImGui::SetCursorPos(pauseButtonPosition);
-
-			const Texture2D& pauseIconTexture = AssetManager::Get<Texture2D>(m_PauseButtonTextureHandle);
-			if (ImGui::ImageButton((ImTextureID)pauseIconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
-			{
-				m_pActiveScene->SetPaused(!m_pActiveScene->IsPaused());
-			}
-		}
-
-		//Step button:
-		if (m_pActiveScene->IsPaused())
-		{
-			ImVec2 stepButtonPosition = pauseButtonPosition;
-			stepButtonPosition = ImVec2(stepButtonPosition.x + buttonSize.x + buttonGap, stepButtonPosition.y);
-			ImGui::SetCursorPos(stepButtonPosition);
-
-			const Texture2D& stepIconTexture = AssetManager::Get<Texture2D>(m_StepButtonTextureHandle);
-			if (ImGui::ImageButton((ImTextureID)stepIconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
-			{
-				//TODO: Send step signal to scene....
-			}
-		}
-
-		ImGui::PopStyleColor(4);
-		ImGui::PopStyleVar(3);
-		ImGui::End();
+		//constexpr const ImVec2 sceneStateIconsWindowSize = ImVec2(190.0f, 50.0f);
+		//
+		//const float mainViewportPanelWidth = ImGui::GetWindowContentRegionWidth();
+		//const float offsetX = (mainViewportPanelWidth / 2.0f) - (sceneStateIconsWindowSize.x / 2.0f);
+		//constexpr const float offsetY = 30.0f;
+		//
+		//ImVec2 windowPosition = ImGui::GetWindowPos();
+		//windowPosition = ImVec2(windowPosition.x + offsetX, windowPosition.y + offsetY);
+		//
+		//auto& colors = ImGui::GetStyle().Colors;
+		//const auto& windowBGColor = colors[ImGuiCol_WindowBg];
+		//const auto& buttonColor = colors[ImGuiCol_Button];
+		//const auto& buttonActiveColor = colors[ImGuiCol_ButtonActive];
+		//const auto& buttonHoveredColor = colors[ImGuiCol_ButtonHovered];
+		//
+		//ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(windowBGColor.x, windowBGColor.y, windowBGColor.z, 0.6f));
+		//ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(buttonColor.x, buttonColor.y, buttonColor.z, 0.0f));
+		//ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(buttonActiveColor.x, buttonActiveColor.y, buttonActiveColor.z, 0.5f));
+		//ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(buttonHoveredColor.x, buttonHoveredColor.y, buttonHoveredColor.z, 0.5f));
+		//
+		//ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowRounding, 10.0f);
+		//ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		//ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_ItemInnerSpacing, ImVec2(0.0f, 0.0f));
+		//
+		//ImGui::SetNextWindowSize(sceneStateIconsWindowSize);
+		//ImGui::Begin("##SceneStateIcons", nullptr, ImGuiWindowFlags_NoDecoration);
+		//ImGui::SetWindowPos(windowPosition);
+		//
+		//const ImVec2 playStopButtonPosition = ImVec2(ImGui::GetCursorPosX() + 10.0f, ImGui::GetCursorPosY());
+		//ImGui::SetCursorPosX(playStopButtonPosition.x);
+		//
+		//constexpr const ImVec2 buttonSize = ImVec2(50.0f, 50.0f);
+		//constexpr const float buttonGap = 10.0f;
+		//
+		////Draw Play/Stop button
+		//const Texture2D& IconTexture = AssetManager::Get<Texture2D>(m_SceneState == SceneState::Edit ? m_PlayButtonTextureHandle : m_StopButtonTextureHandle);
+		//if (ImGui::ImageButton((ImTextureID)IconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
+		//{
+		//	if (m_SceneState == SceneState::Edit)
+		//	{
+		//		OnScenePlay();
+		//	}
+		//	else
+		//	{
+		//		OnSceneStop();
+		//	}
+		//}
+		//
+		////Simulate button:
+		//ImVec2 simulateButtonPosition = playStopButtonPosition;
+		//if (m_SceneState == SceneState::Edit)
+		//{
+		//	simulateButtonPosition = ImVec2(simulateButtonPosition.x + buttonSize.x + buttonGap, simulateButtonPosition.y);
+		//	ImGui::SetCursorPos(simulateButtonPosition);
+		//
+		//	const Texture2D& simulateIconTexture = AssetManager::Get<Texture2D>(m_SimulateButtonTextureHandle);
+		//	if (ImGui::ImageButton((ImTextureID)simulateIconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
+		//	{
+		//		m_SceneState = SceneState::Simulate;
+		//	}
+		//}
+		//
+		////Pause button:
+		//ImVec2 pauseButtonPosition = simulateButtonPosition;
+		//if (m_SceneState == SceneState::Play || m_SceneState == SceneState::Simulate)
+		//{
+		//	pauseButtonPosition = ImVec2(pauseButtonPosition.x + buttonSize.x + buttonGap, pauseButtonPosition.y);
+		//	ImGui::SetCursorPos(pauseButtonPosition);
+		//
+		//	const Texture2D& pauseIconTexture = AssetManager::Get<Texture2D>(m_PauseButtonTextureHandle);
+		//	if (ImGui::ImageButton((ImTextureID)pauseIconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
+		//	{
+		//		m_pActiveScene->SetPaused(!m_pActiveScene->IsPaused());
+		//	}
+		//}
+		//
+		////Step button:
+		//if (m_pActiveScene->IsPaused())
+		//{
+		//	ImVec2 stepButtonPosition = pauseButtonPosition;
+		//	stepButtonPosition = ImVec2(stepButtonPosition.x + buttonSize.x + buttonGap, stepButtonPosition.y);
+		//	ImGui::SetCursorPos(stepButtonPosition);
+		//
+		//	const Texture2D& stepIconTexture = AssetManager::Get<Texture2D>(m_StepButtonTextureHandle);
+		//	if (ImGui::ImageButton((ImTextureID)stepIconTexture.GetSRVDescriptorHandle().GPUHandle.ptr, buttonSize, ImVec2(0.0f, 0.0f), ImVec2(1, 1), 0))
+		//	{
+		//		//TODO: Send step signal to scene....
+		//	}
+		//}
+		//
+		//ImGui::PopStyleColor(4);
+		//ImGui::PopStyleVar(3);
+		//ImGui::End();
 	}
 }

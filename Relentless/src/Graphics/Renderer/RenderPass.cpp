@@ -55,16 +55,23 @@ namespace Relentless
 		if (fbSpec.Attachments.DepthAttachment.Output)
 		{
 			D3D12_RENDER_PASS_BEGINNING_ACCESS beginningAccess{};
-			beginningAccess.Clear.ClearValue.Color[0] = 1.0f;
-			beginningAccess.Clear.ClearValue.Color[1] = 1.0f;
-			beginningAccess.Clear.ClearValue.Color[2] = 1.0f;
-			beginningAccess.Clear.ClearValue.Color[3] = 1.0f;
+			beginningAccess.Clear.ClearValue.DepthStencil.Depth = 1.0f;
+			beginningAccess.Clear.ClearValue.DepthStencil.Stencil = 0.0f;
 			beginningAccess.Clear.ClearValue.Format = DXGI_FORMAT_D32_FLOAT;
 			beginningAccess.Type = RLSOperatorToD3D12Operator(fbSpec.Attachments.DepthAttachment.OperatorOnLoad);
 
 			m_DepthTarget.cpuDescriptor = fbSpec.Attachments.DepthAttachment.Output->GetDSVDescriptorHandle().CPUHandle;
 			m_DepthTarget.DepthBeginningAccess = beginningAccess;
 			m_DepthTarget.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE::D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+		
+			D3D12_RENDER_PASS_BEGINNING_ACCESS stencilBeginningAccess{};
+			stencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS;
+
+			D3D12_RENDER_PASS_ENDING_ACCESS stencilEndingAccess{};
+			stencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS;
+
+			m_DepthTarget.StencilBeginningAccess = stencilBeginningAccess;
+			m_DepthTarget.StencilEndingAccess = stencilEndingAccess;
 		}
 	}
 
@@ -80,7 +87,7 @@ namespace Relentless
 		return m_InputNameToInputDetails[std::string(inputName)].InputSlot;
 	}
 
-	void RenderPass::Upload(std::string_view inputName, void* pData) noexcept
+	void RenderPass::Upload(std::string_view inputName, void* pData, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept
 	{
 		RLS_ASSERT(pData, "Data submitted is not valid.");
 		RLS_ASSERT(m_InputNameToInputDetails.find(std::string(inputName)) != m_InputNameToInputDetails.end(), "Shader input name is invalid.");
@@ -89,7 +96,7 @@ namespace Relentless
 		switch (shaderDetails.InputType)
 		{
 		case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(shaderDetails.InputSlot, shaderDetails.NrOfIntegers, pData, 0u));
+			DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(shaderDetails.InputSlot, shaderDetails.NrOfIntegers, pData, 0u));
 			break;
 		}
 	}
@@ -125,16 +132,23 @@ namespace Relentless
 		if (fbSpec.Attachments.DepthAttachment.Output)
 		{
 			D3D12_RENDER_PASS_BEGINNING_ACCESS beginningAccess{};
-			beginningAccess.Clear.ClearValue.Color[0] = 1.0f;
-			beginningAccess.Clear.ClearValue.Color[1] = 1.0f;
-			beginningAccess.Clear.ClearValue.Color[2] = 1.0f;
-			beginningAccess.Clear.ClearValue.Color[3] = 1.0f;
+			beginningAccess.Clear.ClearValue.DepthStencil.Depth = 1.0f;
+			beginningAccess.Clear.ClearValue.DepthStencil.Stencil = 0.0f;
 			beginningAccess.Clear.ClearValue.Format = DXGI_FORMAT_D32_FLOAT;
 			beginningAccess.Type = RLSOperatorToD3D12Operator(fbSpec.Attachments.DepthAttachment.OperatorOnLoad);
 
 			m_DepthTarget.cpuDescriptor = fbSpec.Attachments.DepthAttachment.Output->GetDSVDescriptorHandle().CPUHandle;
 			m_DepthTarget.DepthBeginningAccess = beginningAccess;
 			m_DepthTarget.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE::D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+			D3D12_RENDER_PASS_BEGINNING_ACCESS stencilBeginningAccess{};
+			stencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS;
+
+			D3D12_RENDER_PASS_ENDING_ACCESS stencilEndingAccess{};
+			stencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS;
+
+			m_DepthTarget.StencilBeginningAccess = stencilBeginningAccess;
+			m_DepthTarget.StencilEndingAccess = stencilEndingAccess;
 		}
 	}
 
@@ -169,16 +183,23 @@ namespace Relentless
 		if (fbSpec.Attachments.DepthAttachment.Output)
 		{
 			D3D12_RENDER_PASS_BEGINNING_ACCESS beginningAccess{};
-			beginningAccess.Clear.ClearValue.Color[0] = 1.0f;
-			beginningAccess.Clear.ClearValue.Color[1] = 1.0f;
-			beginningAccess.Clear.ClearValue.Color[2] = 1.0f;
-			beginningAccess.Clear.ClearValue.Color[3] = 1.0f;
+			beginningAccess.Clear.ClearValue.DepthStencil.Depth = 1.0f;
+			beginningAccess.Clear.ClearValue.DepthStencil.Stencil = 0.0f;
 			beginningAccess.Clear.ClearValue.Format = DXGI_FORMAT_D32_FLOAT;
 			beginningAccess.Type = RLSOperatorToD3D12Operator(fbSpec.Attachments.DepthAttachment.OperatorOnLoad);
 
 			m_DepthTarget.cpuDescriptor = fbSpec.Attachments.DepthAttachment.Output->GetDSVDescriptorHandle().CPUHandle;
 			m_DepthTarget.DepthBeginningAccess = beginningAccess;
 			m_DepthTarget.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE::D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+			D3D12_RENDER_PASS_BEGINNING_ACCESS stencilBeginningAccess{};
+			stencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS;
+
+			D3D12_RENDER_PASS_ENDING_ACCESS stencilEndingAccess{};
+			stencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS;
+
+			m_DepthTarget.StencilBeginningAccess = stencilBeginningAccess;
+			m_DepthTarget.StencilEndingAccess = stencilEndingAccess;
 		}
 
 	}

@@ -12,12 +12,6 @@ namespace Relentless
 
 	std::mutex AssetManager::m_LoadedAssetsMapMutex{};
 
-	std::unordered_set<std::string> AssetManager::m_AssetsCurrentlyBeingLoaded{};
-	std::unordered_map<std::string, std::condition_variable> AssetManager::m_FilepathToConditionVariableMap{};
-	std::mutex AssetManager::m_AssetsBeginLoadedMutex{};
-
-	std::unordered_set<std::string> AssetManager::m_InvalidAssets{};
-
 	void AssetManager::IncreaseReferenceCount(const AssetHandle& assetHandle) noexcept
 	{
 		if (!assetHandle.IsValid())
@@ -72,39 +66,45 @@ namespace Relentless
 		}
 	}
 
-
-	void AssetManager::AddAssetFileAsCurrentlyBeingLoaded(const std::string& filepath) noexcept
-	{
-		RLS_ASSERT(!IsAssetFileCurrentlyBeingLoaded(filepath), "Asset file is already being loaded.");
-		m_AssetsCurrentlyBeingLoaded.insert(filepath);
-	}
-
-	void AssetManager::RemoveAssetFileAsCurrentlyBeingLoaded(const std::string& filepath) noexcept
-	{
-
-		RLS_ASSERT(IsAssetFileCurrentlyBeingLoaded(filepath), "Asset file is not already being loaded.");
-		m_AssetsCurrentlyBeingLoaded.erase(filepath);
-	}
-
-	bool AssetManager::IsAssetFileCurrentlyBeingLoaded(const std::string& filepath) noexcept
-	{
-		return m_AssetsCurrentlyBeingLoaded.contains(filepath);
-	}
-
 	void AssetManager::Initialize() noexcept
 	{
-		Serializer::Deserialize<Material>(std::string(ENGINE_ASSET_DIRECTORY) + "Materials\\M_DefaultMaterial.rasset", m_DefaultMaterialHandle);
-		RLS_ASSERT(m_DefaultMaterialHandle != NULL_HANDLE, "[AssetManager]: Unable to deserialize default material.");
+		const std::filesystem::path invalidTexturePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\invalidtexture.rasset");
+		const bool loaded = RequestLoadAsset(invalidTexturePath, m_InvalidTextureHandle);
+		RLS_VERIFY(loaded, "Core engine asset 'invalidtextrue.rasset' missing.");
 
-		Serializer::Deserialize<Material>(std::string(ENGINE_ASSET_DIRECTORY) + "Materials\\M_InvalidMaterial.rasset", m_InvalidMaterialHandle);
-		RLS_ASSERT(m_InvalidMaterialHandle != NULL_HANDLE, "[AssetManager]: Unable to deserialize invalid material.");
+		m_DefaultMaterialHandle = CreateNew<Material>();
+		Material& defaultMaterial = Get<Material>(m_DefaultMaterialHandle);
+		defaultMaterial.m_AlbedoColor = DirectX::XMFLOAT4(DirectX::Colors::White);
+		defaultMaterial.SetName("M_DefaultMaterial");
+
+		m_InvalidMaterialHandle = CreateNew<Material>();
+		Material& invalidMaterial = Get<Material>(m_InvalidMaterialHandle);
+		invalidMaterial.m_AlbedoColor = DirectX::XMFLOAT4(DirectX::Colors::Magenta);
+		invalidMaterial.SetName("M_InvalidMaterial");
+	}
+
+	std::future<void> AssetManager::RequestAsyncLoadAsset(const std::filesystem::path& filepathToAsset, DelegateToCall&& delegateToCall) noexcept
+	{
+		return Application::Get().GetThreadPool().Submit([filepathToAsset, Delegate = std::move(delegateToCall)]()
+			{
+				AssetHandle handle = NULL_HANDLE;
+				Serializer::Deserialize(filepathToAsset, handle);
+				Delegate(handle);
+			});
+	}
+
+	bool AssetManager::RequestLoadAsset(const std::filesystem::path& filepathToAsset, AssetHandle& outHandle) noexcept
+	{
+		if (Serializer::Deserialize(filepathToAsset, outHandle))
+			return true;
+		else
+			return false;
 	}
 
 	bool AssetManager::IsLoaded(const std::string& filepath) noexcept
 	{
 		std::lock_guard<std::mutex> guard(m_LoadedAssetsMapMutex);
 		bool result = s_LoadedAssets.contains(filepath) && s_LoadedAssets2.contains(s_LoadedAssets[filepath]);
-		RLS_CORE_INFO("Thread {0} called AssetManager::IsLoaded - returned value is {1}", std::this_thread::get_id(), result);
 		return result;
 	}
 
@@ -149,23 +149,4 @@ namespace Relentless
 		if (s_LoadedAssets.contains(path))
 			s_LoadedAssets.erase(path);
 	}
-
-	void AssetManager::SetInvalid(const std::string& path) noexcept
-	{
-		std::lock_guard<std::mutex> guard(m_LoadedAssetsMapMutex);
-		m_InvalidAssets.insert(path);
-	}
-
-	void AssetManager::SetValid(const std::string& path) noexcept
-	{
-		std::lock_guard<std::mutex> guard(m_LoadedAssetsMapMutex);
-		m_InvalidAssets.erase(path);
-	}
-
-	[[nodiscard]] bool AssetManager::IsValid(const std::string& path) noexcept
-	{
-		std::lock_guard<std::mutex> guard(m_LoadedAssetsMapMutex);
-		return !m_InvalidAssets.contains(path);
-	}
-
 }

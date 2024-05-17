@@ -18,8 +18,8 @@ namespace Relentless
 	public:
 		ImguiLayer() noexcept;
 		virtual ~ImguiLayer() noexcept override final;
-		static void BeginFrame() noexcept;
-		static void EndFrame() noexcept;
+		static void BeginFrame(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept;
+		static void EndFrame(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept;
 		virtual void OnImGuiRender() noexcept override final;
 	private:
 		virtual void OnAttach() override final;

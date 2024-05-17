@@ -6,6 +6,7 @@ namespace Relentless
 	inline constexpr char ASSET_EXTENSION[] = ".rasset";
 	inline constexpr uint32_t NULL_INDEX = std::numeric_limits<uint32_t>::max();
 	inline constexpr UUID NULL_UUID = UUID{ 0 };
+	inline constexpr uint32_t RASSET_SIGNATURE = 'R' << 24 | 'A' << 16 | 'S' << 8 | 'S';
 
 	enum class AssetType : uint8_t 
 	{
@@ -38,7 +39,7 @@ namespace Relentless
 #pragma pack(push, 1)
 	struct RassetHeader_1
 	{
-		static const uint32_t Signature = 'R' << 24 | 'A' << 16 | 'S' << 8 | 'S';
+		const uint32_t Signature = RASSET_SIGNATURE;
 		uint8_t Version{1u};
 		AssetType AssetType = AssetType::Undefined;
 		UUID UUID = NULL_UUID;
@@ -73,6 +74,13 @@ namespace Relentless
 		[[nodiscard]] inline bool IsValid() const noexcept
 		{
 			return Type != NULL_ASSET_TYPE && Uuid != NULL_UUID && Index != NULL_INDEX;
+		}
+
+		void Invalidate() noexcept
+		{
+			Type = AssetType::Undefined;
+			Uuid = NULL_UUID;
+			Index = NULL_INDEX;
 		}
 
 		AssetType Type;

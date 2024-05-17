@@ -18,6 +18,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <span>
 #include <stdint.h>
 #include <sstream>
@@ -28,6 +29,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 #include <queue>
 
@@ -58,3 +60,5 @@
 #include "Graphics/D3D12Debug.h"
 #include "Math/CommonMath.h"
 #include "Math/Vector3.h"
+
+#include "../vendor/includes/directxtex/d3dx12.h"

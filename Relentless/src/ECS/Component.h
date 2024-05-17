@@ -3,6 +3,7 @@
 #include "ECSCommon.h"
 #include "Graphics/Resources/ConstantBuffer.h"
 #include "Graphics/D3D12Core.h"
+#include "Graphics/GPUTaskManager.h"
 #include "Graphics/Resources/Material.h"
 #include "Mesh/Mesh.h"
 
@@ -105,7 +106,7 @@ namespace Relentless
 	struct DirtyTransformComponent
 	{
 		DirtyTransformComponent()
-			: Updates{ D3D12Core::GetNrOfBufferedFrames() },
+			: Updates{ GPUTaskManager::FRAMES_IN_FLIGHT },
 			  AdjustedWorldSpace{true},
 			  OnlyUpload{false}
 		{}
@@ -145,7 +146,7 @@ namespace Relentless
 	struct DirtyMeshRendererComponent
 	{
 		DirtyMeshRendererComponent()
-			: Updates{ D3D12Core::GetNrOfBufferedFrames() }
+			: Updates{ GPUTaskManager::FRAMES_IN_FLIGHT }
 		{}
 
 		uint32_t Updates;

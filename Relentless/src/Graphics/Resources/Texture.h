@@ -79,6 +79,7 @@ namespace Relentless
 		Texture2D& operator=(Texture2D&& otherTexture) noexcept;
 		[[nodiscard]] static std::shared_ptr<Texture2D> Create(const std::string& fileName, bool srgb = false) noexcept;
 		[[nodiscard]] static Texture2D LoadFromFile(const std::filesystem::path& filePath) noexcept;
+		[[nodiscard]] bool IsSRGB() const { return m_IsSRGB; }
 	private:
 		bool m_IsSRGB;
 	};

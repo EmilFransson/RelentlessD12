@@ -11,50 +11,35 @@
 #include "Utility/SerializeUtilities.h"
 #include "Utility/FilepathUtils.h"
 
+
+
 namespace Relentless
 {
-	struct Texture2DSerializationContext
-	{
-		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> StagingBuffers;
-		std::string Path = "?";
+	using namespace Microsoft::WRL;
+
+	std::unordered_map<AssetType, std::function<bool(const std::string&, AssetHandle&)>> DeserializerFuncs = {
+		{AssetType::Texture2D, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Texture2D>(path, outHandle); }},
+		{AssetType::Material, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Material>(path, outHandle); }},
+		{AssetType::Mesh, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Mesh>(path, outHandle); }}
 	};
 
-	struct Texture2DDeserializationContext
+	std::unordered_map<AssetType, std::function<bool(const std::string&, const AssetHandle&)>> SerializerFuncs = {
+		{AssetType::Texture2D, [](const std::string& path, const AssetHandle& assetHandle) { return Serializer::Serialize<Texture2D>(assetHandle, path); }},
+		{AssetType::Material, [](const std::string& path, const AssetHandle& assetHandle) { return Serializer::Serialize<Material>(assetHandle, path); }},
+		{AssetType::Mesh, [](const std::string& path, const AssetHandle& assetHandle) { return Serializer::Serialize<Mesh>(assetHandle, path); }}
+	};
+
+	struct Texture2DSerializationContext
 	{
-		Microsoft::WRL::ComPtr<ID3D12Resource> pUploadBuffer = nullptr;
+		std::string Path = "?";
 	};
 
 	struct Data
 	{
 		std::unordered_map<UUID, Texture2DSerializationContext> UUIDToStagingResources;
-		std::unordered_map<UUID, Texture2DDeserializationContext> UUIDToUploadBuffer;
-
-		std::unordered_set<std::string> FilesBeingDeserialized;
-		std::unordered_map<std::string, std::condition_variable> DeserializationConditionVariables;
-		std::mutex DeserializeMutex;
 	};
 
 	static Data s_Data;
-
-	static [[nodiscard]] bool IsFileCurrentlyBeingDeserialized(const std::string& filepath) noexcept
-	{
-
-		return s_Data.FilesBeingDeserialized.contains(filepath);
-	}
-
-	static void SetFileAsCurrentlyInDeserialization(const std::string& filepath) noexcept
-	{
-		RLS_ASSERT(!IsFileCurrentlyBeingDeserialized(filepath), "File already being deserialized - can't be set again.");
-
-		s_Data.FilesBeingDeserialized.insert(filepath);
-	}
-
-	static void RemoveFileFromCurrentlyInDeserialization(const std::string& filepath) noexcept
-	{
-		RLS_ASSERT(IsFileCurrentlyBeingDeserialized(filepath), "File is not currently being processed.");
-
-		s_Data.FilesBeingDeserialized.erase(filepath);
-	}
 
 	#pragma pack(push, 1)
 	struct MaterialData
@@ -93,18 +78,10 @@ namespace Relentless
 #pragma pack(pop)
 
 	template<>
-	bool Serializer::Serialize<Material>(const AssetHandle& assetHandle, const std::string& path) noexcept
+	bool Serializer::Serialize<Material>(const AssetHandle& assetHandle, const std::filesystem::path& filepath) noexcept
 	{
 		Material& material = AssetManager::Get<Material>(assetHandle);
-		RLS_ASSERT(material.GetName().length() <= 30, "[Serializer]: Unable to serialize full material name");
 		
-#if defined RLS_DEBUG
-		if (std::filesystem::path(path).has_extension())
-		{
-			RLS_ASSERT(std::filesystem::path(path).extension().string() == ASSET_EXTENSION, "Extension provided not supported.");
-		}
-#endif
-
 		MaterialData data{};
 		data.RenderMode = static_cast<uint8_t>(material.GetRenderMode());
 		data.AlbedoColor = material.m_AlbedoColor;
@@ -126,17 +103,7 @@ namespace Relentless
 		data.AmbientOcclusionTextureUUID = material.m_AmbientOcclusionTextureHandle.Uuid;
 		data.EmissionTextureUUID = material.m_EmissionTextureHandle.Uuid;
 
-		std::filesystem::path sanitizedPath = path;
-		if (!sanitizedPath.has_filename())
-		{
-			sanitizedPath.append(material.GetName());
-		}
-		if (!sanitizedPath.has_extension())
-		{
-			sanitizedPath += ASSET_EXTENSION;
-		}
-
-		std::ofstream outFile(sanitizedPath, std::ios::binary);
+		std::ofstream outFile(filepath, std::ios::binary);
 		RLS_ASSERT(outFile.is_open(), "[Serializer]: Failed to open output file.");
 
 		SerializeRassetHeader(assetHandle, outFile);
@@ -145,15 +112,6 @@ namespace Relentless
 		outFile.write(reinterpret_cast<char*>(&data), sizeof(data));
 
 		outFile.close();
-
-		if (!AssetManager::IsLoaded(sanitizedPath.string()))
-		{
-			AssetManager::Link(sanitizedPath.string(), assetHandle.Uuid);
-		}
-
-		//TODO: We map assets and do all shenanigans upon loading a file, not here when serializing ffs.
-		//However, we must *update* (not add new) the meta data as some things have been updated, such as last modification date and time.
-		//AssetRegistry::MapAssetToFilepath({ .Uuid = assetHandle.Uuid, .AssetType = AssetType::Material }, path);
 
 		return true;
 	}
@@ -175,101 +133,90 @@ namespace Relentless
 		}
 	}
 
-	void Serializer::FinalizeTexture2DSerialization(const AssetHandle& handle) noexcept
+	bool Serializer::Deserialize(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
 	{
-		using namespace Microsoft::WRL;
-
-		const Texture2D& texture = AssetManager::Get<Texture2D>(handle);
-		const ComPtr<ID3D12Resource> gpuTextureInterface = texture.GetInterface();
-
-		const D3D12_RESOURCE_DESC textureDescriptor = gpuTextureInterface->GetDesc();
-
-		const uint32_t nrOfMips = textureDescriptor.MipLevels;
-
-		std::ofstream outFile(s_Data.UUIDToStagingResources[handle.Uuid].Path, std::ios::binary);
-		if (!outFile.is_open())
+		const std::filesystem::path absolutePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, filepath);
+		if (!File::Exists(absolutePath))
 		{
-			RLS_CORE_ERROR("[Serializer]: Unable to serialize Texture2D to path '{0}'; Unable to open output file.", s_Data.UUIDToStagingResources[handle.Uuid].Path.c_str());
-			return;
-		}
-
-		SerializeRassetHeader(handle, outFile);
-		SerializeAssetTags(handle, outFile);
-
-		TextureHeader textureHeader
-		{
-			.BaseWidth = texture.GetWidth(),
-			.BaseHeight = texture.GetHeight(),
-			.NrOfMips = nrOfMips,
-			.Samples = texture.GetMultiSampleCount(),
-			.Format = texture.GetFormat(),
-			.IsSRGB = true
-		};
-		outFile.write(reinterpret_cast<char*>(&textureHeader), sizeof(textureHeader));
-
-		// Process each mip level
-		for (uint32_t mipLevel = 0; mipLevel < nrOfMips; ++mipLevel)
-		{
-			ComPtr<ID3D12Resource> pStagingResource = s_Data.UUIDToStagingResources[handle.Uuid].StagingBuffers[mipLevel];
-
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
-			uint64_t mipSize = 0u;
-
-			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
-			(
-				&textureDescriptor,
-				mipLevel, 
-				1u,
-				0u,
-				&mipFootprint,
-				nullptr,
-				nullptr,
-				&mipSize
-			));
-
-			// Map the staging resource
-			BYTE* pData = nullptr;
-			D3D12_RANGE readRange = { 0, mipSize };
-			DXCall(pStagingResource->Map(0, &readRange, reinterpret_cast<void**>(&pData)));
-
-			outFile.write(reinterpret_cast<const char*>(pData), mipSize);
-			
-			DXCall_STD(pStagingResource->Unmap(0, nullptr));
-		}
-		outFile.close();
-	}
-
-	template<>
-	bool Serializer::Serialize<Texture2D>(const AssetHandle& assetHandle, const std::string& path) noexcept
-	{
-		//Split into two parts, as a texture must be read back from GPU memory to CPU to be accessible,
-		//However, this requires waiting for the GPU to finish; one can't assume it is fast enough.
-
-		const std::filesystem::path absolutePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, path);
-
-		if (!assetHandle.IsValid())
-		{
-			RLS_CORE_ERROR("[Serializer]: Unable to serialize Texture2D to path '{0}'; asset handle is invalid.", absolutePath.string().c_str());
+			outHandle = NULL_HANDLE;
 			return false;
 		}
 
-		using namespace Microsoft::WRL;
+		const std::string extension = FilepathUtils::ExtractExtension(absolutePath);
+		if (extension != ASSET_EXTENSION)
+		{
+			outHandle = NULL_HANDLE;
+			return false;
+		}
 
+		const AssetType assetType = AssetRegistry::GetMetaData(absolutePath).AssetType;
+		return DeserializerFuncs[assetType](absolutePath.string(), outHandle);
+	}
+
+	std::pair<uint32_t, uint8_t> Serializer::DeserializeSignatureAndVersion(std::ifstream& ifstream) noexcept
+	{
+		RLS_ASSERT(ifstream.is_open(), "[Serializer]: File stream is invalid.");
+
+		uint32_t signature = 0u;
+		uint8_t version = 0u;
+		ifstream.read(reinterpret_cast<char*>(&signature), sizeof(signature));
+		ifstream.read(reinterpret_cast<char*>(&version), sizeof(version));
+		ifstream.seekg(std::ios_base::beg);
+		return { signature, version };
+	}
+
+	bool Serializer::Serialize(const std::filesystem::path& filepath, const AssetHandle& assetHandle) noexcept
+	{
+		if (!assetHandle.IsValid())
+			return false;
+
+		std::filesystem::path absolutePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, filepath);
+	
+		const bool hasExtension = FilepathUtils::HasExtension(filepath);
+		if (!hasExtension)
+			FilepathUtils::SetExtension(absolutePath, ASSET_EXTENSION);
+		
+		if (hasExtension)
+		{
+			const std::string extension = FilepathUtils::ExtractExtension(absolutePath);
+			if(extension != ASSET_EXTENSION)
+				return false;
+		}
+
+		if (!File::ExistsDir(absolutePath))
+			return false;
+
+		return SerializerFuncs[assetHandle.Type](absolutePath.string(), assetHandle);
+	}
+
+	template<>
+	bool Serializer::Serialize<Texture2D>(const AssetHandle& assetHandle, const std::filesystem::path& filepath) noexcept
+	{
 		Texture2D& texture = AssetManager::Get<Texture2D>(assetHandle);
 		const ComPtr<ID3D12Resource> gpuInterface = texture.GetInterface();
 		const D3D12_RESOURCE_DESC textureDescriptor = gpuInterface->GetDesc();
 
+		GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
+		ComPtr<ID3D12GraphicsCommandList4> pCopyCommandList = gpuTaskManager.RequestCommandList(CommandType::Copy);
+		ComPtr<ID3D12GraphicsCommandList4> pDirectCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
+
+		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		resourceTransitionBarrier.Transition.pResource = texture.GetInterface().Get();
+		resourceTransitionBarrier.Transition.StateBefore = texture.GetCurrentState();
+		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
+		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		DXCall_STD(pDirectCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+
+		gpuTaskManager.ExecuteCommandListBlocking(pDirectCommandList);
+
 		const uint32_t mipLevels = textureDescriptor.MipLevels;
-
-		//Transition resource to be eligible as readback/copy source:
-		RenderCommand::TransitionResource(texture, D3D12_RESOURCE_STATE_COPY_SOURCE);
-
 		Texture2DSerializationContext context = {};
-		context.Path = absolutePath.string();
+		context.Path = filepath.string();
+		std::vector<ComPtr<ID3D12Resource>> stagingResources(mipLevels);
 		for (uint32_t mipLevel = 0u; mipLevel < mipLevels; ++mipLevel)
 		{
-			ComPtr<ID3D12Resource> pStagingResource = nullptr;
-
 			D3D12_HEAP_PROPERTIES heapProperties = {};
 			heapProperties.Type = D3D12_HEAP_TYPE_READBACK;
 			heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -297,7 +244,7 @@ namespace Relentless
 				&bufferDesc,
 				D3D12_RESOURCE_STATE_COPY_DEST,
 				nullptr,
-				IID_PPV_ARGS(&pStagingResource)));
+				IID_PPV_ARGS(&stagingResources[mipLevel])));
 
 			// Copy the mip level to the staging resource
 			D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
@@ -306,46 +253,88 @@ namespace Relentless
 			srcLocation.SubresourceIndex = mipLevel;
 
 			D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
-			dstLocation.pResource = pStagingResource.Get();
+			dstLocation.pResource = stagingResources[mipLevel].Get();
 			dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 			dstLocation.PlacedFootprint = footprint;
 		
-			DXCall_STD(D3D12Core::GetCommandList()->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
-	
-			context.StagingBuffers.push_back(pStagingResource);
+			DXCall_STD(pCopyCommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
 		}
+		gpuTaskManager.ExecuteCommandListBlocking(pCopyCommandList);
 
-		RenderCommand::TransitionResource(texture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		ComPtr<ID3D12GraphicsCommandList4> pTransitionCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
+
+		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		resourceTransitionBarrier.Transition.pResource = texture.GetInterface().Get();
+		resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		DXCall_STD(pTransitionCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
 
 		s_Data.UUIDToStagingResources[assetHandle.Uuid] = context;
+		gpuTaskManager.ExecuteCommandListBlocking(pTransitionCommandList);
 
-		//Copying will take time, step two is deferred until the point where it is complete:
-		Application::Get().SubmitToMainThread([assetHandle]()
-			{
-				MasterRenderer::WaitAndSyncAllFramesInFlight();
-				FinalizeTexture2DSerialization(assetHandle);
-			});
+		//.........................................................//
+
+		std::ofstream outFile(s_Data.UUIDToStagingResources[assetHandle.Uuid].Path, std::ios::binary);
+		if (!outFile.is_open())
+		{
+			RLS_CORE_ERROR("[Serializer]: Unable to serialize Texture2D to path '{0}'; Unable to open output file.", s_Data.UUIDToStagingResources[assetHandle.Uuid].Path.c_str());
+			return false;
+		}
+
+		SerializeRassetHeader(assetHandle, outFile);
+		SerializeAssetTags(assetHandle, outFile);
+
+		TextureHeader textureHeader
+		{
+			.BaseWidth = texture.GetWidth(),
+			.BaseHeight = texture.GetHeight(),
+			.NrOfMips = mipLevels,
+			.Samples = texture.GetMultiSampleCount(),
+			.Format = texture.GetFormat(),
+			.IsSRGB = texture.IsSRGB()
+		};
+		outFile.write(reinterpret_cast<char*>(&textureHeader), sizeof(textureHeader));
+
+		// Process each mip level
+		for (uint32_t mipLevel = 0; mipLevel < mipLevels; ++mipLevel)
+		{
+			ComPtr<ID3D12Resource> pStagingResource = stagingResources[mipLevel];
+
+			D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
+			uint64_t mipSize = 0u;
+
+			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
+			(
+				&textureDescriptor,
+				mipLevel,
+				1u,
+				0u,
+				&mipFootprint,
+				nullptr,
+				nullptr,
+				&mipSize
+			));
+
+			// Map the staging resource
+			BYTE* pData = nullptr;
+			D3D12_RANGE readRange = { 0, mipSize };
+			DXCall(pStagingResource->Map(0, &readRange, reinterpret_cast<void**>(&pData)));
+
+			outFile.write(reinterpret_cast<const char*>(pData), mipSize);
+
+			DXCall_STD(pStagingResource->Unmap(0, nullptr));
+		}
+		outFile.close();
 
 		return true;
 	}
 
 	template<>
-	bool Serializer::Serialize<Mesh>(const AssetHandle& assetHandle, const std::string& directoryPath) noexcept
+	bool Serializer::Serialize<Mesh>(const AssetHandle& assetHandle, const std::filesystem::path& filepath) noexcept
 	{
-		const std::filesystem::path absolutePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, directoryPath);
-		std::ofstream outFile(absolutePath.string(), std::ios::binary);
-
-		if (!assetHandle.IsValid())
-		{
-			RLS_CORE_ERROR("[Serializer]: Unable to serialize mesh to path '{0}'; asset handle is invalid.", absolutePath.string().c_str());
-			return false;
-		}
-		
-		if (!outFile.is_open())
-		{
-			RLS_CORE_ERROR("[Serializer]: Unable to serialize mesh to path '{0}'; Unable to open output file.", absolutePath.string().c_str());
-			return false;
-		}
+		std::ofstream outFile(filepath, std::ios::binary);
 
 		SerializeRassetHeader(assetHandle, outFile);
 		SerializeAssetTags(assetHandle, outFile);
@@ -357,9 +346,12 @@ namespace Relentless
 		VertexBuffer::Specification& vertexBufferSpecification = pVertexBuffer->GetSpecification();
 		IndexBuffer::Specification& indexBufferSpecification = pIndexBuffer->GetSpecification();
 
+		const D3D12_RESOURCE_DESC vertexBufferResourceDescriptor = pVertexBuffer->GetInterface()->GetDesc();
+		const uint64_t vertexBufferSizeInBytes = vertexBufferResourceDescriptor.Width;
+
 		MeshDataHeader meshDataHeader
 		{
-			.VertexBufferSizeInBytes = vertexBufferSpecification.TotalSizeInBytes,
+			.VertexBufferSizeInBytes = vertexBufferSizeInBytes,
 			.IndexBufferSizeInBytes = indexBufferSpecification.TotalSizeInBytes,
 			.VertexCount = vertexBufferSpecification.NrOfVertices,
 			.IndexCount = indexBufferSpecification.NrOfIndices
@@ -368,62 +360,122 @@ namespace Relentless
 		//Write the mesh header:
 		outFile.write(reinterpret_cast<char*>(&meshDataHeader), sizeof(meshDataHeader));
 
-		// Write the vertex and index data
-		outFile.write(static_cast<char*>(vertexBufferSpecification.pBuffer), meshDataHeader.VertexBufferSizeInBytes);
-		outFile.write(static_cast<char*>(indexBufferSpecification.pBuffer), meshDataHeader.IndexBufferSizeInBytes);
+		{
+			Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffer = nullptr;
 
+			D3D12_RESOURCE_DESC readbackDesc = {};
+			readbackDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			readbackDesc.Alignment = 0;
+			readbackDesc.Width = vertexBufferSizeInBytes;
+			readbackDesc.Height = 1;
+			readbackDesc.DepthOrArraySize = 1;
+			readbackDesc.MipLevels = 1;
+			readbackDesc.Format = DXGI_FORMAT_UNKNOWN;
+			readbackDesc.SampleDesc.Count = 1;
+			readbackDesc.SampleDesc.Quality = 0;
+			readbackDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			readbackDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+			D3D12_HEAP_PROPERTIES readbackHeapProps = {};
+			readbackHeapProps.Type = D3D12_HEAP_TYPE_READBACK;
+			readbackHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			readbackHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+			// Create the readback buffer
+			DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
+				&readbackHeapProps,
+				D3D12_HEAP_FLAG_NONE,
+				&readbackDesc,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				nullptr,
+				IID_PPV_ARGS(&readbackBuffer)));
+
+			ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Copy);
+
+			DXCall_STD(copyCommandList->CopyResource(readbackBuffer.Get(), pVertexBuffer->GetInterface().Get()));
+
+			Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(copyCommandList);
+
+			UINT8* pData = nullptr;
+			DXCall(readbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pData)));
+
+			outFile.write(reinterpret_cast<char*>(pData), vertexBufferSizeInBytes);
+
+			DXCall_STD(readbackBuffer->Unmap(0, nullptr));
+		}
+		
+		const D3D12_RESOURCE_DESC indexBufferResourceDescriptor = pIndexBuffer->GetInterface()->GetDesc();
+		const uint64_t indexBufferSizeInBytes = indexBufferResourceDescriptor.Width;
+
+		{
+			Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffer = nullptr;
+
+			D3D12_RESOURCE_DESC readbackDesc = {};
+			readbackDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			readbackDesc.Alignment = 0;
+			readbackDesc.Width = indexBufferSizeInBytes;
+			readbackDesc.Height = 1;
+			readbackDesc.DepthOrArraySize = 1;
+			readbackDesc.MipLevels = 1;
+			readbackDesc.Format = DXGI_FORMAT_UNKNOWN;
+			readbackDesc.SampleDesc.Count = 1;
+			readbackDesc.SampleDesc.Quality = 0;
+			readbackDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			readbackDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+			D3D12_HEAP_PROPERTIES readbackHeapProps = {};
+			readbackHeapProps.Type = D3D12_HEAP_TYPE_READBACK;
+			readbackHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			readbackHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+			// Create the readback buffer
+			DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
+				&readbackHeapProps,
+				D3D12_HEAP_FLAG_NONE,
+				&readbackDesc,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				nullptr,
+				IID_PPV_ARGS(&readbackBuffer)));
+
+			ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Copy);
+
+			DXCall_STD(copyCommandList->CopyResource(readbackBuffer.Get(), pIndexBuffer->GetInterface().Get()));
+
+			Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(copyCommandList);
+
+			UINT8* pData = nullptr;
+			DXCall(readbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pData)));
+
+			outFile.write(reinterpret_cast<char*>(pData), indexBufferSizeInBytes);
+
+			DXCall_STD(readbackBuffer->Unmap(0, nullptr));
+		}
 		return true;
 	}
 
 	template<>
-	bool Serializer::Deserialize<Mesh>(const std::string& filepath, AssetHandle& outHandle) noexcept
+	bool Serializer::Deserialize<Mesh>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
 	{
 		if (!File::Exists(filepath))
 		{
-			RLS_CORE_ERROR("[Serializer]: Mesh file with path '{0}' does not exist.", filepath.c_str());
+			RLS_CORE_ERROR("[Serializer]: Mesh file with path '{0}' does not exist.", filepath.string().c_str());
 			outHandle = NULL_HANDLE;
 			return false;
 		}
 		if (FilepathUtils::ExtractExtension(filepath) != ASSET_EXTENSION)
 		{
-			RLS_CORE_ERROR("[Serializer]: File with path '{0}' not of correct rasset extension (.rasset).", filepath.c_str());
+			RLS_CORE_ERROR("[Serializer]: File with path '{0}' not of correct rasset extension (.rasset).", filepath.string().c_str());
 			outHandle = NULL_HANDLE;
 			return false;
 		}
 
-		bool fileIsAlreadyBeingDeserialized = false;
-		{
-			std::unique_lock<std::mutex> lock(s_Data.DeserializeMutex);
-			if (!IsFileCurrentlyBeingDeserialized(filepath))
-			{
-				SetFileAsCurrentlyInDeserialization(filepath);
-			}
-			else
-				fileIsAlreadyBeingDeserialized = true;
-		}
-
-		if (fileIsAlreadyBeingDeserialized)
-		{
-			std::unique_lock<std::mutex> lock(s_Data.DeserializeMutex);
-			s_Data.DeserializationConditionVariables[filepath].wait(lock, [&] { return AssetManager::IsLoaded(filepath); });
-
-			outHandle = AssetManager::GetHandleByPath(filepath);
-			return true;
-		}
-
-		if (AssetManager::IsLoaded(filepath))
-		{
-			outHandle = AssetManager::GetHandleByPath(filepath);
-			return true;
-		}
-	
 		std::ifstream inFile(filepath, std::ios::binary);
 		RLS_ASSERT(inFile.is_open(), "[Serializer]: Unable to open file with path '{0}'", filepath);
 
 		auto [signature, headerVersion] = DeserializeHeaderSignatureAndVersion(inFile);
-		if (signature != RassetHeader_1::Signature)
+		if (signature != RASSET_SIGNATURE)
 		{
-			RLS_CORE_ERROR("Unable to load asset file with path '{0}'. Asset is either invalid or corrupt (Signature invalid).", filepath.c_str());
+			RLS_CORE_ERROR("Unable to load asset file with path '{0}'. Asset is either invalid or corrupt (Signature invalid).", filepath.string().c_str());
 			outHandle = NULL_HANDLE;
 			return false;
 		}
@@ -445,7 +497,7 @@ namespace Relentless
 			break;
 		}
 		default:
-			RLS_CORE_ERROR("Unable to load asset file with path {0}. Asset version '{1}' does not support deserialization.", filepath.c_str(), std::to_string(headerVersion).c_str());
+			RLS_CORE_ERROR("Unable to load asset file with path {0}. Asset version '{1}' does not support deserialization.", filepath.string().c_str(), std::to_string(headerVersion).c_str());
 			outHandle = NULL_HANDLE;
 			return false;
 		}
@@ -482,99 +534,53 @@ namespace Relentless
 			.Name = name + std::string(" Index Buffer")
 		};
 	
-		AssetHandle meshHandle = AssetManager::CreateNew<Mesh>(uuid, filepath);
+		AssetHandle meshHandle = AssetManager::CreateNew<Mesh>(uuid, filepath.string());
 		Mesh& mesh = AssetManager::Get<Mesh>(meshHandle);
 		mesh.SetName(name);
 		mesh.SetVertexBuffer(std::make_unique<VertexBuffer>(&vbSpec));
 		mesh.SetIndexBuffer(std::make_unique<IndexBuffer>(&ibSpec));
 
 		RLS_CORE_INFO("[Serializer]: Loaded mesh '{0}' with GUID: {1}", name.c_str(), ConvertUUIDToString(uuid).c_str());
-	
-		RemoveFileFromCurrentlyInDeserialization(filepath);
-		s_Data.DeserializationConditionVariables[filepath].notify_all();
 		
 		outHandle = meshHandle;
 		return true;
 	}
 
 	template<>
-	bool Serializer::Deserialize<Texture2D>(const std::string& filepath, AssetHandle& outHandle) noexcept
+	bool Serializer::Deserialize<Texture2D>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
 	{
-		if (!File::Exists(filepath))
-		{
-			RLS_CORE_ERROR("[Serializer]: Texture file with path '{0}' does not exist.", filepath.c_str());
-			outHandle = AssetManager::GetInvalidTextureHandle();
-			return false;
-		}
-		if (FilepathUtils::ExtractExtension(filepath) != ASSET_EXTENSION)
-		{
-			RLS_CORE_ERROR("[Serializer]: File with path '{0}' not of correct rasset extension (.rasset).", filepath.c_str());
-			outHandle = AssetManager::GetInvalidTextureHandle();
-			return false;
-		}
-
-		bool fileIsAlreadyBeingDeserialized = false;
-		{
-			std::unique_lock<std::mutex> lock(s_Data.DeserializeMutex);
-			if (!IsFileCurrentlyBeingDeserialized(filepath))
-				SetFileAsCurrentlyInDeserialization(filepath);
-			else
-				fileIsAlreadyBeingDeserialized = true;
-		}
-
-		if (fileIsAlreadyBeingDeserialized)
-		{
-			std::unique_lock<std::mutex> lock(s_Data.DeserializeMutex);
-			s_Data.DeserializationConditionVariables[filepath].wait(lock, [&] { return AssetManager::IsLoaded(filepath); });
-
-			outHandle = AssetManager::GetHandleByPath(filepath);
-			return true;
-		}
-
-		if (AssetManager::IsLoaded(filepath))
-		{
-			{
-				std::unique_lock<std::mutex> lock(s_Data.DeserializeMutex);
-				if (IsFileCurrentlyBeingDeserialized(filepath))
-					RemoveFileFromCurrentlyInDeserialization(filepath);
-			}
-
-			outHandle = AssetManager::GetHandleByPath(filepath);
-			return true;
-		}
-
 		std::ifstream inFile(filepath, std::ios::binary);
 		RLS_ASSERT(inFile.is_open(), "[Serializer]: Unable to open file with path '{0}'", filepath);
 
-		auto [signature, headerVersion] = DeserializeHeaderSignatureAndVersion(inFile);
-		if (signature != RassetHeader_1::Signature)
-		{
-			RLS_CORE_ERROR("Unable to load asset file with path '{0}'. Asset is either invalid or corrupt.", filepath.c_str());
-			outHandle = AssetManager::GetInvalidTextureHandle();
-			return false;
-		}
+		//auto [signature, headerVersion] = DeserializeHeaderSignatureAndVersion(inFile);
+		//if (signature != LatestRassetHeaderVersion::Signature)
+		//{
+		//	RLS_CORE_ERROR("Unable to load asset file with path '{0}'. Asset is either invalid or corrupt.", filepath.c_str());
+		//	outHandle = NULL_HANDLE;
+		//	return false;
+		//}
 
 		AssetType type = AssetType::Undefined;
 		UUID uuid = NULL_UUID;
 		std::string name = "";
 		uint16_t tagsByteSize = 0u;
 
-		switch (headerVersion)
-		{
-		case 1:
-		{
+		//switch (headerVersion)
+		//{
+		//case 1:
+		//{
 			const RassetHeader_1 header = DeserializeRAssetHeaderVersion1(inFile);
 			type = header.AssetType;
 			uuid = header.UUID;
 			name = header.Name;
 			tagsByteSize = header.TagsByteSize;
-			break;
-		}
-		default:
-			RLS_CORE_ERROR("Unable to load asset file with path {0}. Asset version '{1}' does not support deserialization.", filepath.c_str(), std::to_string(headerVersion).c_str());
-			outHandle = AssetManager::GetInvalidTextureHandle();
-			return false;
-		}
+		//	break;
+		//}
+		//default:
+		//	RLS_CORE_ERROR("Unable to load asset file with path {0}. Asset version '{1}' does not support deserialization.", filepath.c_str(), std::to_string(headerVersion).c_str());
+		//	outHandle = AssetManager::GetInvalidTextureHandle();
+		//	return false;
+		//}
 
 		RLS_ASSERT(type == AssetType::Texture2D, "[Serializer]: Asset type mismatch encountered.");
 
@@ -695,7 +701,9 @@ namespace Relentless
 
 		DXCall_STD(pUploadBuffer->Unmap(0u, nullptr));
 
-		D3D12SingleCommand singleCommand = D3D12Core::GetCommandResource();
+		GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
+		ComPtr<ID3D12GraphicsCommandList4> pCopyCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
+		
 		for (uint32_t mipLevel = 0u; mipLevel < textureHeader.NrOfMips; ++mipLevel)
 		{
 			D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
@@ -708,7 +716,7 @@ namespace Relentless
 			dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 			dstLocation.SubresourceIndex = mipLevel;
 
-			DXCall_STD(singleCommand.m_pCommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
+			DXCall_STD(pCopyCommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
 		}
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDescriptor = {};
@@ -732,7 +740,7 @@ namespace Relentless
 		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-		DXCall_STD(singleCommand.m_pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+		DXCall_STD(pCopyCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
 
 		specification.pResource = pTextureResource;
 		specification.Name = name;
@@ -743,78 +751,24 @@ namespace Relentless
 		specification.IsSRGB = textureHeader.IsSRGB;
 		specification.SampleCount = textureHeader.Samples;
 		
-		s_Data.UUIDToUploadBuffer[uuid].pUploadBuffer = pUploadBuffer;
-		
-		const AssetHandle handle = AssetManager::CreateNew<Texture2D>(specification, uuid, filepath);
+		const AssetHandle handle = AssetManager::CreateNew<Texture2D>(specification, uuid, filepath.string());
 
-		D3D12Core::SubmitCommandResource(std::move(singleCommand));
-		AssetManager::SetInvalid(filepath);
-		Application::Get().SubmitToMainThread([handle, filepath]()
-			{
-				MasterRenderer::ExecuteAllSingleCommands();
-				MasterRenderer::WaitAndSyncAllFramesInFlight();
-				s_Data.UUIDToUploadBuffer.erase(handle.Uuid); 
-				AssetManager::SetValid(filepath);
-			});
-		
-		{
-			std::unique_lock<std::mutex> lock(s_Data.DeserializeMutex);
-			RemoveFileFromCurrentlyInDeserialization(filepath);
-		}
-
-		s_Data.DeserializationConditionVariables[filepath].notify_all();
+		gpuTaskManager.ExecuteCommandListBlocking(pCopyCommandList);
 
 		outHandle = handle;
 		return true;
 	}
 
 	template<>
-	bool Serializer::Deserialize<Material>(const std::string& filepath, AssetHandle& outHandle) noexcept
+	bool Serializer::Deserialize<Material>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
 	{
-		if (!File::Exists(filepath))
-		{
-			RLS_CORE_ERROR("[Serializer]: Material file with path '{0}' does not exist.", filepath.c_str());
-			outHandle = AssetManager::GetInvalidMaterialHandle();
-			return false;
-		}
-		if (FilepathUtils::ExtractExtension(filepath) != ASSET_EXTENSION)
-		{
-			RLS_CORE_ERROR("[Serializer]: File with path '{0}' not of correct rasset extension (.rasset).", filepath.c_str());
-			outHandle = AssetManager::GetInvalidMaterialHandle();
-			return false;
-		}
-
-		bool fileIsAlreadyBeingDeserialized = false;
-		{
-			std::unique_lock<std::mutex> lock(s_Data.DeserializeMutex);
-			if (!IsFileCurrentlyBeingDeserialized(filepath))
-				SetFileAsCurrentlyInDeserialization(filepath);
-			else
-				fileIsAlreadyBeingDeserialized = true;
-		}
-
-		if (fileIsAlreadyBeingDeserialized)
-		{
-			std::unique_lock<std::mutex> lock(s_Data.DeserializeMutex);
-			s_Data.DeserializationConditionVariables[filepath].wait(lock, [&] { return AssetManager::IsLoaded(filepath); });
-
-			outHandle = AssetManager::GetHandleByPath(filepath);
-			return true;
-		}
-
-		if (AssetManager::IsLoaded(filepath))
-		{
-			outHandle = AssetManager::GetHandleByPath(filepath);
-			return true;
-		}
-
 		std::ifstream inFile(filepath, std::ios_base::binary);
 		RLS_ASSERT(inFile.is_open(), "[Serializer]: Unable to open material file.");
 
 		auto [signature, headerVersion] = DeserializeHeaderSignatureAndVersion(inFile);
-		if (signature != RassetHeader_1::Signature)
+		if (signature != RASSET_SIGNATURE)
 		{
-			RLS_CORE_ERROR("Unable to load asset file with path {0}. Asset is either invalid or corrupt.", filepath.c_str());
+			RLS_CORE_ERROR("Unable to load asset file with path {0}. Asset is either invalid or corrupt.", filepath.string().c_str());
 			outHandle = AssetManager::GetInvalidMaterialHandle();
 			return false;
 		}
@@ -836,7 +790,7 @@ namespace Relentless
 			break;
 		}
 		default:
-			RLS_CORE_ERROR("Unable to load asset file with path {0}. Asset version '{1}' does not support deserialization.", filepath.c_str(), std::to_string(headerVersion).c_str());
+			RLS_CORE_ERROR("Unable to load asset file with path {0}. Asset version '{1}' does not support deserialization.", filepath.string().c_str(), std::to_string(headerVersion).c_str());
 			outHandle = AssetManager::GetInvalidMaterialHandle();
 			return false;
 		}
@@ -849,7 +803,7 @@ namespace Relentless
 		MaterialData data{};
 		inFile.read(reinterpret_cast<char*>(&data), sizeof(data));
 
-		AssetHandle materialHandle = AssetManager::CreateNew<Material>(uuid, filepath);
+		AssetHandle materialHandle = AssetManager::CreateNew<Material>(uuid, filepath.string());
 		Material& material = AssetManager::Get<Material>(materialHandle);
 		material.m_Name = name;
 		material.m_RenderMode = static_cast<RenderMode>(data.RenderMode);
@@ -866,82 +820,76 @@ namespace Relentless
 		
 		if (data.AlbedoTextureUUID != NULL_UUID)
 		{
-			const std::string path = AssetRegistry::GetFilepath(data.AlbedoTextureUUID);
+			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.AlbedoTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(path, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Albedo texture with path '{0}' for material '{1}' is missing or invalid.", path.c_str(), name.c_str());
+			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Albedo texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
 			material.SetAlbedoTexture(textureHandle);
 		}
 
 		if (data.MetallicTextureUUID != NULL_UUID)
 		{
-			const std::string path = AssetRegistry::GetFilepath(data.MetallicTextureUUID);
+			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.MetallicTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(path, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Metallic texture with path '{0}' for material '{1}' is missing or invalid.", path.c_str(), name.c_str());
+			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Metallic texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 			
 			material.SetMetallicTexture(textureHandle);
 		}
 
 		if (data.RoughnessTextureUUID != NULL_UUID)
 		{
-			const std::string path = AssetRegistry::GetFilepath(data.RoughnessTextureUUID);
+			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.RoughnessTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(path, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Roughness texture with path '{0}' for material '{1}' is missing or invalid.", path.c_str(), name.c_str());
+			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Roughness texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
 			material.SetRoughnessTexture(textureHandle);
 		}
 
 		if (data.NormalMapUUID != NULL_UUID)
 		{
-			const std::string path = AssetRegistry::GetFilepath(data.NormalMapUUID);
+			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.NormalMapUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(path, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Normal map with path '{0}' for material '{1}' is missing or invalid.", path.c_str(), name.c_str());
+			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Normal map with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
 			material.SetNormalMap(textureHandle);
 		}
 
 		if (data.HeightMapUUID != NULL_UUID)
 		{
-			const std::string path = AssetRegistry::GetFilepath(data.HeightMapUUID);
+			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.HeightMapUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(path, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Height map with path '{0}' for material '{1}' is missing or invalid.", path.c_str(), name.c_str());
+			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Height map with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
 			material.SetHeightMap(textureHandle);
 		}
 
 		if (data.AmbientOcclusionTextureUUID != NULL_UUID)
 		{
-			const std::string path = AssetRegistry::GetFilepath(data.AmbientOcclusionTextureUUID);
+			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.AmbientOcclusionTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(path, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Ambient Occlusion texture with path '{0}' for material '{1}' is missing or invalid.", path.c_str(), name.c_str());
+			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Ambient Occlusion texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
 			material.SetAmbientOcclusionTexture(textureHandle);
 		}
 
 		if (data.EmissionTextureUUID != NULL_UUID)
 		{
-			const std::string path = AssetRegistry::GetFilepath(data.EmissionTextureUUID);
+			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.EmissionTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(path, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Emission texture with path '{0}' for material '{1}' is missing or invalid.", path.c_str(), name.c_str());
+			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Emission texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
 			material.SetEmissionTexture(textureHandle);
 		}
 
 		RLS_CORE_INFO("Deserialized material \"{0}\" with GUID: {1}", material.GetName(), ConvertUUIDToString(uuid));
 
-		{
-			std::unique_lock<std::mutex> lock(s_Data.DeserializeMutex);
-			RemoveFileFromCurrentlyInDeserialization(filepath);
-		}
-		s_Data.DeserializationConditionVariables[filepath].notify_all();
-		
 		outHandle = materialHandle;
 		return true;
 	}
@@ -950,12 +898,41 @@ namespace Relentless
 	{
 		RLS_ASSERT(ifstream.is_open(), "File stream is not open."); 
 
+		constexpr uint32_t Signature = 'R' << 24 | 'A' << 16 | 'S' << 8 | 'S';
+
 		RassetHeader_1 rassetHeader = {};
 		ifstream.read(reinterpret_cast<char*>(&rassetHeader), sizeof(RassetHeader_1));
-		RLS_ASSERT(rassetHeader.Signature == RassetHeader_1::Signature, "RAsset header is invalid or corrupt");
+		//RLS_ASSERT(rassetHeader.Signature == Signature, "RAsset header is invalid or corrupt");
 		RLS_ASSERT(rassetHeader.Version == 1, "Rasset Header version is not 1 (version {0} detected)", rassetHeader.Version);
 
 		return rassetHeader;
+	}
+
+	std::vector<std::string> Serializer::DeserializeAssetTags(std::ifstream& ifstream, uint32_t tagsByteSize) noexcept
+	{
+		if (tagsByteSize == 0)
+			return {};
+
+		RLS_ASSERT(ifstream.is_open(), "File stream is not open.");
+
+		std::vector<char> buffer(tagsByteSize);
+		ifstream.read(buffer.data(), tagsByteSize);
+
+		std::string data(buffer.begin(), buffer.end());
+
+		std::vector<std::string> tags;
+		std::istringstream iss(data);
+		std::string tag;
+
+		while (std::getline(iss, tag, ';')) 
+		{
+			if (!tag.empty()) 
+			{
+				tags.push_back(tag);
+			}
+		}
+
+		return tags;
 	}
 
 	std::pair<uint32_t, uint8_t> Serializer::DeserializeHeaderSignatureAndVersion(std::ifstream& ifstream) noexcept
@@ -987,19 +964,15 @@ namespace Relentless
 		strcpy_s(rassetHeader.Name, Rules::Limits::ASSET_NAME_LENGTH, metaData.Name.c_str());
 		strcpy_s(rassetHeader.SourcePath, Rules::Limits::ASSET_SOURCE_PATH_LENGTH, metaData.SourcePath.string().c_str());
 		rassetHeader.AssetFlags = metaData.AssetFlags;
-		
-		auto now = std::chrono::system_clock::now();
-		auto duration = now.time_since_epoch();
-		auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-		rassetHeader.ModificationDateAndTime = static_cast<uint64_t>(millis);
+		rassetHeader.ModificationDateAndTime = metaData.ModificationDateAndTime;
 		
 		rassetHeader.TagsByteSize = 0u;
 		for (auto& tag : metaData.Tags)
 		{
-			rassetHeader.TagsByteSize += (tag.length() * sizeof(char)) + 1; // inkludes delimiter
+			rassetHeader.TagsByteSize += (tag.length() * sizeof(char)) + 1; // includes delimiter
 		}
 
-		outFileStream.write(reinterpret_cast<char*>(&rassetHeader), sizeof(rassetHeader));
+		outFileStream.write(reinterpret_cast<char*>(&rassetHeader), sizeof(LatestRassetHeaderVersion));
 	}
 
 

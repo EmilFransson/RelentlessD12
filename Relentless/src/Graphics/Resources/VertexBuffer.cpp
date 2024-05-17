@@ -2,6 +2,7 @@
 #include "../../Mesh/Vertex.h"
 #include "../MemoryManager.h"
 #include "../D3D12Core.h"
+#include "Core/Application.h"
 namespace Relentless
 {
 	VertexBuffer::VertexBuffer(const Specification* specification) noexcept
@@ -48,8 +49,23 @@ namespace Relentless
 		));
 
 		auto& pUploadBuffer = MemoryManager::Get().GetUploadBuffer();
-		pUploadBuffer->Copy(resourceDescriptor.Width, specification->pBuffer, this, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		pUploadBuffer->Copy(resourceDescriptor.Width, m_Specification.pBuffer, this, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		//pUploadBuffer->Upload();
+		//Application::Get().GetGPUTaskManager().Flush();
 
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(m_Name).c_str());
+	}
+
+	VertexBuffer::VertexBuffer(uint32_t nrOfvertices, uint32_t TotalSizeInBytes, uint32_t stride, Microsoft::WRL::ComPtr<ID3D12Resource> pResource, const std::string& name, void* pBuffer) noexcept
+	{
+		m_Specification.Name = name;
+		m_Specification.NrOfVertices = nrOfvertices;
+		m_Specification.pBuffer = pBuffer;
+		m_Specification.TotalSizeInBytes = TotalSizeInBytes;
+		m_pResource = pResource;
+		m_Specification.Stride = stride;
+		m_CurrentState = D3D12_RESOURCE_STATE_COPY_SOURCE;
+
+		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(name).c_str());
 	}
 }

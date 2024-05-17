@@ -25,7 +25,7 @@ namespace Relentless
 		[[nodiscard]] const RenderPassSpecification& GetDescriptor() const noexcept { return m_RenderPassSpecification; }
 		[[nodiscard]] const std::shared_ptr<Pipeline>& GetPipeline() const noexcept { return m_RenderPassSpecification.RenderPipeline; }
 		[[nodiscard]] uint32_t GetInputSlot(std::string_view inputName) noexcept;
-		void Upload(std::string_view inputName, void* pData) noexcept;
+		void Upload(std::string_view inputName, void* pData, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept;
 		[[nodiscard]] std::shared_ptr<RenderTexture> GetOutput(const uint32_t index) const noexcept { return m_RenderPassSpecification.RenderPipeline->GetFrameBuffer()->GetOutput(index); }
 		[[nodiscard]] std::shared_ptr<DepthStencil> GetDepthOutput() const noexcept { return m_RenderPassSpecification.RenderPipeline->GetFrameBuffer()->GetDepthOutput(); }
 		[[nodiscard]] const std::vector<D3D12_RENDER_PASS_RENDER_TARGET_DESC>& GetAllOutputs() const noexcept { return m_RenderTargets; }

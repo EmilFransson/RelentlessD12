@@ -18,8 +18,8 @@ namespace Relentless
 		m_pDSVDescriptorHeap = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 100, false));
 		m_pShaderBindablesDescriptorHeapNV = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, false));
 		m_pShaderBindablesDescriptorHeap = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, true));
-		m_pDeferredFreeLists = std::move(std::unique_ptr<std::vector<DescriptorHandle>[]>(RLS_NEW std::vector<DescriptorHandle>[D3D12Core::GetNrOfBufferedFrames()]));
-		m_pDeferredFreeListsResources = std::move(std::unique_ptr<std::vector<std::shared_ptr<IResource>>[]>(RLS_NEW std::vector<std::shared_ptr<IResource>>[D3D12Core::GetNrOfBufferedFrames()]));
+		m_pDeferredFreeLists = std::move(std::unique_ptr<std::vector<DescriptorHandle>[]>(RLS_NEW std::vector<DescriptorHandle>[GPUTaskManager::FRAMES_IN_FLIGHT]));
+		m_pDeferredFreeListsResources = std::move(std::unique_ptr<std::vector<std::shared_ptr<IResource>>[]>(RLS_NEW std::vector<std::shared_ptr<IResource>>[GPUTaskManager::FRAMES_IN_FLIGHT]));
 		m_pUploadBuffer = std::move(std::make_unique<UploadBuffer>(700'000'000, "Main Upload Buffer"));
 	}
 
@@ -84,14 +84,14 @@ namespace Relentless
 
 	void MemoryManager::DestroyDescriptorHandle(const DescriptorHandle& descriptorHandle) noexcept
 	{
-		const uint32_t frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		m_pDeferredFreeLists[frameIndex].emplace_back(descriptorHandle);
 	}
 
 	void MemoryManager::DestroyResource(std::shared_ptr<IResource> pResource) noexcept
 	{
-		const uint32_t frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		
 		m_pDeferredFreeListsResources[frameIndex].emplace_back(std::move(pResource));
 	}
@@ -100,7 +100,7 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
-		const uint32_t frameIndex = MasterRenderer::GetCurrentFrameIndex();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		
 		if (!m_pDeferredFreeLists[frameIndex].empty())
 		{
@@ -150,7 +150,7 @@ namespace Relentless
 		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), constantBuffer.m_SizeInBytes);
 		DXCall_STD(constantBuffer.GetInterface()->Unmap(0u, nullptr));
 
-		auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+		auto frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		
 		auto dstHandle = constantBuffer.m_VisibleHandles[frameIndex].CPUHandle;
 		auto srcHandle = constantBuffer.m_NonVisibleHandle.CPUHandle;
@@ -168,7 +168,8 @@ namespace Relentless
 		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), m_ConstantBuffers[id]->m_SizeInBytes);
 		DXCall_STD(m_ConstantBuffers[id]->GetInterface()->Unmap(0u, nullptr));
 
-		auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+		auto frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		//auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
 
 		auto dstHandle = m_ConstantBuffers[id]->m_VisibleHandles[frameIndex].CPUHandle;
 		auto srcHandle = m_ConstantBuffers[id]->m_NonVisibleHandle.CPUHandle;
@@ -189,7 +190,7 @@ namespace Relentless
 		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), structuredBuffer.m_ByteStride);
 		DXCall_STD(structuredBuffer.GetInterface()->Unmap(0u, nullptr));
 
-		auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+		auto frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		
 		auto dstHandle = structuredBuffer.m_VisibleHandles[frameIndex].CPUHandle;
 		auto srcHandle = structuredBuffer.m_NonVisibleHandle.CPUHandle;
@@ -238,7 +239,7 @@ namespace Relentless
 
 	uint32_t MemoryManager::GetCBDescriptorIndex(const size_t constantBufferHandle) noexcept
 	{
-		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
+		auto frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		return GetConstantBuffer(constantBufferHandle)->m_VisibleHandles[frameIndex].Index;
 	}
 
@@ -256,11 +257,11 @@ namespace Relentless
 	{
 		if (m_DirtyMaterials.contains(handle.Uuid))
 		{
-			m_DirtyMaterials[handle.Uuid].second = D3D12Core::GetNrOfBufferedFrames();
+			m_DirtyMaterials[handle.Uuid].second = GPUTaskManager::FRAMES_IN_FLIGHT;
 		}
 		else
 		{
-			m_DirtyMaterials[handle.Uuid] = {handle, D3D12Core::GetNrOfBufferedFrames()};
+			m_DirtyMaterials[handle.Uuid] = {handle, GPUTaskManager::FRAMES_IN_FLIGHT};
 		}
 	}
 

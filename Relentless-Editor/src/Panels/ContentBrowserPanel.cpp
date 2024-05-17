@@ -6,29 +6,14 @@ namespace Relentless
 
 	ContentBrowserPanel::ContentBrowserPanel() noexcept
 	{
-		bool succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\directoryicon.rasset", m_DirectoryTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'directoryicon.rasset'");
-
-		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\directoryiconopen2.rasset", m_OpenDirectoryTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'directoryiconopen2.rasset'");
-
-		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.rasset", m_SceneTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'SceneThumbnail.rasset'");
-
-		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.rasset", m_MaterialTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'MaterialThumbnail.rasset'");
-		
-		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\meshthumbnail.rasset", m_MeshTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'meshthumbnail.rasset'");
-
-		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\importicon.rasset", m_ImportIconTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'importicon.rasset'");
-
-		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\filtericon.rasset", m_FilterIconTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'filtericon.rasset'");
-
-		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", m_DownArrowIconTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'arrowdownicon.rasset'");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\directoryicon.rasset", m_DirectoryTextureHandle), "Core engine icon missing.");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\directoryiconopen2.rasset", m_OpenDirectoryTextureHandle), "Core engine icon missing.");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.rasset", m_SceneTextureHandle), "Core engine icon missing.");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.rasset", m_MaterialTextureHandle), "Core engine icon missing.");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MeshThumbnail.rasset", m_MeshTextureHandle), "Core engine icon missing.");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\importicon.rasset", m_ImportIconTextureHandle), "Core engine icon missing.");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\filtericon.rasset", m_FilterIconTextureHandle), "Core engine icon missing.");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", m_DownArrowIconTextureHandle), "Core engine icon missing.");
 
 		editorAssetDirectory = editorAssetDirectory.substr(0u, editorAssetDirectory.size() - 1);
 		m_SelectedHierarchyDirectories.push_back(editorAssetDirectory);
@@ -720,8 +705,6 @@ namespace Relentless
 					}
 					continue;
 				}
-				else if (!AssetManager::IsValid(entryPath))
-					continue;
 
 				const ImVec2 thumbnailMinPoint(ImGui::GetCursorScreenPos());
 				const ImVec2 thumbnailMaxPoint(thumbnailMinPoint.x + m_ThumbnailWidth, thumbnailMinPoint.y + m_ThumbnailHeight);
@@ -1302,11 +1285,13 @@ namespace Relentless
 						
 						if (extension == ".jpg" || extension == ".png" || extension == ".tga")
 						{
-							return AssetManager::LoadFromFile<Texture2D>(filepath, m_SelectedHierarchyDirectories[0]);
+							RLS_ASSERT(false, "TODO");
+							//return AssetManager::LoadFromFile<Texture2D>(filepath, m_SelectedHierarchyDirectories[0]);
 						}
 						else if (extension == ".fbx" || extension == ".obj" || extension == ".gltf" || extension == ".glb")
 						{
-							AssetManager::LoadFromFile<Mesh>(filepath, m_SelectedHierarchyDirectories[0]);
+							RLS_ASSERT(false, "TODO");
+							//AssetManager::LoadFromFile<Mesh>(filepath, m_SelectedHierarchyDirectories[0]);
 						}
 		
 						return {};

@@ -1,8 +1,3 @@
-struct Vertex
-{
-    float3 inPositionLS;
-};
-
 struct VS_OUT
 {
     float4 outPositionCS	: SV_Position;
@@ -19,6 +14,11 @@ struct BatchData
 struct VPConstantBuffer
 {
     matrix VPMatrix;
+};
+
+struct ViewProjectionBufferIndex
+{
+    uint Index;
 };
 
 struct Transform
@@ -39,23 +39,27 @@ struct InstanceDataSBIndex
     uint Index;
 };
 
-ConstantBuffer<VPConstantBuffer> vpConstantBuffer : register(b0, space0);
+ConstantBuffer<ViewProjectionBufferIndex> vpConstantBuffer : register(b0, space0);
 ConstantBuffer<BatchData> batchData : register(b2, space0);
 ConstantBuffer<InstanceDataSBIndex> instanceDataSBIndex : register(b3, space0);
-
-StructuredBuffer<Vertex> vertices : register(t0, space0);
 
 VS_OUT vs_main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
 {
     VS_OUT vsOut = (VS_OUT)0;
-    Vertex input = vertices[vertexID];
+  
+    float3 vertices[2] =
+    {
+        float3(-0.5f, 0.0f, 0.0f),
+        float3(0.5f, 0.0f, 0.0f)
+    };
+    
+    float3 inputPosition = vertices[vertexID];
 
-    //Instancing shenaningans:
     StructuredBuffer<InstanceData> instanceDataSB = ResourceDescriptorHeap[instanceDataSBIndex.Index];
     InstanceData instanceData = instanceDataSB[instanceID];
-    input.inPositionLS += instanceData.Position;
-
-    matrix worldMatrix;
+    inputPosition += instanceData.Position;
+    
+    matrix worldMatrix = (matrix)0;
     if (instanceID > 399)
     {
         ConstantBuffer<Transform> transform = ResourceDescriptorHeap[batchData.worldMatrixIndex2];
@@ -67,9 +71,11 @@ VS_OUT vs_main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
         worldMatrix = transform.worldMatrix;
     }
 
-    matrix wvp = mul(vpConstantBuffer.VPMatrix, worldMatrix);
-    vsOut.outPositionCS = mul(wvp, float4(input.inPositionLS, 1.0f));
-    vsOut.outPositionWS = mul(worldMatrix, float4(input.inPositionLS, 1.0f)).xyz;
+    ConstantBuffer<VPConstantBuffer> vp = ResourceDescriptorHeap[vpConstantBuffer.Index];
+    
+    matrix wvp = mul(vp.VPMatrix, worldMatrix);
+    vsOut.outPositionCS = mul(wvp, float4(inputPosition, 1.0f));
+    vsOut.outPositionWS = mul(worldMatrix, float4(inputPosition, 1.0f)).xyz;
     vsOut.outColor = instanceData.Color;
 
     return vsOut;

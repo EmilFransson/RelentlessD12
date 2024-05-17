@@ -6,6 +6,8 @@
 #include "../../../vendor/includes/DirectXTK/WICTextureLoader.h"
 #include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
 
+#include "Core/Application.h"
+
 namespace Relentless
 {
 	Texture::Texture(const RenderTextureSpecification& textureSpecification, const std::string& name) noexcept
@@ -167,7 +169,7 @@ namespace Relentless
 		);
 		
 		// Upload the resources to the GPU.
-		 auto uploadResourcesFinished = resourceUpload.End(D3D12Core::GetCommandQueue().Get());
+		 auto uploadResourcesFinished = resourceUpload.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
 
 		// Wait for the upload thread to terminate
 		uploadResourcesFinished.wait();
@@ -211,6 +213,7 @@ namespace Relentless
 		m_MipCount = specification.MipCount;
 		m_Samples = specification.SampleCount;
 		m_Format = specification.Format;
+		m_CurrentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring("[Texture2D] - " + m_Name).c_str());
 		RLS_CORE_INFO("Created Texture2D '{0}' of size [width, height]=[{1},{2}]", m_Name, m_Width, m_Height);

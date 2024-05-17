@@ -247,14 +247,9 @@ namespace Relentless
 
 	void UI::Initialize() noexcept
 	{
-		bool succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\searchicon.rasset", s_GlobalData.SearchIconTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'searchicon.rasset'");
-
-		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\cancelicon.rasset", s_GlobalData.CancelIconTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'cancelicon.rasset'");
-
-		succeeded = Serializer::Deserialize<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", s_GlobalData.ArrowDownIconTextureHandle);
-		RLS_VERIFY(succeeded, "Failed to deserialize Texture2D engine asset 'arrowdownicon.rasset'");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\searchicon.rasset", s_GlobalData.SearchIconTextureHandle), "Core engine icon missing.");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\cancelicon.rasset", s_GlobalData.CancelIconTextureHandle), "Core engine icon missing.");
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", s_GlobalData.ArrowDownIconTextureHandle), "Core engine icon missing.");
 	}
 
 	std::string UI::SearchBar(const char* uniqueID, const char* hintText, bool displaySearchHistory, float width) noexcept

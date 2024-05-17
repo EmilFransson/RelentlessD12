@@ -50,131 +50,131 @@ namespace Relentless
 	void Renderer3D::Initialize() noexcept
 	{
 		//Fence:
-		s_RendererData.pFenceValues = std::make_unique<uint64_t[]>(D3D12Core::GetNrOfBufferedFrames());
-		DXCall(D3D12Core::GetDevice()->CreateFence(0u, D3D12_FENCE_FLAGS::D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&s_RendererData.pFence)));
-		s_RendererData.pFenceValues[s_RendererData.currentFrameIndex]++;
-		s_RendererData.fenceEvent = ::CreateEvent(nullptr, false, false, nullptr);
-		RLS_ASSERT(s_RendererData.fenceEvent, "Fence event creation failed.");
-
-		//Viewport:
-		s_RendererData.viewPort.TopLeftX = 0.0f;
-		s_RendererData.viewPort.TopLeftY = 0.0f;
-		s_RendererData.viewPort.Width = 800.0f;
-		s_RendererData.viewPort.Height = 600.0f;
-		s_RendererData.viewPort.MinDepth = 0.0f;
-		s_RendererData.viewPort.MaxDepth = 1.0f;
-		
-		//ScissorRect:
-		s_RendererData.scissorRect.left = 0u;
-		s_RendererData.scissorRect.top = 0u;
-		s_RendererData.scissorRect.right = static_cast<LONG>(s_RendererData.viewPort.Width);
-		s_RendererData.scissorRect.bottom = static_cast<LONG>(s_RendererData.viewPort.Height);
-
-		s_RendererData.m_ShaderLibrary.Initialize();
-		
-		CreateMainRootSignature();
-		CreatePickingRootSignature();
-
-		//MSAA Geometry:
-		//{
-		//	FrameBufferSpecification frameBufferSpecification{};
-		//	frameBufferSpecification.DebugName = "Main MSAA Framebuffer";
-		//	frameBufferSpecification.Attachments = { TextureFormat::RGBA32F, TextureFormat::Depth };
-		//	frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
-		//	frameBufferSpecification.MSAA = { true, 8u, 0u };
-		//	frameBufferSpecification.Transfer = true;
+		//s_RendererData.pFenceValues = std::make_unique<uint64_t[]>(GPUTaskManager::FRAMES_IN_FLIGHT);
+		//DXCall(D3D12Core::GetDevice()->CreateFence(0u, D3D12_FENCE_FLAGS::D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&s_RendererData.pFence)));
+		//s_RendererData.pFenceValues[s_RendererData.currentFrameIndex]++;
+		//s_RendererData.fenceEvent = ::CreateEvent(nullptr, false, false, nullptr);
+		//RLS_ASSERT(s_RendererData.fenceEvent, "Fence event creation failed.");
 		//
-		//	PipelineSpecification pipelineSpecification{};
-		//	pipelineSpecification.DebugName = "Main Pipeline";
-		//	pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("VertexShader");
-		//	pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PixelShader");
-		//	pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+		////Viewport:
+		//s_RendererData.viewPort.TopLeftX = 0.0f;
+		//s_RendererData.viewPort.TopLeftY = 0.0f;
+		//s_RendererData.viewPort.Width = 800.0f;
+		//s_RendererData.viewPort.Height = 600.0f;
+		//s_RendererData.viewPort.MinDepth = 0.0f;
+		//s_RendererData.viewPort.MaxDepth = 1.0f;
 		//
-		//	s_RendererData.MainPipeline = Pipeline::Create(pipelineSpecification);
-		//}
+		////ScissorRect:
+		//s_RendererData.scissorRect.left = 0u;
+		//s_RendererData.scissorRect.top = 0u;
+		//s_RendererData.scissorRect.right = static_cast<LONG>(s_RendererData.viewPort.Width);
+		//s_RendererData.scissorRect.bottom = static_cast<LONG>(s_RendererData.viewPort.Height);
 		//
-		////Picking:
-		//{
-		//	FrameBufferSpecification frameBufferSpecification{};
-		//	frameBufferSpecification.DebugName = "Picking Framebuffer";
-		//	frameBufferSpecification.Attachments = { TextureFormat::R32UINT, TextureFormat::Depth };
-		//	static constexpr float clearVal = static_cast<float>(NULL_ENTITY);
-		//	frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
-		//	frameBufferSpecification.IsSRGB = false;
+		//s_RendererData.m_ShaderLibrary.Initialize();
 		//
-		//	PipelineSpecification pipelineSpecification{};
-		//	pipelineSpecification.DebugName = "Picking Pipeline";
-		//	pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("VertexShader");
-		//	pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PickingPixelShader");
-		//	pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+		//CreateMainRootSignature();
+		//CreatePickingRootSignature();
 		//
-		//	s_RendererData.PickingPipeline = Pipeline::Create(pipelineSpecification);
-		//}
-		//
-		////Composite
-		//{
-		//	FrameBufferSpecification frameBufferSpecification{};
-		//	frameBufferSpecification.DebugName = "Composite Framebuffer";
-		//	frameBufferSpecification.Attachments = { TextureFormat::RGBA32F };
-		//	frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
-		//	frameBufferSpecification.Transfer = true;
-		//	frameBufferSpecification.Flags = D3D12_RESOURCE_FLAG_NONE;
-		//
-		//	PipelineSpecification pipelineSpecification{};
-		//	pipelineSpecification.DebugName = "Composite Pipeline";
-		//	pipelineSpecification.DepthWrite = false;
-		//	pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("FullScreenTriVertexShader");
-		//	pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PostProcessPixelShader");
-		//	pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
-		//
-		//	s_RendererData.CompositePipeline = Pipeline::Create(pipelineSpecification);
-		//}
-		//
-		//Renderer3D::ExecuteCommands();
-		//Renderer3D::WaitForGPU();
-		//RenderCommand::ResetFrameCommandUnits(0u); //TO BE CHANGED! UPLOAD BUFFER SHOULD UPLOAD EVERYTHING SEQUENTIALLY!
+		////MSAA Geometry:
+		////{
+		////	FrameBufferSpecification frameBufferSpecification{};
+		////	frameBufferSpecification.DebugName = "Main MSAA Framebuffer";
+		////	frameBufferSpecification.Attachments = { TextureFormat::RGBA32F, TextureFormat::Depth };
+		////	frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::CornflowerBlue);
+		////	frameBufferSpecification.MSAA = { true, 8u, 0u };
+		////	frameBufferSpecification.Transfer = true;
+		////
+		////	PipelineSpecification pipelineSpecification{};
+		////	pipelineSpecification.DebugName = "Main Pipeline";
+		////	pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("VertexShader");
+		////	pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PixelShader");
+		////	pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+		////
+		////	s_RendererData.MainPipeline = Pipeline::Create(pipelineSpecification);
+		////}
+		////
+		//////Picking:
+		////{
+		////	FrameBufferSpecification frameBufferSpecification{};
+		////	frameBufferSpecification.DebugName = "Picking Framebuffer";
+		////	frameBufferSpecification.Attachments = { TextureFormat::R32UINT, TextureFormat::Depth };
+		////	static constexpr float clearVal = static_cast<float>(NULL_ENTITY);
+		////	frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(clearVal, clearVal, clearVal, clearVal);
+		////	frameBufferSpecification.IsSRGB = false;
+		////
+		////	PipelineSpecification pipelineSpecification{};
+		////	pipelineSpecification.DebugName = "Picking Pipeline";
+		////	pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("VertexShader");
+		////	pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PickingPixelShader");
+		////	pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+		////
+		////	s_RendererData.PickingPipeline = Pipeline::Create(pipelineSpecification);
+		////}
+		////
+		//////Composite
+		////{
+		////	FrameBufferSpecification frameBufferSpecification{};
+		////	frameBufferSpecification.DebugName = "Composite Framebuffer";
+		////	frameBufferSpecification.Attachments = { TextureFormat::RGBA32F };
+		////	frameBufferSpecification.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::Black);
+		////	frameBufferSpecification.Transfer = true;
+		////	frameBufferSpecification.Flags = D3D12_RESOURCE_FLAG_NONE;
+		////
+		////	PipelineSpecification pipelineSpecification{};
+		////	pipelineSpecification.DebugName = "Composite Pipeline";
+		////	pipelineSpecification.DepthWrite = false;
+		////	pipelineSpecification.pVertexShader = s_RendererData.m_ShaderLibrary.Get("FullScreenTriVertexShader");
+		////	pipelineSpecification.pPixelShader = s_RendererData.m_ShaderLibrary.Get("PostProcessPixelShader");
+		////	pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+		////
+		////	s_RendererData.CompositePipeline = Pipeline::Create(pipelineSpecification);
+		////}
+		////
+		////Renderer3D::ExecuteCommands();
+		////Renderer3D::WaitForGPU();
+		////RenderCommand::ResetFrameCommandUnits(0u); //TO BE CHANGED! UPLOAD BUFFER SHOULD UPLOAD EVERYTHING SEQUENTIALLY!
 	}
 
 	void Renderer3D::Begin(const std::shared_ptr<PerspectiveCamera>& pSceneCamera, Scene& scene) noexcept
 	{
-		PROFILE_FUNC;
-
-		s_RendererData.m_ForwardPassEntities.clear();
-		s_RendererData.m_PickingPassEntities.clear();
-
-		RenderCommand::ResetFrameCommandUnits(s_RendererData.currentFrameIndex);
-
-		RenderCommand::SetViewport(s_RendererData.viewPort);
-		RenderCommand::SetScissorRect(s_RendererData.scissorRect);
-
-		//auto& pMainRT = s_RendererData.MainPipeline->GetFrameBuffer()->GetColorBuffer();
-		//auto& pMainDS = s_RendererData.MainPipeline->GetFrameBuffer()->GetDepthBuffer();
-
-		//RenderCommand::TransitionResource(pMainRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		//RenderCommand::ClearRenderTarget(pMainRT->GetRTVDescriptorHandle().CPUHandle, pMainRT->GetClearColor());
-		//RenderCommand::ClearDepthStencil(pMainDS);
-		//RenderCommand::SetRenderTarget(pMainRT, pMainDS);
-		
-		DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
-		RenderCommand::SetRootSignature(s_RendererData.MainPipeline->GetRootSig());
-		RenderCommand::SetPipelineState(s_RendererData.MainPipeline->GetInterface2());
-		RenderCommand::SetTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-		static VP vpMatrixCBuffer;
-		auto vpMatrix = DirectX::XMLoadFloat4x4(&(pSceneCamera->GetViewProjectionMatrix()));
-		DirectX::XMStoreFloat4x4(&vpMatrixCBuffer.VPMatrix, vpMatrix);
-		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(2u, 4 * 4, &vpMatrixCBuffer, 0u));
-
-		auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
-
-		static PerFrameDataOpaque perFrameDataOpaque;
-		perFrameDataOpaque.cameraDataIndex = pSceneCamera->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
-		perFrameDataOpaque.pointLightStructuredBufferIndex = scene.GetLightManager().GetPointLights()->m_VisibleHandles[frameIndex].Index;
-		perFrameDataOpaque.directionalLightStructuredBufferIndex = scene.GetLightManager().GetDirectionalLights()->m_VisibleHandles[frameIndex].Index;
-		perFrameDataOpaque.nrOfDirectionalLights = static_cast<uint32_t>(scene.GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
-		perFrameDataOpaque.nrOfPointLights = static_cast<uint32_t>(scene.GetEntityManager().GetEntityCountForPool<PointLightComponent>());
-
-		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4, (uint32_t)sizeof(PerFrameDataOpaque) / sizeof(uint32_t), &perFrameDataOpaque, 0u));
+		//PROFILE_FUNC;
+		//
+		//s_RendererData.m_ForwardPassEntities.clear();
+		//s_RendererData.m_PickingPassEntities.clear();
+		//
+		//RenderCommand::ResetFrameCommandUnits(s_RendererData.currentFrameIndex);
+		//
+		//RenderCommand::SetViewport(s_RendererData.viewPort);
+		//RenderCommand::SetScissorRect(s_RendererData.scissorRect);
+		//
+		////auto& pMainRT = s_RendererData.MainPipeline->GetFrameBuffer()->GetColorBuffer();
+		////auto& pMainDS = s_RendererData.MainPipeline->GetFrameBuffer()->GetDepthBuffer();
+		//
+		////RenderCommand::TransitionResource(pMainRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		////RenderCommand::ClearRenderTarget(pMainRT->GetRTVDescriptorHandle().CPUHandle, pMainRT->GetClearColor());
+		////RenderCommand::ClearDepthStencil(pMainDS);
+		////RenderCommand::SetRenderTarget(pMainRT, pMainDS);
+		//
+		//DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		//RenderCommand::SetRootSignature(s_RendererData.MainPipeline->GetRootSig());
+		//RenderCommand::SetPipelineState(s_RendererData.MainPipeline->GetInterface2());
+		//RenderCommand::SetTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		//
+		//static VP vpMatrixCBuffer;
+		//auto vpMatrix = DirectX::XMLoadFloat4x4(&(pSceneCamera->GetViewProjectionMatrix()));
+		//DirectX::XMStoreFloat4x4(&vpMatrixCBuffer.VPMatrix, vpMatrix);
+		//DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(2u, 4 * 4, &vpMatrixCBuffer, 0u));
+		//
+		//auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+		//
+		//static PerFrameDataOpaque perFrameDataOpaque;
+		//perFrameDataOpaque.cameraDataIndex = pSceneCamera->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
+		//perFrameDataOpaque.pointLightStructuredBufferIndex = scene.GetLightManager().GetPointLights()->m_VisibleHandles[frameIndex].Index;
+		//perFrameDataOpaque.directionalLightStructuredBufferIndex = scene.GetLightManager().GetDirectionalLights()->m_VisibleHandles[frameIndex].Index;
+		//perFrameDataOpaque.nrOfDirectionalLights = static_cast<uint32_t>(scene.GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
+		//perFrameDataOpaque.nrOfPointLights = static_cast<uint32_t>(scene.GetEntityManager().GetEntityCountForPool<PointLightComponent>());
+		//
+		//DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(4, (uint32_t)sizeof(PerFrameDataOpaque) / sizeof(uint32_t), &perFrameDataOpaque, 0u));
 	}
 
 	void Renderer3D::Submit(const entity e) noexcept
@@ -225,8 +225,8 @@ namespace Relentless
 			//RenderCommand::ClearRenderTarget(pPickingRT->GetRTVDescriptorHandle().CPUHandle, pPickingRT->GetClearColor());
 			//RenderCommand::ClearDepthStencil(pPickingDS);
 
-			RenderCommand::SetRootSignature(s_RendererData.PickingPipeline->GetRootSig());
-			RenderCommand::SetPipelineState(s_RendererData.PickingPipeline->GetInterface2());
+			//RenderCommand::SetRootSignature(s_RendererData.PickingPipeline->GetRootSig());
+			//RenderCommand::SetPipelineState(s_RendererData.PickingPipeline->GetInterface2());
 			//RenderCommand::SetRenderTarget(pPickingRT, pPickingDS);
 		}
 		static Identifier ID;
@@ -298,8 +298,8 @@ namespace Relentless
 		//Set necessary d3d12 states:
 		{
 			//DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
-			RenderCommand::SetRootSignature(s_RendererData.CompositePipeline->GetRootSig());
-			RenderCommand::SetPipelineState(s_RendererData.CompositePipeline->GetInterface2());
+			//RenderCommand::SetRootSignature(s_RendererData.CompositePipeline->GetRootSig());
+			//RenderCommand::SetPipelineState(s_RendererData.CompositePipeline->GetInterface2());
 		}
 
 		//Post process:
@@ -329,18 +329,18 @@ namespace Relentless
 	void Renderer3D::PrepareBackBuffer() noexcept
 	{
 		//Transition the back buffer back to present state now that is is finished:
-		BackBuffer& backBuffer{ Window::GetCurrentBackBuffer() };
-		RenderCommand::TransitionResource(backBuffer.pBackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+		//BackBuffer& backBuffer{ Window::GetCurrentBackBuffer() };
+		//RenderCommand::TransitionResource(backBuffer.pBackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	}
 
 	void Renderer3D::ExecuteCommands() noexcept
 	{
 		PROFILE_FUNC;
 
-		auto pCommandList{ D3D12Core::GetCommandList() };
-		DXCall(pCommandList->Close());
-		ID3D12CommandList* pCommandLists[] = { pCommandList.Get() };
-		DXCall_STD(D3D12Core::GetCommandQueue()->ExecuteCommandLists(ARRAYSIZE(pCommandLists), pCommandLists));
+		//auto pCommandList{ D3D12Core::GetCommandList() };
+		//DXCall(pCommandList->Close());
+		//ID3D12CommandList* pCommandLists[] = { pCommandList.Get() };
+		//DXCall_STD(D3D12Core::GetCommandQueue()->ExecuteCommandLists(ARRAYSIZE(pCommandLists), pCommandLists));
 	}
 
 	void Renderer3D::WaitAndSync() noexcept
@@ -348,33 +348,33 @@ namespace Relentless
 		PROFILE_FUNC;
 
 		// Schedule a Signal command in the queue.
-		const UINT64 currentFenceValue = s_RendererData.pFenceValues[s_RendererData.currentFrameIndex];
-		DXCall(D3D12Core::GetCommandQueue()->Signal(s_RendererData.pFence.Get(), currentFenceValue));
-
-		s_RendererData.currentFrameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
-
-		// If the next frame is not ready to be rendered yet, wait until it is ready.
-		if (s_RendererData.pFence->GetCompletedValue() < s_RendererData.pFenceValues[s_RendererData.currentFrameIndex])
-		{
-			DXCall(s_RendererData.pFence->SetEventOnCompletion(s_RendererData.pFenceValues[s_RendererData.currentFrameIndex], s_RendererData.fenceEvent));
-			::WaitForSingleObjectEx(s_RendererData.fenceEvent, INFINITE, FALSE);
-		}
-
-		// Set the fence value for the next frame.
-		s_RendererData.pFenceValues[s_RendererData.currentFrameIndex] = currentFenceValue + 1;
+		//const UINT64 currentFenceValue = s_RendererData.pFenceValues[s_RendererData.currentFrameIndex];
+		//DXCall(D3D12Core::GetCommandQueue()->Signal(s_RendererData.pFence.Get(), currentFenceValue));
+		//
+		//s_RendererData.currentFrameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
+		//
+		//// If the next frame is not ready to be rendered yet, wait until it is ready.
+		//if (s_RendererData.pFence->GetCompletedValue() < s_RendererData.pFenceValues[s_RendererData.currentFrameIndex])
+		//{
+		//	DXCall(s_RendererData.pFence->SetEventOnCompletion(s_RendererData.pFenceValues[s_RendererData.currentFrameIndex], s_RendererData.fenceEvent));
+		//	::WaitForSingleObjectEx(s_RendererData.fenceEvent, INFINITE, FALSE);
+		//}
+		//
+		//// Set the fence value for the next frame.
+		//s_RendererData.pFenceValues[s_RendererData.currentFrameIndex] = currentFenceValue + 1;
 	}
 
 	void Renderer3D::WaitForGPU() noexcept
 	{
-		// Schedule a Signal command in the queue.
-		DXCall(D3D12Core::GetCommandQueue()->Signal(s_RendererData.pFence.Get(), s_RendererData.pFenceValues[s_RendererData.currentFrameIndex]));
-		
-		// Wait until the fence has been processed.
-		DXCall(s_RendererData.pFence->SetEventOnCompletion(s_RendererData.pFenceValues[s_RendererData.currentFrameIndex], s_RendererData.fenceEvent));
-		WaitForSingleObjectEx(s_RendererData.fenceEvent, INFINITE, FALSE);
-		
-		// Increment the fence value for the current frame.
-		s_RendererData.pFenceValues[s_RendererData.currentFrameIndex]++;
+		//// Schedule a Signal command in the queue.
+		//DXCall(D3D12Core::GetCommandQueue()->Signal(s_RendererData.pFence.Get(), s_RendererData.pFenceValues[s_RendererData.currentFrameIndex]));
+		//
+		//// Wait until the fence has been processed.
+		//DXCall(s_RendererData.pFence->SetEventOnCompletion(s_RendererData.pFenceValues[s_RendererData.currentFrameIndex], s_RendererData.fenceEvent));
+		//WaitForSingleObjectEx(s_RendererData.fenceEvent, INFINITE, FALSE);
+		//
+		//// Increment the fence value for the current frame.
+		//s_RendererData.pFenceValues[s_RendererData.currentFrameIndex]++;
 	}
 
 	void Renderer3D::OnShutDown() noexcept

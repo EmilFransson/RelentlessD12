@@ -20,11 +20,10 @@ namespace Relentless
 	struct MeshImportSettings
 	{
 		bool OptimizeMesh{ true };
+		ETextureCompressionType TextureCompressionType{ ETextureCompressionType::Uncompressed };
 		bool ImportLights{ false };
-		//bool ImportCameras{ true };
 		bool ImportMaterialsAndTextures{ true };
 		bool GenerateColliders{ true };
-		std::shared_ptr<Scene> pScene{ nullptr };
 	};
 
 	template<typename AssetType>

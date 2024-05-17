@@ -1,6 +1,7 @@
 #include "StructuredBuffer.h"
 #include "..\D3D12Core.h"
 #include "..\MemoryManager.h"
+#include "Graphics\GPUTaskManager.h"
 
 namespace Relentless
 {
@@ -42,7 +43,7 @@ namespace Relentless
 		m_NonVisibleHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::SRV_NV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_NonVisibleHandle.CPUHandle));
 
-		for (uint32_t i{ 0u }; i < D3D12Core::GetNrOfBufferedFrames(); ++i)
+		for (uint32_t i{ 0u }; i < GPUTaskManager::FRAMES_IN_FLIGHT; ++i)
 		{
 			m_VisibleHandles[i] = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::SRV);
 		}
@@ -51,7 +52,7 @@ namespace Relentless
 	StructuredBuffer::~StructuredBuffer() noexcept
 	{
 		MemoryManager::Get().DestroyDescriptorHandle(m_NonVisibleHandle);
-		for (uint32_t i{ 0u }; i < D3D12Core::GetNrOfBufferedFrames(); ++i)
+		for (uint32_t i{ 0u }; i < GPUTaskManager::FRAMES_IN_FLIGHT; ++i)
 		{
 			MemoryManager::Get().DestroyDescriptorHandle(m_VisibleHandles[i]);
 		}

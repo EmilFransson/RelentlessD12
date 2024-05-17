@@ -8,6 +8,9 @@
 #include "RenderUtility.h"
 #include "SceneRenderer.h"
 
+#include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
+
+
 namespace Relentless
 {
 	SceneRenderer::SceneRenderer(std::shared_ptr<Scene> pScene) noexcept
@@ -17,12 +20,17 @@ namespace Relentless
 		Initialize();
 	}
 
+	SceneRenderer::~SceneRenderer() noexcept
+	{
+		DXCall_STD(m_pIdentifierReadbackBuffer->GetInterface()->Unmap(0, nullptr));
+	}
+
 	void SceneRenderer::Initialize() noexcept
 	{
 		InitializeHBAOPlus();
 
-		m_EnvironmentCBHandle = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT3));
-		m_BRDFLutTextureHandle = AssetManager::LoadFromFile<Texture2D>(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\ibl_brdf_lut.png", "");
+		//m_EnvironmentCBHandle = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT3));
+		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\ibl_brdf_lut.rasset", m_BRDFLutTextureHandle), "[SceneRenderer]: Unable to load ibl-brdf look up texture.");
 
 		//Pre-Z Render pass:
 		{
@@ -357,24 +365,13 @@ namespace Relentless
 		//Readback buffer:
 		{
 			m_pIdentifierReadbackBuffer = ReadBackBuffer::Create(sizeof(uint32_t), "Identifier ReadbackBuffer");
+			DXCall(m_pIdentifierReadbackBuffer->GetInterface()->Map(0, nullptr, reinterpret_cast<void**>(&m_pMappedReadBackBufferPointer)));
 		}
 
 		//Editor Grid:
 		{
-			m_EditorGridVertices.at(0).Position = DirectX::XMFLOAT3(-0.5f, 0.0f, 0.0f);
-			m_EditorGridVertices.at(1).Position = DirectX::XMFLOAT3(0.5f, 0.0f, 0.0f);
-
-			VertexBuffer::Specification vbSpec{};
-			vbSpec.Name = "EditorGridVertexBuffer";
-			vbSpec.NrOfVertices = EDITOR_GRID_VERTEX_COUNT;
-			vbSpec.Stride = sizeof(Vertex_Basic);
-			vbSpec.TotalSizeInBytes = sizeof(Vertex_Basic) * EDITOR_GRID_VERTEX_COUNT;
-			vbSpec.pBuffer = m_EditorGridVertices.data();
-			m_pEditorGridVertexBuffer = std::make_unique<VertexBuffer>(&vbSpec);
-
-			m_pEditorGridInstanceDataStructuredBuffer = std::make_unique<StructuredBuffer>(EDITOR_GRID_INSTANCE_COUNT, sizeof(InstanceData));
-
-			const uint32_t nrOfFrames = D3D12Core::GetNrOfBufferedFrames();
+			m_pEditorGridInstanceDataStructuredBufferSet = std::make_unique<StructuredBufferSet>("m_pEditorGridInstanceDataStructuredBufferSet", EDITOR_GRID_INSTANCE_COUNT, sizeof(InstanceData));
+			
 			for (int i{ -EDITOR_GRID_INSTANCE_COUNT / 2 }; i < EDITOR_GRID_INSTANCE_COUNT / 2; ++i)
 			{
 				int index = i + EDITOR_GRID_INSTANCE_COUNT / 2;
@@ -391,14 +388,24 @@ namespace Relentless
 					instanceData.Color.B = 0.06f;
 				}
 
-				for (uint32_t frameIndex{ 0u }; frameIndex < nrOfFrames; ++frameIndex)
+				for (uint32_t frameIndex{ 0u }; frameIndex < GPUTaskManager::FRAMES_IN_FLIGHT; ++frameIndex)
 				{
-					MemoryManager::Get().UpdateStructuredBuffer(*m_pEditorGridInstanceDataStructuredBuffer, &instanceData, index, frameIndex);
+					StructuredBuffer2& sb = m_pEditorGridInstanceDataStructuredBufferSet->At(frameIndex);
+
+					void* pData = nullptr;
+
+					constexpr const D3D12_RANGE range = { 0,0 };
+					DXCall(sb.GetInterface()->Map(0u, &range, &pData));
+					RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
+					unsigned char* ppData = reinterpret_cast<unsigned char*>(pData);
+					ppData += (index * sb.GetByteStride());
+					std::memcpy(reinterpret_cast<void*>(ppData), reinterpret_cast<const void*>(&instanceData), sb.GetByteStride());
+					DXCall_STD(sb.GetInterface()->Unmap(0u, nullptr));
 				}
 			}
 
-			m_EditorGridTransformComponent1.ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT4X4));
-			m_EditorGridTransformComponent2.ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT4X4));
+			m_EditorGridTransformCBSet1 = std::make_unique<ConstantBufferSet>("m_EditorGridTransformCBSet1", sizeof(DirectX::XMFLOAT4X4));
+			m_EditorGridTransformCBSet2 = std::make_unique<ConstantBufferSet>("m_EditorGridTransformCBSet2", sizeof(DirectX::XMFLOAT4X4));
 		}
 		
 		RenderTextureSpecification resolveRTSpec{};
@@ -411,9 +418,14 @@ namespace Relentless
 
 		m_pResolvedTexture = RenderTexture::Create(resolveRTSpec, "MSAA Resolve RenderTexture");
 
-		MasterRenderer::ExecuteCommands();
-		MasterRenderer::WaitForGPU();
-		MasterRenderer::ResetFrameCommandUnits(0u);
+		//Environment:
+		{
+			m_pEnvironmentConstantBufferSet = std::make_unique<ConstantBufferSet>("m_pEnvironmentConstantBuffer", sizeof(DirectX::XMFLOAT3));
+		}
+
+		{
+			m_ViewProjectionMatrixConstantBufferSet = std::make_unique<ConstantBufferSet>("m_ViewProjectionMatrixConstantBufferSet", sizeof(DirectX::XMFLOAT4X4));
+		}
 	}
 
 	void SceneRenderer::Begin() noexcept
@@ -423,7 +435,6 @@ namespace Relentless
 		m_OpaqueRenderModeEntities.clear();
 		m_CutOutRenderModeEntities.clear();
 		m_TransparentRenderModeEntities.clear();
-		m_ResourceBarrierBatch.clear();
 
 		m_pScene->GetEntityManager().Collect<MeshRendererComponent, MeshFilterComponent>().Do([&](entity e, MeshRendererComponent& mrc, MeshFilterComponent& mfc)
 			{
@@ -481,30 +492,92 @@ namespace Relentless
 					});
 			}
 		}
+
+		auto frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		
-		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
-		m_PerFrameOpaqueGeometryData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
+		m_PerFrameOpaqueGeometryData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBufferSet->GetCBVDescriptorIndex(frameIndex);
 		m_PerFrameOpaqueGeometryData.pointLightStructuredBufferIndex = m_pScene->GetLightManager().GetPointLights()->m_VisibleHandles[frameIndex].Index;
 		m_PerFrameOpaqueGeometryData.directionalLightStructuredBufferIndex = m_pScene->GetLightManager().GetDirectionalLights()->m_VisibleHandles[frameIndex].Index;
 		m_PerFrameOpaqueGeometryData.nrOfDirectionalLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
 		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
-		m_PerFrameOpaqueGeometryData.environmentIndex = MemoryManager::Get().GetCBDescriptorIndex(m_EnvironmentCBHandle);
+		m_PerFrameOpaqueGeometryData.environmentIndex = m_pEnvironmentConstantBufferSet->GetCBVDescriptorIndex(frameIndex);
 		m_PerFrameOpaqueGeometryData.brdfLutTextureIndex = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle).GetSRVDescriptorHandle().Index;
 
-		//Terrible and wrong for runtime:
 		//Camera:
-		auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
-		DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
+		{
+			ConstantBuffer2& cbc = m_pScene->GetEditorCamera()->m_pConstantBufferSet->At(frameIndex);
 
-		//TODO: Should not be done every frame!
-		static DirectX::XMFLOAT3 bgColor = DirectX::XMFLOAT3(DirectX::Colors::LightSkyBlue);
-		MemoryManager::Get().UpdateConstantBuffer(m_EnvironmentCBHandle, (void*)&bgColor);
+			void* pData = nullptr;
+			D3D12_RANGE readRange = { 0, 0 }; // Not intending to read from CPU
+			DXCall(cbc.GetInterface()->Map(0, &readRange, &pData));
+			RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
+			std::memcpy(pData, reinterpret_cast<const void*>(&m_pScene->GetEditorCamera()->GetPosition()), cbc.GetSizeInBytes());
+			DXCall_STD(cbc.GetInterface()->Unmap(0u, nullptr));
+		}
 
-		MasterRenderer::Begin();
+		{
+			DirectX::XMFLOAT3 offset = m_pScene->GetEditorCamera()->GetPosition();
+			offset.x = static_cast<float>(std::floor(offset.x - fmod(offset.x, 100.0)));
+			offset.z = static_cast<float>(std::floor(offset.z - fmod(offset.z, 100.0)));
 
-		RenderCommand::SetDescriptorHeap(MemoryManager::Get().GetShaderBindableDescriptorHeap());
-		RenderCommand::SetViewport(m_pScene->GetViewport());
-		RenderCommand::SetScissorRect(m_pScene->GetScissorRect());
+			//Note: Could actually be just one constant buffer:
+			DirectX::XMMATRIX world = DirectX::XMMatrixScaling(10000.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(offset.x, 0.0f, 200.0f + offset.z);
+			DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent1.Transform, world);
+
+			{
+				ConstantBuffer2& cb = m_EditorGridTransformCBSet1->At(frameIndex);
+
+				void* pData = nullptr;
+				constexpr const D3D12_RANGE range = { 0,0 };
+				DXCall(cb.GetInterface()->Map(0u, &range, &pData));
+				RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
+				std::memcpy(pData, reinterpret_cast<const void*>(&m_EditorGridTransformComponent1.Transform), cb.GetSizeInBytes());
+				DXCall_STD(cb.GetInterface()->Unmap(0u, nullptr));
+			}
+
+			world = DirectX::XMMatrixScaling(10000.0f, 1.0f, 1.0f) * DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(90.0f)) * DirectX::XMMatrixTranslation(offset.x - 200.0f, 0.0f, offset.z);
+			DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent2.Transform, world);
+
+			{
+				ConstantBuffer2& cb = m_EditorGridTransformCBSet2->At(frameIndex);
+
+				void* pData = nullptr;
+				constexpr const D3D12_RANGE range = { 0,0 };
+				DXCall(cb.GetInterface()->Map(0u, &range, &pData));
+				RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
+				std::memcpy(pData, reinterpret_cast<const void*>(&m_EditorGridTransformComponent2.Transform), cb.GetSizeInBytes());
+				DXCall_STD(cb.GetInterface()->Unmap(0u, nullptr));
+			}
+		}
+
+		//Environment:
+		{
+			static DirectX::XMFLOAT3 bgColor = DirectX::XMFLOAT3(DirectX::Colors::LightSkyBlue);
+
+			ConstantBuffer2& cb = m_pEnvironmentConstantBufferSet->At(frameIndex);
+
+			void* pData = nullptr;
+			constexpr const D3D12_RANGE range = { 0,0 };
+			DXCall(cb.GetInterface()->Map(0u, &range, &pData));
+			RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
+			std::memcpy(pData, reinterpret_cast<const void*>(&bgColor), cb.GetSizeInBytes());
+			DXCall_STD(cb.GetInterface()->Unmap(0u, nullptr));
+		}
+
+		//View projection matrix:
+		{
+			auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
+			DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
+
+			ConstantBuffer2& cb = m_ViewProjectionMatrixConstantBufferSet->At(frameIndex);
+
+			void* pData = nullptr;
+			constexpr const D3D12_RANGE range = { 0,0 };
+			DXCall(cb.GetInterface()->Map(0u, &range, &pData));
+			RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
+			std::memcpy(pData, reinterpret_cast<const void*>(&m_VPData), cb.GetSizeInBytes());
+			DXCall_STD(cb.GetInterface()->Unmap(0u, nullptr));
+		}
 	}
 
 	void SceneRenderer::SetContext(const std::shared_ptr<Scene>& pScene) noexcept
@@ -543,32 +616,74 @@ namespace Relentless
 
 		if (m_Options.MSAASamples > 1)
 		{
-			AddToResourceTransitionBatch(m_OpaqueGeometryRenderPass->GetOutput(0), D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-			AddToResourceTransitionBatch(m_pResolvedTexture, D3D12_RESOURCE_STATE_RESOLVE_DEST);
-		}
-		AddToResourceTransitionBatch(Window::GetCurrentBackBuffer().pBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		RenderCommand::FlushResourceTransitionBatch(m_ResourceBarrierBatch);
+			GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
+			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
 
-		if (m_Options.MSAASamples > 1)
-		{
-			//MSAA Resolve:
+			DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+			DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+			DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
+
+			{
+				D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+				resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+				resourceTransitionBarrier.Transition.pResource = m_OpaqueGeometryRenderPass->GetOutput(0)->GetInterface().Get();
+				resourceTransitionBarrier.Transition.StateBefore = m_OpaqueGeometryRenderPass->GetOutput(0)->GetCurrentState();
+				resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+				resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+				DXCall_STD(pCommandList->ResourceBarrier(1, &resourceTransitionBarrier));
+
+				m_OpaqueGeometryRenderPass->GetOutput(0)->SetCurrentState(D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+			}
+			
+			{
+				D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+				resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+				resourceTransitionBarrier.Transition.pResource = m_pResolvedTexture->GetInterface().Get();
+				resourceTransitionBarrier.Transition.StateBefore = m_pResolvedTexture->GetCurrentState();
+				resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_DEST;
+				resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+				DXCall_STD(pCommandList->ResourceBarrier(1, &resourceTransitionBarrier));
+
+				m_pResolvedTexture->SetCurrentState(D3D12_RESOURCE_STATE_RESOLVE_DEST);
+			}
+
 			auto pGeometryPassColorOutput = m_OpaqueGeometryRenderPass->GetOutput(0);
-			RenderCommand::ResolveMSAA(pGeometryPassColorOutput, m_pResolvedTexture);
+
+			DXCall_STD(pCommandList->ResolveSubresource
+			(
+				m_pResolvedTexture->GetInterface().Get(),
+				0,
+				pGeometryPassColorOutput->GetInterface().Get(),
+				0,
+				m_pResolvedTexture->GetFormat())
+			);
+
+			gpuTaskManager.ScheduleCommandList(pCommandList);
 		}
 
 		CompositePass();
 
-		if (m_Options.MSAASamples > 1)
 		{
-			AddToResourceTransitionBatch(m_pResolvedTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		}
+			GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
+			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
 
-		AddToResourceTransitionBatch(MasterRenderer::GetFrameBuffer()->GetOutput(0), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		RenderCommand::FlushResourceTransitionBatch(m_ResourceBarrierBatch);
+			D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+			resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			resourceTransitionBarrier.Transition.pResource = MasterRenderer::GetFrameBuffer()->GetOutput(0)->GetInterface().Get();
+			resourceTransitionBarrier.Transition.StateBefore = MasterRenderer::GetFrameBuffer()->GetOutput(0)->GetCurrentState();
+			resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-		//Set UI-texture as pixel shader resource and prepare back buffer as render target for imgui:
-		{
-			RenderCommand::SetRenderTarget(Window::GetCurrentBackBuffer());
+			DXCall_STD(pCommandList->ResourceBarrier(1, &resourceTransitionBarrier));
+
+			MasterRenderer::GetFrameBuffer()->GetOutput(0)->SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+			gpuTaskManager.ScheduleCommandList(pCommandList);
 		}
 	}
 
@@ -597,9 +712,13 @@ namespace Relentless
 		PROFILE_FUNC;
 		MemoryManager& memoryManager = MemoryManager::Get();
 
-		MasterRenderer::BeginRenderPass(m_PreZRenderPass);
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_PreZRenderPass);
 
-		m_PreZRenderPass->Upload("vpConstantBuffer", &m_VPData);
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
+
+		m_PreZRenderPass->Upload("vpConstantBuffer", &m_VPData, pCommandList);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 
@@ -617,25 +736,31 @@ namespace Relentless
 
 			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 			const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
+			DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
-			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+			DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
 		}
 
-		MasterRenderer::EndRenderPass();
+		MasterRenderer::EndRenderPass(pCommandList);
 	}
 
 	void SceneRenderer::HBAOPlusRenderPass() noexcept
 	{
 		PROFILE_FUNC;
+
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
+
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
 		GFSDK_SSAO_InputData_D3D12 InputData = {};
 		InputData.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;
@@ -659,17 +784,41 @@ namespace Relentless
 		Output.Blend.Mode = GFSDK_SSAO_MULTIPLY_RGB;
 
 		if (output->GetCurrentState() != D3D12_RESOURCE_STATE_RENDER_TARGET)
-			RenderCommand::TransitionResource(output, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		{
+			D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+			resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			resourceTransitionBarrier.Transition.pResource = output->GetInterface().Get();
+			resourceTransitionBarrier.Transition.StateBefore = output->GetCurrentState();
+			resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+			DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+			output->SetCurrentState(D3D12_RESOURCE_STATE_RENDER_TARGET);
+		}
 		
 		if (depthOutput->GetCurrentState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
-			RenderCommand::TransitionResource(depthOutput, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		{
+			D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+			resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			resourceTransitionBarrier.Transition.pResource = depthOutput->GetInterface().Get();
+			resourceTransitionBarrier.Transition.StateBefore = depthOutput->GetCurrentState();
+			resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+			DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+			depthOutput->SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		}
 
 	#if defined RLS_DEBUG
-		GFSDK_SSAO_Status status = m_SSAOContext->RenderAO(D3D12Core::GetCommandQueue().Get(), D3D12Core::GetCommandList().Get(), InputData, m_HBAOPlusParameters, Output, RenderMask);
+		GFSDK_SSAO_Status status = m_SSAOContext->RenderAO(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get(), pCommandList.Get(), InputData, m_HBAOPlusParameters, Output, RenderMask);
 		RLS_ASSERT(status == GFSDK_SSAO_OK, "Failed to issue HBAOPlus render command.");
 	#else
-		m_SSAOContext->RenderAO(D3D12Core::GetCommandQueue().Get(), D3D12Core::GetCommandList().Get(), InputData, m_HBAOPlusParameters, Output, RenderMask);
+		m_SSAOContext->RenderAO(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get(), pCommandList.Get(), InputData, m_HBAOPlusParameters, Output, RenderMask);
 	#endif
+
+		Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
 	}
 
 	void SceneRenderer::OpaqueGeometryPass() noexcept
@@ -678,12 +827,15 @@ namespace Relentless
 
 		MemoryManager& memoryManager = MemoryManager::Get();
 
-		MasterRenderer::BeginRenderPass(m_OpaqueGeometryRenderPass);
-
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_OpaqueGeometryRenderPass);
 		if (m_OpaqueRenderModeEntities.size() > 0)
 		{
-			m_OpaqueGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
-			m_OpaqueGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
+			DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+			DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+			DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
+
+			m_OpaqueGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData, pCommandList);
+			m_OpaqueGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData, pCommandList);
 
 			EntityManager& entityManager = m_pScene->GetEntityManager();
 
@@ -701,21 +853,20 @@ namespace Relentless
 
 				Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+				DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+				DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 				const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 				m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 				m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
 
-				DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
+				DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
-				RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+				DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
 			}
 		}
-
-		MasterRenderer::EndRenderPass();
+		MasterRenderer::EndRenderPass(pCommandList);
 	}
 
 	void SceneRenderer::CutOutGeometryPass() noexcept
@@ -727,10 +878,14 @@ namespace Relentless
 
 		MemoryManager& memoryManager = MemoryManager::Get();
 
-		MasterRenderer::BeginRenderPass(m_CutOutGeometryRenderPass);
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_CutOutGeometryRenderPass);
 
-		m_CutOutGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
-		m_CutOutGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
+
+		m_CutOutGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData, pCommandList);
+		m_CutOutGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData, pCommandList);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 
@@ -748,20 +903,20 @@ namespace Relentless
 
 			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 			const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
+			DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
-			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+			DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
 		}
 
-		MasterRenderer::EndRenderPass();
+		MasterRenderer::EndRenderPass(pCommandList);
 	}
 
 	void SceneRenderer::TransparentGeometryPass() noexcept
@@ -773,10 +928,14 @@ namespace Relentless
 
 		MemoryManager& memoryManager = MemoryManager::Get();
 
-		MasterRenderer::BeginRenderPass(m_TransparentGeometryRenderPass);
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_TransparentGeometryRenderPass);
 
-		m_TransparentGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData);
-		m_TransparentGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
+
+		m_TransparentGeometryRenderPass->Upload("vpConstantBuffer", &m_VPData, pCommandList);
+		m_TransparentGeometryRenderPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData, pCommandList);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 
@@ -794,20 +953,20 @@ namespace Relentless
 
 			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 			const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 
 			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
 
-			DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
+			DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
-			RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+			DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
 		}
 
-		MasterRenderer::EndRenderPass();
+		MasterRenderer::EndRenderPass(pCommandList);
 	}
 
 	void SceneRenderer::WireframePass() noexcept
@@ -815,15 +974,17 @@ namespace Relentless
 		PROFILE_FUNC;
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 		if (entityManager.GetEntityCountForPool<SelectedInEditorComponent>() == 0 || !m_Options.DisplaySelectionWireframe)
-		{
 			return;
-		}
 
 		MemoryManager& memoryManager = MemoryManager::Get();
 
-		MasterRenderer::BeginRenderPass(m_WireFrameRenderPass);
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_WireFrameRenderPass);
 
-		m_WireFrameRenderPass->Upload("vpConstantBuffer", &m_VPData);
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
+
+		m_WireFrameRenderPass->Upload("vpConstantBuffer", &m_VPData, pCommandList);
 
 		auto verticesIndex = m_WireFrameRenderPass->GetInputSlot("vertices");
 		auto indicesIndex = m_WireFrameRenderPass->GetInputSlot("indices");
@@ -837,8 +998,8 @@ namespace Relentless
 				{
 					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 					const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
@@ -846,66 +1007,55 @@ namespace Relentless
 
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
+					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
-					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+					DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
 				}
 			});
 
-		MasterRenderer::EndRenderPass();
+		MasterRenderer::EndRenderPass(pCommandList);
 	}
 
 	void SceneRenderer::EditorGridPass() noexcept
 	{
+		PROFILE_FUNC;
+
 		if (!m_Options.DisplayEditorGrid)
 			return;
 
-		PROFILE_FUNC;
-		MemoryManager& memoryManager = MemoryManager::Get();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
-		MasterRenderer::BeginRenderPass(m_EditorGridRenderPass);
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_EditorGridRenderPass);
 
-		m_EditorGridRenderPass->Upload("vpConstantBuffer", &m_VPData);
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
-		auto frameIndex = MasterRenderer::GetCurrentFrameIndex();
-		m_PerFrameEditorData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBuffer->m_VisibleHandles[frameIndex].Index;
-		m_EditorGridRenderPass->Upload("perFrameData", &m_PerFrameEditorData);
+		m_PerFrameEditorData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBufferSet->GetCBVDescriptorIndex(frameIndex);
+		m_InstanceDataSBIndex.Index = m_pEditorGridInstanceDataStructuredBufferSet->GetSRVDescriptorIndex(frameIndex); 
+		m_EditorBatchData.worldMatrixIndex1 = m_EditorGridTransformCBSet1->GetCBVDescriptorIndex(frameIndex);
+		m_EditorBatchData.worldMatrixIndex2 = m_EditorGridTransformCBSet2->GetCBVDescriptorIndex(frameIndex);
+		m_EditorGridVPMatrixIndex.Index = m_ViewProjectionMatrixConstantBufferSet->GetCBVDescriptorIndex(frameIndex);
 
-		auto verticesIndex = m_EditorGridRenderPass->GetInputSlot("vertices");
-		auto batchIndex = m_EditorGridRenderPass->GetInputSlot("batchData");
-		auto gridInstanceDataSBIndex = m_EditorGridRenderPass->GetInputSlot("instanceDataSBIndex");
+		m_EditorGridRenderPass->Upload("perFrameData", &m_PerFrameEditorData, pCommandList);
+		m_EditorGridRenderPass->Upload("vpConstantBuffer", &m_EditorGridVPMatrixIndex, pCommandList);
+		m_EditorGridRenderPass->Upload("instanceDataSBIndex", &m_InstanceDataSBIndex, pCommandList);
+		m_EditorGridRenderPass->Upload("batchData", &m_EditorBatchData, pCommandList);
 
-		m_InstanceDataSBIndex.Index = m_pEditorGridInstanceDataStructuredBuffer->m_VisibleHandles[frameIndex].Index;
-		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, m_pEditorGridVertexBuffer->GetInterface()->GetGPUVirtualAddress()));
-		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(gridInstanceDataSBIndex, 1, &m_InstanceDataSBIndex, 0u));
+		DXCall_STD(pCommandList->DrawInstanced(EDITOR_GRID_VERTEX_COUNT, EDITOR_GRID_INSTANCE_COUNT, 0u, 0u));
 
-		DirectX::XMFLOAT3 offset = m_pScene->GetEditorCamera()->GetPosition();
-		offset.x = static_cast<float>(std::floor(offset.x - fmod(offset.x, 100.0)));
-		offset.z = static_cast<float>(std::floor(offset.z - fmod(offset.z, 100.0)));
-		
-		//Note: Could actually be just one constant buffer:
-		DirectX::XMMATRIX world = DirectX::XMMatrixScaling(10000.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(offset.x, 0.0f, 200.0f + offset.z);
-		DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent1.Transform, world);
-		MemoryManager::Get().UpdateConstantBuffer(m_EditorGridTransformComponent1.ConstantBufferID, &m_EditorGridTransformComponent1.Transform);
-
-		world = DirectX::XMMatrixScaling(10000.0f, 1.0f, 1.0f) * DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(90.0f)) * DirectX::XMMatrixTranslation(offset.x - 200.0f, 0.0f, offset.z);
-		DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent2.Transform, world);
-		MemoryManager::Get().UpdateConstantBuffer(m_EditorGridTransformComponent2.ConstantBufferID, &m_EditorGridTransformComponent2.Transform);
-
-		m_EditorBatchData.worldMatrixIndex1 = memoryManager.GetCBDescriptorIndex(m_EditorGridTransformComponent1.ConstantBufferID);
-		m_EditorBatchData.worldMatrixIndex2 = memoryManager.GetCBDescriptorIndex(m_EditorGridTransformComponent2.ConstantBufferID);
-		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(batchIndex, (uint32_t)sizeof(EditorBatchData) / sizeof(uint32_t), &m_EditorBatchData, 0u));
-
-		RenderCommand::DrawInstanced(EDITOR_GRID_VERTEX_COUNT, EDITOR_GRID_INSTANCE_COUNT);
-
-		MasterRenderer::EndRenderPass();
+		MasterRenderer::EndRenderPass(pCommandList);
 	}
 
 	void SceneRenderer::PickingPass() noexcept
 	{
 		PROFILE_FUNC;
 
-		MasterRenderer::BeginRenderPass(m_GeometryPickingRenderPass);
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_GeometryPickingRenderPass);
+
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 		MemoryManager& memoryManager = MemoryManager::Get();
@@ -915,6 +1065,8 @@ namespace Relentless
 		auto identifierIndex = m_GeometryPickingRenderPass->GetInputSlot("Identifier");
 		auto perDrawIndex = m_GeometryPickingRenderPass->GetInputSlot("perDrawData");
 
+		m_GeometryPickingRenderPass->Upload("vpConstantBuffer", &m_VPData, pCommandList);
+
 		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
 
 		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
@@ -923,30 +1075,96 @@ namespace Relentless
 				{
 					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					m_PickingData.entityID = e;
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
+					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 					const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
+					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
 
-					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+					DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
 				}
 			});
 
-		MasterRenderer::EndRenderPass();
-		
-		auto mousePos = m_pScene->GetMousePosition();
-		if (mousePos.x > 0.0f
-			&& (uint32_t)mousePos.x < m_GeometryPickingRenderPass->GetOutput(0)->GetWidth()
-			&& mousePos.y > 0.0f && (uint32_t)mousePos.y < m_GeometryPickingRenderPass->GetOutput(0)->GetHeight())
+		MasterRenderer::EndRenderPass(pCommandList);
+
 		{
-			RenderCommand::CopyTexelToBuffer(m_GeometryPickingRenderPass->GetOutput(0), m_pIdentifierReadbackBuffer, static_cast<uint32_t>(mousePos.x), static_cast<uint32_t>(mousePos.y), sizeof(uint32_t));
+			auto mousePos = m_pScene->GetMousePosition();
+			if (mousePos.x > 0.0f
+				&& (uint32_t)mousePos.x < m_GeometryPickingRenderPass->GetOutput(0)->GetWidth()
+				&& mousePos.y > 0.0f && (uint32_t)mousePos.y < m_GeometryPickingRenderPass->GetOutput(0)->GetHeight())
+			{
+				Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
+				
+				if (m_GeometryPickingRenderPass->GetOutput(0)->GetCurrentState() != D3D12_RESOURCE_STATE_COPY_SOURCE)
+				{
+					D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+					resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+					resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+					resourceTransitionBarrier.Transition.pResource = m_GeometryPickingRenderPass->GetOutput(0)->GetInterface().Get();
+					resourceTransitionBarrier.Transition.StateBefore = m_GeometryPickingRenderPass->GetOutput(0)->GetCurrentState();
+					resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+					resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+					DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+					m_GeometryPickingRenderPass->GetOutput(0)->SetCurrentState(D3D12_RESOURCE_STATE_COPY_SOURCE);
+				}
+				if (m_pIdentifierReadbackBuffer->GetCurrentState() != D3D12_RESOURCE_STATE_COPY_DEST)
+				{
+					D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+					resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+					resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+					resourceTransitionBarrier.Transition.pResource = m_pIdentifierReadbackBuffer->GetInterface().Get();
+					resourceTransitionBarrier.Transition.StateBefore = m_pIdentifierReadbackBuffer->GetCurrentState();
+					resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+					resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+					DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+					m_pIdentifierReadbackBuffer->SetCurrentState(D3D12_RESOURCE_STATE_COPY_DEST);
+				}
+
+				D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
+				srcLocation.pResource = m_GeometryPickingRenderPass->GetOutput(0)->GetInterface().Get();
+				srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+				srcLocation.SubresourceIndex = 0u;
+
+				D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
+				dstLocation.pResource = m_pIdentifierReadbackBuffer->GetInterface().Get();
+				dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+				dstLocation.PlacedFootprint.Offset = 0;
+				dstLocation.PlacedFootprint.Footprint.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+				dstLocation.PlacedFootprint.Footprint.Width = 1;
+				dstLocation.PlacedFootprint.Footprint.Height = 1;
+				dstLocation.PlacedFootprint.Footprint.Depth = 1;
+				dstLocation.PlacedFootprint.Footprint.RowPitch = sizeof(uint32_t);
+
+				D3D12_BOX areaToCopy{};
+				areaToCopy.left = static_cast<uint32_t>(mousePos.x);
+				areaToCopy.right = static_cast<uint32_t>(mousePos.x) + 1;
+				areaToCopy.top = static_cast<uint32_t>(mousePos.y);
+				areaToCopy.bottom = static_cast<uint32_t>(mousePos.y) + 1;
+				areaToCopy.front = 0;
+				areaToCopy.back = 1;
+
+				DXCall_STD(pCommandList->CopyTextureRegion(&dstLocation, 0u, 0u, 0u, &srcLocation, &areaToCopy));
+
+				Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
+				
+				Application::Get().GetGPUTaskManager().SubmitOnFrameDoneCallback([this]()
+					{
+						if (m_pMappedReadBackBufferPointer)
+						{
+							uint32_t* pEntity = reinterpret_cast<uint32_t*>(m_pMappedReadBackBufferPointer);
+							m_pScene->SetHoveredEntity(*pEntity);
+						}
+					});
+			}
+
 		}
 	}
 
@@ -954,36 +1172,65 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 		
-		MasterRenderer::BeginRenderPass(m_CompositeRenderPass);
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_CompositeRenderPass);
+
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
 		if (m_Options.MSAASamples > 1)
 		{
+			D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+			resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			resourceTransitionBarrier.Transition.pResource = m_pResolvedTexture->GetInterface().Get();
+			resourceTransitionBarrier.Transition.StateBefore = m_pResolvedTexture->GetCurrentState();
+			resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+			DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+			m_pResolvedTexture->SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
 			m_CompositeData.PostProcessTextureIndex = m_pResolvedTexture->GetSRVDescriptorHandle().Index;
 		}
 		else
 		{
-			RenderCommand::TransitionResource(m_CombinedGeometryAndPickingPass->GetOutput(0), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+			resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			resourceTransitionBarrier.Transition.pResource = m_CombinedGeometryAndPickingPass->GetOutput(0)->GetInterface().Get();
+			resourceTransitionBarrier.Transition.StateBefore = m_CombinedGeometryAndPickingPass->GetOutput(0)->GetCurrentState();
+			resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+			DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+			m_CombinedGeometryAndPickingPass->GetOutput(0)->SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
 			m_CompositeData.PostProcessTextureIndex = m_CombinedGeometryAndPickingPass->GetOutput(0)->GetSRVDescriptorHandle().Index;
 		}
 		
 		auto textureDataIndex = m_CompositeRenderPass->GetInputSlot("TextureData");
-		DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(textureDataIndex, 1u, &m_CompositeData, 0u));
+		DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(textureDataIndex, 1u, &m_CompositeData, 0u));
 
-		RenderCommand::DrawInstanced(3u);
+		DXCall_STD(pCommandList->DrawInstanced(3, 1, 0u, 0u));
 
-		MasterRenderer::EndRenderPass();
+		MasterRenderer::EndRenderPass(pCommandList);
 	}
 
 	void SceneRenderer::CombinedGeometryAndPickingPass() noexcept
 	{
 		PROFILE_FUNC;
 
-		MasterRenderer::BeginRenderPass(m_CombinedGeometryAndPickingPass);
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_CombinedGeometryAndPickingPass);
+
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
 		MemoryManager& memoryManager = MemoryManager::Get();
 
-		m_CombinedGeometryAndPickingPass->Upload("vpConstantBuffer", &m_VPData);
-		m_CombinedGeometryAndPickingPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData);
+		m_CombinedGeometryAndPickingPass->Upload("vpConstantBuffer", &m_VPData, pCommandList);
+		m_CombinedGeometryAndPickingPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData, pCommandList);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 
@@ -998,60 +1245,97 @@ namespace Relentless
 				{
 					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
 
 					m_PickingData.entityID = e;
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
+					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 					const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
 					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
 					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
 
-					DXCall_STD(D3D12Core::GetCommandList()->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
+					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
 
-					RenderCommand::DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices());
+					DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
 				}
 			});
 		
-		MasterRenderer::EndRenderPass();
+		MasterRenderer::EndRenderPass(pCommandList);
 
-		auto mousePos = m_pScene->GetMousePosition();
-		if (mousePos.x > 0.0f
-			&& (uint32_t)mousePos.x < m_CombinedGeometryAndPickingPass->GetOutput(0)->GetWidth()
-			&& mousePos.y > 0.0f && (uint32_t)mousePos.y < m_CombinedGeometryAndPickingPass->GetOutput(0)->GetHeight())
 		{
-			RenderCommand::CopyTexelToBuffer(m_CombinedGeometryAndPickingPass->GetOutput(1), m_pIdentifierReadbackBuffer, static_cast<uint32_t>(mousePos.x), static_cast<uint32_t>(mousePos.y), sizeof(uint32_t));
+			auto mousePos = m_pScene->GetMousePosition();
+			if (mousePos.x > 0.0f
+				&& (uint32_t)mousePos.x < m_CombinedGeometryAndPickingPass->GetOutput(0)->GetWidth()
+				&& mousePos.y > 0.0f && (uint32_t)mousePos.y < m_CombinedGeometryAndPickingPass->GetOutput(0)->GetHeight())
+			{
+				Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
+
+				if (m_CombinedGeometryAndPickingPass->GetOutput(1)->GetCurrentState() != D3D12_RESOURCE_STATE_COPY_SOURCE)
+				{
+					D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+					resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+					resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+					resourceTransitionBarrier.Transition.pResource = m_CombinedGeometryAndPickingPass->GetOutput(1)->GetInterface().Get();
+					resourceTransitionBarrier.Transition.StateBefore = m_CombinedGeometryAndPickingPass->GetOutput(1)->GetCurrentState();
+					resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+					resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+					DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+					m_CombinedGeometryAndPickingPass->GetOutput(1)->SetCurrentState(D3D12_RESOURCE_STATE_COPY_SOURCE);
+				}
+				if (m_pIdentifierReadbackBuffer->GetCurrentState() != D3D12_RESOURCE_STATE_COPY_DEST)
+				{
+					D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+					resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+					resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+					resourceTransitionBarrier.Transition.pResource = m_pIdentifierReadbackBuffer->GetInterface().Get();
+					resourceTransitionBarrier.Transition.StateBefore = m_pIdentifierReadbackBuffer->GetCurrentState();
+					resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+					resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+					DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+					m_pIdentifierReadbackBuffer->SetCurrentState(D3D12_RESOURCE_STATE_COPY_DEST);
+				}
+
+				D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
+				srcLocation.pResource = m_CombinedGeometryAndPickingPass->GetOutput(1)->GetInterface().Get();
+				srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+				srcLocation.SubresourceIndex = 0u;
+
+				D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
+				dstLocation.pResource = m_pIdentifierReadbackBuffer->GetInterface().Get();
+				dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+				dstLocation.PlacedFootprint.Offset = 0;
+				dstLocation.PlacedFootprint.Footprint.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+				dstLocation.PlacedFootprint.Footprint.Width = 1;
+				dstLocation.PlacedFootprint.Footprint.Height = 1;
+				dstLocation.PlacedFootprint.Footprint.Depth = 1;
+				dstLocation.PlacedFootprint.Footprint.RowPitch = sizeof(uint32_t);
+
+				D3D12_BOX areaToCopy{};
+				areaToCopy.left = static_cast<uint32_t>(mousePos.x);
+				areaToCopy.right = static_cast<uint32_t>(mousePos.x) + 1;
+				areaToCopy.top = static_cast<uint32_t>(mousePos.y);
+				areaToCopy.bottom = static_cast<uint32_t>(mousePos.y) + 1;
+				areaToCopy.front = 0;
+				areaToCopy.back = 1;
+
+				DXCall_STD(pCommandList->CopyTextureRegion(&dstLocation, 0u, 0u, 0u, &srcLocation, &areaToCopy));
+
+				const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+				Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
+				Application::Get().GetGPUTaskManager().SubmitOnFrameDoneCallback([this]()
+					{
+						if (m_pMappedReadBackBufferPointer)
+						{
+							uint32_t* pEntity = reinterpret_cast<uint32_t*>(m_pMappedReadBackBufferPointer);
+							m_pScene->SetHoveredEntity(*pEntity);
+						}
+					});
+			}
 		}
-	}
-
-	void SceneRenderer::AddToResourceTransitionBatch(const std::shared_ptr<IResource>& pResource, D3D12_RESOURCE_STATES stateAfter) noexcept
-	{
-		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
-		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		resourceTransitionBarrier.Transition.pResource = pResource->GetInterface().Get();
-		resourceTransitionBarrier.Transition.StateBefore = pResource->GetCurrentState();
-		resourceTransitionBarrier.Transition.StateAfter = stateAfter;
-		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-		m_ResourceBarrierBatch.emplace_back(resourceTransitionBarrier);
-
-		pResource->SetCurrentState(stateAfter);
-	}
-
-	void SceneRenderer::AddToResourceTransitionBatch(const Microsoft::WRL::ComPtr<ID3D12Resource>& pResource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter) noexcept
-	{
-		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
-		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		resourceTransitionBarrier.Transition.pResource = pResource.Get();
-		resourceTransitionBarrier.Transition.StateBefore = stateBefore;
-		resourceTransitionBarrier.Transition.StateAfter = stateAfter;
-		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-		m_ResourceBarrierBatch.emplace_back(resourceTransitionBarrier);
 	}
 
 	void SceneRenderer::OnSceneViewportChanged(const uint32_t width, const uint32_t height) noexcept
@@ -1066,7 +1350,7 @@ namespace Relentless
 		m_EditorGridRenderPass->Resize(width, height);
 		m_GeometryPickingRenderPass->Resize(width, height);
 		m_CompositeRenderPass->Resize(width, height);
-
+		
 		auto& memoryManager = MemoryManager::Get();
 		
 		RenderTextureSpecification resolveRTSpec{};
@@ -1085,7 +1369,7 @@ namespace Relentless
 	{
 		if (samples != m_Options.MSAASamples)
 		{
-			MasterRenderer::WaitAndSyncAllFramesInFlight();
+			Application::Get().GetGPUTaskManager().WaitForAllFramesComplete();
 			if (samples == 1)
 			{
 				m_EditorGridRenderPass->GetPipeline()->GetFrameBuffer()->SetOutputDependency(m_CombinedGeometryAndPickingPass->GetPipeline()->GetFrameBuffer(), 0);
@@ -1113,15 +1397,6 @@ namespace Relentless
 			m_EditorGridRenderPass->OnMSAAReconfiguration(samples);
 			m_CompositeRenderPass->OnMSAAReconfiguration(samples);
 		}
-	}
-
-	entity SceneRenderer::GetHoveredEntity() noexcept
-	{
-		uint32_t* pEntity = nullptr;
-		DXCall(m_pIdentifierReadbackBuffer->GetInterface()->Map(0, nullptr, reinterpret_cast<void**>(&pEntity)));
-		DXCall_STD(m_pIdentifierReadbackBuffer->GetInterface()->Unmap(0, nullptr));
-
-		return *pEntity;
 	}
 
 	void SceneRenderer::InitializeHBAOPlus() noexcept
@@ -1167,5 +1442,16 @@ namespace Relentless
 		m_HBAOPlusParameters.DepthStorage = GFSDK_SSAO_FP32_VIEW_DEPTHS;
 		m_HBAOPlusParameters.EnableDualLayerAO = false;
 		m_HBAOPlusParameters.StepCount = GFSDK_SSAO_STEP_COUNT_8;
+	}
+
+	void SceneRenderer::OnImGuiRender(const ImVec2& viewportDimensions)
+	{
+		auto UITextureHandle = MasterRenderer::GetFrameBuffer()->GetOutput(0)->GetSRVDescriptorHandle().GPUHandle;
+		
+		ImGui::Image
+		(
+			(ImTextureID)UITextureHandle.ptr,
+			ImVec2(viewportDimensions.x, viewportDimensions.y)
+		);
 	}
 }

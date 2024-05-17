@@ -16,6 +16,8 @@ namespace Relentless
 			break;
 		case TextureFormat::Depth:
 			return DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT;
+		case TextureFormat::RGB10A2UNORM:
+			return DXGI_FORMAT::DXGI_FORMAT_R10G10B10A2_UNORM;
 			break;
 		}
 

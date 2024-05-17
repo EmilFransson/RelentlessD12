@@ -2,6 +2,7 @@
 #include "Graphics/MemoryManager.h"
 #include "Graphics/D3D12Core.h"
 #include "ImguiLayer.h"
+#include "Graphics/GPUTaskManager.h"
 namespace Relentless
 {
 	ImguiLayer::ImguiLayer() noexcept
@@ -15,8 +16,29 @@ namespace Relentless
 		ImGui::DestroyContext();
 	}
 
-	void ImguiLayer::BeginFrame() noexcept
+	void ImguiLayer::BeginFrame(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept
 	{
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+
+		BackBuffer& backBuffer{ Window::GetBackBuffers()[Application::Get().GetGPUTaskManager().GetCurrentFrameIndex()]};
+		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
+		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		resourceTransitionBarrier.Transition.pResource = backBuffer.pBackBuffer.Get();
+		resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+		DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+
+		backBuffer.CurrentState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+		DXCall_STD(pCommandList->OMSetRenderTargets(1u, &backBuffer.Handle.CPUHandle, false, nullptr));
+		D3D12_VIEWPORT nviewport = { 0.0f, 0.0f, static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()), 0.0f, 1.0f };
+		D3D12_RECT nscissorRect = { 0, 0, static_cast<LONG>(Window::GetWidth()), static_cast<LONG>(Window::GetHeight()) };
+		DXCall_STD(pCommandList->RSSetViewports(1, &nviewport));
+		DXCall_STD(pCommandList->RSSetScissorRects(1, &nscissorRect));
+
 		ImGui_ImplDX12_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
@@ -76,12 +98,11 @@ namespace Relentless
 		ImGui::End();
 	}
 
-	void ImguiLayer::EndFrame() noexcept
+	void ImguiLayer::EndFrame(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept
 	{
 		ImGui::Render();
-		DXCall_STD(D3D12Core::GetCommandList()->SetDescriptorHeaps(1, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3D12Core::GetCommandList().Get());
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCommandList.Get());
 		
 		ImGuiIO& io = ImGui::GetIO();
 		if (io.ConfigFlags & ImGuiConfigFlags_::ImGuiConfigFlags_ViewportsEnable)
@@ -89,6 +110,8 @@ namespace Relentless
 			ImGui::UpdatePlatformWindows();
 			ImGui::RenderPlatformWindowsDefault();
 		}
+
+		Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
 	}
 
 	void ImguiLayer::OnImGuiRender() noexcept
@@ -108,8 +131,8 @@ namespace Relentless
 		ImGui::StyleColorsDark();
 		
 		std::string openSansFontPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("/Fonts/opensans/");
-		io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Bold.ttf")).c_str(), 22.0f);
-		io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Bold.ttf")).c_str(), 26.0f);
+		RLS_VERIFY(io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Bold.ttf")).c_str(), 22.0f), "Failed to load ImGui Font");
+		RLS_VERIFY(io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Bold.ttf")).c_str(), 26.0f), "Failed to load ImGui Font");
 		io.FontDefault = io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Regular.ttf")).c_str(), 22.0f);
 
 		ImGuiStyle& style = ImGui::GetStyle();
@@ -163,7 +186,7 @@ namespace Relentless
 		ImGui_ImplDX12_Init
 		(
 			D3D12Core::GetDevice().Get(),
-			D3D12Core::GetNrOfBufferedFrames(),
+			GPUTaskManager::FRAMES_IN_FLIGHT,
 			DXGI_FORMAT_R10G10B10A2_UNORM,
 			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().Get(),
 			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetCPUStartHandle(),

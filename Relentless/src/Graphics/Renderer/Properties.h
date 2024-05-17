@@ -7,7 +7,8 @@ namespace Relentless
 		RGBA32F,
 		R32UINT,
 		Depth,
-		R32TYPELESS
+		R32TYPELESS,
+		RGB10A2UNORM
 	};
 
 	struct MSAASpecification
