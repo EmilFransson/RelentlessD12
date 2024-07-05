@@ -40,6 +40,7 @@ namespace Relentless
 		void OnImGuiRender(const ImVec2& viewportDimensions);
 	private:
 		void PreZPass() noexcept;
+		void SkyboxPass() noexcept;
 		void OpaqueGeometryPass() noexcept;
 		void CutOutGeometryPass() noexcept;
 		void TransparentGeometryPass() noexcept;
@@ -58,6 +59,12 @@ namespace Relentless
 			DirectX::XMFLOAT4X4 VPMatrix;
 		} m_VPData;
 
+		struct ViewProjectionMatrices
+		{
+			DirectX::XMFLOAT4X4 ViewMatrix;
+			DirectX::XMFLOAT4X4 ProjectionMatrix;
+		} m_VPMatrices;
+
 		struct PerFrameOpaqueGeometryData
 		{
 			uint32_t cameraDataIndex;
@@ -67,6 +74,8 @@ namespace Relentless
 			uint32_t nrOfPointLights;
 			uint32_t environmentIndex;
 			uint32_t brdfLutTextureIndex;
+			uint32_t irradianceMapIndex;
+			uint32_t radianceMapIndex;
 		} m_PerFrameOpaqueGeometryData;
 
 		struct PerFrameEditorData
@@ -88,31 +97,28 @@ namespace Relentless
 		{
 			uint32_t materialIndex;
 			uint32_t worldMatrixIndex;
+			uint32_t vertexBufferIndex;
+			uint32_t indexBufferIndex;
 		} m_PerDrawData;
-
-		struct EditorBatchData
-		{
-			uint32_t worldMatrixIndex1;
-			uint32_t worldMatrixIndex2;
-		} m_EditorBatchData;
-
-		struct InstanceDataSBIndex
-		{
-			uint32_t Index;
-		} m_InstanceDataSBIndex;
-
-		struct EditorGridVPMatrixIndex
-		{
-			uint32_t Index;
-		} m_EditorGridVPMatrixIndex;
 
 		struct Environment
 		{
 			DirectX::XMFLOAT3 BackgroundColor;
 		} m_Environment;
 
-		//size_t m_EnvironmentCBHandle = 0u;
-		std::unique_ptr<ConstantBufferSet> m_pEnvironmentConstantBufferSet = nullptr;
+		struct SkyboxPassData
+		{
+			uint32_t ViewProjectionIndex;
+			uint32_t SkyboxTextureIndex;
+		} m_SkyboxPassData;
+
+		struct EditorGridPassVSPerFrameData
+		{
+			uint32_t InstanceDataSBIndex;
+			uint32_t VPMatrixConstantBufferIndex;
+			uint32_t BatchDataTransformHorizontalCBIndex;
+			uint32_t BatchDataTransformVerticalCBIndex;
+		} m_EditorGridPassVSPerFrameData;
 
 		std::vector<entity> m_OpaqueRenderModeEntities;
 		std::vector<entity> m_CutOutRenderModeEntities;
@@ -127,6 +133,7 @@ namespace Relentless
 		std::shared_ptr<RenderPass> m_EditorGridRenderPass = nullptr;
 		std::shared_ptr<RenderPass> m_CombinedGeometryAndPickingPass = nullptr; 
 		std::shared_ptr<RenderPass> m_PreZRenderPass = nullptr;
+		std::shared_ptr<RenderPass> m_SkyboxRenderPass = nullptr;
 
 		std::shared_ptr<ReadBackBuffer> m_pIdentifierReadbackBuffer{ nullptr };
 		void* m_pMappedReadBackBufferPointer = nullptr;
@@ -134,8 +141,6 @@ namespace Relentless
 		std::shared_ptr<RenderTexture> m_pResolvedTexture{ nullptr };
 		AssetHandle m_BRDFLutTextureHandle = NULL_HANDLE;
 		
-		GFSDK_SSAO_Parameters m_HBAOPlusParameters;
-
 		entity m_HoveredEntity{NULL_ENTITY};
 
 		struct InstanceData
@@ -153,17 +158,16 @@ namespace Relentless
 		const int EDITOR_GRID_VERTEX_COUNT = 2;
 		const int EDITOR_GRID_INSTANCE_COUNT = 800;
 
-		std::unique_ptr<StructuredBuffer> m_pEditorGridInstanceDataStructuredBuffer{nullptr};
-
 		TransformComponent m_EditorGridTransformComponent1;
 		TransformComponent m_EditorGridTransformComponent2;
 		
-		GFSDK_SSAO_Context_D3D12* m_SSAOContext;
+		GFSDK_SSAO_Parameters m_HBAOPlusParameters;
+		GFSDK_SSAO_Context_D3D12* m_SSAOContext = nullptr;
 
-		std::unique_ptr<ConstantBufferSet> m_EditorGridTransformCBSet1 = nullptr;
-		std::unique_ptr<ConstantBufferSet> m_EditorGridTransformCBSet2 = nullptr;
-		std::unique_ptr<StructuredBufferSet> m_pEditorGridInstanceDataStructuredBufferSet = nullptr;
-
-		std::unique_ptr<ConstantBufferSet> m_ViewProjectionMatrixConstantBufferSet = nullptr;
+		ResourceHandle m_EditorTransformCB1Handle = NULL_RESOURCE_HANDLE;
+		ResourceHandle m_EditorTransformCB2Handle = NULL_RESOURCE_HANDLE;
+		ResourceHandle m_EditorGridInstanceDataSBHandle = NULL_RESOURCE_HANDLE;
+		ResourceHandle m_EnvironmentCBHandle = NULL_RESOURCE_HANDLE;
+		ResourceHandle m_ViewProjectionMatrixCBHandle = NULL_RESOURCE_HANDLE;
 	};
 }

@@ -10,23 +10,25 @@
 #include "Utility/Common.h"
 #include "Utility/SerializeUtilities.h"
 #include "Utility/FilepathUtils.h"
-
-
+#include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
+#include "../../../vendor/includes/DirectXTK/BufferHelpers.h"
 
 namespace Relentless
 {
 	using namespace Microsoft::WRL;
 
+	//Deserialize
 	std::unordered_map<AssetType, std::function<bool(const std::string&, AssetHandle&)>> DeserializerFuncs = {
 		{AssetType::Texture2D, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Texture2D>(path, outHandle); }},
 		{AssetType::Material, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Material>(path, outHandle); }},
 		{AssetType::Mesh, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Mesh>(path, outHandle); }}
 	};
 
-	std::unordered_map<AssetType, std::function<bool(const std::string&, const AssetHandle&)>> SerializerFuncs = {
-		{AssetType::Texture2D, [](const std::string& path, const AssetHandle& assetHandle) { return Serializer::Serialize<Texture2D>(assetHandle, path); }},
-		{AssetType::Material, [](const std::string& path, const AssetHandle& assetHandle) { return Serializer::Serialize<Material>(assetHandle, path); }},
-		{AssetType::Mesh, [](const std::string& path, const AssetHandle& assetHandle) { return Serializer::Serialize<Mesh>(assetHandle, path); }}
+	//Serialize
+	std::unordered_map<AssetType, std::function<bool(const std::string&, const AssetHandle&, bool)>> SerializerFuncs = {
+		{AssetType::Texture2D, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<Texture2D>(assetHandle, path, isABlockingOperation); }},
+		{AssetType::Material, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<Material>(assetHandle, path, isABlockingOperation); }},
+		{AssetType::Mesh, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<Mesh>(assetHandle, path, isABlockingOperation); }}
 	};
 
 	struct Texture2DSerializationContext
@@ -78,30 +80,30 @@ namespace Relentless
 #pragma pack(pop)
 
 	template<>
-	bool Serializer::Serialize<Material>(const AssetHandle& assetHandle, const std::filesystem::path& filepath) noexcept
+	bool Serializer::Serialize<Material>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept
 	{
-		Material& material = AssetManager::Get<Material>(assetHandle);
+		std::shared_ptr<Material> material = AssetManager::Get<Material>(assetHandle);
 		
 		MaterialData data{};
-		data.RenderMode = static_cast<uint8_t>(material.GetRenderMode());
-		data.AlbedoColor = material.m_AlbedoColor;
-		data.Metallic = material.m_Metallic;
-		data.EmissionColor = material.m_EmissionColor;
-		data.EmissionIntensity = material.m_EmissionIntensity;
-		data.Roughness = material.m_Roughness;
-		data.TilingFactor = material.m_TilingFactor;
-		data.Offset = material.m_Offset;
-		data.HeightScale = material.m_HeightScale;
-		data.AOScale = material.m_AOScale;
-		data.CombinedRoughnessMetallness = material.m_CombinedRoughnessMetallnesMap;
+		data.RenderMode = static_cast<uint8_t>(material->GetRenderMode());
+		data.AlbedoColor = material->m_AlbedoColor;
+		data.Metallic = material->m_Metallic;
+		data.EmissionColor = material->m_EmissionColor;
+		data.EmissionIntensity = material->m_EmissionIntensity;
+		data.Roughness = material->m_Roughness;
+		data.TilingFactor = material->m_TilingFactor;
+		data.Offset = material->m_Offset;
+		data.HeightScale = material->m_HeightScale;
+		data.AOScale = material->m_AOScale;
+		data.CombinedRoughnessMetallness = material->m_CombinedRoughnessMetallnesMap;
 
-		data.AlbedoTextureUUID = material.m_AlbedoTextureHandle.Uuid;
-		data.MetallicTextureUUID = material.m_MetallicTextureHandle.Uuid;
-		data.RoughnessTextureUUID = material.m_RoughnessTextureHandle.Uuid;
-		data.NormalMapUUID = material.m_NormalMapHandle.Uuid;
-		data.HeightMapUUID = material.m_HeightMapHandle.Uuid;
-		data.AmbientOcclusionTextureUUID = material.m_AmbientOcclusionTextureHandle.Uuid;
-		data.EmissionTextureUUID = material.m_EmissionTextureHandle.Uuid;
+		data.AlbedoTextureUUID = material->m_AlbedoTextureHandle.Uuid;
+		data.MetallicTextureUUID = material->m_MetallicTextureHandle.Uuid;
+		data.RoughnessTextureUUID = material->m_RoughnessTextureHandle.Uuid;
+		data.NormalMapUUID = material->m_NormalMapHandle.Uuid;
+		data.HeightMapUUID = material->m_HeightMapHandle.Uuid;
+		data.AmbientOcclusionTextureUUID = material->m_AmbientOcclusionTextureHandle.Uuid;
+		data.EmissionTextureUUID = material->m_EmissionTextureHandle.Uuid;
 
 		std::ofstream outFile(filepath, std::ios::binary);
 		RLS_ASSERT(outFile.is_open(), "[Serializer]: Failed to open output file.");
@@ -136,15 +138,17 @@ namespace Relentless
 	bool Serializer::Deserialize(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
 	{
 		const std::filesystem::path absolutePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, filepath);
+
 		if (!File::Exists(absolutePath))
 		{
+			RLS_CORE_ERROR("[Serializer]: File with path '{0}' does not exist.", absolutePath.string().c_str());
 			outHandle = NULL_HANDLE;
 			return false;
 		}
 
-		const std::string extension = FilepathUtils::ExtractExtension(absolutePath);
-		if (extension != ASSET_EXTENSION)
+		if (FilepathUtils::ExtractExtension(absolutePath) != ASSET_EXTENSION)
 		{
+			RLS_CORE_ERROR("[Serializer]: File with path '{0}' not of correct rasset extension (.rasset).", absolutePath.string().c_str());
 			outHandle = NULL_HANDLE;
 			return false;
 		}
@@ -165,14 +169,14 @@ namespace Relentless
 		return { signature, version };
 	}
 
-	bool Serializer::Serialize(const std::filesystem::path& filepath, const AssetHandle& assetHandle) noexcept
+	bool Serializer::Serialize(const std::filesystem::path& filepath, const AssetHandle& assetHandle, bool isABlockingOperation) noexcept
 	{
 		if (!assetHandle.IsValid())
 			return false;
 
 		std::filesystem::path absolutePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, filepath);
 	
-		const bool hasExtension = FilepathUtils::HasExtension(filepath);
+		const bool hasExtension = FilepathUtils::HasExtension(absolutePath);
 		if (!hasExtension)
 			FilepathUtils::SetExtension(absolutePath, ASSET_EXTENSION);
 		
@@ -186,30 +190,33 @@ namespace Relentless
 		if (!File::ExistsDir(absolutePath))
 			return false;
 
-		return SerializerFuncs[assetHandle.Type](absolutePath.string(), assetHandle);
+		return SerializerFuncs[assetHandle.Type](absolutePath.string(), assetHandle, isABlockingOperation);
 	}
 
 	template<>
-	bool Serializer::Serialize<Texture2D>(const AssetHandle& assetHandle, const std::filesystem::path& filepath) noexcept
+	bool Serializer::Serialize<Texture2D>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept
 	{
-		Texture2D& texture = AssetManager::Get<Texture2D>(assetHandle);
-		const ComPtr<ID3D12Resource> gpuInterface = texture.GetInterface();
+		std::shared_ptr<Texture2D> texture = AssetManager::Get<Texture2D>(assetHandle);
+		const ComPtr<ID3D12Resource> gpuInterface = texture->GetInterface();
 		const D3D12_RESOURCE_DESC textureDescriptor = gpuInterface->GetDesc();
 
 		GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
-		ComPtr<ID3D12GraphicsCommandList4> pCopyCommandList = gpuTaskManager.RequestCommandList(CommandType::Copy);
+		ComPtr<ID3D12GraphicsCommandList4> pCopyCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
 		ComPtr<ID3D12GraphicsCommandList4> pDirectCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
 
 		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
 		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		resourceTransitionBarrier.Transition.pResource = texture.GetInterface().Get();
-		resourceTransitionBarrier.Transition.StateBefore = texture.GetCurrentState();
-		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
+		resourceTransitionBarrier.Transition.pResource = texture->GetInterface().Get();
+		resourceTransitionBarrier.Transition.StateBefore = texture->GetCurrentState();
+		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
 		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		DXCall_STD(pDirectCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
 
-		gpuTaskManager.ExecuteCommandListBlocking(pDirectCommandList);
+		if (isABlockingOperation)
+			Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pDirectCommandList);
+		else
+			ScheduleCommandListAndWaitForCompletion(pDirectCommandList);
 
 		const uint32_t mipLevels = textureDescriptor.MipLevels;
 		Texture2DSerializationContext context = {};
@@ -259,20 +266,28 @@ namespace Relentless
 		
 			DXCall_STD(pCopyCommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
 		}
-		gpuTaskManager.ExecuteCommandListBlocking(pCopyCommandList);
+
+		if (isABlockingOperation)
+			Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pCopyCommandList);
+		else
+			ScheduleCommandListAndWaitForCompletion(pCopyCommandList);
 
 		ComPtr<ID3D12GraphicsCommandList4> pTransitionCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
 
 		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		resourceTransitionBarrier.Transition.pResource = texture.GetInterface().Get();
-		resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+		resourceTransitionBarrier.Transition.pResource = texture->GetInterface().Get();
+		resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
 		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		DXCall_STD(pTransitionCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
 
 		s_Data.UUIDToStagingResources[assetHandle.Uuid] = context;
-		gpuTaskManager.ExecuteCommandListBlocking(pTransitionCommandList);
+
+		if (isABlockingOperation)
+			Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pTransitionCommandList);
+		else
+			ScheduleCommandListAndWaitForCompletion(pTransitionCommandList);
 
 		//.........................................................//
 
@@ -288,12 +303,12 @@ namespace Relentless
 
 		TextureHeader textureHeader
 		{
-			.BaseWidth = texture.GetWidth(),
-			.BaseHeight = texture.GetHeight(),
+			.BaseWidth = texture->GetWidth(),
+			.BaseHeight = texture->GetHeight(),
 			.NrOfMips = mipLevels,
-			.Samples = texture.GetMultiSampleCount(),
-			.Format = texture.GetFormat(),
-			.IsSRGB = texture.IsSRGB()
+			.Samples = texture->GetMultiSampleCount(),
+			.Format = texture->GetFormat(),
+			.IsSRGB = texture->IsSRGB()
 		};
 		outFile.write(reinterpret_cast<char*>(&textureHeader), sizeof(textureHeader));
 
@@ -332,29 +347,31 @@ namespace Relentless
 	}
 
 	template<>
-	bool Serializer::Serialize<Mesh>(const AssetHandle& assetHandle, const std::filesystem::path& filepath) noexcept
+	bool Serializer::Serialize<Mesh>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept
 	{
 		std::ofstream outFile(filepath, std::ios::binary);
 
 		SerializeRassetHeader(assetHandle, outFile);
 		SerializeAssetTags(assetHandle, outFile);
 
-		const Mesh& mesh = AssetManager::Get<Mesh>(assetHandle);
-		const std::unique_ptr<VertexBuffer>& pVertexBuffer = mesh.GetVertexBuffer();
-		const std::unique_ptr<IndexBuffer>& pIndexBuffer = mesh.GetIndexBuffer();
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
 
-		VertexBuffer::Specification& vertexBufferSpecification = pVertexBuffer->GetSpecification();
-		IndexBuffer::Specification& indexBufferSpecification = pIndexBuffer->GetSpecification();
+		const std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(assetHandle);
+		const std::shared_ptr<VertexBuffer> pVertexBuffer = resourceManager.GetVertexBuffer(mesh->m_VertexBufferHandle);
+		const std::shared_ptr<IndexBuffer> pIndexBuffer = resourceManager.GetIndexBuffer(mesh->m_IndexBufferHandle);
 
 		const D3D12_RESOURCE_DESC vertexBufferResourceDescriptor = pVertexBuffer->GetInterface()->GetDesc();
 		const uint64_t vertexBufferSizeInBytes = vertexBufferResourceDescriptor.Width;
 
+		const D3D12_RESOURCE_DESC indexBufferResourceDescriptor = pIndexBuffer->GetInterface()->GetDesc();
+		const uint64_t indexBufferSizeInBytes = indexBufferResourceDescriptor.Width;
+
 		MeshDataHeader meshDataHeader
 		{
 			.VertexBufferSizeInBytes = vertexBufferSizeInBytes,
-			.IndexBufferSizeInBytes = indexBufferSpecification.TotalSizeInBytes,
-			.VertexCount = vertexBufferSpecification.NrOfVertices,
-			.IndexCount = indexBufferSpecification.NrOfIndices
+			.IndexBufferSizeInBytes = indexBufferSizeInBytes,
+			.VertexCount = pVertexBuffer->GetNrOfVertices(),
+			.IndexCount = pIndexBuffer->GetNrOfIndices()
 		};
 
 		//Write the mesh header:
@@ -390,11 +407,14 @@ namespace Relentless
 				nullptr,
 				IID_PPV_ARGS(&readbackBuffer)));
 
-			ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Copy);
+			ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
 
 			DXCall_STD(copyCommandList->CopyResource(readbackBuffer.Get(), pVertexBuffer->GetInterface().Get()));
 
-			Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(copyCommandList);
+			if (isABlockingOperation)
+				Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(copyCommandList);
+			else
+				ScheduleCommandListAndWaitForCompletion(copyCommandList);
 
 			UINT8* pData = nullptr;
 			DXCall(readbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pData)));
@@ -403,9 +423,6 @@ namespace Relentless
 
 			DXCall_STD(readbackBuffer->Unmap(0, nullptr));
 		}
-		
-		const D3D12_RESOURCE_DESC indexBufferResourceDescriptor = pIndexBuffer->GetInterface()->GetDesc();
-		const uint64_t indexBufferSizeInBytes = indexBufferResourceDescriptor.Width;
 
 		{
 			Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffer = nullptr;
@@ -437,11 +454,14 @@ namespace Relentless
 				nullptr,
 				IID_PPV_ARGS(&readbackBuffer)));
 
-			ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Copy);
+			ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
 
 			DXCall_STD(copyCommandList->CopyResource(readbackBuffer.Get(), pIndexBuffer->GetInterface().Get()));
 
-			Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(copyCommandList);
+			if (isABlockingOperation)
+				Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(copyCommandList);
+			else
+				ScheduleCommandListAndWaitForCompletion(copyCommandList);
 
 			UINT8* pData = nullptr;
 			DXCall(readbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pData)));
@@ -456,21 +476,8 @@ namespace Relentless
 	template<>
 	bool Serializer::Deserialize<Mesh>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
 	{
-		if (!File::Exists(filepath))
-		{
-			RLS_CORE_ERROR("[Serializer]: Mesh file with path '{0}' does not exist.", filepath.string().c_str());
-			outHandle = NULL_HANDLE;
-			return false;
-		}
-		if (FilepathUtils::ExtractExtension(filepath) != ASSET_EXTENSION)
-		{
-			RLS_CORE_ERROR("[Serializer]: File with path '{0}' not of correct rasset extension (.rasset).", filepath.string().c_str());
-			outHandle = NULL_HANDLE;
-			return false;
-		}
-
 		std::ifstream inFile(filepath, std::ios::binary);
-		RLS_ASSERT(inFile.is_open(), "[Serializer]: Unable to open file with path '{0}'", filepath);
+		RLS_ASSERT(inFile.is_open(), "[Serializer]: Unable to open file with path '{0}'", filepath.string().c_str());
 
 		auto [signature, headerVersion] = DeserializeHeaderSignatureAndVersion(inFile);
 		if (signature != RASSET_SIGNATURE)
@@ -515,30 +522,43 @@ namespace Relentless
 	
 		inFile.read(reinterpret_cast<char*>(readVertexData.data()), readMeshHeader.VertexBufferSizeInBytes);
 		inFile.read(reinterpret_cast<char*>(readIndexData.data()), readMeshHeader.IndexBufferSizeInBytes);
-	
-		VertexBuffer::Specification vbSpec
+
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		ResourceHandle vbHandle = resourceManager.CreateVertexBuffer(name + std::string(" Vertex buffer"), (uint32_t)readMeshHeader.VertexBufferSizeInBytes, readMeshHeader.VertexCount);
+		ResourceHandle ibHandle = resourceManager.CreateIndexBuffer(name + std::string(" Index buffer"), (uint32_t)readMeshHeader.IndexBufferSizeInBytes, readMeshHeader.IndexCount);
+
+		std::shared_ptr<VertexBuffer> pVB = resourceManager.GetVertexBuffer(vbHandle);
+		std::shared_ptr<IndexBuffer> pIB = resourceManager.GetIndexBuffer(ibHandle);
+
+		DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
+		uploadBatch.Begin();
+		
 		{
-			.NrOfVertices = (uint32_t)readMeshHeader.VertexCount,
-			.TotalSizeInBytes = (uint32_t)readMeshHeader.VertexBufferSizeInBytes,
-			.Stride = sizeof(SimpleVertex),
-			.pBuffer = (void*)readVertexData.data(),
-			.Name = name + std::string(" Vertex Buffer")
-		};
-	
-		IndexBuffer::Specification ibSpec
+			D3D12_SUBRESOURCE_DATA subresourceData = {};
+			subresourceData.pData = readVertexData.data();
+			subresourceData.RowPitch = readMeshHeader.VertexBufferSizeInBytes;
+			subresourceData.SlicePitch = subresourceData.RowPitch;
+			uploadBatch.Upload(pVB->GetInterface().Get(), 0, &subresourceData, 1);
+			uploadBatch.Transition(pVB->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		}
+		
 		{
-			.NrOfIndices = (uint32_t)readMeshHeader.IndexCount,
-			.TotalSizeInBytes = (uint32_t)readMeshHeader.IndexBufferSizeInBytes,
-			.Stride = sizeof(uint32_t),
-			.pBuffer = (void*)readIndexData.data(),
-			.Name = name + std::string(" Index Buffer")
-		};
-	
+			D3D12_SUBRESOURCE_DATA subresourceData = {};
+			subresourceData.pData = readIndexData.data();
+			subresourceData.RowPitch = readMeshHeader.IndexBufferSizeInBytes;
+			subresourceData.SlicePitch = subresourceData.RowPitch;
+			uploadBatch.Upload(pIB->GetInterface().Get(), 0, &subresourceData, 1);
+			uploadBatch.Transition(pIB->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		}
+		
+		auto finish = uploadBatch.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
+		finish.wait();
+
 		AssetHandle meshHandle = AssetManager::CreateNew<Mesh>(uuid, filepath.string());
-		Mesh& mesh = AssetManager::Get<Mesh>(meshHandle);
-		mesh.SetName(name);
-		mesh.SetVertexBuffer(std::make_unique<VertexBuffer>(&vbSpec));
-		mesh.SetIndexBuffer(std::make_unique<IndexBuffer>(&ibSpec));
+		std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(meshHandle);
+		mesh->SetName(name);
+		mesh->SetVertexBufferHandle(vbHandle);
+		mesh->SetIndexBufferHandle(ibHandle);
 
 		RLS_CORE_INFO("[Serializer]: Loaded mesh '{0}' with GUID: {1}", name.c_str(), ConvertUUIDToString(uuid).c_str());
 		
@@ -550,37 +570,37 @@ namespace Relentless
 	bool Serializer::Deserialize<Texture2D>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
 	{
 		std::ifstream inFile(filepath, std::ios::binary);
-		RLS_ASSERT(inFile.is_open(), "[Serializer]: Unable to open file with path '{0}'", filepath);
+		RLS_ASSERT(inFile.is_open(), "[Serializer]: Unable to open file with path '{0}'", filepath.string().c_str());
 
-		//auto [signature, headerVersion] = DeserializeHeaderSignatureAndVersion(inFile);
-		//if (signature != LatestRassetHeaderVersion::Signature)
-		//{
-		//	RLS_CORE_ERROR("Unable to load asset file with path '{0}'. Asset is either invalid or corrupt.", filepath.c_str());
-		//	outHandle = NULL_HANDLE;
-		//	return false;
-		//}
+		auto [signature, headerVersion] = DeserializeHeaderSignatureAndVersion(inFile);
+		if (signature != RASSET_SIGNATURE)
+		{
+			RLS_CORE_ERROR("[Serializer]: Unable to load asset file with path '{0}'. Asset is either invalid or corrupt.", filepath.string().c_str());
+			outHandle = NULL_HANDLE;
+			return false;
+		}
 
 		AssetType type = AssetType::Undefined;
 		UUID uuid = NULL_UUID;
 		std::string name = "";
 		uint16_t tagsByteSize = 0u;
 
-		//switch (headerVersion)
-		//{
-		//case 1:
-		//{
+		switch (headerVersion)
+		{
+		case 1:
+		{
 			const RassetHeader_1 header = DeserializeRAssetHeaderVersion1(inFile);
 			type = header.AssetType;
 			uuid = header.UUID;
 			name = header.Name;
 			tagsByteSize = header.TagsByteSize;
-		//	break;
-		//}
-		//default:
-		//	RLS_CORE_ERROR("Unable to load asset file with path {0}. Asset version '{1}' does not support deserialization.", filepath.c_str(), std::to_string(headerVersion).c_str());
-		//	outHandle = AssetManager::GetInvalidTextureHandle();
-		//	return false;
-		//}
+			break;
+		}
+		default:
+			RLS_CORE_ERROR("[Serializer]: Unable to load asset file with path {0}. Asset version '{1}' does not support deserialization.", filepath.string().c_str(), std::to_string(headerVersion).c_str());
+			outHandle = NULL_HANDLE;
+			return false;
+		}
 
 		RLS_ASSERT(type == AssetType::Texture2D, "[Serializer]: Asset type mismatch encountered.");
 
@@ -590,99 +610,31 @@ namespace Relentless
 		TextureHeader textureHeader = {};
 		inFile.read(reinterpret_cast<char*>(&textureHeader), sizeof(TextureHeader));
 
-		D3D12_RESOURCE_DESC textureDescriptor = {};
-		textureDescriptor.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		textureDescriptor.Format = textureHeader.Format;
-		textureDescriptor.MipLevels = textureHeader.NrOfMips;
-		textureDescriptor.Width = textureHeader.BaseWidth;
-		textureDescriptor.Height = textureHeader.BaseHeight;
-		textureDescriptor.SampleDesc.Count = textureHeader.Samples;
-		textureDescriptor.SampleDesc.Quality = 0u;
-		textureDescriptor.DepthOrArraySize = 1u;
-		textureDescriptor.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		textureDescriptor.Flags = D3D12_RESOURCE_FLAG_NONE;
-		textureDescriptor.Alignment = 0u;
+		Texture2DSpecification specification;
+		specification.Name = name;
+		specification.Width = textureHeader.BaseWidth;
+		specification.Height = textureHeader.BaseHeight;
+		specification.Format = textureHeader.Format;
+		specification.MipCount = textureHeader.NrOfMips;
+		specification.IsSRGB = textureHeader.IsSRGB;
+		specification.SampleCount = textureHeader.Samples;
 
-		D3D12_HEAP_PROPERTIES textureHeapProperties = {};
-		textureHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		textureHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		textureHeapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
-		textureHeapProperties.CreationNodeMask = 1u;
-		textureHeapProperties.VisibleNodeMask = 1u;
+		const AssetHandle handle = AssetManager::CreateNew<Texture2D>(specification, uuid, filepath.string());
+		std::shared_ptr<Texture2D> pTexture = AssetManager::Get<Texture2D>(handle);
 
-		Microsoft::WRL::ComPtr<ID3D12Resource> pTextureResource = nullptr;
+		const D3D12_RESOURCE_DESC textureResourceDescriptor = pTexture->GetInterface()->GetDesc();
+		DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
+		uploadBatch.Begin();
 
-		DXCall(D3D12Core::GetDevice()->CreateCommittedResource
-		(
-			&textureHeapProperties,
-			D3D12_HEAP_FLAG_NONE,
-			&textureDescriptor,
-			D3D12_RESOURCE_STATE_COPY_DEST,
-			nullptr,
-			IID_PPV_ARGS(&pTextureResource)
-		));
-
-		NAME_D12_OBJECT(pTextureResource, ConvertStringToWstring(name).c_str());
-
-		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(textureHeader.NrOfMips);
-		uint64_t totalSize = 0;
-
-		DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
-		(
-			&textureDescriptor,
-			0,
-			textureHeader.NrOfMips,
-			0,
-			footprints.data(),
-			nullptr,
-			nullptr,
-			&totalSize)
-		);
-
-		D3D12_RESOURCE_DESC bufferDesc = {};
-		bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		bufferDesc.Alignment = 0; 
-		bufferDesc.Width = totalSize;
-		bufferDesc.Height = 1;  
-		bufferDesc.DepthOrArraySize = 1; 
-		bufferDesc.MipLevels = 1;
-		bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
-		bufferDesc.SampleDesc.Count = 1; 
-		bufferDesc.SampleDesc.Quality = 0;
-		bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-		D3D12_HEAP_PROPERTIES heapProperties = {};
-		heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-		heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		heapProperties.CreationNodeMask = 1u;
-		heapProperties.VisibleNodeMask = 1u;
-
-		Microsoft::WRL::ComPtr<ID3D12Resource> pUploadBuffer = nullptr;
-		DXCall(D3D12Core::GetDevice()->CreateCommittedResource
-		(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
-			&bufferDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&pUploadBuffer))
-		);
-		NAME_D12_OBJECT(pUploadBuffer, ConvertStringToWstring("Texture2D Upload Buffer - " + name).c_str());
-
-		void* pData = nullptr;
-		DXCall(pUploadBuffer->Map(0u, nullptr, &pData));
-		RLS_ASSERT(pData, "[Serializer]: Data pointer is invalid.");
-
+		GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
 		for (uint32_t mipLevel = 0u; mipLevel < textureHeader.NrOfMips; ++mipLevel)
 		{
 			D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
 			uint64_t mipSize = 0u;
-			
+
 			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
 			(
-				&textureDescriptor,
+				&textureResourceDescriptor,
 				mipLevel,
 				1u,
 				0u,
@@ -695,65 +647,17 @@ namespace Relentless
 			std::vector<BYTE> mipData(mipSize);
 			inFile.read(reinterpret_cast<char*>(mipData.data()), mipSize);
 
-			BYTE* dest = static_cast<BYTE*>(pData) + footprints[mipLevel].Offset;
-			memcpy(dest, mipData.data(), mipSize);
+			D3D12_SUBRESOURCE_DATA subresourceData = {};
+			subresourceData.pData = mipData.data();
+			subresourceData.RowPitch = mipFootprint.Footprint.RowPitch;
+			subresourceData.SlicePitch = subresourceData.RowPitch * mipFootprint.Footprint.Height;
+
+			uploadBatch.Upload(pTexture->GetInterface().Get(), mipLevel, &subresourceData, 1);
 		}
-
-		DXCall_STD(pUploadBuffer->Unmap(0u, nullptr));
-
-		GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
-		ComPtr<ID3D12GraphicsCommandList4> pCopyCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
-		
-		for (uint32_t mipLevel = 0u; mipLevel < textureHeader.NrOfMips; ++mipLevel)
-		{
-			D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
-			srcLocation.pResource = pUploadBuffer.Get();
-			srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-			srcLocation.PlacedFootprint = footprints[mipLevel];
-
-			D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
-			dstLocation.pResource = pTextureResource.Get();
-			dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-			dstLocation.SubresourceIndex = mipLevel;
-
-			DXCall_STD(pCopyCommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
-		}
-
-		D3D12_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDescriptor = {};
-		shaderResourceViewDescriptor.Format = textureHeader.Format;
-		shaderResourceViewDescriptor.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		shaderResourceViewDescriptor.Texture2D.MipLevels = textureHeader.NrOfMips;
-		shaderResourceViewDescriptor.Texture2D.MostDetailedMip = 0;
-		shaderResourceViewDescriptor.Texture2D.ResourceMinLODClamp = 0.0f;
-		shaderResourceViewDescriptor.Texture2D.PlaneSlice = 0u;
-		shaderResourceViewDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-		Texture2DSpecification specification;
-		specification.DescriptorHandleSRV = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::SRV);
-		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(pTextureResource.Get(), &shaderResourceViewDescriptor, specification.DescriptorHandleSRV.CPUHandle));
-
-		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
-		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		resourceTransitionBarrier.Transition.pResource = pTextureResource.Get();
-		resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-		DXCall_STD(pCopyCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
-
-		specification.pResource = pTextureResource;
-		specification.Name = name;
-		specification.Width = textureHeader.BaseWidth;
-		specification.Height = textureHeader.BaseHeight;
-		specification.Format = textureHeader.Format;
-		specification.MipCount = textureHeader.NrOfMips;
-		specification.IsSRGB = textureHeader.IsSRGB;
-		specification.SampleCount = textureHeader.Samples;
-		
-		const AssetHandle handle = AssetManager::CreateNew<Texture2D>(specification, uuid, filepath.string());
-
-		gpuTaskManager.ExecuteCommandListBlocking(pCopyCommandList);
+		uploadBatch.Transition(pTexture->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		auto future = uploadBatch.End(gpuTaskManager.GetCommandQueue(CommandType::Direct).Get());
+		pTexture->SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		future.wait();
 
 		outHandle = handle;
 		return true;
@@ -804,91 +708,99 @@ namespace Relentless
 		inFile.read(reinterpret_cast<char*>(&data), sizeof(data));
 
 		AssetHandle materialHandle = AssetManager::CreateNew<Material>(uuid, filepath.string());
-		Material& material = AssetManager::Get<Material>(materialHandle);
-		material.m_Name = name;
-		material.m_RenderMode = static_cast<RenderMode>(data.RenderMode);
-		material.m_AlbedoColor = data.AlbedoColor;
-		material.m_Metallic = data.Metallic;
-		material.m_EmissionColor = data.EmissionColor;
-		material.m_EmissionIntensity = data.EmissionIntensity;
-		material.m_Roughness = data.Roughness;
-		material.m_TilingFactor = data.TilingFactor;
-		material.m_Offset = data.Offset;
-		material.m_HeightScale = data.HeightScale;
-		material.m_AOScale = data.AOScale;
-		material.m_CombinedRoughnessMetallnesMap = data.CombinedRoughnessMetallness;
+		std::shared_ptr<Material> material = AssetManager::Get<Material>(materialHandle);
+		material->m_Name = name;
+		material->m_RenderMode = static_cast<RenderMode>(data.RenderMode);
+		material->m_AlbedoColor = data.AlbedoColor;
+		material->m_Metallic = data.Metallic;
+		material->m_EmissionColor = data.EmissionColor;
+		material->m_EmissionIntensity = data.EmissionIntensity;
+		material->m_Roughness = data.Roughness;
+		material->m_TilingFactor = data.TilingFactor;
+		material->m_Offset = data.Offset;
+		material->m_HeightScale = data.HeightScale;
+		material->m_AOScale = data.AOScale;
+		material->m_CombinedRoughnessMetallnesMap = data.CombinedRoughnessMetallness;
 		
 		if (data.AlbedoTextureUUID != NULL_UUID)
 		{
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.AlbedoTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Albedo texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
-			material.SetAlbedoTexture(textureHandle);
+			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Albedo texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+				
+			material->SetAlbedoTexture(textureHandle);
 		}
 
 		if (data.MetallicTextureUUID != NULL_UUID)
 		{
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.MetallicTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
+
+			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
 				RLS_CORE_ERROR("[Serializer]: Metallic texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 			
-			material.SetMetallicTexture(textureHandle);
+			material->SetMetallicTexture(textureHandle);
 		}
 
 		if (data.RoughnessTextureUUID != NULL_UUID)
 		{
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.RoughnessTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Roughness texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
-			material.SetRoughnessTexture(textureHandle);
+			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Roughness texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			
+			material->SetRoughnessTexture(textureHandle);
 		}
 
 		if (data.NormalMapUUID != NULL_UUID)
 		{
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.NormalMapUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Normal map with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
-			material.SetNormalMap(textureHandle);
+			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Normal Map with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			
+			material->SetNormalMap(textureHandle);
 		}
 
 		if (data.HeightMapUUID != NULL_UUID)
 		{
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.HeightMapUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Height map with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
-			material.SetHeightMap(textureHandle);
+			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Height map with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			
+			material->SetHeightMap(textureHandle);
 		}
 
 		if (data.AmbientOcclusionTextureUUID != NULL_UUID)
 		{
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.AmbientOcclusionTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Ambient Occlusion texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
-			material.SetAmbientOcclusionTexture(textureHandle);
+			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: AO texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			
+			material->SetAmbientOcclusionTexture(textureHandle);
 		}
 
 		if (data.EmissionTextureUUID != NULL_UUID)
 		{
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.EmissionTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
-			if (!Serializer::Deserialize<Texture2D>(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Emission texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 
-			material.SetEmissionTexture(textureHandle);
+			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+				RLS_CORE_ERROR("[Serializer]: Emission texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			
+			material->SetEmissionTexture(textureHandle);
 		}
 
-		RLS_CORE_INFO("Deserialized material \"{0}\" with GUID: {1}", material.GetName(), ConvertUUIDToString(uuid));
+		Application::Get().GetMemorymanager().SetDirtyMaterial(materialHandle);
+		RLS_CORE_INFO("Deserialized material \"{0}\" with GUID: {1}", material->GetName(), ConvertUUIDToString(uuid));
 
 		outHandle = materialHandle;
 		return true;
@@ -991,4 +903,23 @@ namespace Relentless
 		}
 	}
 
+	void Serializer::ScheduleCommandListAndWaitForCompletion(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept
+	{
+		std::mutex mtx;
+		std::condition_variable conditionVariable;
+		std::atomic<bool> proceed = false;
+
+		{
+			std::unique_lock<std::mutex> lock(mtx);
+
+			Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList, [&proceed, &mtx, &conditionVariable]()
+				{
+					std::lock_guard<std::mutex> callbackLock(mtx);
+					proceed.store(true, std::memory_order_release);
+					conditionVariable.notify_one();
+				});
+
+			conditionVariable.wait(lock, [&proceed]() { return proceed.load(std::memory_order_acquire); });
+		}
+	}
 }

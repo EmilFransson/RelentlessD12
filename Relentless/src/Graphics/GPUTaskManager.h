@@ -1,5 +1,6 @@
 #pragma once
 #include "Threading/ThreadSafeQueue.h"
+#include "Callback/Callback.h"
 
 namespace Relentless
 {
@@ -14,14 +15,15 @@ namespace Relentless
 		[[nodiscard]] Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> RequestCommandList(CommandType commandType) noexcept;
 		void ExecuteCommandListBlocking(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept;
 		void ScheduleCommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept;
+		void ScheduleCommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Callback<void()>&& callback) noexcept;
 		void MoveToNextFrame() noexcept;
-		[[nodiscard]] uint32_t GetCurrentFrameIndex() const noexcept;
+		[[nodiscard]] uint32_t GetCurrentFrameIndex() noexcept;
 		[[nodiscard]] Microsoft::WRL::ComPtr<ID3D12CommandQueue> GetCommandQueue(CommandType commandType) const noexcept;
 		void WaitForAllFramesComplete() noexcept;
 		void RequestBlockingCall(std::function<void()> func) noexcept;
 		void Flush() noexcept;
 		void EnsureFrameIsComplete(uint32_t frameIndex) noexcept;
-		void SubmitOnFrameDoneCallback(const std::function<void()>& callback) noexcept;
+		void SubmitOnFrameDoneCallback(Callback<void()>&& callback) noexcept;
 		void InvokeAllCallbacks(uint32_t frameIndex) noexcept;
 		void RecycleAllCommandListsForFrameIndex(uint32_t frameIndex);
 	private:
@@ -50,6 +52,6 @@ namespace Relentless
 
 		ThreadSafeQueue<Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4>> m_RecordedCommandListsQueue;
 		ThreadSafeQueue<Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4>> m_CommandListsBeingExecuted[FRAMES_IN_FLIGHT];
-		ThreadSafeQueue<std::function<void()>> m_FrameDoneCallbacks[FRAMES_IN_FLIGHT];
+		ThreadSafeQueue<Callback<void()>> m_FrameDoneCallbacks[FRAMES_IN_FLIGHT];
 	};
 }

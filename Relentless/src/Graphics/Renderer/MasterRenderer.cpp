@@ -6,6 +6,7 @@
 #include "../../Core/Window.h"
 #include "../Resources/Buffer.h"
 #include "FrameBuffer.h"
+#include "Graphics/MemoryManager.h"
 namespace Relentless
 {
 	struct MasterRendererData
@@ -156,6 +157,7 @@ namespace Relentless
 		
 		pCommandList->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), hasDepthAttachment ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE);
 
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		DXCall_STD(pCommandList->SetGraphicsRootSignature(pPipeline->GetRootSig().Get()));
 		DXCall_STD(pCommandList->SetPipelineState(pPipeline->GetInterface2().Get()));
 		DXCall_STD(pCommandList->IASetPrimitiveTopology(RLSTopologyToD3D12Topology(pipelineSpecification.Topology)));

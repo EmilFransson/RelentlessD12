@@ -38,10 +38,10 @@ namespace Relentless
 		  m_UseNormalMap{true},
 		  m_UseAmbientOcclusionTexture{ true },
 	 	  m_UseEmissionTexture{ true },
-		  m_ConstantBufferID{INVALID_CONSTANT_BUFFER_ID},
 		  m_RenderMode{ RenderMode::Opaque }
 	{
-		m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
+		m_ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet(m_Name + " Constant Buffer Set", 112u);
+		//m_ConstantBufferID = Application::Get().GetMemorymanager().CreateConstantBuffer(112u);
 	}
 
 	Material::Material(const Material& otherMaterial) noexcept
@@ -80,7 +80,9 @@ namespace Relentless
 		m_UseEmissionTexture = otherMaterial.m_UseEmissionTexture;
 		m_RenderMode = otherMaterial.m_RenderMode;
 
-		m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
+		m_ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet(m_Name + " Constant Buffer Set", 112u);
+
+		//m_ConstantBufferID = Application::Get().GetMemorymanager().CreateConstantBuffer(112u);
 	}
 
 	Material& Material::operator=(const Material& otherMaterial) noexcept
@@ -121,7 +123,9 @@ namespace Relentless
 			m_UseEmissionTexture = otherMaterial.m_UseEmissionTexture;
 			m_RenderMode = otherMaterial.m_RenderMode;
 
-			m_ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(112u);
+			m_ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet(m_Name + " Constant Buffer Set", 112u);
+
+			//m_ConstantBufferID = Application::Get().GetMemorymanager().CreateConstantBuffer(112u);
 		}
 
 		return *this;
@@ -162,9 +166,9 @@ namespace Relentless
 		m_UseAmbientOcclusionTexture = std::move(otherMaterial.m_UseAmbientOcclusionTexture);
 		m_UseEmissionTexture = std::move(otherMaterial.m_UseEmissionTexture);
 		m_RenderMode = std::move(otherMaterial.m_RenderMode);
-		m_ConstantBufferID = std::move(otherMaterial.m_ConstantBufferID);
+		m_ConstantBufferHandle = std::move(otherMaterial.m_ConstantBufferHandle);
 
-		otherMaterial.m_ConstantBufferID = INVALID_CONSTANT_BUFFER_ID;
+		otherMaterial.m_ConstantBufferHandle = NULL_RESOURCE_HANDLE;
 	}
 
 	Material& Material::operator=(Material&& otherMaterial) noexcept
@@ -204,9 +208,9 @@ namespace Relentless
 			m_UseAmbientOcclusionTexture = std::move(otherMaterial.m_UseAmbientOcclusionTexture);
 			m_UseEmissionTexture = std::move(otherMaterial.m_UseEmissionTexture);
 			m_RenderMode = std::move(otherMaterial.m_RenderMode);
-			m_ConstantBufferID = std::move(otherMaterial.m_ConstantBufferID);
+			m_ConstantBufferHandle = std::move(otherMaterial.m_ConstantBufferHandle);
 
-			otherMaterial.m_ConstantBufferID = INVALID_CONSTANT_BUFFER_ID;
+			otherMaterial.m_ConstantBufferHandle = NULL_RESOURCE_HANDLE;
 		}
 
 		return *this;
@@ -220,85 +224,85 @@ namespace Relentless
 	void Material::SetAlbedoTexture(const AssetHandle& albedoTextureHandle) noexcept
 	{
 		RLS_ASSERT(albedoTextureHandle != NULL_HANDLE, "Albedo texture handle is invalid.");
-		Texture2D& albedoTexture = AssetManager::Get<Texture2D>(albedoTextureHandle);
+		std::shared_ptr<Texture2D> albedoTexture = AssetManager::Get<Texture2D>(albedoTextureHandle);
 
-		RLS_ASSERT(albedoTexture.GetInterface(), "Albedo texture is invalid.");
-		RLS_ASSERT(albedoTexture.GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Albedo texture descriptor index is invalid.");
+		RLS_ASSERT(albedoTexture->GetInterface(), "Albedo texture is invalid.");
+		RLS_ASSERT(albedoTexture->GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Albedo texture descriptor index is invalid.");
 		
 		m_AlbedoTextureHandle = albedoTextureHandle;
-		m_AlbedoTextureIndex = albedoTexture.GetSRVDescriptorHandle().Index;
+		m_AlbedoTextureIndex = albedoTexture->GetSRVDescriptorHandle().Index;
 	}
 
 	void Material::SetMetallicTexture(const AssetHandle& metallicTextureHandle) noexcept
 	{
 		RLS_ASSERT(metallicTextureHandle != NULL_HANDLE, "Metallic texture handle is invalid.");
-		Texture2D& metallicTexture = AssetManager::Get<Texture2D>(metallicTextureHandle);
+		std::shared_ptr<Texture2D> metallicTexture = AssetManager::Get<Texture2D>(metallicTextureHandle);
 
-		RLS_ASSERT(metallicTexture.GetInterface(), "Metallic texture is invalid.");
-		RLS_ASSERT(metallicTexture.GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Metallic texture descriptor index is invalid.");
+		RLS_ASSERT(metallicTexture->GetInterface(), "Metallic texture is invalid.");
+		RLS_ASSERT(metallicTexture->GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Metallic texture descriptor index is invalid.");
 
 		m_MetallicTextureHandle = metallicTextureHandle;
-		m_MetallicTextureIndex = metallicTexture.GetSRVDescriptorHandle().Index;
+		m_MetallicTextureIndex = metallicTexture->GetSRVDescriptorHandle().Index;
 	}
 
 	void Material::SetRoughnessTexture(const AssetHandle& roughnessTextureHandle) noexcept
 	{
 		RLS_ASSERT(roughnessTextureHandle != NULL_HANDLE, "Roughness texture handle is invalid.");
-		Texture2D& roughnessTexture = AssetManager::Get<Texture2D>(roughnessTextureHandle);
+		std::shared_ptr<Texture2D> roughnessTexture = AssetManager::Get<Texture2D>(roughnessTextureHandle);
 
-		RLS_ASSERT(roughnessTexture.GetInterface(), "Roughness texture is invalid.");
-		RLS_ASSERT(roughnessTexture.GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Roughness texture descriptor index is invalid.");
+		RLS_ASSERT(roughnessTexture->GetInterface(), "Roughness texture is invalid.");
+		RLS_ASSERT(roughnessTexture->GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Roughness texture descriptor index is invalid.");
 
 		m_RoughnessTextureHandle = roughnessTextureHandle;
-		m_RoughnessTextureIndex = roughnessTexture.GetSRVDescriptorHandle().Index;
+		m_RoughnessTextureIndex = roughnessTexture->GetSRVDescriptorHandle().Index;
 	}
 
 	void Material::SetNormalMap(const AssetHandle& normalMapHandle) noexcept
 	{
 		RLS_ASSERT(normalMapHandle != NULL_HANDLE, "Normal map handle is invalid.");
-		Texture2D& normalMap = AssetManager::Get<Texture2D>(normalMapHandle);
+		std::shared_ptr<Texture2D> normalMap = AssetManager::Get<Texture2D>(normalMapHandle);
 
-		RLS_ASSERT(normalMap.GetInterface(), "Normal map is invalid.");
-		RLS_ASSERT(normalMap.GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Normal map descriptor index is invalid.");
+		RLS_ASSERT(normalMap->GetInterface(), "Normal map is invalid.");
+		RLS_ASSERT(normalMap->GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Normal map descriptor index is invalid.");
 
 		m_NormalMapHandle = normalMapHandle;
-		m_NormalMapIndex = normalMap.GetSRVDescriptorHandle().Index;
+		m_NormalMapIndex = normalMap->GetSRVDescriptorHandle().Index;
 	}
 
 	void Material::SetHeightMap(const AssetHandle& heightMapHandle) noexcept
 	{
 		RLS_ASSERT(heightMapHandle != NULL_HANDLE, "Height map handle is invalid.");
-		Texture2D& heightMap = AssetManager::Get<Texture2D>(heightMapHandle);
+		std::shared_ptr<Texture2D> heightMap = AssetManager::Get<Texture2D>(heightMapHandle);
 
-		RLS_ASSERT(heightMap.GetInterface(), "Height map is invalid.");
-		RLS_ASSERT(heightMap.GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Height map descriptor index is invalid.");
+		RLS_ASSERT(heightMap->GetInterface(), "Height map is invalid.");
+		RLS_ASSERT(heightMap->GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Height map descriptor index is invalid.");
 
 		m_HeightMapHandle = heightMapHandle;
-		m_HeightMapIndex = heightMap.GetSRVDescriptorHandle().Index;
+		m_HeightMapIndex = heightMap->GetSRVDescriptorHandle().Index;
 	}
 
 	void Material::SetAmbientOcclusionTexture(const AssetHandle& ambientOcclusionTextureHandle) noexcept
 	{
 		RLS_ASSERT(ambientOcclusionTextureHandle != NULL_HANDLE, "Ambient occlusion texture handle is invalid.");
-		Texture2D& ambientOcclusionTexture = AssetManager::Get<Texture2D>(ambientOcclusionTextureHandle);
+		std::shared_ptr<Texture2D> ambientOcclusionTexture = AssetManager::Get<Texture2D>(ambientOcclusionTextureHandle);
 
-		RLS_ASSERT(ambientOcclusionTexture.GetInterface(), "Ambient occlusion texture is invalid.");
-		RLS_ASSERT(ambientOcclusionTexture.GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Ambient occlusion texture descriptor index is invalid.");
+		RLS_ASSERT(ambientOcclusionTexture->GetInterface(), "Ambient occlusion texture is invalid.");
+		RLS_ASSERT(ambientOcclusionTexture->GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Ambient occlusion texture descriptor index is invalid.");
 
 		m_AmbientOcclusionTextureHandle = ambientOcclusionTextureHandle;
-		m_AmbientOcclusionTextureIndex = ambientOcclusionTexture.GetSRVDescriptorHandle().Index;
+		m_AmbientOcclusionTextureIndex = ambientOcclusionTexture->GetSRVDescriptorHandle().Index;
 	}
 
 	void Material::SetEmissionTexture(const AssetHandle& emissionTextureHandle) noexcept
 	{
 		RLS_ASSERT(emissionTextureHandle != NULL_HANDLE, "Emission texture handle is invalid.");
-		Texture2D& emissionTexture = AssetManager::Get<Texture2D>(emissionTextureHandle);
+		std::shared_ptr<Texture2D> emissionTexture = AssetManager::Get<Texture2D>(emissionTextureHandle);
 
-		RLS_ASSERT(emissionTexture.GetInterface(), "Emission texture is invalid.");
-		RLS_ASSERT(emissionTexture.GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Emission texture descriptor index is invalid.");
+		RLS_ASSERT(emissionTexture->GetInterface(), "Emission texture is invalid.");
+		RLS_ASSERT(emissionTexture->GetSRVDescriptorHandle().Index != static_cast<uint32_t>(-1), "Emission texture descriptor index is invalid.");
 
 		m_EmissionTextureHandle = emissionTextureHandle;
-		m_EmissionTextureIndex = emissionTexture.GetSRVDescriptorHandle().Index;
+		m_EmissionTextureIndex = emissionTexture->GetSRVDescriptorHandle().Index;
 	}
 
 	void Material::RemoveAlbedoTexture() noexcept
@@ -397,37 +401,37 @@ namespace Relentless
 		return m_EmissionTextureHandle != NULL_HANDLE;
 	}
 
-	Texture2D& Material::GetAlbedoTexture() const noexcept
+	std::shared_ptr<Texture2D> Material::GetAlbedoTexture() const noexcept
 	{
 		return AssetManager::Get<Texture2D>(m_AlbedoTextureHandle);
 	}
 
-	Texture2D& Material::GetMetallicTexture() const noexcept
+	std::shared_ptr<Texture2D> Material::GetMetallicTexture() const noexcept
 	{
 		return AssetManager::Get<Texture2D>(m_MetallicTextureHandle);
 	}
 
-	Texture2D& Material::GetRoughnessTexture() const noexcept
+	std::shared_ptr<Texture2D> Material::GetRoughnessTexture() const noexcept
 	{
 		return AssetManager::Get<Texture2D>(m_RoughnessTextureHandle);
 	}
 
-	Texture2D& Material::GetNormalMap() const noexcept
+	std::shared_ptr<Texture2D> Material::GetNormalMap() const noexcept
 	{
 		return AssetManager::Get<Texture2D>(m_NormalMapHandle);
 	}
 
-	Texture2D& Material::GetHeightMap() const noexcept
+	std::shared_ptr<Texture2D> Material::GetHeightMap() const noexcept
 	{
 		return AssetManager::Get<Texture2D>(m_HeightMapHandle);
 	}
 
-	Texture2D& Material::GetAmbientOcclusionTexture() const noexcept
+	std::shared_ptr<Texture2D> Material::GetAmbientOcclusionTexture() const noexcept
 	{
 		return AssetManager::Get<Texture2D>(m_AmbientOcclusionTextureHandle);
 	}
 
-	Texture2D& Material::GetEmissionTexture() const noexcept
+	std::shared_ptr<Texture2D> Material::GetEmissionTexture() const noexcept
 	{
 		return AssetManager::Get<Texture2D>(m_EmissionTextureHandle);
 	}
@@ -437,17 +441,17 @@ namespace Relentless
 		return m_RenderMode;
 	}
 
-
 	uint32_t Material::GetConstantBufferIndex() const noexcept
 	{
-		return MemoryManager::Get().GetCBDescriptorIndex(m_ConstantBufferID);
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		return Application::Get().GetResourceManager().GetConstantBufferViewDescriptorIndex(m_ConstantBufferHandle, frameIndex);
+		//return Application::Get().GetMemorymanager().GetCBDescriptorIndex(m_ConstantBufferID);
 	}
 
 	void Material::UploadToGPU(const AssetHandle& materialHandle) noexcept
 	{
 		RLS_ASSERT(materialHandle != NULL_HANDLE, "Material handle is invalid.");
-		Material& material = AssetManager::Get<Material>(materialHandle);
-		MemoryManager::Get().UpdateConstantBuffer(material.m_ConstantBufferID, &material);
+		Application::Get().GetMemorymanager().SetDirtyMaterial(materialHandle);
 	}
 
 	void Material::ToggleAlbedoTextureUsage() noexcept
@@ -457,7 +461,7 @@ namespace Relentless
 		{
 			if (m_AlbedoTextureHandle != NULL_HANDLE)
 			{
-				m_AlbedoTextureIndex = AssetManager::Get<Texture2D>(m_AlbedoTextureHandle).GetSRVDescriptorHandle().Index;
+				m_AlbedoTextureIndex = AssetManager::Get<Texture2D>(m_AlbedoTextureHandle)->GetSRVDescriptorHandle().Index;
 			}
 		}
 		else
@@ -473,7 +477,7 @@ namespace Relentless
 		{
 			if (m_MetallicTextureHandle != NULL_HANDLE)
 			{
-				m_MetallicTextureIndex = AssetManager::Get<Texture2D>(m_MetallicTextureHandle).GetSRVDescriptorHandle().Index;
+				m_MetallicTextureIndex = AssetManager::Get<Texture2D>(m_MetallicTextureHandle)->GetSRVDescriptorHandle().Index;
 			}
 		}
 		else
@@ -489,7 +493,7 @@ namespace Relentless
 		{
 			if (m_RoughnessTextureHandle != NULL_HANDLE)
 			{
-				m_RoughnessTextureIndex = AssetManager::Get<Texture2D>(m_RoughnessTextureHandle).GetSRVDescriptorHandle().Index;
+				m_RoughnessTextureIndex = AssetManager::Get<Texture2D>(m_RoughnessTextureHandle)->GetSRVDescriptorHandle().Index;
 			}
 		}
 		else
@@ -505,7 +509,7 @@ namespace Relentless
 		{
 			if (m_NormalMapHandle != NULL_HANDLE)
 			{
-				m_NormalMapIndex = AssetManager::Get<Texture2D>(m_NormalMapHandle).GetSRVDescriptorHandle().Index;
+				m_NormalMapIndex = AssetManager::Get<Texture2D>(m_NormalMapHandle)->GetSRVDescriptorHandle().Index;
 			}
 		}
 		else
@@ -521,7 +525,7 @@ namespace Relentless
 		{
 			if (m_HeightMapHandle != NULL_HANDLE)
 			{
-				m_HeightMapIndex = AssetManager::Get<Texture2D>(m_HeightMapHandle).GetSRVDescriptorHandle().Index;
+				m_HeightMapIndex = AssetManager::Get<Texture2D>(m_HeightMapHandle)->GetSRVDescriptorHandle().Index;
 			}
 		}
 		else
@@ -537,7 +541,7 @@ namespace Relentless
 		{
 			if (m_EmissionTextureHandle != NULL_HANDLE)
 			{
-				m_EmissionTextureIndex = AssetManager::Get<Texture2D>(m_EmissionTextureHandle).GetSRVDescriptorHandle().Index;
+				m_EmissionTextureIndex = AssetManager::Get<Texture2D>(m_EmissionTextureHandle)->GetSRVDescriptorHandle().Index;
 			}
 		}
 		else
@@ -548,10 +552,11 @@ namespace Relentless
 
 	void Material::Invalidate() noexcept
 	{
-		if (m_ConstantBufferID != INVALID_CONSTANT_BUFFER_ID)
-		{
-			MemoryManager::Get().FreeConstantBuffer(m_ConstantBufferID);
-		}
+		//TODO:Free cbs
+		//if (m_ConstantBufferID != INVALID_CONSTANT_BUFFER_ID)
+		//{
+		//	Application::Get().GetMemorymanager().FreeConstantBuffer(m_ConstantBufferID);
+		//}
 	}
 
 	void Material::ToggleAmbientOcclusionTextureUsage() noexcept
@@ -561,7 +566,7 @@ namespace Relentless
 		{
 			if (m_AmbientOcclusionTextureHandle != NULL_HANDLE)
 			{
-				m_AmbientOcclusionTextureIndex = AssetManager::Get<Texture2D>(m_AmbientOcclusionTextureHandle).GetSRVDescriptorHandle().Index;
+				m_AmbientOcclusionTextureIndex = AssetManager::Get<Texture2D>(m_AmbientOcclusionTextureHandle)->GetSRVDescriptorHandle().Index;
 			}
 		}
 		else

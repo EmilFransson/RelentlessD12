@@ -2,7 +2,6 @@
 
 namespace Relentless
 {
-
 	class SearchBar
 	{
 	public:		
@@ -43,6 +42,7 @@ namespace Relentless
 		{
 		public:
 			static [[nodiscard]] std::string ShortenStringToFitClipRect(const std::string& originalString, const ImVec2& topLeft, const ImVec2& bottomRight) noexcept;
+			static void DrawTitledSeparator(const std::string& title, const ImVec2& begin, const ImVec2& end) noexcept;
 		};
 	};
 }

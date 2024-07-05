@@ -1,11 +1,11 @@
 #pragma once
 #include "Assets/AssetMeta.h"
 #include "ECSCommon.h"
-#include "Graphics/Resources/ConstantBuffer.h"
 #include "Graphics/D3D12Core.h"
 #include "Graphics/GPUTaskManager.h"
 #include "Graphics/Resources/Material.h"
 #include "Mesh/Mesh.h"
+#include "Core/Application.h"
 
 namespace Relentless
 {
@@ -17,21 +17,20 @@ namespace Relentless
 			  Scale{ 1.0f, 1.0f, 1.0f },
 			  LocalTranslation{ 0.0f, 0.0f, 0.0f },
 			  LocalRotation{0.0f, 0.0f, 0.0f },
-			  LocalScale{ 1.0f, 1.0f, 1.0f },
-			  ConstantBufferID{ INVALID_CONSTANT_BUFFER_ID }
+			  LocalScale{ 1.0f, 1.0f, 1.0f }
 		{
 			DirectX::XMStoreFloat4x4(&Transform, DirectX::XMMatrixIdentity());
 			DirectX::XMStoreFloat4x4(&LocalTransform, DirectX::XMMatrixIdentity());
 
-			ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(Transform));
+			ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet("", sizeof(Transform));
 		}
 
 		~TransformComponent() noexcept 
 		{
-			if (ConstantBufferID != INVALID_CONSTANT_BUFFER_ID)
-			{
-				MemoryManager::Get().FreeConstantBuffer(ConstantBufferID);
-			}
+			//if (ConstantBufferID != INVALID_CONSTANT_BUFFER_ID)
+			//{
+			//	Application::Get().GetMemorymanager().FreeConstantBuffer(ConstantBufferID);
+			//}
 		}
 
 		TransformComponent(const TransformComponent& otherComponent) noexcept
@@ -46,7 +45,7 @@ namespace Relentless
 			LocalRotation = otherComponent.LocalRotation;
 			LocalScale = otherComponent.LocalScale;
 
-			ConstantBufferID = MemoryManager::Get().CreateConstantBuffer(sizeof(Transform));
+			ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet("", sizeof(Transform));
 		}
 
 		TransformComponent(TransformComponent&& otherComponent) noexcept
@@ -61,10 +60,10 @@ namespace Relentless
 			LocalRotation = std::move(otherComponent.LocalRotation);
 			LocalScale = std::move(otherComponent.LocalScale);
 
-			ConstantBufferID = std::move(otherComponent.ConstantBufferID);
+			ConstantBufferHandle = std::move(otherComponent.ConstantBufferHandle);
 
 			//Invalidate the moved from constant buffer ID to catch any misuse:
-			otherComponent.ConstantBufferID = INVALID_CONSTANT_BUFFER_ID;
+			otherComponent.ConstantBufferHandle = NULL_RESOURCE_HANDLE;
 		}
 
 		TransformComponent& operator=(TransformComponent&& otherComponent) noexcept
@@ -81,10 +80,10 @@ namespace Relentless
 				LocalRotation = std::move(otherComponent.LocalRotation);
 				LocalScale = std::move(otherComponent.LocalScale);
 
-				ConstantBufferID = std::move(otherComponent.ConstantBufferID);
+				ConstantBufferHandle = std::move(otherComponent.ConstantBufferHandle);
 
 				//Invalidate the moved from constant buffer ID to catch any misuse:
-				otherComponent.ConstantBufferID = INVALID_CONSTANT_BUFFER_ID;
+				otherComponent.ConstantBufferHandle = NULL_RESOURCE_HANDLE;
 			}
 
 			return *this;
@@ -100,7 +99,7 @@ namespace Relentless
 		DirectX::XMFLOAT3 LocalRotation;
 		DirectX::XMFLOAT3 LocalScale;
 
-		size_t ConstantBufferID;
+		ResourceHandle ConstantBufferHandle = NULL_RESOURCE_HANDLE;
 	};
 
 	struct DirtyTransformComponent

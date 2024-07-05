@@ -12,5 +12,7 @@ namespace Relentless
 		static void Normalize(std::filesystem::path& basePath) noexcept;
 		static [[nodiscard]] bool HasExtension(const std::filesystem::path& path) noexcept;
 		static void SetExtension(std::filesystem::path& path, const std::string& extension) noexcept;
+		static [[nodiscard]] std::string SanitizeFileName(const std::string& fileName) noexcept;
+		static [[nodiscard]] bool IsDirectory(const std::filesystem::path& filepath) noexcept;
 	};
 }

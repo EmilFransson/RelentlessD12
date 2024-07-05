@@ -13,6 +13,7 @@
 #include "Math/Vector3.h"
 
 #include "Utility/SystemPaths.h"
+#include "Callback/Callback.h"
 
 namespace Relentless
 {
@@ -34,8 +35,11 @@ namespace Relentless
 
 	void Application::Run() noexcept
 	{
-		MemoryManager::Get().GetUploadBuffer()->Upload();
+		m_MemoryManager.GetUploadBuffer()->Upload();
 		m_GPUTaskManager.WaitForAllFramesComplete();
+		
+		for (uint32_t i = 0; i < GPUTaskManager::FRAMES_IN_FLIGHT; ++i)
+			m_GPUTaskManager.InvokeAllCallbacks(i);
 
 		while (true)
 		{
@@ -47,7 +51,7 @@ namespace Relentless
 				break;
 
 			Timer::Update();
-			MemoryManager::Get().PerformDeferredDeletion();
+			m_MemoryManager.PerformDeferredDeletion();
 
 			{
 				PROFILE_SCOPE("Application::Run::OnUpdateAndRender");
@@ -79,7 +83,7 @@ namespace Relentless
 				}
 			}
 			 
-			MemoryManager::Get().GetUploadBuffer()->Upload();
+			m_MemoryManager.GetUploadBuffer()->Upload();
 			Mouse::Reset();
 
 			MasterRenderer::PrepareBackBuffer();
@@ -134,6 +138,11 @@ namespace Relentless
 		m_MainThreadFunctionQueue.push(func);
 	}
 
+	MemoryManager& Application::GetMemorymanager() noexcept
+	{
+		return m_MemoryManager;
+	}
+
 	ThreadPool& Application::GetThreadPool() noexcept
 	{
 		return m_ThreadPool;
@@ -144,6 +153,11 @@ namespace Relentless
 		return m_GPUTaskManager;
 	}
 
+	ResourceManager& Application::GetResourceManager() noexcept
+	{
+		return m_ResourceManager;
+	}
+
 	void Application::OnStartUp() noexcept
 	{
 		EventBus::Get().SetMainApplication(this);
@@ -151,7 +165,7 @@ namespace Relentless
 		SystemPaths::Initialize();
 		D3D12Core::Initialize();
 		m_GPUTaskManager.Initialize();
-		MemoryManager::Get().Initialize();
+		m_MemoryManager.Initialize();
 		MasterRenderer::Initialize();
 		AssetRegistry::RecursiveScanDirectoryForAssets(ENGINE_ASSET_DIRECTORY);
 		AssetRegistry::RecursiveScanDirectoryForAssets(EDITOR_ASSET_DIRECTORY);
@@ -206,6 +220,7 @@ namespace Relentless
 		outFile.close();
 
 		m_GPUTaskManager.WaitForAllFramesComplete();
+		D3D12Core::ReportLiveObjects();
 	}
 
 	void Application::ExecuteMainThreadQueue() noexcept

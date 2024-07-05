@@ -45,6 +45,8 @@ namespace Relentless
 	void Scene::OnUpdate([[maybe_unused]] const float deltaTime) noexcept
 	{
 		PROFILE_FUNC;
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		/*TRANSFORMS*/
 		m_EntityManager.Collect<DirtyTransformComponent, RootComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dtc)
@@ -118,7 +120,9 @@ namespace Relentless
 								);
 				
 								// Recursively update the world matrices for this child's children
-								MemoryManager::Get().UpdateConstantBuffer(childTransformComponent.ConstantBufferID, &childTransformComponent.Transform);
+								
+								resourceManager.UploadConstantBufferData(childTransformComponent.ConstantBufferHandle, &childTransformComponent.Transform, sizeof(childTransformComponent.Transform), frameIndex);
+								//Application::Get().GetMemorymanager().UpdateConstantBuffer(childTransformComponent.ConstantBufferID, &childTransformComponent.Transform);
 								UpdateChildWorldMatrices(childEntity);
 							}
 						}
@@ -126,8 +130,9 @@ namespace Relentless
 				
 				// Kick off the recursive update for this entity's children
 				UpdateChildWorldMatrices(entityHandle);
+				resourceManager.UploadConstantBufferData(transformComponent.ConstantBufferHandle, &transformComponent.Transform, sizeof(transformComponent.Transform), frameIndex);
 
-				MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
+				//Application::Get().GetMemorymanager().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
 			});
 
 		/*TRANSFORMS*/
@@ -221,7 +226,8 @@ namespace Relentless
 								);
 
 								// Recursively update the world matrices for this child's children
-								MemoryManager::Get().UpdateConstantBuffer(childTransformComponent.ConstantBufferID, &childTransformComponent.Transform);
+								resourceManager.UploadConstantBufferData(childTransformComponent.ConstantBufferHandle, &childTransformComponent.Transform, sizeof(childTransformComponent.Transform), frameIndex);
+								//Application::Get().GetMemorymanager().UpdateConstantBuffer(childTransformComponent.ConstantBufferID, &childTransformComponent.Transform);
 								UpdateChildWorldMatrices(childEntity);
 							}
 						}
@@ -230,7 +236,9 @@ namespace Relentless
 				// Kick off the recursive update for this entity's children
 				UpdateChildWorldMatrices(entityHandle);
 
-				MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
+				//Application::Get().GetMemorymanager().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
+				resourceManager.UploadConstantBufferData(transformComponent.ConstantBufferHandle, &transformComponent.Transform, sizeof(transformComponent.Transform), frameIndex);
+
 			});
 
 
@@ -423,15 +431,14 @@ namespace Relentless
 				//MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
 			//});
 
-
 		m_EntityManager.Collect<MeshRendererComponent, DirtyMeshRendererComponent>().Do([this](entity e, MeshRendererComponent& mrc)
 			{
-				MemoryManager::Get().SetDirtyMaterial(mrc.AssetHandle);
+				Application::Get().GetMemorymanager().SetDirtyMaterial(mrc.AssetHandle);
 				m_EntityManager.Remove<DirtyMeshRendererComponent>(e);
 			});
 
 		/*MATERIALS*/
-		MemoryManager::Get().UpdateDirtyMaterials();
+		Application::Get().GetMemorymanager().UpdateDirtyMaterials();
 
 		/****LIGHTS****/
 		m_EntityManager.Collect<DirectionalLightComponent, DirtyTransformComponent>().Do([&](entity entityID, DirectionalLightComponent& lc)
@@ -880,10 +887,10 @@ namespace Relentless
 					else if constexpr (std::is_same_v<ComponentType, MeshRendererComponent>)
 					{
 						const AssetHandle materialHandle = AssetManager::CreateNew<Material>();
-						Material& material = AssetManager::Get<Material>(materialHandle);
+						std::shared_ptr<Material> material = AssetManager::Get<Material>(materialHandle);
 
 						//As it will be copy assigned we first invalidate it:
-						material.Invalidate();
+						material->Invalidate();
 						material = AssetManager::Get<Material>(ct.AssetHandle);
 
 						dstMgr.Get<MeshRendererComponent>(entityID).AssetHandle = materialHandle;

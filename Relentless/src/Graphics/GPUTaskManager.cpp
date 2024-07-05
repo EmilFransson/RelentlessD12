@@ -19,7 +19,8 @@ namespace Relentless
 				Microsoft::WRL::ComPtr<ID3D12CommandAllocator> pCommandAllocator = CreateCommandAllocator(commandType);
 				Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = CreateCommandList(commandType, pCommandAllocator);
 #if defined RLS_DEBUG || defined RLS_RELWITHDEBINFO
-				const std::wstring commandAllocatorName = L"Command Allocator (command type: " + std::to_wstring((int)commandType) + L")";
+				const std::wstring commandTypeString = commandType == CommandType::Direct ? L"Direct" : commandType == CommandType::Copy ? L"Copy" : L"Compute";
+				const std::wstring commandAllocatorName = L"Command Allocator (command type: " + commandTypeString  + L")";
 				NAME_D12_OBJECT_INDEXED(pCommandAllocator, commandAllocatorName.c_str(), j);
 				const std::wstring commandListName = L"Command List (command type: " + std::to_wstring((int)commandType) + L")";
 				NAME_D12_OBJECT_INDEXED(pCommandList, commandListName.c_str(), j);
@@ -89,36 +90,40 @@ namespace Relentless
 			DXCall(pCommandList->Close());
 			DXCall_STD(commandQueue->ExecuteCommandLists(1, pCommandLists));
 
-			//fenceValue = InterlockedIncrement64(&m_FenceValues[typeIndex][currentFrameIndex]);
 			fenceValue = m_FenceValues[typeIndex][currentFrameIndex];
 			
 			DXCall(commandQueue->Signal(fence.Get(), fenceValue));
 		}
 		
-		if (m_Fences[typeIndex][currentFrameIndex]->GetCompletedValue() < fenceValue)
-		{
-			DXCall(m_Fences[typeIndex][currentFrameIndex]->SetEventOnCompletion(fenceValue, m_Events[typeIndex][currentFrameIndex]));
-			::WaitForSingleObjectEx(m_Events[typeIndex][currentFrameIndex], INFINITE, false);
-		}
-		m_FenceValues[typeIndex][currentFrameIndex]++;
+		EnsureFrameIsComplete(currentFrameIndex);
 		RecycleCommandList(pCommandList);
 	}
 
 	void GPUTaskManager::ScheduleCommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept
 	{
+		//std::lock_guard<std::mutex> guard(m_ExecuteMutex);
 		m_RecordedCommandListsQueue.Push(std::move(pCommandList));
+	}
+
+	void GPUTaskManager::ScheduleCommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Callback<void()>&& callback) noexcept
+	{
+		//std::lock_guard<std::mutex> guard(m_ExecuteMutex);
+
+		m_RecordedCommandListsQueue.Push(std::move(pCommandList));
+		SubmitOnFrameDoneCallback(std::move(callback));
 	}
 
 	void GPUTaskManager::MoveToNextFrame() noexcept
 	{
 		PROFILE_FUNC;
+		//std::lock_guard<std::mutex> guard(m_ExecuteMutex);
 
-		const uint32_t currentFrameIndex = m_CurrentFrameIndex.load(std::memory_order_acquire);
-		for (uint32_t i{ 0u }; i < COMMAND_TYPE_COUNT; ++i)
-		{
-			const uint64_t currentFenceValue = m_FenceValues[i][currentFrameIndex];
-			DXCall(m_D3D12Queues[i]->Signal(m_Fences[i][currentFrameIndex].Get(), currentFenceValue));
-		}
+		//const uint32_t currentFrameIndex = m_CurrentFrameIndex.load(std::memory_order_acquire);
+		//for (uint32_t i{ 0u }; i < COMMAND_TYPE_COUNT; ++i)
+		//{
+		//	const uint64_t currentFenceValue = m_FenceValues[i][currentFrameIndex];
+		//	DXCall(m_D3D12Queues[i]->Signal(m_Fences[i][currentFrameIndex].Get(), currentFenceValue));
+		//}
 
 		const uint32_t nextFrameIndex = Window::GetCurrentBackbufferIndex();
 
@@ -126,15 +131,15 @@ namespace Relentless
 		RecycleAllCommandListsForFrameIndex(nextFrameIndex);
 		InvokeAllCallbacks(nextFrameIndex);
 
-		for (uint32_t i{ 0u }; i < COMMAND_TYPE_COUNT; ++i)
-		{
-			m_FenceValues[i][nextFrameIndex]++;
-		}
+		//for (uint32_t i{ 0u }; i < COMMAND_TYPE_COUNT; ++i)
+		//{
+		//	m_FenceValues[i][nextFrameIndex]++;
+		//}
 
 		m_CurrentFrameIndex.store(nextFrameIndex, std::memory_order_release);
 	}
 
-	uint32_t GPUTaskManager::GetCurrentFrameIndex() const noexcept
+	uint32_t GPUTaskManager::GetCurrentFrameIndex() noexcept
 	{
 		return m_CurrentFrameIndex.load(std::memory_order_acquire);
 	}
@@ -191,7 +196,7 @@ namespace Relentless
 		std::lock_guard<std::mutex> guard(m_ExecuteMutex);
 		for (size_t typeIndex = 0; typeIndex < COMMAND_TYPE_COUNT; ++typeIndex) 
 		{
-			DXCall(m_D3D12Queues[typeIndex]->Signal(m_Fences[typeIndex][frameIndex].Get(), m_FenceValues[typeIndex][frameIndex]));
+			DXCall(m_D3D12Queues[typeIndex]->Signal(m_Fences[typeIndex][frameIndex].Get(), ++m_FenceValues[typeIndex][frameIndex]));
 			long long lastKnownFenceValue = m_FenceValues[typeIndex][frameIndex];
 
 			if (m_Fences[typeIndex][frameIndex]->GetCompletedValue() < lastKnownFenceValue) 
@@ -199,20 +204,20 @@ namespace Relentless
 				DXCall(m_Fences[typeIndex][frameIndex]->SetEventOnCompletion(lastKnownFenceValue, m_Events[typeIndex][frameIndex]));
 				::WaitForSingleObjectEx(m_Events[typeIndex][frameIndex], INFINITE, FALSE);
 			}
-			m_FenceValues[typeIndex][frameIndex]++;
+			//m_FenceValues[typeIndex][frameIndex]++;
 		}
 	}
 
-	void GPUTaskManager::SubmitOnFrameDoneCallback(const std::function<void()>& callback) noexcept
+	void GPUTaskManager::SubmitOnFrameDoneCallback(Callback<void()>&& callback) noexcept
 	{
-		m_FrameDoneCallbacks[GetCurrentFrameIndex()].Push(callback);
+		m_FrameDoneCallbacks[GetCurrentFrameIndex()].Push(std::move(callback));
 	}
 
 	void GPUTaskManager::InvokeAllCallbacks(uint32_t frameIndex) noexcept
 	{
 		while (!m_FrameDoneCallbacks[frameIndex].Empty())
 		{
-			std::function<void()> callback;
+			Callback<void()> callback;
 			if (m_FrameDoneCallbacks[frameIndex].TryPop(callback))
 			{
 				callback();
@@ -309,7 +314,7 @@ namespace Relentless
 		{
 			for (uint8_t frameIndex = 0; frameIndex < FRAMES_IN_FLIGHT; ++frameIndex)
 			{
-				DXCall(m_D3D12Queues[typeIndex]->Signal(m_Fences[typeIndex][frameIndex].Get(), m_FenceValues[typeIndex][frameIndex]));
+				DXCall(m_D3D12Queues[typeIndex]->Signal(m_Fences[typeIndex][frameIndex].Get(), ++m_FenceValues[typeIndex][frameIndex]));
 				long long lastKnownFenceValue = m_FenceValues[typeIndex][frameIndex];
 
 				if (m_Fences[typeIndex][frameIndex]->GetCompletedValue() < lastKnownFenceValue)
@@ -341,26 +346,9 @@ namespace Relentless
 				m_CommandListsBeingExecuted[frameIndex].Push(pCommandList);
 				commandLists.push_back(pCommandList.Get());
 			}
-
-			//Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = nullptr;
-			//if (m_RecordedCommandListsQueue.TryPop(pCommandList))
-			//{
-			//	ExecuteCommandListNonBlocking(pCommandList);
-			//
-			//	const uint32_t frameIndex = GetCurrentFrameIndex();
-			//	m_CommandListsBeingExecuted[frameIndex].Push(pCommandList);
-			//}
 		}
 
 		if (!commandLists.empty())
-		{
-			long long fenceValue = 0;
-			uint32_t currentFrameIndex = 0u;
-			{
-				//currentFrameIndex = m_CurrentFrameIndex.load(std::memory_order_acquire);
-				m_D3D12Queues[0]->ExecuteCommandLists(static_cast<UINT>(commandLists.size()), commandLists.data());
-			}
-		}
-
+			m_D3D12Queues[0]->ExecuteCommandLists(static_cast<UINT>(commandLists.size()), commandLists.data());
 	}
 }

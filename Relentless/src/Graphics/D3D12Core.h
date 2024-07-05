@@ -1,5 +1,4 @@
 #pragma once
-#include "D3D12Command.h"
 namespace Relentless
 {
 	class D3D12Core
@@ -9,15 +8,13 @@ namespace Relentless
 		[[nodiscard]] static constexpr Microsoft::WRL::ComPtr<ID3D12Device9>& GetDevice() noexcept { return m_pDevice; }
 		[[nodiscard]] static constexpr Microsoft::WRL::ComPtr<IDXGIFactory7>& GetFactory() noexcept { return m_pFactory; }
 		[[nodiscard]] static constexpr bool IsInitialized() noexcept { return m_IsInitialized; }
+		static void ReportLiveObjects() noexcept;
 	private:
 		D3D12Core() noexcept = default;
 		static void CreateDebugAndValidationLayer() noexcept;
 	private:
 		static Microsoft::WRL::ComPtr<ID3D12Device9> m_pDevice;
 		static Microsoft::WRL::ComPtr<IDXGIFactory7> m_pFactory;
-		static D3D12Command m_DirectCommandInterface;
-		static uint8_t m_NrOfBufferedFrames;
-		static uint32_t m_CurrentFrame;
 		static bool m_IsInitialized;
 #if defined(RLS_DEBUG)
 		static Microsoft::WRL::ComPtr<ID3D12Debug5> m_pDebugController;

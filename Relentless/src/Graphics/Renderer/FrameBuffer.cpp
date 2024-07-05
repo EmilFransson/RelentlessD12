@@ -1,5 +1,6 @@
 #include "FrameBuffer.h"
 #include "..\MemoryManager.h"
+#include "Core/Application.h"
 
 namespace Relentless
 {
@@ -81,7 +82,7 @@ namespace Relentless
 		m_Specification.Width = width;
 		m_Specification.Height = height;
 
-		auto& memoryManager = MemoryManager::Get();
+		auto& memoryManager = Application::Get().GetMemorymanager();
 		for (uint32_t i{ 0u }; i < m_Specification.Attachments.ColorAttachments.size(); ++i)
 		{
 			if (m_Specification.Attachments.ColorAttachments[i].ShouldResize)

@@ -10,7 +10,9 @@ namespace Relentless
 		explicit ContentBrowserPanel() noexcept;
 		~ContentBrowserPanel() noexcept = default;
 		void OnImGuiRender(const bool show) noexcept;
+		void OnEvent(IEvent& event) noexcept;
 		void SetOnAssetSelectedCallback(std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> callback) noexcept;
+		[[nodiscard]] const std::vector<std::string>& GetSelectedEntries() const noexcept;
 	private:
 		void RenderDirectoryHierarchy() noexcept;
 		void DrawDirectoryNode(const std::filesystem::directory_entry& directoryName) noexcept;
@@ -35,6 +37,7 @@ namespace Relentless
 		[[nodiscard]] bool IsEntrySelected(const std::string& entryPath) const noexcept;
 		void SelectEntry(const std::string& entryPath) noexcept;
 		void DeselectEntry(const std::string& entryPath) noexcept;
+		void SelectAllEntriesInDirectories(const std::vector<std::string>& directories) noexcept;
 
 		[[nodiscard]] bool IsDirectorySelectedInHierarchy(const std::string& directoryPath) const;
 		void SelectHiearchyDirectory(const std::string& directoryPath) noexcept;
@@ -46,6 +49,10 @@ namespace Relentless
 		[[nodiscard]] std::string ConstructAssetBrowserHintString() const noexcept;
 
 		void OnImportButtonPressed() noexcept;
+		void DetermineEntryDragDropSource() noexcept;
+
+		[[nodiscard]] std::vector<std::filesystem::path> ConstructSubPaths() const noexcept;
+		void DrawHorizontalDirectoryNameList();
 	private:
 		float m_ThumbnailWidth = 150.0f;
 		float m_ThumbnailHeight = 220.0f;
@@ -58,6 +65,9 @@ namespace Relentless
 		AssetHandle m_ImportIconTextureHandle = NULL_HANDLE;
 		AssetHandle m_FilterIconTextureHandle = NULL_HANDLE;
 		AssetHandle m_DownArrowIconTextureHandle = NULL_HANDLE;
+		AssetHandle m_UndoArrowIconTextureHandle = NULL_HANDLE;
+		AssetHandle m_PlusIconTextureHandle = NULL_HANDLE;
+		AssetHandle m_RightArrowIconTextureHandle = NULL_HANDLE;
 		UUID m_SelectedAsset = NULL_UUID;
 
 		std::string m_ContentFilter = "";
@@ -71,6 +81,7 @@ namespace Relentless
 		AssetHandle m_AssetToName = NULL_HANDLE;
 
 		bool m_DirectoryHierarchyFocused = false;
+		bool m_AssetHierarchyFocused = false;
 		float m_DragAmount = 0.0f;
 		uint32_t m_DisplayedEntries = 0u;
 
@@ -80,5 +91,8 @@ namespace Relentless
 		float m_AssetTableMaxYScrolledDistance = 0.0f;
 
 		std::function<void(const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)> m_OnAssetSelectedCallback;
+
+		std::mutex m_AssetsCurrentlyBeingLoadedSetMutex;
+		std::set<std::filesystem::path> m_AssetsCurrentlyBeingLoaded;
 	};
 }

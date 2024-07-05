@@ -46,7 +46,7 @@ namespace Relentless
 			m_Condition.notify_one();
 			return result;
 		}
-
+		[[nodiscard]] size_t GetThreadCount() const noexcept { return m_Threads.size(); }
 	private:
 		void WorkerThread()
 		{

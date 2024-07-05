@@ -29,7 +29,6 @@ namespace Relentless
 	{
 		InitializeHBAOPlus();
 
-		//m_EnvironmentCBHandle = MemoryManager::Get().CreateConstantBuffer(sizeof(DirectX::XMFLOAT3));
 		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\ibl_brdf_lut.rasset", m_BRDFLutTextureHandle), "[SceneRenderer]: Unable to load ibl-brdf look up texture.");
 
 		//Pre-Z Render pass:
@@ -60,13 +59,44 @@ namespace Relentless
 			m_PreZRenderPass = RenderPass::Create(renderpassDescriptor);
 		}
 
-		//Opaque Geometry Render pass:
+		//Skybox Render pass:
 		{
 			ColorAttachment colorAttachment;
 			colorAttachment.Format = TextureFormat::RGBA32F;
 			colorAttachment.ClearColor = DirectX::XMFLOAT4(DirectX::Colors::LightSkyBlue);
 			colorAttachment.Transfer = true;
 			colorAttachment.ShouldResize = true;
+
+			FrameBufferSpecification frameBufferSpecification{};
+			frameBufferSpecification.DebugName = "Skybox Framebuffer";
+			frameBufferSpecification.Attachments.ColorAttachments = { colorAttachment };
+			frameBufferSpecification.MSAASamples = m_Options.MSAASamples;
+			frameBufferSpecification.DepthComparisonFunction = DepthComparisonFunction::NEVER;
+
+			PipelineSpecification pipelineSpecification{};
+			pipelineSpecification.DebugName = "Skybox Pipeline";
+			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShaderSkybox");
+			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderSkybox");
+			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
+			pipelineSpecification.MSAAEligible = true;
+			pipelineSpecification.DepthWrite = false;
+			pipelineSpecification.BackfaceCulling = false;
+
+			RenderPassSpecification renderpassDescriptor{};
+			renderpassDescriptor.DebugName = "Skybox Pass";
+			renderpassDescriptor.RenderPipeline = Pipeline::Create(pipelineSpecification);
+
+			m_SkyboxRenderPass = RenderPass::Create(renderpassDescriptor);
+		}
+
+		//Opaque Geometry Render pass:
+		{
+			ColorAttachment colorAttachment;
+			colorAttachment.Format = TextureFormat::RGBA32F;
+			colorAttachment.Transfer = true;
+			colorAttachment.ShouldResize = false;
+			colorAttachment.pOutputDependency = m_SkyboxRenderPass->GetPipeline()->GetFrameBuffer();
+			colorAttachment.OperatorOnLoad = OperatorOnLoad::LoadOnly;
 
 			DepthAttachment depthAttachment;
 			depthAttachment.Format = TextureFormat::Depth;
@@ -362,6 +392,8 @@ namespace Relentless
 			m_CompositeRenderPass = RenderPass::Create(renderpassDescriptor);
 		}
 
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+
 		//Readback buffer:
 		{
 			m_pIdentifierReadbackBuffer = ReadBackBuffer::Create(sizeof(uint32_t), "Identifier ReadbackBuffer");
@@ -370,11 +402,11 @@ namespace Relentless
 
 		//Editor Grid:
 		{
-			m_pEditorGridInstanceDataStructuredBufferSet = std::make_unique<StructuredBufferSet>("m_pEditorGridInstanceDataStructuredBufferSet", EDITOR_GRID_INSTANCE_COUNT, sizeof(InstanceData));
+			m_EditorGridInstanceDataSBHandle = resourceManager.CreateStructuredBufferSet("m_pEditorGridInstanceDataStructuredBufferSet", EDITOR_GRID_INSTANCE_COUNT, sizeof(InstanceData));
 			
 			for (int i{ -EDITOR_GRID_INSTANCE_COUNT / 2 }; i < EDITOR_GRID_INSTANCE_COUNT / 2; ++i)
 			{
-				int index = i + EDITOR_GRID_INSTANCE_COUNT / 2;
+				const int index = i + EDITOR_GRID_INSTANCE_COUNT / 2;
 				InstanceData instanceData{};
 				instanceData.Position = DirectX::XMFLOAT3(0.0f, 0.0f, static_cast<float>(i));
 				instanceData.Color.R = 0.15f;
@@ -389,23 +421,11 @@ namespace Relentless
 				}
 
 				for (uint32_t frameIndex{ 0u }; frameIndex < GPUTaskManager::FRAMES_IN_FLIGHT; ++frameIndex)
-				{
-					StructuredBuffer2& sb = m_pEditorGridInstanceDataStructuredBufferSet->At(frameIndex);
-
-					void* pData = nullptr;
-
-					constexpr const D3D12_RANGE range = { 0,0 };
-					DXCall(sb.GetInterface()->Map(0u, &range, &pData));
-					RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
-					unsigned char* ppData = reinterpret_cast<unsigned char*>(pData);
-					ppData += (index * sb.GetByteStride());
-					std::memcpy(reinterpret_cast<void*>(ppData), reinterpret_cast<const void*>(&instanceData), sb.GetByteStride());
-					DXCall_STD(sb.GetInterface()->Unmap(0u, nullptr));
-				}
+					resourceManager.UploadStructuredBufferData(m_EditorGridInstanceDataSBHandle, &instanceData, sizeof(InstanceData), frameIndex, index * sizeof(InstanceData));
 			}
 
-			m_EditorGridTransformCBSet1 = std::make_unique<ConstantBufferSet>("m_EditorGridTransformCBSet1", sizeof(DirectX::XMFLOAT4X4));
-			m_EditorGridTransformCBSet2 = std::make_unique<ConstantBufferSet>("m_EditorGridTransformCBSet2", sizeof(DirectX::XMFLOAT4X4));
+			m_EditorTransformCB1Handle = resourceManager.CreateConstantBufferSet("m_EditorGridTransformCBSet1", sizeof(DirectX::XMFLOAT4X4));
+			m_EditorTransformCB2Handle = resourceManager.CreateConstantBufferSet("m_EditorGridTransformCBSet2", sizeof(DirectX::XMFLOAT4X4));
 		}
 		
 		RenderTextureSpecification resolveRTSpec{};
@@ -418,14 +438,8 @@ namespace Relentless
 
 		m_pResolvedTexture = RenderTexture::Create(resolveRTSpec, "MSAA Resolve RenderTexture");
 
-		//Environment:
-		{
-			m_pEnvironmentConstantBufferSet = std::make_unique<ConstantBufferSet>("m_pEnvironmentConstantBuffer", sizeof(DirectX::XMFLOAT3));
-		}
-
-		{
-			m_ViewProjectionMatrixConstantBufferSet = std::make_unique<ConstantBufferSet>("m_ViewProjectionMatrixConstantBufferSet", sizeof(DirectX::XMFLOAT4X4));
-		}
+		m_EnvironmentCBHandle = resourceManager.CreateConstantBufferSet("m_pEnvironmentConstantBuffer", sizeof(DirectX::XMFLOAT3));
+		m_ViewProjectionMatrixCBHandle = resourceManager.CreateConstantBufferSet("m_ViewProjectionMatrixConstantBufferSet", sizeof(DirectX::XMFLOAT4X4));
 	}
 
 	void SceneRenderer::Begin() noexcept
@@ -441,8 +455,8 @@ namespace Relentless
 				if (!mrc.AssetHandle.IsValid() || !mfc.AssetHandle.IsValid())
 					return;
 
-				const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
-				switch (material.GetRenderMode())
+				const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+				switch (material->GetRenderMode())
 				{
 				case RenderMode::Opaque:
 					m_OpaqueRenderModeEntities.emplace_back(e);
@@ -493,26 +507,13 @@ namespace Relentless
 			}
 		}
 
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
 		auto frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		
-		m_PerFrameOpaqueGeometryData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBufferSet->GetCBVDescriptorIndex(frameIndex);
-		m_PerFrameOpaqueGeometryData.pointLightStructuredBufferIndex = m_pScene->GetLightManager().GetPointLights()->m_VisibleHandles[frameIndex].Index;
-		m_PerFrameOpaqueGeometryData.directionalLightStructuredBufferIndex = m_pScene->GetLightManager().GetDirectionalLights()->m_VisibleHandles[frameIndex].Index;
-		m_PerFrameOpaqueGeometryData.nrOfDirectionalLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
-		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
-		m_PerFrameOpaqueGeometryData.environmentIndex = m_pEnvironmentConstantBufferSet->GetCBVDescriptorIndex(frameIndex);
-		m_PerFrameOpaqueGeometryData.brdfLutTextureIndex = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle).GetSRVDescriptorHandle().Index;
-
 		//Camera:
 		{
 			ConstantBuffer2& cbc = m_pScene->GetEditorCamera()->m_pConstantBufferSet->At(frameIndex);
-
-			void* pData = nullptr;
-			D3D12_RANGE readRange = { 0, 0 }; // Not intending to read from CPU
-			DXCall(cbc.GetInterface()->Map(0, &readRange, &pData));
-			RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
-			std::memcpy(pData, reinterpret_cast<const void*>(&m_pScene->GetEditorCamera()->GetPosition()), cbc.GetSizeInBytes());
-			DXCall_STD(cbc.GetInterface()->Unmap(0u, nullptr));
+			cbc.UploadData(&m_pScene->GetEditorCamera()->GetPosition(), cbc.GetSizeInBytes());
 		}
 
 		{
@@ -521,47 +522,25 @@ namespace Relentless
 			offset.z = static_cast<float>(std::floor(offset.z - fmod(offset.z, 100.0)));
 
 			//Note: Could actually be just one constant buffer:
-			DirectX::XMMATRIX world = DirectX::XMMatrixScaling(10000.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(offset.x, 0.0f, 200.0f + offset.z);
-			DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent1.Transform, world);
-
 			{
-				ConstantBuffer2& cb = m_EditorGridTransformCBSet1->At(frameIndex);
+				DirectX::XMMATRIX world = DirectX::XMMatrixScaling(10000.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(offset.x, 0.0f, 200.0f + offset.z);
+				DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent1.Transform, world);
 
-				void* pData = nullptr;
-				constexpr const D3D12_RANGE range = { 0,0 };
-				DXCall(cb.GetInterface()->Map(0u, &range, &pData));
-				RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
-				std::memcpy(pData, reinterpret_cast<const void*>(&m_EditorGridTransformComponent1.Transform), cb.GetSizeInBytes());
-				DXCall_STD(cb.GetInterface()->Unmap(0u, nullptr));
+				resourceManager.UploadConstantBufferData(m_EditorTransformCB1Handle, &m_EditorGridTransformComponent1.Transform, sizeof(DirectX::XMFLOAT4X4), frameIndex);
 			}
 
-			world = DirectX::XMMatrixScaling(10000.0f, 1.0f, 1.0f) * DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(90.0f)) * DirectX::XMMatrixTranslation(offset.x - 200.0f, 0.0f, offset.z);
-			DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent2.Transform, world);
-
 			{
-				ConstantBuffer2& cb = m_EditorGridTransformCBSet2->At(frameIndex);
+				DirectX::XMMATRIX world = DirectX::XMMatrixScaling(10000.0f, 1.0f, 1.0f) * DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(90.0f)) * DirectX::XMMatrixTranslation(offset.x - 200.0f, 0.0f, offset.z);
+				DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent2.Transform, world);
 
-				void* pData = nullptr;
-				constexpr const D3D12_RANGE range = { 0,0 };
-				DXCall(cb.GetInterface()->Map(0u, &range, &pData));
-				RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
-				std::memcpy(pData, reinterpret_cast<const void*>(&m_EditorGridTransformComponent2.Transform), cb.GetSizeInBytes());
-				DXCall_STD(cb.GetInterface()->Unmap(0u, nullptr));
+				resourceManager.UploadConstantBufferData(m_EditorTransformCB2Handle, &m_EditorGridTransformComponent2.Transform, sizeof(DirectX::XMFLOAT4X4), frameIndex);
 			}
 		}
 
 		//Environment:
 		{
 			static DirectX::XMFLOAT3 bgColor = DirectX::XMFLOAT3(DirectX::Colors::LightSkyBlue);
-
-			ConstantBuffer2& cb = m_pEnvironmentConstantBufferSet->At(frameIndex);
-
-			void* pData = nullptr;
-			constexpr const D3D12_RANGE range = { 0,0 };
-			DXCall(cb.GetInterface()->Map(0u, &range, &pData));
-			RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
-			std::memcpy(pData, reinterpret_cast<const void*>(&bgColor), cb.GetSizeInBytes());
-			DXCall_STD(cb.GetInterface()->Unmap(0u, nullptr));
+			resourceManager.UploadConstantBufferData(m_EnvironmentCBHandle, &bgColor, sizeof(DirectX::XMFLOAT3), frameIndex);
 		}
 
 		//View projection matrix:
@@ -569,15 +548,22 @@ namespace Relentless
 			auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
 			DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 
-			ConstantBuffer2& cb = m_ViewProjectionMatrixConstantBufferSet->At(frameIndex);
-
-			void* pData = nullptr;
-			constexpr const D3D12_RANGE range = { 0,0 };
-			DXCall(cb.GetInterface()->Map(0u, &range, &pData));
-			RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
-			std::memcpy(pData, reinterpret_cast<const void*>(&m_VPData), cb.GetSizeInBytes());
-			DXCall_STD(cb.GetInterface()->Unmap(0u, nullptr));
+			resourceManager.UploadConstantBufferData(m_ViewProjectionMatrixCBHandle, &m_VPData, sizeof(DirectX::XMFLOAT4X4), frameIndex);
 		}
+
+		const LightManager& lightManager = m_pScene->GetLightManager();
+		const ResourceHandle directionalLightsSBHandle = lightManager.GetDirectionalLightsResourceHandle();
+		const ResourceHandle pointLightsSBHandle = lightManager.GetPointLightsResourceHandle();
+
+		m_PerFrameOpaqueGeometryData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBufferSet->GetCBVDescriptorIndex(frameIndex);
+		m_PerFrameOpaqueGeometryData.pointLightStructuredBufferIndex = resourceManager.GetStructuredBufferShaderResourceViewDescriptorIndex(pointLightsSBHandle, frameIndex);
+		m_PerFrameOpaqueGeometryData.directionalLightStructuredBufferIndex = resourceManager.GetStructuredBufferShaderResourceViewDescriptorIndex(directionalLightsSBHandle, frameIndex);
+		m_PerFrameOpaqueGeometryData.nrOfDirectionalLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<DirectionalLightComponent>());
+		m_PerFrameOpaqueGeometryData.nrOfPointLights = static_cast<uint32_t>(m_pScene->GetEntityManager().GetEntityCountForPool<PointLightComponent>());
+		m_PerFrameOpaqueGeometryData.environmentIndex = resourceManager.GetConstantBufferViewDescriptorIndex(m_EnvironmentCBHandle, frameIndex);
+		m_PerFrameOpaqueGeometryData.brdfLutTextureIndex = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle)->GetSRVDescriptorHandle().Index;
+		m_PerFrameOpaqueGeometryData.irradianceMapIndex = m_pScene->m_pIrradianceMap ? m_pScene->m_pIrradianceMap->GetSRVDescriptorHandle().Index : 0xFFFFFFFF;
+		m_PerFrameOpaqueGeometryData.radianceMapIndex = m_pScene->m_pRadianceMap ? m_pScene->m_pRadianceMap->GetSRVDescriptorHandle().Index : 0xFFFFFFFF;
 	}
 
 	void SceneRenderer::SetContext(const std::shared_ptr<Scene>& pScene) noexcept
@@ -591,14 +577,12 @@ namespace Relentless
 		PROFILE_FUNC;
 
 		PreZPass();
+		SkyboxPass();
 		if (m_Options.MSAASamples > 1)
 		{
 			OpaqueGeometryPass();
 			CutOutGeometryPass();
-			if (m_Options.ContactShadowType == ContactShadows::HBAO_PLUS)
-			{
-				HBAOPlusRenderPass();
-			}
+			HBAOPlusRenderPass();
 			EditorGridPass();
 			TransparentGeometryPass();
 			PickingPass();
@@ -606,10 +590,7 @@ namespace Relentless
 		else
 		{
 			CombinedGeometryAndPickingPass();
-			if (m_Options.ContactShadowType == ContactShadows::HBAO_PLUS)
-			{
-				HBAOPlusRenderPass();
-			}
+			HBAOPlusRenderPass();
 			EditorGridPass();
 		}
 		WireframePass();
@@ -618,10 +599,6 @@ namespace Relentless
 		{
 			GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
 			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
-
-			DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
-			DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
-			DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
 			{
 				D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
@@ -710,11 +687,11 @@ namespace Relentless
 	void SceneRenderer::PreZPass() noexcept
 	{
 		PROFILE_FUNC;
-		MemoryManager& memoryManager = MemoryManager::Get();
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_PreZRenderPass);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
 		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
@@ -722,8 +699,6 @@ namespace Relentless
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 
-		auto verticesIndex = m_PreZRenderPass->GetInputSlot("vertices");
-		auto indicesIndex = m_PreZRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_PreZRenderPass->GetInputSlot("perDrawData");
 
 		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
@@ -734,31 +709,56 @@ namespace Relentless
 			if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
 				continue;
 
-			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+			std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			const uint32_t vertexBufferDescriptorIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
+			const uint32_t indexBufferSRVDescriptorIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
-			const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
-			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
-
-			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
+			const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+			m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+			m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(tc.ConstantBufferHandle, frameIndex);
+			m_PerDrawData.vertexBufferIndex = vertexBufferDescriptorIndex;
+			m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorIndex;
 
 			DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
-
-			DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
+			DXCall_STD(pCommandList->DrawInstanced(resourceManager.GetIndexBuffer(mesh->m_IndexBufferHandle)->GetNrOfIndices(), 1, 0u, 0u));
 		}
+
+		MasterRenderer::EndRenderPass(pCommandList);
+	}
+
+	void SceneRenderer::SkyboxPass() noexcept
+	{
+		if (!m_pScene->m_pSkyBox)
+			return;
+
+		ResourceManager& resourcemanager = Application::Get().GetResourceManager();
+
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_SkyboxRenderPass);
+
+		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
+		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
+
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		m_SkyboxPassData.ViewProjectionIndex = resourcemanager.GetConstantBufferViewDescriptorIndex(m_ViewProjectionMatrixCBHandle, frameIndex);
+		m_SkyboxPassData.SkyboxTextureIndex = m_pScene->m_pSkyBox->GetSRVDescriptorHandle().Index;
+		m_SkyboxRenderPass->Upload("skyboxPassData", &m_SkyboxPassData, pCommandList);
+
+		DXCall_STD(pCommandList->DrawInstanced(36, 1, 0u, 0u));
 
 		MasterRenderer::EndRenderPass(pCommandList);
 	}
 
 	void SceneRenderer::HBAOPlusRenderPass() noexcept
 	{
+		if (m_Options.ContactShadowType != ContactShadows::HBAO_PLUS)
+			return;
+
 		PROFILE_FUNC;
 
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
 		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
@@ -825,12 +825,12 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
-		MemoryManager& memoryManager = MemoryManager::Get();
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_OpaqueGeometryRenderPass);
 		if (m_OpaqueRenderModeEntities.size() > 0)
 		{
-			DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 			DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
 			DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
@@ -839,8 +839,6 @@ namespace Relentless
 
 			EntityManager& entityManager = m_pScene->GetEntityManager();
 
-			auto verticesIndex = m_OpaqueGeometryRenderPass->GetInputSlot("vertices");
-			auto indicesIndex = m_OpaqueGeometryRenderPass->GetInputSlot("indices");
 			auto perDrawIndex = m_OpaqueGeometryRenderPass->GetInputSlot("perDrawData");
 
 			const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
@@ -851,19 +849,19 @@ namespace Relentless
 				if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
 					continue;
 
-				Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+				std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-				DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-				DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+				const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
+				const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
-				const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
-				m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
-
-				m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
+				const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+				m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+				m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(tc.ConstantBufferHandle, frameIndex);
+				m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
+				m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
 
 				DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
-
-				DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
+				DXCall_STD(pCommandList->DrawInstanced(resourceManager.GetIndexBuffer(mesh->m_IndexBufferHandle)->GetNrOfIndices(), 1, 0u, 0u));
 			}
 		}
 		MasterRenderer::EndRenderPass(pCommandList);
@@ -876,11 +874,11 @@ namespace Relentless
 		if (m_CutOutRenderModeEntities.empty())
 			return;
 
-		MemoryManager& memoryManager = MemoryManager::Get();
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_CutOutGeometryRenderPass);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
 		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
@@ -889,8 +887,6 @@ namespace Relentless
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 
-		auto verticesIndex = m_CutOutGeometryRenderPass->GetInputSlot("vertices");
-		auto indicesIndex = m_CutOutGeometryRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_CutOutGeometryRenderPass->GetInputSlot("perDrawData");
 
 		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
@@ -901,19 +897,19 @@ namespace Relentless
 			if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
 				continue;
 
-			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+			std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
+			const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
-			const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
-			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
-
-			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
+			const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+			m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+			m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(tc.ConstantBufferHandle, frameIndex);
+			m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
+			m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
 
 			DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
-
-			DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
+			DXCall_STD(pCommandList->DrawInstanced(resourceManager.GetIndexBuffer(mesh->m_IndexBufferHandle)->GetNrOfIndices(), 1, 0u, 0u));
 		}
 
 		MasterRenderer::EndRenderPass(pCommandList);
@@ -926,11 +922,11 @@ namespace Relentless
 		if (m_TransparentRenderModeEntities.empty())
 			return;
 
-		MemoryManager& memoryManager = MemoryManager::Get();
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_TransparentGeometryRenderPass);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
 		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
@@ -939,8 +935,6 @@ namespace Relentless
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 
-		auto verticesIndex = m_TransparentGeometryRenderPass->GetInputSlot("vertices");
-		auto indicesIndex = m_TransparentGeometryRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_TransparentGeometryRenderPass->GetInputSlot("perDrawData");
 
 		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
@@ -951,19 +945,19 @@ namespace Relentless
 			if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
 				continue;
 
-			Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+			std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-			DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+			const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
+			const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
-			const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
-			m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
-
-			m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(tc.ConstantBufferID);
+			const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+			m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+			m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(tc.ConstantBufferHandle, frameIndex);
+			m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
+			m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
 
 			DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
-
-			DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
+			DXCall_STD(pCommandList->DrawInstanced(resourceManager.GetIndexBuffer(mesh->m_IndexBufferHandle)->GetNrOfIndices(), 1, 0u, 0u));
 		}
 
 		MasterRenderer::EndRenderPass(pCommandList);
@@ -976,40 +970,38 @@ namespace Relentless
 		if (entityManager.GetEntityCountForPool<SelectedInEditorComponent>() == 0 || !m_Options.DisplaySelectionWireframe)
 			return;
 
-		MemoryManager& memoryManager = MemoryManager::Get();
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_WireFrameRenderPass);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
 		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
 		m_WireFrameRenderPass->Upload("vpConstantBuffer", &m_VPData, pCommandList);
 
-		auto verticesIndex = m_WireFrameRenderPass->GetInputSlot("vertices");
-		auto indicesIndex = m_WireFrameRenderPass->GetInputSlot("indices");
 		auto perDrawIndex = m_WireFrameRenderPass->GetInputSlot("perDrawData");
 
 		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
 
-		entityManager.Collect<OpaquePassComponent, SelectedInEditorComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
+		entityManager.Collect<SelectedInEditorComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
 				if (mfc.AssetHandle.IsValid())
 				{
-					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+					const std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
+					const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
-					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
-
-					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
+					const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+					m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+					m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferHandle, frameIndex);
+					m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
+					m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
 
 					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
-
-					DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
+					DXCall_STD(pCommandList->DrawInstanced(resourceManager.GetIndexBuffer(mesh->m_IndexBufferHandle)->GetNrOfIndices(), 1, 0u, 0u));
 				}
 			});
 
@@ -1023,24 +1015,24 @@ namespace Relentless
 		if (!m_Options.DisplayEditorGrid)
 			return;
 
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+
 		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_EditorGridRenderPass);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
 		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
 		m_PerFrameEditorData.cameraDataIndex = m_pScene->GetEditorCamera()->m_pConstantBufferSet->GetCBVDescriptorIndex(frameIndex);
-		m_InstanceDataSBIndex.Index = m_pEditorGridInstanceDataStructuredBufferSet->GetSRVDescriptorIndex(frameIndex); 
-		m_EditorBatchData.worldMatrixIndex1 = m_EditorGridTransformCBSet1->GetCBVDescriptorIndex(frameIndex);
-		m_EditorBatchData.worldMatrixIndex2 = m_EditorGridTransformCBSet2->GetCBVDescriptorIndex(frameIndex);
-		m_EditorGridVPMatrixIndex.Index = m_ViewProjectionMatrixConstantBufferSet->GetCBVDescriptorIndex(frameIndex);
+		m_EditorGridPassVSPerFrameData.InstanceDataSBIndex = resourceManager.GetStructuredBufferShaderResourceViewDescriptorIndex(m_EditorGridInstanceDataSBHandle, frameIndex);
+		
+		m_EditorGridPassVSPerFrameData.BatchDataTransformVerticalCBIndex = resourceManager.GetConstantBufferViewDescriptorIndex(m_EditorTransformCB1Handle, frameIndex);
+		m_EditorGridPassVSPerFrameData.BatchDataTransformHorizontalCBIndex = resourceManager.GetConstantBufferViewDescriptorIndex(m_EditorTransformCB2Handle, frameIndex);
+		m_EditorGridPassVSPerFrameData.VPMatrixConstantBufferIndex = resourceManager.GetConstantBufferViewDescriptorIndex(m_ViewProjectionMatrixCBHandle, frameIndex);
 
-		m_EditorGridRenderPass->Upload("perFrameData", &m_PerFrameEditorData, pCommandList);
-		m_EditorGridRenderPass->Upload("vpConstantBuffer", &m_EditorGridVPMatrixIndex, pCommandList);
-		m_EditorGridRenderPass->Upload("instanceDataSBIndex", &m_InstanceDataSBIndex, pCommandList);
-		m_EditorGridRenderPass->Upload("batchData", &m_EditorBatchData, pCommandList);
+		m_EditorGridRenderPass->Upload("psPerFrameData", &m_PerFrameEditorData, pCommandList);
+		m_EditorGridRenderPass->Upload("vsPerFrameData", &m_EditorGridPassVSPerFrameData, pCommandList);
 
 		DXCall_STD(pCommandList->DrawInstanced(EDITOR_GRID_VERTEX_COUNT, EDITOR_GRID_INSTANCE_COUNT, 0u, 0u));
 
@@ -1053,15 +1045,13 @@ namespace Relentless
 
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_GeometryPickingRenderPass);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
 		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-		MemoryManager& memoryManager = MemoryManager::Get();
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
-		auto verticesIndex = m_GeometryPickingRenderPass->GetInputSlot("vertices");
-		auto indicesIndex = m_GeometryPickingRenderPass->GetInputSlot("indices");
 		auto identifierIndex = m_GeometryPickingRenderPass->GetInputSlot("Identifier");
 		auto perDrawIndex = m_GeometryPickingRenderPass->GetInputSlot("perDrawData");
 
@@ -1069,25 +1059,28 @@ namespace Relentless
 
 		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
 
-		entityManager.Collect<OpaquePassComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
+		entityManager.Collect<MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
 			{
 				if (mfc.AssetHandle.IsValid())
 				{
-					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+					std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
+					const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
 					m_PickingData.entityID = e;
 					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
-					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
-					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
-					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
+					const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+					
+					m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+					m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferHandle, frameIndex);
+					m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
+					m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
 
-					DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
+					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, count, &m_PerDrawData, 0u));
+					DXCall_STD(pCommandList->DrawInstanced(resourceManager.GetIndexBuffer(mesh->m_IndexBufferHandle)->GetNrOfIndices(), 1, 0u, 0u));
 				}
 			});
 
@@ -1150,12 +1143,10 @@ namespace Relentless
 				areaToCopy.bottom = static_cast<uint32_t>(mousePos.y) + 1;
 				areaToCopy.front = 0;
 				areaToCopy.back = 1;
-
+				
 				DXCall_STD(pCommandList->CopyTextureRegion(&dstLocation, 0u, 0u, 0u, &srcLocation, &areaToCopy));
 
-				Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
-				
-				Application::Get().GetGPUTaskManager().SubmitOnFrameDoneCallback([this]()
+				Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList, [this]()
 					{
 						if (m_pMappedReadBackBufferPointer)
 						{
@@ -1164,7 +1155,6 @@ namespace Relentless
 						}
 					});
 			}
-
 		}
 	}
 
@@ -1174,7 +1164,6 @@ namespace Relentless
 		
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_CompositeRenderPass);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
 		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
@@ -1223,19 +1212,17 @@ namespace Relentless
 
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = MasterRenderer::BeginRenderPass(m_CombinedGeometryAndPickingPass);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 		DXCall_STD(pCommandList->RSSetViewports(1u, &m_pScene->GetViewport()));
 		DXCall_STD(pCommandList->RSSetScissorRects(1u, &m_pScene->GetScissorRect()));
 
-		MemoryManager& memoryManager = MemoryManager::Get();
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		m_CombinedGeometryAndPickingPass->Upload("vpConstantBuffer", &m_VPData, pCommandList);
 		m_CombinedGeometryAndPickingPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData, pCommandList);
 
 		EntityManager& entityManager = m_pScene->GetEntityManager();
 
-		auto verticesIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("vertices");
-		auto indicesIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("indices");
 		auto perDrawIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("perDrawData");
 		auto identifierIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("Identifier");
 
@@ -1243,22 +1230,24 @@ namespace Relentless
 			{
 				if (mfc.AssetHandle.IsValid())
 				{
-					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+					std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
-					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(verticesIndex, mesh.GetVertexBuffer()->GetInterface()->GetGPUVirtualAddress()));
-					DXCall_STD(pCommandList->SetGraphicsRootShaderResourceView(indicesIndex, mesh.GetIndexBuffer()->GetInterface()->GetGPUVirtualAddress()));
+					const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
+					const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
 					m_PickingData.entityID = e;
 					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const Material& material = AssetManager::Get<Material>(mrc.AssetHandle);
-					m_PerDrawData.materialIndex = material.GetConstantBufferIndex();
-					m_PerDrawData.worldMatrixIndex = memoryManager.GetCBDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferID);
+					const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+					
+					m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+					m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferHandle, frameIndex);
+					m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
+					m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
 
 					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(perDrawIndex, (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t), &m_PerDrawData, 0u));
-
-					DXCall_STD(pCommandList->DrawInstanced(mesh.GetIndexBuffer()->GetNrOfIndices(), 1, 0u, 0u));
+					DXCall_STD(pCommandList->DrawInstanced(resourceManager.GetIndexBuffer(mesh->m_IndexBufferHandle)->GetNrOfIndices(), 1, 0u, 0u));
 				}
 			});
 		
@@ -1325,8 +1314,7 @@ namespace Relentless
 				DXCall_STD(pCommandList->CopyTextureRegion(&dstLocation, 0u, 0u, 0u, &srcLocation, &areaToCopy));
 
 				const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
-				Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
-				Application::Get().GetGPUTaskManager().SubmitOnFrameDoneCallback([this]()
+				Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList, [this]()
 					{
 						if (m_pMappedReadBackBufferPointer)
 						{
@@ -1342,6 +1330,7 @@ namespace Relentless
 	{
 		MasterRenderer::Resize(width, height);
 		m_PreZRenderPass->Resize(width, height);
+		m_SkyboxRenderPass->Resize(width, height);
 		m_OpaqueGeometryRenderPass->Resize(width, height);
 		m_CutOutGeometryRenderPass->Resize(width, height);
 		m_TransparentGeometryRenderPass->Resize(width, height);
@@ -1351,7 +1340,7 @@ namespace Relentless
 		m_GeometryPickingRenderPass->Resize(width, height);
 		m_CompositeRenderPass->Resize(width, height);
 		
-		auto& memoryManager = MemoryManager::Get();
+		auto& memoryManager = Application::Get().GetMemorymanager();
 		
 		RenderTextureSpecification resolveRTSpec{};
 		resolveRTSpec.MultiSampleCount = 1u;
@@ -1388,6 +1377,7 @@ namespace Relentless
 			m_Options.MSAASamples = samples;
 
 			m_PreZRenderPass->OnMSAAReconfiguration(samples);
+			m_SkyboxRenderPass->OnMSAAReconfiguration(samples);
 			m_OpaqueGeometryRenderPass->OnMSAAReconfiguration(samples);
 			m_CutOutGeometryRenderPass->OnMSAAReconfiguration(samples);
 			m_TransparentGeometryRenderPass->OnMSAAReconfiguration(samples);
@@ -1406,10 +1396,10 @@ namespace Relentless
 		CustomHeap.delete_ = ::operator delete;
 
 		GFSDK_SSAO_DescriptorHeaps_D3D12 DescriptorHeaps;
-		DescriptorHeaps.CBV_SRV_UAV.pDescHeap = MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().Get();
+		DescriptorHeaps.CBV_SRV_UAV.pDescHeap = Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().Get();
 		DescriptorHeaps.CBV_SRV_UAV.BaseIndex = 10'000; //TEMP
 
-		DescriptorHeaps.RTV.pDescHeap = MemoryManager::Get().GetRTVDescriptorHeap()->GetDescriptorHeapInterface().Get();
+		DescriptorHeaps.RTV.pDescHeap = Application::Get().GetMemorymanager().GetRTVDescriptorHeap()->GetDescriptorHeapInterface().Get();
 		DescriptorHeaps.RTV.BaseIndex = 10'000; //TEMP
 
 #if defined RLS_DEBUG

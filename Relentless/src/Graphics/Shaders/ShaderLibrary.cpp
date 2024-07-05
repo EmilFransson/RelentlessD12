@@ -18,6 +18,12 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::PIXEL, "CutOutPBRPixelShader.hlsl"));
 		Add(Shader::Create(ShaderType::PIXEL, "TransparentPBRPixelShader.hlsl"));
 		Add(Shader::Create(ShaderType::VERTEX, "PickingVertexShader.hlsl"));
+		Add(Shader::Create(ShaderType::VERTEX, "EquirectangularToCubemapVertexShader.hlsl"));
+		Add(Shader::Create(ShaderType::PIXEL, "EquirectangularToCubemapPixelShader.hlsl"));
+		Add(Shader::Create(ShaderType::VERTEX, "VertexShaderSkybox.hlsl"));
+		Add(Shader::Create(ShaderType::PIXEL, "PixelShaderSkybox.hlsl"));
+		Add(Shader::Create(ShaderType::PIXEL, "PixelShaderIrradianceConvolution.hlsl"));
+		Add(Shader::Create(ShaderType::PIXEL, "PixelShaderRadianceConvolution.hlsl"));
 	}
 
 	void ShaderLibrary::Add(const std::shared_ptr<Shader>& pShader) noexcept

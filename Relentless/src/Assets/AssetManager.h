@@ -43,16 +43,16 @@ namespace Relentless
 	template<typename AssetType>
 	struct AssetStorage
 	{
-		__forceinline [[nodiscard]] AssetType& GetAsset(const AssetHandle& assetHandle) noexcept
+		__forceinline [[nodiscard]] std::shared_ptr<AssetType> GetAsset(const AssetHandle& assetHandle) noexcept
 		{
 			RLS_ASSERT(assetHandle.Type == AssetTypeTrait<AssetType>::value, "Asset type mismatch detected.");
-			
+
 			std::lock_guard<std::mutex> guard(Mutex);
 
 			const uint32_t physicalIndex = SparseArray[assetHandle.Index];
 			RLS_ASSERT(!(physicalIndex > Assets.size()), "Index out of bounds - No asset corresponds to asset handle.");
 
-			return *Assets[physicalIndex];
+			return Assets[physicalIndex];
 		}
 
 		__forceinline [[nodiscard]] uint32_t Add(std::shared_ptr<AssetType> pAssetType) noexcept 
@@ -159,6 +159,14 @@ namespace Relentless
 		std::mutex Mutex;
 	};
 
+	enum class EAssetStatus: uint8_t
+	{
+		None = 0,
+		Loaded,
+		Loading,
+		Failed
+	};
+
 	class AssetManager
 	{
 	private:
@@ -171,14 +179,14 @@ namespace Relentless
 		static void Initialize() noexcept;
 
 		template<typename AssetType>
-		static [[nodiscard]] AssetType& Get(const AssetHandle& assetHandle) noexcept
+		static [[nodiscard]] std::shared_ptr<AssetType> Get(const AssetHandle& assetHandle) noexcept
 		{
 			RLS_ASSERT(assetHandle != NULL_HANDLE, "Asset handle is not valid.");
 			return GetStorage<AssetType>().GetAsset(assetHandle);
 		}
 
 		template<typename AssetType>
-		static [[nodiscard]] AssetType& GetFromPath(const std::filesystem::path& fullPath) noexcept
+		static [[nodiscard]] std::shared_ptr<AssetType> GetFromPath(const std::filesystem::path& fullPath) noexcept
 		{
 			RLS_ASSERT(s_LoadedAssets.contains(fullPath.string()), "Path to asset is invalid.");
 			return GetStorage<AssetType>().GetAsset(s_LoadedAssets[fullPath.string()]);
@@ -190,6 +198,13 @@ namespace Relentless
 
 			RLS_ASSERT(s_LoadedAssets.contains(fullPath.string()), "Path to asset is invalid.");
 			return s_LoadedAssets2[s_LoadedAssets[fullPath.string()]];
+		}
+
+		static [[nodiscard]] EAssetStatus GetAssetStatus(const std::filesystem::path& path) noexcept 
+		{ 
+			std::lock_guard<std::mutex> guard(m_LoadedAssetsMapMutex);
+
+			return s_AssetPathToLoadingStateMap[path.string()]; 
 		}
 
 		static [[nodiscard]] auto InsertMetaData(const UUID& uuid, uint32_t handleIndex, AssetType assetType) noexcept
@@ -216,8 +231,7 @@ namespace Relentless
 		CreateNew(const UUID& uuid = CreateUUID(), const std::string& pathToFile = "") noexcept
 		{
 			const uint32_t index = GetStorage<AssetType>().Add(std::make_shared<AssetType>());
-			auto [it, wasInserted] = InsertMetaData(uuid, index, AssetTypeTrait<AssetType>::value);
-			//RLS_ASSERT(wasInserted, "Failed to insert new handle to asset.");
+			auto [it, _] = InsertMetaData(uuid, index, AssetTypeTrait<AssetType>::value);
 
 			if (!pathToFile.empty())
 				Link(pathToFile, uuid);
@@ -230,8 +244,7 @@ namespace Relentless
 			CreateNew(const Texture2DSpecification& specification, const UUID& uuid = CreateUUID(), const std::string& pathToFile = "") noexcept
 		{
 			const uint32_t index = GetStorage<AssetType>().Add(std::make_shared<AssetType>(specification));
-			auto [it, wasInserted] = InsertMetaData(uuid, index, AssetTypeTrait<AssetType>::value);
-			//RLS_ASSERT(wasInserted, "Failed to insert new handle to asset.");
+			auto [it, _] = InsertMetaData(uuid, index, AssetTypeTrait<AssetType>::value);
 
 			if (!pathToFile.empty())
 				Link(pathToFile, uuid);
@@ -275,6 +288,9 @@ namespace Relentless
 		static std::unordered_map<std::string, UUID> s_LoadedAssets;
 		static std::unordered_map<UUID, AssetHandle> s_LoadedAssets2;
 		static std::unordered_map<UUID, std::string> s_UUIDToSrcPathMap;
+
+		static std::unordered_map<std::string, EAssetStatus> s_AssetPathToLoadingStateMap;
+		static std::unordered_map<std::string, std::condition_variable> s_AssetPathToConditionVariableMap;
 
 		friend struct AssetHandle;
 

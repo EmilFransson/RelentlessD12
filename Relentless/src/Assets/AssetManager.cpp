@@ -6,6 +6,8 @@ namespace Relentless
 	std::unordered_map<std::string, UUID> AssetManager::s_LoadedAssets;
 	std::unordered_map<UUID, AssetHandle> AssetManager::s_LoadedAssets2;
 	std::unordered_map<UUID, std::string> AssetManager::s_UUIDToSrcPathMap;
+	std::unordered_map<std::string, EAssetStatus> AssetManager::s_AssetPathToLoadingStateMap;
+	std::unordered_map<std::string, std::condition_variable> AssetManager::s_AssetPathToConditionVariableMap;
 	AssetHandle AssetManager::m_DefaultMaterialHandle{NULL_HANDLE};
 	AssetHandle AssetManager::m_InvalidMaterialHandle{ NULL_HANDLE };
 	AssetHandle AssetManager::m_InvalidTextureHandle{ NULL_HANDLE };
@@ -73,38 +75,151 @@ namespace Relentless
 		RLS_VERIFY(loaded, "Core engine asset 'invalidtextrue.rasset' missing.");
 
 		m_DefaultMaterialHandle = CreateNew<Material>();
-		Material& defaultMaterial = Get<Material>(m_DefaultMaterialHandle);
-		defaultMaterial.m_AlbedoColor = DirectX::XMFLOAT4(DirectX::Colors::White);
-		defaultMaterial.SetName("M_DefaultMaterial");
+		std::shared_ptr<Material> defaultMaterial = Get<Material>(m_DefaultMaterialHandle);
+		defaultMaterial->m_AlbedoColor = DirectX::XMFLOAT4(DirectX::Colors::White);
+		defaultMaterial->SetName("M_DefaultMaterial");
 
 		m_InvalidMaterialHandle = CreateNew<Material>();
-		Material& invalidMaterial = Get<Material>(m_InvalidMaterialHandle);
-		invalidMaterial.m_AlbedoColor = DirectX::XMFLOAT4(DirectX::Colors::Magenta);
-		invalidMaterial.SetName("M_InvalidMaterial");
+		std::shared_ptr<Material> invalidMaterial = Get<Material>(m_InvalidMaterialHandle);
+		invalidMaterial->m_AlbedoColor = DirectX::XMFLOAT4(DirectX::Colors::Magenta);
+		invalidMaterial->SetName("M_InvalidMaterial");
 	}
 
 	std::future<void> AssetManager::RequestAsyncLoadAsset(const std::filesystem::path& filepathToAsset, DelegateToCall&& delegateToCall) noexcept
 	{
 		return Application::Get().GetThreadPool().Submit([filepathToAsset, Delegate = std::move(delegateToCall)]()
 			{
+				bool shouldWait = false;
+				bool returnDirectly = false;
+				{
+					std::lock_guard<std::mutex> lock(m_LoadedAssetsMapMutex);
+					if (s_LoadedAssets.contains(filepathToAsset.string()))
+						returnDirectly = true;
+					else if (s_AssetPathToLoadingStateMap[filepathToAsset.string()] == EAssetStatus::Failed)
+					{
+						Delegate(NULL_HANDLE);
+						return;
+					}
+					else if (s_AssetPathToLoadingStateMap[filepathToAsset.string()] == EAssetStatus::Loading)
+						shouldWait = true;
+					else
+						s_AssetPathToLoadingStateMap[filepathToAsset.string()] = EAssetStatus::Loading;
+				}
+
+				if (returnDirectly)
+				{
+					Delegate(AssetManager::GetHandleByPath(filepathToAsset));
+					return;
+				}
+				else if (shouldWait)
+				{
+					bool shouldReturnByPath = false;
+					{
+						std::unique_lock<std::mutex> lock(m_LoadedAssetsMapMutex);
+						s_AssetPathToConditionVariableMap[filepathToAsset.string()].wait(lock, [filepathToAsset]()
+							{
+								return s_AssetPathToLoadingStateMap[filepathToAsset.string()] != EAssetStatus::Loading;
+							});
+
+						if (s_AssetPathToLoadingStateMap[filepathToAsset.string()] == EAssetStatus::Loaded)
+							shouldReturnByPath = true;
+						else
+							Delegate(NULL_HANDLE);
+					}
+					
+					if (shouldReturnByPath)
+						Delegate(GetHandleByPath(filepathToAsset));
+					
+					return;
+				}
+
 				AssetHandle handle = NULL_HANDLE;
 				Serializer::Deserialize(filepathToAsset, handle);
+				{
+					std::lock_guard<std::mutex> lock(m_LoadedAssetsMapMutex);
+
+					if (handle != NULL_HANDLE) 
+						s_AssetPathToLoadingStateMap[filepathToAsset.string()] = EAssetStatus::Loaded;
+					else
+						s_AssetPathToLoadingStateMap[filepathToAsset.string()] = EAssetStatus::Failed;
+
+					s_AssetPathToConditionVariableMap[filepathToAsset.string()].notify_all();
+				}
+
 				Delegate(handle);
 			});
 	}
 
 	bool AssetManager::RequestLoadAsset(const std::filesystem::path& filepathToAsset, AssetHandle& outHandle) noexcept
 	{
-		if (Serializer::Deserialize(filepathToAsset, outHandle))
+		bool shouldWait = false;
+		bool returnDirectly = false;
+		{
+			std::lock_guard<std::mutex> lock(m_LoadedAssetsMapMutex);
+			if (s_LoadedAssets.contains(filepathToAsset.string()))
+				returnDirectly = true;
+			else if (s_AssetPathToLoadingStateMap[filepathToAsset.string()] == EAssetStatus::Failed)
+			{
+				outHandle = NULL_HANDLE;
+				return false;
+			}
+			else if (s_AssetPathToLoadingStateMap[filepathToAsset.string()] == EAssetStatus::Loading)
+				shouldWait = true;
+			else
+				s_AssetPathToLoadingStateMap[filepathToAsset.string()] = EAssetStatus::Loading;
+		}
+
+		if (returnDirectly)
+		{
+			outHandle = AssetManager::GetHandleByPath(filepathToAsset);
 			return true;
-		else
-			return false;
+		}
+		else if (shouldWait)
+		{
+			bool shouldReturnByPath = false;
+			{
+				std::unique_lock<std::mutex> lock(m_LoadedAssetsMapMutex);
+				s_AssetPathToConditionVariableMap[filepathToAsset.string()].wait(lock, [filepathToAsset]()
+					{
+						return s_AssetPathToLoadingStateMap[filepathToAsset.string()] != EAssetStatus::Loading;
+					});
+
+				if (s_AssetPathToLoadingStateMap[filepathToAsset.string()] == EAssetStatus::Loaded)
+					shouldReturnByPath = true;
+			}
+			
+			if (shouldReturnByPath)
+			{
+				outHandle = GetHandleByPath(filepathToAsset);
+				return true;
+			}
+			else
+			{
+				outHandle = NULL_HANDLE;
+				return false;
+			}
+		}
+
+		bool succeeded = Serializer::Deserialize(filepathToAsset, outHandle);
+
+		{
+			std::lock_guard<std::mutex> lock(m_LoadedAssetsMapMutex);
+
+			if (succeeded)
+				s_AssetPathToLoadingStateMap[filepathToAsset.string()] = EAssetStatus::Loaded;
+			else
+				s_AssetPathToLoadingStateMap[filepathToAsset.string()] = EAssetStatus::Failed;
+
+			s_AssetPathToConditionVariableMap[filepathToAsset.string()].notify_all();
+		}
+
+		return succeeded;
 	}
 
 	bool AssetManager::IsLoaded(const std::string& filepath) noexcept
 	{
 		std::lock_guard<std::mutex> guard(m_LoadedAssetsMapMutex);
-		bool result = s_LoadedAssets.contains(filepath) && s_LoadedAssets2.contains(s_LoadedAssets[filepath]);
+		bool result = s_LoadedAssets.contains(filepath);
 		return result;
 	}
 
@@ -125,6 +240,8 @@ namespace Relentless
 
 	void AssetManager::OnFileMoved(const AssetHandle& handle, const std::string& newFilepath) noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_LoadedAssetsMapMutex);
+
 		auto it = std::find_if(s_LoadedAssets.begin(), s_LoadedAssets.end(),
 			[&handle](const std::pair<const std::string, UUID>& element) 
 			{

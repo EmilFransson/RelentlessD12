@@ -2,6 +2,7 @@
 #include "Graphics/D3D12Core.h"
 #include "Graphics/GPUTaskManager.h"
 #include "Graphics/MemoryManager.h"
+#include "Core/Application.h"
 
 namespace Relentless
 {
@@ -39,13 +40,17 @@ namespace Relentless
 		constantBufferDescriptor.BufferLocation = m_pResource->GetGPUVirtualAddress();
 		constantBufferDescriptor.SizeInBytes = static_cast<UINT>(sizeInBytes);
 
-		m_CBVDescriptorHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::CBV);
+		m_CBVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::CBV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateConstantBufferView(&constantBufferDescriptor, m_CBVDescriptorHandle.CPUHandle));
 
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(name).c_str());
+
+		const D3D12_RANGE nullReadRange = D3D12_RANGE(0,0);
+		DXCall(m_pResource->Map(0u, &nullReadRange, &m_pData));
+		RLS_ASSERT(m_pData, "[ConstantBuffer]: Pointer to buffer starting memory location is invalid.");
 	}
 
-	const Relentless::DescriptorHandle& ConstantBuffer2::GetCBVDescriptorHandle() const noexcept
+	const DescriptorHandle& ConstantBuffer2::GetCBVDescriptorHandle() const noexcept
 	{
 		return m_CBVDescriptorHandle;
 	}
@@ -53,6 +58,14 @@ namespace Relentless
 	size_t ConstantBuffer2::GetSizeInBytes() const noexcept
 	{
 		return m_SizeInBytes;
+	}
+
+	void ConstantBuffer2::UploadData(void* ptrToData, size_t sizeInBytes, size_t offset)
+	{
+		RLS_ASSERT(ptrToData, "[ConstantBuffer]: Data pointer is invalid.");
+		RLS_ASSERT(sizeInBytes <= m_SizeInBytes, "[ConstantBuffer]: Byte size of data to upload exceeds buffer capacity.");
+
+		std::memcpy(reinterpret_cast<uint8_t*>(m_pData) + offset, ptrToData, sizeInBytes);
 	}
 
 	ConstantBufferSet::ConstantBufferSet(const std::string& name, uint32_t sizeInBytes) noexcept

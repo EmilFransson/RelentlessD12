@@ -18,11 +18,13 @@ namespace Relentless
 		void DeallocatePointLight(entity entityID) noexcept;
 		[[nodiscard]] uint32_t GetLightIndex(entity entityID) const noexcept;
 
-		[[nodiscard]] const std::unique_ptr<StructuredBuffer>& GetDirectionalLights() const noexcept { return m_DirectionalLights; }
-		[[nodiscard]] const std::unique_ptr<StructuredBuffer>& GetPointLights() const noexcept { return m_PointLights; }
+		[[nodiscard]] ResourceHandle GetDirectionalLightsResourceHandle() const noexcept { return m_DirectionalLightsSBHandle; }
+		[[nodiscard]] ResourceHandle GetPointLightsResourceHandle() const noexcept { return m_PointLightsSBHandle; }
 	private:
-		std::unique_ptr<StructuredBuffer> m_DirectionalLights;
-		std::unique_ptr<StructuredBuffer> m_PointLights;
+		ResourceHandle m_DirectionalLightsSBHandle = NULL_RESOURCE_HANDLE;
+		ResourceHandle m_PointLightsSBHandle = NULL_RESOURCE_HANDLE;
+		uint32_t m_NrOfDirectionalLights = 0u;
+		uint32_t m_NrOfPointLights = 0u;
 		std::unordered_map<entity, uint32_t> m_EntityToLightIndex;
 		std::unordered_map<uint32_t, entity> m_LightToEntityIndex;
 	};

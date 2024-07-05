@@ -54,6 +54,8 @@ struct PerFrameData
     uint nrOfPointLights;
     uint environmentIndex;
     uint brdfLutTextureIndex;
+    uint irradianceMapIndex;
+    uint radianceMapIndex;
 };
 
 struct Camera
@@ -167,7 +169,7 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
     {
         Texture2D albedoTexture = ResourceDescriptorHeap[material.albedoIndex];
         albedoColor = albedoTexture.Sample(sampler_ANISOTROPIC, adjustedUV);
-        albedoColor.rgb = pow(albedoColor.rgb, 2.2);
+        //albedoColor.rgb = pow(albedoColor.rgb, 2.2);
     }
 
     float metallic = material.metallic;
@@ -206,13 +208,10 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
         Texture2D normalMap = ResourceDescriptorHeap[material.normalIndex];
         float3 sampledNormal = normalMap.Sample(sampler_ANISOTROPIC, adjustedUV).rgb;
         
-        //sampledNormal = normalize(sampledNormal * 2.0f - 1.0f);
-        //sampledNormal.y = -sampledNormal.y;
         sampledNormal.x = sampledNormal.x * 2.0f - 1.0f;
         sampledNormal.y = -sampledNormal.y * 2.0f + 1.0f;
         sampledNormal.z = sampledNormal.z;
         
-       
         normal = normalize(mul(sampledNormal, tbn).xyz);
     }
 
@@ -276,28 +275,37 @@ float4 ps_main(PS_IN psIn) : SV_TARGET
     float3 F = FresnelSchlickRoughness(NoV, baseReflectivity, roughness);
     float3 kD = (1.0 - F) * (1.0 - metallic);
     
-    // With a solid color, no need for a texture lookup, just use the color
+    float3 diffuse = 0.0f; 
     ConstantBuffer<Environment> environment = ResourceDescriptorHeap[perFrameData.environmentIndex];
-
-    float3 diffuse = environment.backgroundColor * albedoColor.xyz * kD;
+    if (perFrameData.irradianceMapIndex != NO_USE)
+    {
+        TextureCube irradianceMap = ResourceDescriptorHeap[perFrameData.irradianceMapIndex];
+        diffuse = irradianceMap.Sample(sampler_LINEAR, normal).rgb * albedoColor.xyz * kD;
+    }
+    else
+    {
+       diffuse = environment.backgroundColor * albedoColor.xyz * kD;
+    }
     
-    float3 prefilteredColor = environment.backgroundColor;
+    float3 prefilteredColor = float3(1.0f, 0.0f, 0.0f);
+    if (perFrameData.radianceMapIndex != NO_USE)
+    {
+        TextureCube radianceMap = ResourceDescriptorHeap[perFrameData.radianceMapIndex];
+        static const float MAX_REFLECTION_LOD = 4.0f;
+        prefilteredColor = radianceMap.SampleLevel(sampler_LINEAR, reflect(-viewDirection, normal), roughness * MAX_REFLECTION_LOD).rgb;
+    }
+    else
+    {
+        prefilteredColor = environment.backgroundColor;
+    }
+    
     
     Texture2D brdfLutTexture = ResourceDescriptorHeap[perFrameData.brdfLutTextureIndex];
-    float u = NoV;
-    float v = 1.0f - roughness;
-    
-    float2 brdf2 = brdfLutTexture.Sample(sampler_LINEAR_CLAMP, float2(u,v)).xy;
-    //brdf2 = pow(brdf2, 2.2);
-    float2 brdf = brdf2.xy;
+    float2 brdf = brdfLutTexture.Sample(sampler_LINEAR_CLAMP, float2(NoV, 1.0f - roughness)).rg;
     float3 specular = prefilteredColor * (F * brdf.r + brdf.g);
-   // return float4(specular, 1.0f);
 
     float3 finalAmbientColor = ((diffuse + specular) * ambientOcclusion) + emissionColor.rgb; // ao is from ambient occlusion map
    
-    //const float3 finalAmbientColor = (float3(albedoColor.xyz) * ambientLight * ambientOcclusion) + emissionColor;
-    
     float3 outColor = finalAmbientColor + lightOut;
-
     return float4(outColor, 1.0f);
 }

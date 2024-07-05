@@ -29,6 +29,7 @@
 #include <src/Graphics/Renderer/Renderer3D.h>
 #include <src/Graphics/Renderer/MasterRenderer.h>
 #include <src/Graphics/Renderer/SceneRenderer.h>
+#include <src/Graphics/Renderer/UtilityRenderer.h>
 #include <src/Graphics/MemoryManager.h>
 
 //Resources

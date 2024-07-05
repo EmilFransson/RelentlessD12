@@ -5,20 +5,16 @@ namespace Relentless
 	class VertexBuffer : public IResource
 	{
 	public:
-		struct Specification
-		{
-			uint32_t NrOfVertices;
-			uint32_t TotalSizeInBytes;
-			uint32_t Stride;
-			void* pBuffer;
-			std::string Name;
-		};
-		VertexBuffer(const Specification* specification) noexcept;
-		VertexBuffer(uint32_t nrOfvertices, uint32_t TotalSizeInBytes, uint32_t stride, Microsoft::WRL::ComPtr<ID3D12Resource> pResource, const std::string& name, void* pBuffer) noexcept;
+		VertexBuffer(const std::string& name, uint32_t sizeBytes, uint32_t vertexCount) noexcept;
 		virtual ~VertexBuffer() noexcept override final = default;
-		[[nodiscard]] const uint32_t GetNrOfVertices() const noexcept { return m_Specification.NrOfVertices; }
-		[[nodiscard]] Specification& GetSpecification() noexcept { return m_Specification; }
+		[[nodiscard]] uint32_t GetSRVDescriptorHeapIndex() const { return m_SRVDescriptorHandle.Index; }
+		[[nodiscard]] const uint32_t GetNrOfVertices() const noexcept { return m_VertexCount; }
+		[[nodiscard]] uint32_t GetSizeInBytes() const { return m_SizeInBytes; }
+		[[nodiscard]] void* Map(uint32_t offset, uint32_t sizeInBytes) noexcept;
+		void Unmap() noexcept;
 	private:
-		Specification m_Specification;
+		DescriptorHandle m_SRVDescriptorHandle;
+		uint32_t m_SizeInBytes = 0u;
+		uint32_t m_VertexCount = 0u;
 	};
 }

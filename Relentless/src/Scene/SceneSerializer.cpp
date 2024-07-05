@@ -57,8 +57,7 @@ namespace Relentless
 			out << YAML::BeginMap;
 		
 			out << YAML::Key << "MaterialHandle" << YAML::Value << manager.Get<MeshRendererComponent>(entity).AssetHandle.Uuid;
-			Serializer::Serialize<Material>(manager.Get<MeshRendererComponent>(entity).AssetHandle, AssetRegistry::GetFilepath(manager.Get<MeshRendererComponent>(entity).AssetHandle.Uuid));
-
+			Serializer::Serialize<Material>(manager.Get<MeshRendererComponent>(entity).AssetHandle, AssetRegistry::GetFilepath(manager.Get<MeshRendererComponent>(entity).AssetHandle.Uuid), false);
 
 			out << YAML::EndMap;
 		}

@@ -8,6 +8,7 @@
 #include "Utility.h"
 #include "../../vendor/includes/ImGUI/imgui.h"
 #include "Window.h"
+#include "Core/Application.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -329,7 +330,7 @@ namespace Relentless
 	{
 		for (uint8_t i{ 0u }; i < m_BackBuffers.size(); ++i)
 		{
-			MemoryManager::Get().DestroyDescriptorHandle(m_BackBuffers[i].Handle);
+			Application::Get().GetMemorymanager().DestroyDescriptorHandle(m_BackBuffers[i].Handle);
 		}
 		m_BackBuffers.clear();
 		DXCall(m_pSwapChain->ResizeBuffers(m_NrOfBackBuffers, m_Width, m_Height, DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING));
@@ -356,7 +357,7 @@ namespace Relentless
 			BackBuffer backBuffer{};
 
 			DXCall(m_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer.pBackBuffer)));
-			backBuffer.Handle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::RTV);
+			backBuffer.Handle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::RTV);
 
 			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(backBuffer.pBackBuffer.Get(), &rtvDesc, backBuffer.Handle.CPUHandle));
 

@@ -100,13 +100,15 @@ namespace Relentless
 			IID_PPV_ARGS(&m_pResource)
 		));
 
+		MemoryManager& memoryManager = Application::Get().GetMemorymanager();
+
 		if ((textureSpecification.Flags & D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) != 0)
 		{
 			D3D12_RENDER_TARGET_VIEW_DESC renderTargetViewDescriptor = {};
 			renderTargetViewDescriptor.Format = textureSpecification.Format;
 			renderTargetViewDescriptor.ViewDimension = textureSpecification.MultiSampleCount > 1u ? D3D12_RTV_DIMENSION_TEXTURE2DMS : D3D12_RTV_DIMENSION_TEXTURE2D;
 
-			m_RTVDescriptorHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::RTV);
+			m_RTVDescriptorHandle = memoryManager.CreateDescriptorHandle(DescriptorHandleType::RTV);
 			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(m_pResource.Get(), &renderTargetViewDescriptor, m_RTVDescriptorHandle.CPUHandle));
 		}
 	
@@ -117,7 +119,7 @@ namespace Relentless
 			shaderResourceViewDescriptor.ViewDimension = textureSpecification.MultiSampleCount > 1u ? D3D12_SRV_DIMENSION_TEXTURE2DMS : D3D12_SRV_DIMENSION_TEXTURE2D, shaderResourceViewDescriptor.Texture2D.MostDetailedMip = 0u, shaderResourceViewDescriptor.Texture2D.MipLevels = static_cast<UINT>(- 1);
 			shaderResourceViewDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-			m_SRVDescriptorHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::SRV);
+			m_SRVDescriptorHandle = memoryManager.CreateDescriptorHandle(DescriptorHandleType::SRV);
 			DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_SRVDescriptorHandle.CPUHandle));
 		}
 
@@ -185,7 +187,7 @@ namespace Relentless
 		shaderResourceViewDescriptor.Texture2D.PlaneSlice = 0u;
 		shaderResourceViewDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		m_SRVDescriptorHandle = MemoryManager::Get().CreateDescriptorHandle(DescriptorHandleType::SRV);
+		m_SRVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::SRV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_SRVDescriptorHandle.CPUHandle));
 		
 		m_Width = static_cast<uint32_t>(textureDescriptor.Width);
@@ -204,8 +206,36 @@ namespace Relentless
 
 	Texture2D::Texture2D(const Texture2DSpecification& specification) noexcept
 	{
-		m_pResource = specification.pResource;
-		m_SRVDescriptorHandle = specification.DescriptorHandleSRV;
+		D3D12_RESOURCE_DESC textureDescriptor = {};
+		textureDescriptor.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		textureDescriptor.Format = specification.Format;
+		textureDescriptor.MipLevels = specification.MipCount;
+		textureDescriptor.Width = specification.Width;
+		textureDescriptor.Height = specification.Height;
+		textureDescriptor.SampleDesc.Count = specification.SampleCount;
+		textureDescriptor.SampleDesc.Quality = 0u;
+		textureDescriptor.DepthOrArraySize = 1u;
+		textureDescriptor.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		textureDescriptor.Flags = D3D12_RESOURCE_FLAG_NONE;
+		textureDescriptor.Alignment = 0u;
+		
+		D3D12_HEAP_PROPERTIES textureHeapProperties = {};
+		textureHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		textureHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		textureHeapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+		textureHeapProperties.CreationNodeMask = 1u;
+		textureHeapProperties.VisibleNodeMask = 1u;
+		
+		DXCall(D3D12Core::GetDevice()->CreateCommittedResource
+		(
+			&textureHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&textureDescriptor,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(&m_pResource)
+		));
+		
 		m_Name = specification.Name;
 		m_IsSRGB = specification.IsSRGB;
 		m_Width = specification.Width;
@@ -213,7 +243,19 @@ namespace Relentless
 		m_MipCount = specification.MipCount;
 		m_Samples = specification.SampleCount;
 		m_Format = specification.Format;
-		m_CurrentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		m_CurrentState = D3D12_RESOURCE_STATE_COPY_DEST;
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDescriptor = {};
+		shaderResourceViewDescriptor.Format = m_Format;
+		shaderResourceViewDescriptor.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		shaderResourceViewDescriptor.Texture2D.MipLevels = m_MipCount;
+		shaderResourceViewDescriptor.Texture2D.MostDetailedMip = 0;
+		shaderResourceViewDescriptor.Texture2D.ResourceMinLODClamp = 0.0f;
+		shaderResourceViewDescriptor.Texture2D.PlaneSlice = 0u;
+		shaderResourceViewDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+		m_SRVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::SRV);
+		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_SRVDescriptorHandle.CPUHandle));
 
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring("[Texture2D] - " + m_Name).c_str());
 		RLS_CORE_INFO("Created Texture2D '{0}' of size [width, height]=[{1},{2}]", m_Name, m_Width, m_Height);
@@ -239,5 +281,26 @@ namespace Relentless
 	[[nodiscard]] Texture2D Texture2D::LoadFromFile(const std::filesystem::path& filePath) noexcept
 	{
 		return Texture2D(filePath.string());
+	}
+
+	TextureCube::TextureCube(const TextureCubeSpecification& specification) noexcept
+	{
+		m_pResource = specification.pResource;
+		m_SRVDescriptorHandle = specification.DescriptorHandleSRV;
+		for (uint32_t i{0u}; i < 6; ++i)
+			m_RTVDescriptorHandle[i] = specification.DescriptorHandleRTV[i];
+
+		m_Name = specification.Name;
+		m_IsSRGB = specification.IsSRGB;
+		m_Width = specification.Width;
+		m_Height = specification.Height;
+		m_MipCount = specification.MipCount;
+		m_Samples = specification.SampleCount;
+		m_Format = specification.Format;
+		m_CurrentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		m_RTVDescriptorHandles = specification.DescriptorHandleRTVs;
+
+		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring("[TextureCube] - " + m_Name).c_str());
+		RLS_CORE_INFO("Created TextureCube '{0}' of size [width, height]=[{1},{2}]", m_Name, m_Width, m_Height);
 	}
 }

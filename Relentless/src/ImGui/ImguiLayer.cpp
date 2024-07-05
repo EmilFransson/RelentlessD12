@@ -18,7 +18,7 @@ namespace Relentless
 
 	void ImguiLayer::BeginFrame(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept
 	{
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1, MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		DXCall_STD(pCommandList->SetDescriptorHeaps(1, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
 
 		BackBuffer& backBuffer{ Window::GetBackBuffers()[Application::Get().GetGPUTaskManager().GetCurrentFrameIndex()]};
 		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
@@ -183,14 +183,17 @@ namespace Relentless
 		style.ScaleAllSizes(scaleFactor);
 		
 		ImGui_ImplWin32_Init(::GetActiveWindow());
+
+		MemoryManager& memorymanager = Application::Get().GetMemorymanager();
+
 		ImGui_ImplDX12_Init
 		(
 			D3D12Core::GetDevice().Get(),
 			GPUTaskManager::FRAMES_IN_FLIGHT,
 			DXGI_FORMAT_R10G10B10A2_UNORM,
-			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().Get(),
-			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetCPUStartHandle(),
-			MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetGPUStartHandle()
+			memorymanager.GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().Get(),
+			memorymanager.GetShaderBindableDescriptorHeap()->GetCPUStartHandle(),
+			memorymanager.GetShaderBindableDescriptorHeap()->GetGPUStartHandle()
 		);
 
 

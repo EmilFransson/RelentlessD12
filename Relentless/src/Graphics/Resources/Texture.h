@@ -20,12 +20,22 @@ namespace Relentless
 
 	struct Texture2DSpecification : public TextureSpecification
 	{
-		Microsoft::WRL::ComPtr<ID3D12Resource> pResource{ nullptr };
-		DescriptorHandle DescriptorHandleSRV;
 		std::string Name{ "?" };
 		bool IsSRGB{ true };
 		uint32_t MipCount{0u};
 		uint32_t SampleCount{0u};
+	};
+
+	struct TextureCubeSpecification : public TextureSpecification
+	{
+		std::string Name{ "?" };
+		Microsoft::WRL::ComPtr<ID3D12Resource> pResource{ nullptr };
+		DescriptorHandle DescriptorHandleSRV;
+		std::vector<DescriptorHandle> DescriptorHandleRTVs;
+		DescriptorHandle DescriptorHandleRTV[6];
+		bool IsSRGB{ true };
+		uint32_t MipCount{ 0u };
+		uint32_t SampleCount{ 0u };
 	};
 
 	class Texture : public IResource
@@ -82,5 +92,16 @@ namespace Relentless
 		[[nodiscard]] bool IsSRGB() const { return m_IsSRGB; }
 	private:
 		bool m_IsSRGB;
+	};
+
+	class TextureCube : public Texture 
+	{
+	public:
+		explicit TextureCube(const TextureCubeSpecification& specification) noexcept;
+		virtual ~TextureCube() noexcept final = default;
+	private:
+		std::vector<DescriptorHandle> m_RTVDescriptorHandles;
+		DescriptorHandle m_RTVDescriptorHandle[6];
+		bool m_IsSRGB = true;
 	};
 }

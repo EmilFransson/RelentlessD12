@@ -5,25 +5,14 @@ struct VS_OUT
     float3 outColor         : COLOR;
 };
 
-struct BatchData
-{
-    uint worldMatrixIndex1;
-    uint worldMatrixIndex2;
-};
-
 struct VPConstantBuffer
 {
     matrix VPMatrix;
 };
 
-struct ViewProjectionBufferIndex
-{
-    uint Index;
-};
-
 struct Transform
 {
-    matrix worldMatrix;
+    matrix WorldMatrix;
 };
 
 struct InstanceData
@@ -34,46 +23,48 @@ struct InstanceData
     float Pad2;
 };
 
-struct InstanceDataSBIndex
+struct VertexShaderPerFrameData
 {
-    uint Index;
+    uint InstanceDataSBIndex;
+    uint VPMatrixCBIndex;
+    uint BatchDataTransformHorizontalCBIndex;
+    uint BatchDataTransformVerticalCBIndex;
 };
 
-ConstantBuffer<ViewProjectionBufferIndex> vpConstantBuffer : register(b0, space0);
-ConstantBuffer<BatchData> batchData : register(b2, space0);
-ConstantBuffer<InstanceDataSBIndex> instanceDataSBIndex : register(b3, space0);
+ConstantBuffer<VertexShaderPerFrameData> vsPerFrameData : register(b0, space0);
+
+static const float3 vertices[2] =
+{
+    float3(-0.5f, 0.0f, 0.0f),
+    float3(0.5f, 0.0f, 0.0f)
+};
+
+inline matrix GetInstanceWorldMatrix(uint instanceID)
+{
+    const uint instanceTransformIndex = (instanceID > 399) ? vsPerFrameData.BatchDataTransformHorizontalCBIndex : vsPerFrameData.BatchDataTransformVerticalCBIndex;
+    const ConstantBuffer<Transform> transform = ResourceDescriptorHeap[instanceTransformIndex];
+    return transform.WorldMatrix;
+}
+
+inline float3 GetInstanceInputPosition(uint vertexID, float3 instancePosition)
+{
+    float3 inputPosition = vertices[vertexID];
+    inputPosition += instancePosition;
+    return inputPosition;
+}
 
 VS_OUT vs_main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
 {
-    VS_OUT vsOut = (VS_OUT)0;
-  
-    float3 vertices[2] =
-    {
-        float3(-0.5f, 0.0f, 0.0f),
-        float3(0.5f, 0.0f, 0.0f)
-    };
+    const StructuredBuffer<InstanceData> instanceDataSB = ResourceDescriptorHeap[vsPerFrameData.InstanceDataSBIndex];
+    const InstanceData instanceData = instanceDataSB[instanceID];
     
-    float3 inputPosition = vertices[vertexID];
-
-    StructuredBuffer<InstanceData> instanceDataSB = ResourceDescriptorHeap[instanceDataSBIndex.Index];
-    InstanceData instanceData = instanceDataSB[instanceID];
-    inputPosition += instanceData.Position;
+    const float3 inputPosition = GetInstanceInputPosition(vertexID, instanceData.Position);
+    const matrix worldMatrix = GetInstanceWorldMatrix(instanceID);
     
-    matrix worldMatrix = (matrix)0;
-    if (instanceID > 399)
-    {
-        ConstantBuffer<Transform> transform = ResourceDescriptorHeap[batchData.worldMatrixIndex2];
-        worldMatrix = transform.worldMatrix;
-    }
-    else
-    {
-        ConstantBuffer<Transform> transform = ResourceDescriptorHeap[batchData.worldMatrixIndex1];
-        worldMatrix = transform.worldMatrix;
-    }
-
-    ConstantBuffer<VPConstantBuffer> vp = ResourceDescriptorHeap[vpConstantBuffer.Index];
+    const ConstantBuffer<VPConstantBuffer> vp = ResourceDescriptorHeap[vsPerFrameData.VPMatrixCBIndex];
+    const matrix wvp = mul(vp.VPMatrix, worldMatrix);
     
-    matrix wvp = mul(vp.VPMatrix, worldMatrix);
+    VS_OUT vsOut = (VS_OUT) 0;
     vsOut.outPositionCS = mul(wvp, float4(inputPosition, 1.0f));
     vsOut.outPositionWS = mul(worldMatrix, float4(inputPosition, 1.0f)).xyz;
     vsOut.outColor = instanceData.Color;

@@ -3,9 +3,6 @@ namespace Relentless
 {
 	Microsoft::WRL::ComPtr<ID3D12Device9> D3D12Core::m_pDevice{ nullptr };
 	Microsoft::WRL::ComPtr<IDXGIFactory7> D3D12Core::m_pFactory{nullptr};
-	D3D12Command D3D12Core::m_DirectCommandInterface{};
-	uint8_t D3D12Core::m_NrOfBufferedFrames{ 3u };
-	uint32_t D3D12Core::m_CurrentFrame{ 0u };
 	bool D3D12Core::m_IsInitialized{ false };
 #if defined(RLS_DEBUG)
 	Microsoft::WRL::ComPtr<ID3D12InfoQueue> D3D12Core::m_pInfoQueue{nullptr};
@@ -46,7 +43,6 @@ namespace Relentless
 #if defined(RLS_DEBUG)
 		D3D12Debug::Initialize();
 #endif
-		m_DirectCommandInterface.Initialize(D3D12_COMMAND_LIST_TYPE_DIRECT, m_NrOfBufferedFrames);
 		m_IsInitialized = true;
 	}
 
@@ -56,6 +52,15 @@ namespace Relentless
 			RLS_VERIFY(::D3D12GetDebugInterface(IID_PPV_ARGS(&m_pDebugController)) == S_OK, "Failed to retrieve debug interface.");
 			m_pDebugController->EnableDebugLayer();
 			m_pDebugController->SetEnableGPUBasedValidation(TRUE);
+		#endif
+	}
+
+	void D3D12Core::ReportLiveObjects() noexcept
+	{
+		#if defined(RLS_DEBUG)
+		Microsoft::WRL::ComPtr<ID3D12DebugDevice> debugDevice;
+		DXCall(m_pDevice->QueryInterface(IID_PPV_ARGS(&debugDevice)));
+		DXCall(debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL));
 		#endif
 	}
 }

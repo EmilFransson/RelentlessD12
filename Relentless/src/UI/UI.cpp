@@ -138,9 +138,9 @@ namespace Relentless
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-		const Texture& texture = AssetManager::Get<Texture2D>(s_GlobalData.SearchIconTextureHandle);
+		const std::shared_ptr<Texture> texture = AssetManager::Get<Texture2D>(s_GlobalData.SearchIconTextureHandle);
 		const ImVec4 tintCol = m_IsActive ? ImVec4(0.9f, 0.9f, 0.9f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		ImGui::ImageButton((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(24.0f, 24.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
+		ImGui::ImageButton((ImTextureID)texture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(24.0f, 24.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
 		
 		m_SearchIconHovered = ImGui::IsItemHovered();
 		if (m_SearchIconHovered)
@@ -153,9 +153,9 @@ namespace Relentless
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-		const Texture& texture = AssetManager::Get<Texture2D>(s_GlobalData.CancelIconTextureHandle);
+		const std::shared_ptr<Texture> texture = AssetManager::Get<Texture2D>(s_GlobalData.CancelIconTextureHandle);
 		const ImVec4 tintCol = m_CancelIconHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		ImGui::ImageButton((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(15.0f, 15.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
+		ImGui::ImageButton((ImTextureID)texture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(15.0f, 15.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
 
 		m_CancelIconHovered = ImGui::IsItemHovered();
 		if (m_CancelIconHovered)
@@ -174,11 +174,11 @@ namespace Relentless
 	void SearchBar::DrawSearchHistoryPopupIcon() noexcept
 	{
 		const ImVec4 tintCol = m_ArrowDownIconHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		const Texture2D& texture = AssetManager::Get<Texture2D>(s_GlobalData.ArrowDownIconTextureHandle);
+		const std::shared_ptr<Texture2D> texture = AssetManager::Get<Texture2D>(s_GlobalData.ArrowDownIconTextureHandle);
 
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-		ImGui::ImageButton((ImTextureID)texture.GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(17.0f, 17.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
+		ImGui::ImageButton((ImTextureID)texture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(17.0f, 17.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
 
 		bool shouldOpenNew = false;
 		if (ImGui::IsItemClicked())
@@ -291,6 +291,35 @@ namespace Relentless
 		}
 
 		return modified + ellipsis;
+	}
+
+	void UI::Utility::DrawTitledSeparator(const std::string& title, const ImVec2& begin, const ImVec2& end) noexcept
+	{
+		ImDrawList* pDrawList = ImGui::GetWindowDrawList();
+		if (!pDrawList)
+			return;
+		
+		const float windowWidth = ImGui::GetWindowWidth();
+
+		ImGui::SetWindowFontScale(0.8f);
+		const ImVec2 textSize = ImGui::CalcTextSize(title.c_str());
+
+		constexpr ImU32 textColor = IM_COL32(255.0f, 255.0f, 255.0f, 128.0f);
+		pDrawList->AddText(ImVec2(begin.x + 10.0f, begin.y - (textSize.y / 2.0f)), textColor, title.c_str());
+		
+		ImGui::SetWindowFontScale(1.0f);
+
+		float remainingWidth = windowWidth - textSize.x;
+
+		ImGui::SetCursorScreenPos(ImVec2(begin.x + 10.0f + textSize.x + 20.0f, begin.y));
+
+		constexpr const ImVec4 splitterColor = ImVec4(200.0f / 255, 200.0f / 255, 200.0f / 255, 128.0f / 255.0f);
+		ImGui::PushStyleColor(ImGuiCol_Button, splitterColor);
+		
+		constexpr float splitterThickness = 1.0f;
+		ImGui::Button("##Splitter2", ImVec2(remainingWidth - 30.0f - 15.0f, splitterThickness));
+		
+		ImGui::PopStyleColor();
 	}
 
 }

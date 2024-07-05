@@ -3,6 +3,8 @@
 #include "Threading/ThreadPool.h"
 #include "Callback/Broadcaster.h"
 #include "Graphics/GPUTaskManager.h"
+#include "Graphics/MemoryManager.h"
+#include "Graphics/Resources/ResourceManager.h"
 
 namespace Relentless
 {
@@ -25,8 +27,10 @@ namespace Relentless
 		void OnEvent(IEvent& event) noexcept;
 
 		void SubmitToMainThread(const std::function<void()>& func);
+		[[nodiscard]] MemoryManager& GetMemorymanager() noexcept;
 		[[nodiscard]] ThreadPool& GetThreadPool() noexcept;
 		[[nodiscard]] GPUTaskManager& GetGPUTaskManager() noexcept;
+		[[nodiscard]] ResourceManager& GetResourceManager() noexcept;
 	private:
 		void OnStartUp() noexcept;
 		void ShutDown() noexcept;
@@ -34,7 +38,9 @@ namespace Relentless
 		[[nodiscard]] constexpr const bool IsInitialized() const noexcept { return m_IsRunning == true; }
 	private:
 		static Application* s_Instance;
+		MemoryManager m_MemoryManager;
 		GPUTaskManager m_GPUTaskManager;
+		ResourceManager m_ResourceManager;
 		ThreadPool m_ThreadPool;
 
 		ApplicationSpecification m_ApplicationSpecification;

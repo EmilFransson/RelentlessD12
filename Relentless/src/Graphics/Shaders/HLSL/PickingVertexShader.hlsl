@@ -14,9 +14,6 @@ struct VS_OUT
     float4 outPositionCS : SV_Position;
 };
 
-StructuredBuffer<Vertex> vertices : register(t0, space0);
-StructuredBuffer<unsigned int> indices : register(t1, space0);
-
 struct Transform
 {
     matrix worldMatrix;
@@ -26,6 +23,8 @@ struct PerDrawData
 {
     uint materialIndex;
     uint worldMatrixIndex;
+    uint vertexBufferIndex;
+    uint indexBufferIndex;
 };
 
 struct VPConstantBuffer
@@ -68,6 +67,10 @@ static const uint NO_USE = 0xFFFFFFFF;
 VS_OUT vs_main(uint vertexID : SV_VertexID)
 {
     VS_OUT vsOut = (VS_OUT) 0;
+    
+    StructuredBuffer<Vertex> vertices = ResourceDescriptorHeap[perDrawData.vertexBufferIndex];
+    StructuredBuffer<unsigned int> indices = ResourceDescriptorHeap[perDrawData.indexBufferIndex];
+    
     Vertex input = vertices[indices[vertexID]];
 
     ConstantBuffer<Transform> transform = ResourceDescriptorHeap[perDrawData.worldMatrixIndex];

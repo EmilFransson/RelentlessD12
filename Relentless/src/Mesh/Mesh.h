@@ -1,27 +1,30 @@
 #pragma once
 #include "Graphics/Resources/IndexBuffer.h"
 #include "Graphics/Resources/VertexBuffer.h"
+#include "Graphics/Resources/ResourceMeta.h"
+#include "Math/Transform.h"
 
 namespace Relentless
 {
 	class Mesh
 	{
 	public:
-		explicit Mesh(const std::string& name, const VertexBuffer::Specification& vbSpec, const IndexBuffer::Specification& ibSpec) noexcept;
-		Mesh();
+		explicit Mesh(const std::string& name = "Unnamed") noexcept;
 		Mesh(const Mesh& otherMesh) noexcept;
 		Mesh& operator=(const Mesh& otherMesh) noexcept;
 		Mesh(Mesh&& otherMesh) noexcept;
 		Mesh& operator=(Mesh&& otherMesh) noexcept;
-		void SetName(const std::string& name) noexcept;
-		void SetVertexBuffer(std::unique_ptr<VertexBuffer>&& pVertexBuffer) noexcept;
-		void SetIndexBuffer(std::unique_ptr<IndexBuffer>&& pIndexBuffer) noexcept;
 		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
-		[[nodiscard]] const std::unique_ptr<VertexBuffer>& GetVertexBuffer() const noexcept { return m_pVertexBuffer; }
-		[[nodiscard]] const std::unique_ptr<IndexBuffer>& GetIndexBuffer() const noexcept { return m_pIndexBuffer; }
+		void SetName(const std::string& name) noexcept;
+		void SetVertexBufferHandle(ResourceHandle handle) noexcept;
+		void SetIndexBufferHandle(ResourceHandle handle) noexcept;
+		void SetOffsetTransform(const Transform& transform) noexcept;
+		[[nodiscard]] const Transform& GetOffsetTransform() const noexcept;
+
+		ResourceHandle m_VertexBufferHandle = NULL_RESOURCE_HANDLE;
+		ResourceHandle m_IndexBufferHandle = NULL_RESOURCE_HANDLE;
 	private:
 		std::string m_Name;
-		std::unique_ptr<VertexBuffer> m_pVertexBuffer;
-		std::unique_ptr<IndexBuffer> m_pIndexBuffer;
+		Transform m_OffsetTransform{};
 	};
 }

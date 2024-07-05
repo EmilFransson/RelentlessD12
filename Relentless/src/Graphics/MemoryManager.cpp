@@ -1,17 +1,9 @@
 #include "MemoryManager.h"
 #include "D3D12Core.h"
 #include "../Core/Window.h"
-#include "Resources/ConstantBuffer.h"
 #include "Assets/AssetManager.h"
 namespace Relentless
 {
-	MemoryManager MemoryManager::s_Instance;
-
-	MemoryManager& MemoryManager::Get() noexcept
-	{
-		return s_Instance;
-	}
-
 	void MemoryManager::Initialize() noexcept
 	{
 		m_pRTVDescriptorHeap = std::move(std::make_unique<DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 100'000, false));
@@ -140,119 +132,6 @@ namespace Relentless
 			m_pDeferredFreeListsResources[frameIndex].clear();
 	}
 
-	void MemoryManager::UpdateConstantBuffer(const ConstantBuffer& constantBuffer, void* pData) noexcept
-	{
-		RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
-		auto address = constantBuffer.GetInterface()->GetGPUVirtualAddress();
-
-		constexpr const D3D12_RANGE range = { 0,0 };
-		DXCall(constantBuffer.GetInterface()->Map(0u, &range, reinterpret_cast<void**>(&address)));
-		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), constantBuffer.m_SizeInBytes);
-		DXCall_STD(constantBuffer.GetInterface()->Unmap(0u, nullptr));
-
-		auto frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
-		
-		auto dstHandle = constantBuffer.m_VisibleHandles[frameIndex].CPUHandle;
-		auto srcHandle = constantBuffer.m_NonVisibleHandle.CPUHandle;
-
-		DXCall_STD(D3D12Core::GetDevice()->CopyDescriptorsSimple(1u, dstHandle, srcHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
-	}
-
-	void MemoryManager::UpdateConstantBuffer(size_t id, void* pData) noexcept
-	{
-		RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
-		auto address = m_ConstantBuffers[id]->GetInterface()->GetGPUVirtualAddress();
-
-		constexpr const D3D12_RANGE range = { 0,0 };
-		DXCall(m_ConstantBuffers[id]->GetInterface()->Map(0u, &range, reinterpret_cast<void**>(&address)));
-		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), m_ConstantBuffers[id]->m_SizeInBytes);
-		DXCall_STD(m_ConstantBuffers[id]->GetInterface()->Unmap(0u, nullptr));
-
-		auto frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
-		//auto frameIndex = D3D12Core::GetCurrentFrame() % D3D12Core::GetNrOfBufferedFrames();
-
-		auto dstHandle = m_ConstantBuffers[id]->m_VisibleHandles[frameIndex].CPUHandle;
-		auto srcHandle = m_ConstantBuffers[id]->m_NonVisibleHandle.CPUHandle;
-
-		DXCall_STD(D3D12Core::GetDevice()->CopyDescriptorsSimple(1u, dstHandle, srcHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
-	}
-
-	void MemoryManager::UpdateStructuredBuffer(const StructuredBuffer& structuredBuffer, void* pData, uint32_t index) noexcept
-	{
-		RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
-		RLS_ASSERT(index < structuredBuffer.m_Capacity, "Capacity reached.");
-
-		auto address = structuredBuffer.GetInterface()->GetGPUVirtualAddress();
-
-		constexpr const D3D12_RANGE range = { 0,0 };
-		DXCall(structuredBuffer.GetInterface()->Map(0u, &range, reinterpret_cast<void**>(&address)));
-		address += (index * structuredBuffer.m_ByteStride);
-		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), structuredBuffer.m_ByteStride);
-		DXCall_STD(structuredBuffer.GetInterface()->Unmap(0u, nullptr));
-
-		auto frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
-		
-		auto dstHandle = structuredBuffer.m_VisibleHandles[frameIndex].CPUHandle;
-		auto srcHandle = structuredBuffer.m_NonVisibleHandle.CPUHandle;
-
-		DXCall_STD(D3D12Core::GetDevice()->CopyDescriptorsSimple(1, dstHandle, srcHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
-	}
-
-	void MemoryManager::UpdateStructuredBuffer(const StructuredBuffer& structuredBuffer, void* pData, uint32_t index, uint32_t frameIndex) noexcept
-	{
-		RLS_ASSERT(pData, "Memory address to copy from is nullptr.");
-		RLS_ASSERT(index < structuredBuffer.m_Capacity, "Capacity reached.");
-
-		auto address = structuredBuffer.GetInterface()->GetGPUVirtualAddress();
-
-		constexpr const D3D12_RANGE range = { 0,0 };
-		DXCall(structuredBuffer.GetInterface()->Map(0u, &range, reinterpret_cast<void**>(&address)));
-		address += (index * structuredBuffer.m_ByteStride);
-		std::memcpy(reinterpret_cast<void*>(address), reinterpret_cast<unsigned char*>(pData), structuredBuffer.m_ByteStride);
-		DXCall_STD(structuredBuffer.GetInterface()->Unmap(0u, nullptr));
-
-		auto dstHandle = structuredBuffer.m_VisibleHandles[frameIndex].CPUHandle;
-		auto srcHandle = structuredBuffer.m_NonVisibleHandle.CPUHandle;
-
-		DXCall_STD(D3D12Core::GetDevice()->CopyDescriptorsSimple(1, dstHandle, srcHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
-	}
-
-	size_t MemoryManager::CreateConstantBuffer(uint32_t sizeInBytes) noexcept
-	{
-		if (!m_FreeConstantBufferHandles.empty())
-		{
-			size_t handle = m_FreeConstantBufferHandles.front();
-			m_FreeConstantBufferHandles.pop();
-			m_ConstantBuffers[handle] = std::make_unique<ConstantBuffer>(sizeInBytes);
-
-			RLS_CORE_INFO("Created Constant Buffer with handle {0}", handle);
-			return handle;
-		}
-		else
-		{
-			m_ConstantBuffers.emplace_back(std::make_unique<ConstantBuffer>(sizeInBytes));
-
-			RLS_CORE_INFO("Created Constant Buffer with handle {0}", m_ConstantBuffers.size() - 1);
-			return m_ConstantBuffers.size() - 1;
-		}
-	}
-
-	uint32_t MemoryManager::GetCBDescriptorIndex(const size_t constantBufferHandle) noexcept
-	{
-		auto frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
-		return GetConstantBuffer(constantBufferHandle)->m_VisibleHandles[frameIndex].Index;
-	}
-
-	void MemoryManager::FreeConstantBuffer(size_t cbHandle) noexcept 
-	{
-		RLS_ASSERT(m_ConstantBuffers.size() > cbHandle && m_ConstantBuffers[cbHandle], "Constant buffer handle is invalid.");
-		
-		m_ConstantBuffers[cbHandle]->ReleaseHandles();
-		m_FreeConstantBufferHandles.push(cbHandle);
-
-		RLS_CORE_INFO("Destroyed constant buffer with handle {0}", cbHandle);
-	}
-
 	void MemoryManager::SetDirtyMaterial(const AssetHandle& handle) noexcept
 	{
 		if (m_DirtyMaterials.contains(handle.Uuid))
@@ -267,11 +146,17 @@ namespace Relentless
 
 	void MemoryManager::UpdateDirtyMaterials()
 	{
+		if (m_DirtyMaterials.empty())
+			return;
+
+		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		for (auto& [UUID, handleUpdatesPair] : m_DirtyMaterials)
 		{
-			Material& material = AssetManager::Get<Material>(handleUpdatesPair.first);
-			const size_t constantBufferIndex = material.m_ConstantBufferID;
-			UpdateConstantBuffer(constantBufferIndex, &material);
+			std::shared_ptr<Material> material = AssetManager::Get<Material>(handleUpdatesPair.first);
+
+			const ResourceHandle constantBufferHandle = material->m_ConstantBufferHandle;
+			resourceManager.UploadConstantBufferData(constantBufferHandle, &(*material), 112u, frameIndex);
 
 			handleUpdatesPair.second--;
 		}

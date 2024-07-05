@@ -1,5 +1,6 @@
 #pragma once
 #include "Assets/AssetMeta.h"
+#include "ResourceManager.h"
 
 namespace Relentless
 {
@@ -38,13 +39,13 @@ namespace Relentless
 		[[nodiscard]] bool HasHeightMap() const noexcept;
 		[[nodiscard]] bool HasAmbientOcclusionTexture() const noexcept;
 		[[nodiscard]] bool HasEmissionTexture() const noexcept;
-		[[nodiscard]] Texture2D& GetAlbedoTexture() const noexcept;
-		[[nodiscard]] Texture2D& GetMetallicTexture() const noexcept;
-		[[nodiscard]] Texture2D& GetRoughnessTexture() const noexcept;
-		[[nodiscard]] Texture2D& GetNormalMap() const noexcept;
-		[[nodiscard]] Texture2D& GetHeightMap() const noexcept;
-		[[nodiscard]] Texture2D& GetAmbientOcclusionTexture() const noexcept;
-		[[nodiscard]] Texture2D& GetEmissionTexture() const noexcept;
+		[[nodiscard]] std::shared_ptr<Texture2D> GetAlbedoTexture() const noexcept;
+		[[nodiscard]] std::shared_ptr<Texture2D> GetMetallicTexture() const noexcept;
+		[[nodiscard]] std::shared_ptr<Texture2D> GetRoughnessTexture() const noexcept;
+		[[nodiscard]] std::shared_ptr<Texture2D> GetNormalMap() const noexcept;
+		[[nodiscard]] std::shared_ptr<Texture2D> GetHeightMap() const noexcept;
+		[[nodiscard]] std::shared_ptr<Texture2D> GetAmbientOcclusionTexture() const noexcept;
+		[[nodiscard]] std::shared_ptr<Texture2D> GetEmissionTexture() const noexcept;
 		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
 		[[nodiscard]] const RenderMode GetRenderMode() const noexcept;
 		[[nodiscard]] uint32_t GetConstantBufferIndex() const noexcept;
@@ -98,7 +99,8 @@ namespace Relentless
 		bool m_UseAmbientOcclusionTexture;
 		bool m_UseEmissionTexture;
 	public:
-		size_t m_ConstantBufferID;
+		ResourceHandle m_ConstantBufferHandle = NULL_RESOURCE_HANDLE;
+		//size_t m_ConstantBufferID;
 		RenderMode m_RenderMode;
 
 		friend class Serializer;

@@ -9,9 +9,11 @@ namespace Relentless
 		ConstantBuffer2(const std::string& name, uint32_t sizeInBytes) noexcept;
 		[[nodiscard]] const DescriptorHandle& GetCBVDescriptorHandle() const noexcept;
 		[[nodiscard]] size_t GetSizeInBytes() const noexcept;
+		void UploadData(void* ptrToData, size_t sizeInBytes, size_t offset = 0);
 	private:
 		uint32_t m_SizeInBytes;
 		DescriptorHandle m_CBVDescriptorHandle;
+		void* m_pData = nullptr;
 	};
 
 	class ConstantBufferSet

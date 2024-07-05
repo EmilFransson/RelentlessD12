@@ -1,6 +1,5 @@
 #pragma once
 #include "ICamera.h"
-#include "../../Resources/ConstantBuffer.h"
 #include "../../Resources/ConstantBufferSet.h"
 namespace Relentless
 {

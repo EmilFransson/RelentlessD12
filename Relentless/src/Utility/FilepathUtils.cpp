@@ -1,4 +1,5 @@
 #include "FilepathUtils.h"
+#include "Rules.h"
 
 namespace Relentless
 {
@@ -47,6 +48,24 @@ namespace Relentless
 			path.replace_extension(extension);
 		else
 			path.append(extension);
+	}
+
+	std::string FilepathUtils::SanitizeFileName(const std::string& fileName) noexcept
+	{
+		std::string sanitized = fileName;
+		const std::string illegalCharacters = R"(\/:*?"<>|)";
+		for (char& ch : sanitized) 
+		{
+			if (illegalCharacters.find(ch) != std::string::npos || std::iscntrl(static_cast<unsigned char>(ch)))
+				ch = '_';
+		}
+			
+		return sanitized;
+	}
+
+	bool FilepathUtils::IsDirectory(const std::filesystem::path& filepath) noexcept
+	{
+		return std::filesystem::is_directory(filepath);
 	}
 
 }

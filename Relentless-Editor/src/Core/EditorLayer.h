@@ -44,6 +44,8 @@ namespace Relentless
 		void UI_DrawStatisticsPanel() noexcept;
 		void UI_DrawMainMenuBar() noexcept;
 		void UI_DrawSceneStateIcons() noexcept;
+
+		void CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept;
 	private:
 		bool m_SceneViewportChanged;
 		bool m_HoveringSceneViewport;
@@ -65,7 +67,8 @@ namespace Relentless
 
 		std::shared_ptr<Scene> m_pActiveScene = nullptr;
 		std::shared_ptr<Scene> m_pEditorScene = nullptr;
-		std::shared_ptr<SceneRenderer> m_pSceneRenderer;
+		std::shared_ptr<SceneRenderer> m_pSceneRenderer = nullptr;
+		std::shared_ptr<UtilityRenderer> m_pUtilityRenderer = nullptr;
 	
 		bool m_DisplaySceneHierarchyPanel;
 		bool m_DisplayContentBrowserPanel;
@@ -87,5 +90,7 @@ namespace Relentless
 		AssetHandle m_StepButtonTextureHandle = NULL_HANDLE;
 
 		SceneState m_SceneState = SceneState::Edit;
+
+		std::shared_ptr<TextureCube> m_SkyBox = nullptr;
 	};
 }

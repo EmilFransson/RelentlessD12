@@ -216,11 +216,11 @@ namespace Relentless
 			{
 				auto& mfc = m_pScene->GetEntityManager().Get<MeshFilterComponent>(m_SelectedEntity);
 
-				char input[40];
+				char input[60];
 				if (mfc.AssetHandle != NULL_HANDLE)
 				{
-					Mesh& mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
-					std::string name = mesh.GetName();
+					std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+					std::string name = mesh->GetName();
 					strcpy_s(input, sizeof(input), name.c_str());
 				}
 				else
@@ -299,14 +299,14 @@ namespace Relentless
 		DrawComponentNode<MeshRendererComponent>("Mesh Renderer", [this]()
 			{
 				auto& mrc = m_pScene->GetEntityManager().Get<MeshRendererComponent>(m_SelectedEntity);
-				std::string materialName = mrc.AssetHandle != NULL_HANDLE ? AssetManager::Get<Material>(mrc.AssetHandle).GetName() : "Empty";
+				std::string materialName = mrc.AssetHandle != NULL_HANDLE ? AssetManager::Get<Material>(mrc.AssetHandle)->GetName() : "Empty";
 
 				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 				ImGui::InputText("Material", (char*)materialName.c_str(), materialName.size(), ImGuiInputTextFlags_ReadOnly);
 				ImGui::PopItemFlag();
 				if (ImGui::BeginDragDropTarget())
 				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_MATERIAL"))
+					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("MATERIAL_DRAG_DROP"))
 					{
 						const AssetHandle* pMaterialHandle = (AssetHandle*)payLoad->Data;
 						mrc.AssetHandle = *pMaterialHandle;

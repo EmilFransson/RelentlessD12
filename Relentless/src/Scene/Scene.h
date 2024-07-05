@@ -49,6 +49,10 @@ namespace Relentless
 		static [[nodiscard]] std::shared_ptr<Scene> Copy(std::shared_ptr<Scene> pSrcScene) noexcept;
 		void SetHoveredEntity(entity hoveredEntity) noexcept;
 		[[nodiscard]] entity GetHoveredEntity() const noexcept;
+		
+		std::shared_ptr<TextureCube> m_pSkyBox = nullptr;
+		std::shared_ptr<TextureCube> m_pIrradianceMap = nullptr;
+		std::shared_ptr<TextureCube> m_pRadianceMap = nullptr;
 	private:
 		EntityManager m_EntityManager;
 		LightManager m_LightManager;

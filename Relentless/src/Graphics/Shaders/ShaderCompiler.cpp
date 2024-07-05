@@ -20,6 +20,11 @@ namespace Relentless
 		shaderArguments.push_back(shaderType == ShaderType::VERTEX ? L"vs_main" : L"ps_main");
 		shaderArguments.push_back(L"-T");
 		shaderArguments.push_back(shaderType == ShaderType::VERTEX ? L"vs_6_6" : L"ps_6_6");
+
+		// Add include directory argument
+		std::wstring includePath = ConvertStringToWstring(SHADER_DIRECTORY) + L"Includes";
+		shaderArguments.push_back(L"-I");
+		shaderArguments.push_back(includePath.c_str());
 #if defined RLS_DEBUG
 		shaderArguments.push_back(L"-Od");
 		shaderArguments.push_back(DXC_ARG_WARNINGS_ARE_ERRORS);
@@ -27,7 +32,6 @@ namespace Relentless
 #else
 		shaderArguments.push_back(L"-O3");
 #endif
-
 
 		DxcBuffer sourceBuffer = {};
 		sourceBuffer.Ptr = pSource->GetBufferPointer();

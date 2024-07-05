@@ -143,6 +143,8 @@ namespace Relentless
 			break;
 		}
 		}
+
+		m_ContentBrowserPanel.OnEvent(event);
 	}
 
 	void EditorLayer::OnImGuiRender() noexcept
@@ -204,6 +206,25 @@ namespace Relentless
 			}
 			ImGui::EndDragDropTarget();
 		}
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("MULTIPLE_ENTRIES_DRAG_DROP"))
+			{
+				const std::vector<std::string>& selectedEntries = m_ContentBrowserPanel.GetSelectedEntries();
+				std::for_each(selectedEntries.begin(), selectedEntries.end(), [this](const std::string& path) 
+					{
+						if (!AssetRegistry::IsFilepathMapped(path))
+							return;
+
+						const AssetHandle handle = AssetManager::GetHandleByPath(path);
+						if (handle.Type != AssetType::Mesh)
+							return;
+
+						CreateEntityFromDroppedMesh(handle);
+					});
+			}
+			ImGui::EndDragDropTarget();
+		}
 		
 		if (m_SelectedEntity != NULL_ENTITY && m_CurrentGizmoType != GizmoType::NONE)
 		{
@@ -230,6 +251,7 @@ namespace Relentless
 		LoadStarterMeshes();
 		CreateStartScene();
 		m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pActiveScene);
+		m_pUtilityRenderer = std::make_shared<UtilityRenderer>();
 
 		m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
 		m_SceneHierarchyPanel.SetActiveScene(m_pActiveScene.get());
@@ -298,8 +320,6 @@ namespace Relentless
 				}
 			});
 
-		//Importer::RequestAsyncLoadFromFile();
-
 		//m_PlayButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PlayButton.png"), "");
 		//m_StopButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StopButton.png"), "");
 		//m_PauseButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PauseButton.png"), "");
@@ -307,6 +327,26 @@ namespace Relentless
 		//m_StepButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StepButton.png"), "");
 
 		m_pActiveScene->CreateShape(Shape::Cube);
+
+		std::filesystem::path srcPath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures/skybox2.rasset");
+
+		AssetHandle handle;
+		if (AssetManager::RequestLoadAsset(srcPath, handle))
+		{
+			std::shared_ptr<Texture2D> pTexture = AssetManager::Get<Texture2D>(handle);
+			m_pUtilityRenderer->ConvertEquirectangularToCubeMap(pTexture, [this](std::shared_ptr<TextureCube> pTextureCube) 
+				{
+					m_pActiveScene->m_pSkyBox = pTextureCube;
+					m_pUtilityRenderer->CreateIrradianceMap(pTextureCube, [this, pTextureCube](std::shared_ptr<TextureCube> pIrradianceMap)
+						{
+							m_pActiveScene->m_pIrradianceMap = pIrradianceMap;
+						});
+					m_pUtilityRenderer->CreateRadianceMap(pTextureCube, [this, pTextureCube](std::shared_ptr<TextureCube> pRadianceMap)
+						{
+							m_pActiveScene->m_pRadianceMap = pRadianceMap;
+						});
+				});
+		}
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -656,23 +696,24 @@ namespace Relentless
 
 		ImGui::Text("#Shader bindable descriptors: ");
 		ImGui::SameLine();
-		ImGui::Text("%d", MemoryManager::Get().GetShaderBindableDescriptorHeap()->GetNrOfDescriptorsInUse());
+		ImGui::Text("%d", Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetNrOfDescriptorsInUse());
 
 		ImGui::Text("#CBV/SRV/UAV descriptors: ");
 		ImGui::SameLine();
-		ImGui::Text("%d", MemoryManager::Get().GetCBVSRVUAVDescriptorHeap()->GetNrOfDescriptorsInUse());
+		ImGui::Text("%d", Application::Get().GetMemorymanager().GetCBVSRVUAVDescriptorHeap()->GetNrOfDescriptorsInUse());
 
 		ImGui::Text("#RTV descriptors: ");
 		ImGui::SameLine();
-		ImGui::Text("%d", MemoryManager::Get().GetRTVDescriptorHeap()->GetNrOfDescriptorsInUse());
+		ImGui::Text("%d", Application::Get().GetMemorymanager().GetRTVDescriptorHeap()->GetNrOfDescriptorsInUse());
 
 		ImGui::Text("#DSV descriptors: ");
 		ImGui::SameLine();
-		ImGui::Text("%d", MemoryManager::Get().GetDSVDescriptorHeap()->GetNrOfDescriptorsInUse());
+		ImGui::Text("%d", Application::Get().GetMemorymanager().GetDSVDescriptorHeap()->GetNrOfDescriptorsInUse());
 
-		ImGui::Text("#Constant buffer sets: ");
-		ImGui::SameLine();
-		ImGui::Text("%d", MemoryManager::Get().GetNrOfConstantBuffersInUse());
+		ImGui::Text("#Constant buffer sets: TODO!!");
+		
+		//ImGui::SameLine();
+		//ImGui::Text("%d", Application::Get().GetMemorymanager().GetNrOfConstantBuffersInUse());
 
 		ImGui::End();
 	}
@@ -840,4 +881,27 @@ namespace Relentless
 		//ImGui::PopStyleVar(3);
 		//ImGui::End();
 	}
+
+	void EditorLayer::CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept
+	{
+		std::shared_ptr<Mesh> pMesh = AssetManager::Get<Mesh>(meshHandle);
+		const entity newEntity = m_pActiveScene->CreateEntity(pMesh->GetName().c_str());
+		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
+		MeshRendererComponent& mrc = entityManager.Add<MeshRendererComponent>(newEntity);
+		mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
+
+		MeshFilterComponent& mfc = entityManager.Add<MeshFilterComponent>(newEntity);
+		mfc.AssetHandle = meshHandle;
+
+		const Transform& transform = pMesh->GetOffsetTransform();
+
+		auto& tc = entityManager.Get<TransformComponent>(newEntity);
+		tc.Transform = transform.Matrix.M;
+		tc.Translation = { transform.Translation.x, transform.Translation.y, transform.Translation.z };
+		tc.Rotation = { transform.Rotation.x, transform.Rotation.y, transform.Rotation.z };
+		tc.Scale = { transform.Scale.x, transform.Scale.y, transform.Scale.z };
+
+		entityManager.AddOrReplace<DirtyTransformComponent>(newEntity).AdjustedWorldSpace = true;
+	}
+
 }
