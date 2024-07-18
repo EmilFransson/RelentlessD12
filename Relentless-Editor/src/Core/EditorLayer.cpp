@@ -145,6 +145,7 @@ namespace Relentless
 		}
 
 		m_ContentBrowserPanel.OnEvent(event);
+		m_SceneHierarchyPanel.OnEvent(event);
 	}
 
 	void EditorLayer::OnImGuiRender() noexcept
@@ -327,6 +328,7 @@ namespace Relentless
 		//m_StepButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StepButton.png"), "");
 
 		m_pActiveScene->CreateShape(Shape::Cube);
+		m_pActiveScene->CreateShape(Shape::Plane);
 
 		std::filesystem::path srcPath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures/skybox2.rasset");
 

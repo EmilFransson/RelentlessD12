@@ -116,8 +116,8 @@ namespace Relentless
 
 	void ImguiLayer::OnImGuiRender() noexcept
 	{
-		//static bool showWindow = true;
-		//ImGui::ShowDemoWindow(&showWindow);
+		static bool showWindow = true;
+		ImGui::ShowDemoWindow(&showWindow);
 	}
 
 	void ImguiLayer::OnAttach()
@@ -168,6 +168,12 @@ namespace Relentless
 		//colors[ImGuiCol_TabUnfocusedActive] = ImVec4{ 0.2f, 0.205f, 0.21f, 1.0f };
 		colors[ImGuiCol_TabUnfocusedActive] = colors[ImGuiCol_WindowBg];
 
+		// Table
+		colors[ImGuiCol_TableBorderStrong] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+		colors[ImGuiCol_TableHeaderBg] = ImVec4(47.0f / 255.0f, 47.0f / 255.0f, 47.0f / 255.0f, 1.0f);
+
+		// Separator
+		colors[ImGuiCol_Separator] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
 
 		// Title
 		colors[ImGuiCol_TitleBg] = ImVec4{ 0.115f, 0.0955f, 0.081f, 1.0f };
@@ -175,7 +181,6 @@ namespace Relentless
 		colors[ImGuiCol_TitleBgCollapsed] = colors[ImGuiCol_TitleBg];
 
 		colors[ImGuiCol_ScrollbarBg] = colors[ImGuiCol_WindowBg];
-
 
 		style.ScrollbarSize = style.ScrollbarSize - 3.0f;
 

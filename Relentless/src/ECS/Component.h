@@ -241,4 +241,9 @@ namespace Relentless
 	{
 		//ID
 	};
+
+	struct HiddenInGameComponent
+	{
+		//ID
+	};
 }

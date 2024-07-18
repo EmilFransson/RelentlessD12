@@ -322,4 +322,12 @@ namespace Relentless
 		ImGui::PopStyleColor();
 	}
 
+	void UI::Utility::DrawTooltip(const char* tooltip) noexcept
+	{
+		ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(240.0f / 255.0f, 240.0f / 255.0f, 240.0f / 255.0f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+		ImGui::SetTooltip(tooltip);
+		ImGui::PopStyleColor(2);
+	}
+
 }

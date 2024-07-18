@@ -329,12 +329,7 @@ namespace Relentless
 			OnImportButtonPressed();
 
 		if (isHovered)
-		{
-			ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(240.0f / 255.0f, 240.0f / 255.0f, 240.0f / 255.0f, 1.0f));
-			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
-			ImGui::SetTooltip("Import assets from files to the currently selected folder");
-			ImGui::PopStyleColor(2);
-		}
+			UI::Utility::DrawTooltip("Import assets from files to the currently selected folder");
 		
 		const ImVec2 importButtonMin = ImGui::GetItemRectMin();
 		const ImVec2 importIconPosition = ImVec2(importButtonMin.x + 1, importButtonMin.y + 2.0f);
@@ -355,8 +350,6 @@ namespace Relentless
 		ImGui::NewLine();
 		ImGui::EndChild();
 
-		ImGuiStyle& style = ImGui::GetStyle();
-		style.Colors[ImGuiCol_Separator] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);  // Black color
 		ImGui::Separator();
 	}
 
@@ -486,12 +479,7 @@ namespace Relentless
 		ImGui::Image((ImTextureID)arrowDownIconTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(16.0f, 16.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(192.0f / 255, 192.0f / 255, 192.0f / 255, 1.0f));
 
 		if (isHovered)
-		{
-			ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(240.0f / 255.0f, 240.0f / 255.0f, 240.0f / 255.0f, 1.0f));
-			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
-			ImGui::SetTooltip("Open the Add Filter Menu to add or manage filters.");
-			ImGui::PopStyleColor(2);
-		}
+			UI::Utility::DrawTooltip("Open the Add Filter Menu to add or manage filters.");
 
 		ImGui::SameLine();
 		ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX() ,currentCursorPos.y));
