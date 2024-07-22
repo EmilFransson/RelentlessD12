@@ -812,6 +812,60 @@ namespace Relentless
 		);
 	}
 
+	bool Scene::DetachEntity(const entity entityToDetach) noexcept
+	{
+		if (!m_EntityManager.Has<IsChildComponent>(entityToDetach))
+			return false;
+
+		auto& icc = m_EntityManager.Get<IsChildComponent>(entityToDetach);
+		auto& pc = m_EntityManager.Get<ParentComponent>(icc.Parent);
+
+		pc.Children.erase(std::remove(pc.Children.begin(), pc.Children.end(), entityToDetach), pc.Children.end());
+		if (pc.Children.empty())
+			m_EntityManager.Remove<ParentComponent>(icc.Parent);
+
+		m_EntityManager.Remove<IsChildComponent>(entityToDetach);
+		m_EntityManager.Add<RootComponent>(entityToDetach);
+
+		return true;
+	}
+
+	std::vector<entity> Scene::GetAllEntityDescendants(entity rootEntity) noexcept
+	{
+		std::vector<entity> allDecendants;
+
+		if (m_EntityManager.Has<ParentComponent>(rootEntity))
+		{
+			auto& pc = m_EntityManager.Get<ParentComponent>(rootEntity);
+			for (auto child : pc.Children)
+			{
+				allDecendants.push_back(child);
+				const std::vector<entity> descendants = GetAllEntityDescendants(child);
+				allDecendants.insert(allDecendants.end(), descendants.begin(), descendants.end());
+			}
+		}
+
+		return allDecendants;
+	}
+
+	std::vector<entity> Scene::GetAllEntityAncestors(entity rootEntity) noexcept
+	{
+		std::vector<entity> allAncestors;
+
+		if (m_EntityManager.Has<IsChildComponent>(rootEntity))
+		{
+			entity currentEntity = rootEntity;
+			do
+			{
+				auto& icc = m_EntityManager.Get<IsChildComponent>(currentEntity);
+				allAncestors.push_back(icc.Parent);
+				currentEntity = icc.Parent;
+			} while (m_EntityManager.Has<IsChildComponent>(currentEntity));
+		}
+
+		return allAncestors;
+	}
+
 	entity Scene::FindEntityByUUID(const UUID& uuid) noexcept
 	{
 		entity toReturn = NULL_ENTITY;

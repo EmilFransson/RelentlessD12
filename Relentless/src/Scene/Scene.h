@@ -34,6 +34,9 @@ namespace Relentless
 		[[nodiscard]] bool EntityIsDescendant(const entity ancestor, const entity descendant) noexcept;
 		[[nodiscard]] bool EntityIsAncestor(const entity ancestor, const entity descendant) noexcept;
 		void ParentEntity(const entity toBecomeChild, const entity toBecomeParent) noexcept;
+		bool DetachEntity(const entity entityToDetach) noexcept;
+		[[nodiscard]] std::vector<entity> GetAllEntityDescendants(entity rootEntity) noexcept;
+		[[nodiscard]] std::vector<entity> GetAllEntityAncestors(entity rootEntity) noexcept;
 		[[nodiscard]] entity FindEntityByUUID(const UUID& uuid) noexcept;
 		[[nodiscard]] LightManager& GetLightManager() noexcept { return m_LightManager; }
 		[[nodiscard]] const D3D12_VIEWPORT& GetViewport() const noexcept { return m_Viewport; }

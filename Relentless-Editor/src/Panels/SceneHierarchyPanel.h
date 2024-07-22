@@ -21,7 +21,11 @@ namespace Relentless
 		void SelectEntity(entity entity) noexcept;
 	private:
 		void OnTableEntryClicked() noexcept;
+		void OnMouseReleasedOverTableEntry() noexcept;
 		void OnSelectAll() noexcept;
+		[[nodiscard]] bool DrawTableEntry(entity currentEntity) noexcept;
+		[[nodiscard]] bool DrawTableRootEntry(bool& outIsOpen) noexcept;
+		void DrawDraggingTooltip() noexcept;
 	private:
 		Scene* m_pScene;
 		entity m_SelectedEntity;
@@ -35,7 +39,15 @@ namespace Relentless
 
 		std::vector<entity> m_SelectedEntities;
 		entity m_HoveredEntity = NULL_ENTITY;
+		entity m_DraggedEntity = NULL_ENTITY;
 
 		bool m_IsTableFocused = false;
+		bool m_IsTableHovered = false;
+
+		std::string m_ContentFilter{};
+
+		bool m_SceneTableEntrySelected = false;
+		bool m_SceneTableEntryIsHovered = false;
+		bool m_SceneIsHiddenInGame = false;
 	};
 }

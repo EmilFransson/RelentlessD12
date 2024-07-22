@@ -329,6 +329,8 @@ namespace Relentless
 
 		m_pActiveScene->CreateShape(Shape::Cube);
 		m_pActiveScene->CreateShape(Shape::Plane);
+		m_pActiveScene->CreateShape(Shape::Cone);
+
 
 		std::filesystem::path srcPath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures/skybox2.rasset");
 

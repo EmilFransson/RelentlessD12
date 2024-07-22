@@ -2,6 +2,11 @@
 #include "../Core/EditorLayer.h"
 namespace Relentless
 {
+	namespace SceneHierarchyPanel_private
+	{
+		constexpr int TABLE_COLUMN_COUNT = 3;
+	}
+
 	SceneHierarchyPanel::SceneHierarchyPanel() noexcept
 		: m_pScene{ nullptr },
 		  m_SelectedEntity{ NULL_ENTITY },
@@ -43,7 +48,7 @@ namespace Relentless
 		ImGui::PopStyleVar();
 
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
-		UI::SearchBar("OutlinerSearchBar", "Search...", true);
+		m_ContentFilter = UI::SearchBar("OutlinerSearchBar", "Search...", true);
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
 
 		constexpr ImVec4 evenTableRowBgColor = ImVec4(21.0f / 255.0f, 21.0f / 255.0f, 21.0f / 255.0f, 255.0f / 255.0f);
@@ -54,9 +59,9 @@ namespace Relentless
 
 		constexpr ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		
-		constexpr int COLUMN_COUNT = 3;
+		bool hoversAnyRow = false;
 
-		if (ImGui::BeginTable("OutlinerTable", COLUMN_COUNT, flags))
+		if (ImGui::BeginTable("OutlinerTable", SceneHierarchyPanel_private::TABLE_COLUMN_COUNT, flags))
 		{
 			m_IsTableFocused = ImGui::IsWindowFocused();
 
@@ -67,9 +72,17 @@ namespace Relentless
 			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableHeadersRow();
 
-			for (int column = 0; column < COLUMN_COUNT; column++)
+			for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
 			{
 				ImGui::TableSetColumnIndex(column);
+				
+				const ImRect headerRect = ImGui::TableGetCellBgRect(ImGui::GetCurrentTable(), column);
+				if (ImGui::IsMouseHoveringRect(headerRect.Min, headerRect.Max))
+				{
+					const char* tooltip = (column == 0) ? "Visibility" : (column == 1) ? "Item Label" : "Displays the name of each entity's type";
+					UI::Utility::DrawTooltip(tooltip);
+				}
+
 				if (column == 0)
 				{
 					constexpr ImVec2 imageSize = ImVec2(22, 12);
@@ -91,108 +104,59 @@ namespace Relentless
 					ImGui::TableHeader(ImGui::TableGetColumnName(column));
 			}
 
-			m_pScene->GetEntityManager().Collect<NameComponent>().Do([&](entity currentEntity, const NameComponent& nameComponent)
-				{
-					const bool entityIsSelected = IsEntitySelected(currentEntity);
+			bool isOpen = false;
+			hoversAnyRow |= DrawTableRootEntry(isOpen);
 
-					ImGui::TableNextRow();
-
-					bool isHoveringRow = false;
-					constexpr ImVec4 hoverColor = ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
-					ImRect cellRects[3];
-					for (int column = 0; column < COLUMN_COUNT; column++)
+			if (isOpen)
+			{
+				m_pScene->GetEntityManager().Collect<NameComponent>().Do([&](entity currentEntity, const NameComponent& nameComponent)
 					{
-						ImGui::TableSetColumnIndex(column);
-						cellRects[column] = ImGui::TableGetCellBgRect(ImGui::GetCurrentTable(), column);
-						cellRects[column].Max.y += ImGui::TableGetHeaderRowHeight() - 6.0f;
-						
-						isHoveringRow |= ImGui::IsMouseHoveringRect(cellRects[column].Min, cellRects[column].Max);
-					}
+						if (!m_pScene->GetEntityManager().Has<RootComponent>(currentEntity))
+							return;
 
-					if (entityIsSelected)
-					{
-						for (int column = 0; column < COLUMN_COUNT; column++)
+						const bool IsUsingFilter = !m_ContentFilter.empty();
+						if (IsUsingFilter)
 						{
-							const ImU32 bgColor = m_IsTableFocused ? IM_COL32(30, 120, 255, 200) : IM_COL32(64.0f, 87.0f, 111.0f, 255.0f);
+							std::vector<entity> entititesToCheck = m_pScene->GetAllEntityDescendants(currentEntity);
+							entititesToCheck.push_back(currentEntity);
 
-							ImGui::TableSetColumnIndex(column);
-							ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(bgColor));
-						}
-					}
-					else if (isHoveringRow)
-					{
-						for (int column = 0; column < COLUMN_COUNT; column++)
-						{
-							ImGui::TableSetColumnIndex(column);
-							ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(hoverColor));
-						}
-					}
+							EntityManager& entityManager = m_pScene->GetEntityManager();
+							std::string contentFilterToLower = m_ContentFilter;
+							std::transform(contentFilterToLower.begin(), contentFilterToLower.end(), contentFilterToLower.begin(), ::tolower);
 
-					if (isHoveringRow)
-						m_HoveredEntity = currentEntity;
-
-					const bool isHiddenInGame = m_pScene->GetEntityManager().Has<HiddenInGameComponent>(currentEntity);
-					
-					bool hoversColumn1 = ImGui::IsMouseHoveringRect(cellRects[1].Min, cellRects[1].Max);
-					bool hoversColumn2 = ImGui::IsMouseHoveringRect(cellRects[2].Min, cellRects[2].Max);
-
-					bool isHoveringVisibilityImage = false;
-					for (int column = 0; column < COLUMN_COUNT; column++)
-					{
-						ImGui::TableSetColumnIndex(column);
-
-						if (column == 0)
-						{
-							const bool hoversColumn0 = ImGui::IsMouseHoveringRect(cellRects[0].Min, cellRects[0].Max);
-
-							if (isHoveringRow || isHiddenInGame || entityIsSelected)
-							{
-								constexpr ImVec2 imageSize = ImVec2(22, 12);
-								constexpr float imagePositionPadding = 3.0f;
-								const ImVec4 imageTint = (hoversColumn0 || entityIsSelected) ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
-
-								const float availableWidth = ImGui::GetContentRegionAvail().x;
-								const float availableHeight = ImGui::GetTextLineHeightWithSpacing();
-								const float offsetX = (availableWidth - imageSize.x) * 0.5f;
-								const float offsetY = (availableHeight - imageSize.y) * 0.5f;
-
-								ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX + imagePositionPadding);
-								ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY - imagePositionPadding);
-
-								const std::shared_ptr<Texture2D> visibilityIconTexture = isHiddenInGame ? AssetManager::Get<Texture2D>(m_HideEntityTextureIconHandle) : AssetManager::Get<Texture2D>(m_ShowEntityTextureIconHandle);
-								ImGui::Image((ImTextureID)visibilityIconTexture->GetSRVDescriptorHandle().GPUHandle.ptr, imageSize, ImVec2(0, 0), ImVec2(1, 1), imageTint);
-								isHoveringVisibilityImage = ImGui::IsItemHovered();
-
-								if (hoversColumn0)
-									UI::Utility::DrawTooltip("Toggles the visibility of this entity in the level editor.");
-
-								if (hoversColumn0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+							if (std::all_of(entititesToCheck.begin(), entititesToCheck.end(), [this, &entityManager, &contentFilterToLower](entity entityToCheck)
 								{
-									if (isHiddenInGame)
-										m_pScene->GetEntityManager().Remove<HiddenInGameComponent>(currentEntity);
-									else 
-										m_pScene->GetEntityManager().Add<HiddenInGameComponent>(currentEntity);
-								}
+									auto& nc = entityManager.Get<NameComponent>(entityToCheck);
+							std::string entryStemToLower = nc.Name;
+							std::transform(entryStemToLower.begin(), entryStemToLower.end(), entryStemToLower.begin(), ::tolower);
+
+							return entryStemToLower.find(contentFilterToLower) == std::string::npos;
+								}))
+							{
+								return;
 							}
 						}
-						else if (column == 1)
-						{
-							ImGui::Text(nameComponent.Name.c_str());
-							hoversColumn1 = ImGui::IsMouseHoveringRect(cellRects[1].Min, cellRects[1].Max);
-						}
-						else if (column == 2)
-						{
-							ImGui::Text("Entity");
-							hoversColumn2 = ImGui::IsMouseHoveringRect(cellRects[2].Min, cellRects[2].Max);
-						}
-					}
 
-					if ((hoversColumn1 || hoversColumn2) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-						OnTableEntryClicked();
-				});
+						hoversAnyRow |= DrawTableEntry(currentEntity);
+					});
+
+				ImGui::TreePop();
+			}
 
 			ImGui::EndTable();
 		}
+		m_IsTableHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+
+		if (!hoversAnyRow)
+			m_HoveredEntity = NULL_ENTITY;
+
+		if (ImGui::IsItemHovered() && !hoversAnyRow && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		{
+			m_SelectedEntities.clear();
+			m_SceneTableEntrySelected = false;
+		}
+
+		DrawDraggingTooltip();
 
 		ImGui::PopStyleColor(2);
 		ImGui::End();
@@ -522,15 +486,38 @@ namespace Relentless
 				DeselectEntity(m_HoveredEntity);
 			else
 			{
-				m_SelectedEntities.clear();
-				SelectEntity(m_HoveredEntity);
+				if (m_SelectedEntities.size() <= 1) //If > 1 a select is done through mouse release instead.
+				{
+					m_SelectedEntities.clear();
+					m_SceneTableEntrySelected = false;
+					SelectEntity(m_HoveredEntity);
+				}
 			}
 		}
 		else
 		{
 			if (!lCtrlPressed)
+			{
 				m_SelectedEntities.clear();
+				m_SceneTableEntrySelected = false;
+			}
+			
+			SelectEntity(m_HoveredEntity);
+		}
+	}
 
+	void SceneHierarchyPanel::OnMouseReleasedOverTableEntry() noexcept
+	{
+		if (m_SelectedEntities.size() <= 1)
+			return;
+
+		if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+			return;
+		
+		if (IsEntitySelected(m_HoveredEntity))
+		{
+			m_SelectedEntities.clear();
+			m_SceneTableEntrySelected = false;
 			SelectEntity(m_HoveredEntity);
 		}
 	}
@@ -545,5 +532,350 @@ namespace Relentless
 			{
 				m_SelectedEntities.push_back(currentEntity);
 			});
+
+		m_SceneTableEntrySelected = true;
+	}
+
+	bool SceneHierarchyPanel::DrawTableEntry(entity currentEntity) noexcept
+	{
+		ImGui::TableNextRow();
+
+		bool isHoveringRow = false;
+		ImRect cellRects[3];
+
+		for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
+		{
+			ImGui::TableSetColumnIndex(column);
+
+			cellRects[column] = ImGui::TableGetCellBgRect(ImGui::GetCurrentTable(), column);
+			cellRects[column].Max.y += ImGui::TableGetHeaderRowHeight() - 6.0f;
+
+			isHoveringRow |= ImGui::IsMouseHoveringRect(cellRects[column].Min, cellRects[column].Max);
+		}
+
+		const bool entityIsSelected = IsEntitySelected(currentEntity);
+		if (entityIsSelected)
+		{
+			for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
+			{
+				const ImU32 bgColor = m_IsTableFocused ? IM_COL32(30, 120, 255, 200) : IM_COL32(64.0f, 87.0f, 111.0f, 255.0f);
+
+				ImGui::TableSetColumnIndex(column);
+				ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(bgColor));
+			}
+		}
+		else if (isHoveringRow)
+		{
+			for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
+			{
+				ImGui::TableSetColumnIndex(column);
+
+				constexpr ImVec4 hoverColor = ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
+				ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(hoverColor));
+			}
+		}
+		else if (std::any_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this, currentEntity](entity entityToTestForDescendancy)
+			{
+				return m_pScene->EntityIsDescendant(currentEntity, entityToTestForDescendancy);
+			}))
+		{
+			constexpr ImU32 bgColor = IM_COL32(44.0f, 50.0f, 58.0f, 255.0f);
+			for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
+			{
+				ImGui::TableSetColumnIndex(column);
+				ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(bgColor));
+			}
+		}
+
+		if (isHoveringRow)
+			m_HoveredEntity = currentEntity;
+
+		EntityManager& entityManager = m_pScene->GetEntityManager();
+
+		const bool isHiddenInGame = entityManager.Has<HiddenInGameComponent>(currentEntity);
+
+		ImGui::TableSetColumnIndex(0);
+
+		const bool hoversColumn0 = ImGui::IsMouseHoveringRect(cellRects[0].Min, cellRects[0].Max);
+
+		const uint32_t nrOfAncestors = m_pScene->GetAllEntityAncestors(currentEntity).size();
+
+		const float indentation = ImGui::GetTreeNodeToLabelSpacing() * (nrOfAncestors + 1);
+		ImGui::Unindent(indentation);
+		if (isHoveringRow || isHiddenInGame || entityIsSelected)
+		{
+			constexpr ImVec2 imageSize = ImVec2(22, 12);
+			constexpr float imagePositionPadding = 3.0f;
+			const ImVec4 imageTint = (hoversColumn0 || entityIsSelected) ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
+
+			const float availableWidth = ImGui::GetContentRegionAvail().x;
+			const float availableHeight = ImGui::GetTextLineHeightWithSpacing();
+			const float offsetX = (availableWidth - imageSize.x) * 0.5f;
+			const float offsetY = (availableHeight - imageSize.y) * 0.5f;
+
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX + imagePositionPadding);
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY - imagePositionPadding);
+
+			const std::shared_ptr<Texture2D> visibilityIconTexture = isHiddenInGame ? AssetManager::Get<Texture2D>(m_HideEntityTextureIconHandle) : AssetManager::Get<Texture2D>(m_ShowEntityTextureIconHandle);
+			ImGui::Image((ImTextureID)visibilityIconTexture->GetSRVDescriptorHandle().GPUHandle.ptr, imageSize, ImVec2(0, 0), ImVec2(1, 1), imageTint);
+
+			if (hoversColumn0)
+				UI::Utility::DrawTooltip("Toggles the visibility of this entity in the level editor.");
+
+			if (hoversColumn0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			{
+				if (isHiddenInGame)
+					entityManager.Remove<HiddenInGameComponent>(currentEntity);
+				else
+					entityManager.Add<HiddenInGameComponent>(currentEntity);
+			}
+		}
+		ImGui::Indent(indentation);
+
+		ImGui::TableSetColumnIndex(1);
+
+		auto& nameComponent = entityManager.Get<NameComponent>(currentEntity);
+		
+		ImGuiStyle& style = ImGui::GetStyle();
+		const ImVec4 originalHoverColor = style.Colors[ImGuiCol_HeaderHovered];
+		const ImVec4 originalActiveColor = style.Colors[ImGuiCol_HeaderActive];
+
+		style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+		style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+		const bool isParent = entityManager.Has<ParentComponent>(currentEntity);
+		ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_SpanAvailWidth;
+		if (isParent)
+			nodeFlags |= (ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_OpenOnArrow);
+		else
+			nodeFlags |= ImGuiTreeNodeFlags_Leaf;
+
+		ImGui::Indent(indentation);
+		const bool isOpen = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)currentEntity, nodeFlags, nameComponent.Name.c_str());
+		ImGui::Unindent(indentation);
+		
+		style.Colors[ImGuiCol_HeaderHovered] = originalHoverColor;
+		style.Colors[ImGuiCol_HeaderActive] = originalActiveColor;
+
+		if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoDisableHover))
+		{
+			m_DraggedEntity = currentEntity;
+
+			ImGui::SetDragDropPayload("OUTLINER_TABLE_PAYLOAD", &currentEntity, sizeof(entity), ImGuiCond_::ImGuiCond_Once);
+			ImGui::EndDragDropSource();
+		}
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("OUTLINER_TABLE_PAYLOAD"))
+			{
+				const entity toBecomeChild = *(entity*)payLoad->Data;
+
+				if (currentEntity != toBecomeChild && !m_pScene->EntityIsDescendant(toBecomeChild, currentEntity))
+				{
+					if (entityManager.Has<IsChildComponent>(toBecomeChild) && entityManager.Get<IsChildComponent>(toBecomeChild).Parent == currentEntity)
+						m_pScene->DetachEntity(toBecomeChild);
+					else
+						m_pScene->ParentEntity(toBecomeChild, currentEntity);
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		const bool hoversColumn1 = ImGui::IsMouseHoveringRect(cellRects[1].Min, cellRects[1].Max);
+
+		ImGui::TableSetColumnIndex(2);
+
+		ImGui::Text("Entity");
+		const bool hoversColumn2 = ImGui::IsMouseHoveringRect(cellRects[2].Min, cellRects[2].Max);
+
+		if ((hoversColumn1 || hoversColumn2) && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			OnMouseReleasedOverTableEntry();
+		else if ((hoversColumn1 || hoversColumn2) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			OnTableEntryClicked();
+
+		if (isOpen && entityManager.Has<ParentComponent>(currentEntity))
+		{
+			auto& pc = entityManager.Get<ParentComponent>(currentEntity);
+			for (entity child : pc.Children)
+				isHoveringRow |= DrawTableEntry(child);
+		}
+
+		if (isOpen)
+			ImGui::TreePop();
+
+		return isHoveringRow;
+	}
+
+	bool SceneHierarchyPanel::DrawTableRootEntry(bool& outIsOpen) noexcept
+	{
+		ImGui::TableNextRow();
+
+		bool isHoveringRow = false;
+		ImRect cellRects[3];
+
+		for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
+		{
+			ImGui::TableSetColumnIndex(column);
+
+			cellRects[column] = ImGui::TableGetCellBgRect(ImGui::GetCurrentTable(), column);
+			cellRects[column].Max.y += ImGui::TableGetHeaderRowHeight() - 6.0f;
+
+			isHoveringRow |= ImGui::IsMouseHoveringRect(cellRects[column].Min, cellRects[column].Max);
+		}
+
+		if (m_SceneTableEntrySelected)
+		{
+			const ImU32 bgColor = m_IsTableFocused ? IM_COL32(30, 120, 255, 200) : IM_COL32(64.0f, 87.0f, 111.0f, 255.0f);
+			for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
+			{
+				ImGui::TableSetColumnIndex(column);
+				ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(bgColor));
+			}
+		}
+		else if (isHoveringRow)
+		{
+			constexpr ImVec4 hoverColor = ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
+			for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
+			{
+				ImGui::TableSetColumnIndex(column);
+				ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(hoverColor));
+			}
+		}
+		else if (!m_SelectedEntities.empty())
+		{
+			constexpr ImU32 bgColor = IM_COL32(44.0f, 50.0f, 58.0f, 255.0f);
+			for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
+			{
+				ImGui::TableSetColumnIndex(column);
+				ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(bgColor));
+			}
+		}
+
+		if (isHoveringRow)
+			m_SceneTableEntryIsHovered = true;
+		else
+			m_SceneTableEntryIsHovered = false;
+
+		ImGui::TableSetColumnIndex(0);
+
+		const bool hoversColumn0 = ImGui::IsMouseHoveringRect(cellRects[0].Min, cellRects[0].Max);
+
+		if (isHoveringRow || m_SceneIsHiddenInGame || m_SceneTableEntrySelected)
+		{
+			constexpr ImVec2 imageSize = ImVec2(22, 12);
+			constexpr float imagePositionPadding = 3.0f;
+			const ImVec4 imageTint = (hoversColumn0 || m_SceneTableEntrySelected) ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
+
+			const float availableWidth = ImGui::GetContentRegionAvail().x;
+			const float availableHeight = ImGui::GetTextLineHeightWithSpacing();
+			const float offsetX = (availableWidth - imageSize.x) * 0.5f;
+			const float offsetY = (availableHeight - imageSize.y) * 0.5f;
+
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX + imagePositionPadding);
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY - imagePositionPadding);
+
+			const std::shared_ptr<Texture2D> visibilityIconTexture = m_SceneIsHiddenInGame ? AssetManager::Get<Texture2D>(m_HideEntityTextureIconHandle) : AssetManager::Get<Texture2D>(m_ShowEntityTextureIconHandle);
+			ImGui::Image((ImTextureID)visibilityIconTexture->GetSRVDescriptorHandle().GPUHandle.ptr, imageSize, ImVec2(0, 0), ImVec2(1, 1), imageTint);
+
+			if (hoversColumn0)
+				UI::Utility::DrawTooltip("Toggles the visibility of this entity in the level editor.");
+
+			if (hoversColumn0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				m_SceneIsHiddenInGame = !m_SceneIsHiddenInGame;
+		}
+
+		ImGui::TableSetColumnIndex(1);
+
+		ImGuiStyle& style = ImGui::GetStyle();
+		const ImVec4 originalHoverColor = style.Colors[ImGuiCol_HeaderHovered];
+		const ImVec4 originalActiveColor = style.Colors[ImGuiCol_HeaderActive];
+
+		style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+		style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+		const bool isOpen = ImGui::TreeNodeEx(m_pScene->GetName().c_str(), ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow);
+		style.Colors[ImGuiCol_HeaderHovered] = originalHoverColor;
+		style.Colors[ImGuiCol_HeaderActive] = originalActiveColor;
+
+		const bool hoversColumn1 = ImGui::IsMouseHoveringRect(cellRects[1].Min, cellRects[1].Max);
+
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("OUTLINER_TABLE_PAYLOAD"))
+			{
+				const entity entityToDetach = *(entity*)payLoad->Data;
+
+				EntityManager& entityManager = m_pScene->GetEntityManager();
+
+				if (!entityManager.Has<RootComponent>(entityToDetach))
+					m_pScene->DetachEntity(entityToDetach);
+			}
+			ImGui::EndDragDropTarget();
+		}
+		
+		ImGui::TableSetColumnIndex(2);
+
+		ImGui::Text("Scene");
+		const bool hoversColumn2 = ImGui::IsMouseHoveringRect(cellRects[2].Min, cellRects[2].Max);
+
+		if ((hoversColumn1 || hoversColumn2) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		{
+			if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+				m_SceneTableEntrySelected = !m_SceneTableEntrySelected;
+			else
+			{
+				m_SceneTableEntrySelected = true;
+				m_SelectedEntities.clear();
+			}
+		}
+
+		outIsOpen = isOpen;
+
+		return isHoveringRow;
+	}
+
+	void SceneHierarchyPanel::DrawDraggingTooltip() noexcept
+	{
+		if (!ImGui::IsDragDropActive())
+			return;
+
+		const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("OUTLINER_TABLE_PAYLOAD", ImGuiDragDropFlags_AcceptPeekOnly);
+		if (!payload)
+			return;
+
+		const entity toBecomeChild = *(entity*)payload->Data;
+		EntityManager& entityManager = m_pScene->GetEntityManager();
+
+		if (m_HoveredEntity != NULL_ENTITY)
+		{
+			auto& nameComponent = entityManager.Get<NameComponent>(m_HoveredEntity);
+
+			if (entityManager.Has<IsChildComponent>(toBecomeChild) && entityManager.Get<IsChildComponent>(toBecomeChild).Parent == m_HoveredEntity)
+				ImGui::SetTooltip("Detach from %s.", nameComponent.Name.c_str());
+			else if (toBecomeChild == m_HoveredEntity)
+				ImGui::SetTooltip("Cannot attach entity to self.", nameComponent.Name.c_str());
+			else if (m_pScene->EntityIsDescendant(toBecomeChild, m_HoveredEntity))
+				ImGui::SetTooltip("Parent entity cannot become the child of their descendant.");
+			else
+				ImGui::SetTooltip("Attach to %s.", nameComponent.Name.c_str());
+		}
+		else
+		{
+			if (m_SceneTableEntryIsHovered || m_IsTableHovered)
+			{
+				if (entityManager.Has<RootComponent>(toBecomeChild))
+					ImGui::SetTooltip("%s is already attached to root.", entityManager.Get<NameComponent>(toBecomeChild).Name.c_str());
+				else
+					ImGui::SetTooltip("Move to root.");
+			}
+			else
+			{
+				std::string tooltip = entityManager.Get<NameComponent>(m_DraggedEntity).Name;
+				if (m_SelectedEntities.size() > 1)
+					tooltip += std::format(" and {} other{}.", m_SelectedEntities.size() - 1, (m_SelectedEntities.size() - 1) > 1 ? "s" : "");
+
+				ImGui::SetTooltip(tooltip.c_str());
+			}
+		}
 	}
 }
