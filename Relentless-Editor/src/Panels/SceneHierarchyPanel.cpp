@@ -9,8 +9,7 @@ namespace Relentless
 
 	SceneHierarchyPanel::SceneHierarchyPanel() noexcept
 		: m_pScene{ nullptr },
-		  m_SelectedEntity{ NULL_ENTITY },
-		  m_EntityScheduledForDestruction{ NULL_ENTITY }
+		  m_SelectedEntity{ NULL_ENTITY }
 	{
 		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\showicon.rasset", m_ShowEntityTextureIconHandle), "Core engine icon missing.");
 		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\hideicon.rasset", m_HideEntityTextureIconHandle), "Core engine icon missing.");
@@ -40,38 +39,50 @@ namespace Relentless
 	{
 		m_HoveredEntity = NULL_ENTITY;
 
+		EntityManager& entityManager = m_pScene->GetEntityManager();
+
+		for (uint32_t i = 0u; i < m_SelectedEntities.size(); ++i)
+		{
+			if (!entityManager.Exists(m_SelectedEntities[i]))
+				m_SelectedEntities.erase(m_SelectedEntities.begin() + i);
+		}
+		
+		m_SceneIsHiddenInGame = entityManager.GetEntityCountForPool<HiddenInGameComponent>() == entityManager.GetEntityAliveCount();
+
 		if (!show)
 			return;
-
+		
+		PROFILE_FUNC;
+		
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 		ImGui::Begin("Outliner");
 		ImGui::PopStyleVar();
-
+		
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
 		m_ContentFilter = UI::SearchBar("OutlinerSearchBar", "Search...", true);
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
-
+		
 		constexpr ImVec4 evenTableRowBgColor = ImVec4(21.0f / 255.0f, 21.0f / 255.0f, 21.0f / 255.0f, 255.0f / 255.0f);
 		constexpr ImVec4 oddTableRowBgColor = ImVec4(26.0f / 255.0f, 26.0f / 255.0f, 26.0f / 255.0f, 255.0f / 255.0f);
-
+		
 		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBg, evenTableRowBgColor);
 		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBgAlt, oddTableRowBgColor);
-
-		constexpr ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+		
+		constexpr ImGuiTableFlags flags = ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		
 		bool hoversAnyRow = false;
-
+		
 		if (ImGui::BeginTable("OutlinerTable", SceneHierarchyPanel_private::TABLE_COLUMN_COUNT, flags))
 		{
 			m_IsTableFocused = ImGui::IsWindowFocused();
-
+		
 			ImGui::TableSetupScrollFreeze(0, 1);
-
+		
 			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize, 30.0f);
 			ImGui::TableSetupColumn("Item Label", ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableHeadersRow();
-
+		
 			for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
 			{
 				ImGui::TableSetColumnIndex(column);
@@ -82,18 +93,18 @@ namespace Relentless
 					const char* tooltip = (column == 0) ? "Visibility" : (column == 1) ? "Item Label" : "Displays the name of each entity's type";
 					UI::Utility::DrawTooltip(tooltip);
 				}
-
+		
 				if (column == 0)
 				{
 					constexpr ImVec2 imageSize = ImVec2(22, 12);
 					constexpr float imagePositionPadding = 3.0f;
 					constexpr ImVec4 imageTint = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
-
+		
 					const float availableWidth = ImGui::GetContentRegionAvail().x;
 					const float availableHeight = ImGui::GetTextLineHeightWithSpacing();
 					const float offsetX = (availableWidth - imageSize.x) * 0.5f;
 					const float offsetY = (availableHeight - imageSize.y) * 0.5f;
-
+		
 					ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX + imagePositionPadding);
 					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY - imagePositionPadding);
 					
@@ -103,266 +114,128 @@ namespace Relentless
 				else
 					ImGui::TableHeader(ImGui::TableGetColumnName(column));
 			}
-
+		
 			bool isOpen = false;
 			hoversAnyRow |= DrawTableRootEntry(isOpen);
-
+		
 			if (isOpen)
 			{
 				m_pScene->GetEntityManager().Collect<NameComponent>().Do([&](entity currentEntity, const NameComponent& nameComponent)
 					{
 						if (!m_pScene->GetEntityManager().Has<RootComponent>(currentEntity))
 							return;
-
+		
 						const bool IsUsingFilter = !m_ContentFilter.empty();
 						if (IsUsingFilter)
 						{
 							std::vector<entity> entititesToCheck = m_pScene->GetAllEntityDescendants(currentEntity);
 							entititesToCheck.push_back(currentEntity);
-
+		
 							EntityManager& entityManager = m_pScene->GetEntityManager();
 							std::string contentFilterToLower = m_ContentFilter;
 							std::transform(contentFilterToLower.begin(), contentFilterToLower.end(), contentFilterToLower.begin(), ::tolower);
-
+		
 							if (std::all_of(entititesToCheck.begin(), entititesToCheck.end(), [this, &entityManager, &contentFilterToLower](entity entityToCheck)
 								{
 									auto& nc = entityManager.Get<NameComponent>(entityToCheck);
-							std::string entryStemToLower = nc.Name;
-							std::transform(entryStemToLower.begin(), entryStemToLower.end(), entryStemToLower.begin(), ::tolower);
-
-							return entryStemToLower.find(contentFilterToLower) == std::string::npos;
+									std::string entryStemToLower = nc.Name;
+									std::transform(entryStemToLower.begin(), entryStemToLower.end(), entryStemToLower.begin(), ::tolower);
+		
+									return entryStemToLower.find(contentFilterToLower) == std::string::npos;
 								}))
 							{
 								return;
 							}
 						}
-
+		
 						hoversAnyRow |= DrawTableEntry(currentEntity);
 					});
-
 				ImGui::TreePop();
 			}
-
 			ImGui::EndTable();
 		}
-		m_IsTableHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-
+		
 		if (!hoversAnyRow)
 			m_HoveredEntity = NULL_ENTITY;
-
-		if (ImGui::IsItemHovered() && !hoversAnyRow && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-		{
-			m_SelectedEntities.clear();
-			m_SceneTableEntrySelected = false;
-		}
-
+		
 		DrawDraggingTooltip();
-
-		ImGui::PopStyleColor(2);
-		ImGui::End();
-		return;
-
-
-		PROFILE_FUNC;
-
-		RLS_ASSERT(m_pScene, "Scene is nullptr.");
-
-		ImGui::Begin("Scene Hierarchy");
-
-		ImGuiTreeNodeFlags sceneNodeflags = ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_DefaultOpen;
-		sceneNodeflags |= ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_Framed;
-
-		ImGuiIO& io = ImGui::GetIO();
-		auto boldFont = io.Fonts->Fonts[OPENSANS_BOLD_18];
-		ImGui::PushFont(boldFont);
-		bool opened = ImGui::TreeNodeEx(m_pScene->GetName().c_str(), sceneNodeflags, m_pScene->GetName().c_str());
-		ImGui::PopFont();
-
-		if (opened)
+		
+		constexpr float padding = 7.0f;
+		const float currentYPosition = ImGui::GetCursorPosY();
+		const ImVec2 windowSize = ImGui::GetWindowSize();
+		const float remainingWindowHeight = windowSize.y - currentYPosition;
+		
+		ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX(), currentYPosition - padding));
+		
+		if (remainingWindowHeight > 0.0f)
 		{
-			ImGui::Separator();
-
-			m_pScene->GetEntityManager().Collect<NameComponent>().Do([this](entity e, NameComponent&)
-				{
-					if (m_pScene->GetEntityManager().Has<IsChildComponent>(e))
-						return;
-
-					DrawEntityNode(e);
-				});
-			ImGui::TreePop();
-		}
-
-		if (ImGui::BeginPopupContextWindow(0, 1, false /*over items*/))
-		{
-			bool createdNewEntity = false;
-
-			if (ImGui::MenuItem("Create Empty"))
+			if (ImGui::InvisibleButton("OUTLINER_EMPTY_DROP_AREA", ImVec2(ImGui::GetContentRegionAvail().x, remainingWindowHeight)))
 			{
-				createdNewEntity = true;
-				m_SelectedEntity = m_pScene->CreateEntity("Entity");
+				m_SelectedEntities.clear();
+				m_SceneTableEntrySelected = false;
 			}
-
-			if (ImGui::BeginMenu("Shapes"))
-			{
-				if (ImGui::MenuItem("Triangle"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape(Shape::Triangle);
-				}
-				if (ImGui::MenuItem("Cube"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape(Shape::Cube);
-				}
-				if (ImGui::MenuItem("Cylinder"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape(Shape::Cylinder);
-				}
-				if (ImGui::MenuItem("Capsule"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape(Shape::Capsule);
-				}
-				if (ImGui::MenuItem("Cone"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape(Shape::Cone);
-				}
-				if (ImGui::MenuItem("Sphere"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape(Shape::Sphere);
-				}
-				if (ImGui::MenuItem("IcoSphere"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape(Shape::IcoSphere);
-				}
-				if (ImGui::MenuItem("Torus"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape(Shape::Torus);
-				}
-				if ( ImGui::MenuItem("Quad"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape(Shape::Quad);
-				}
-				if (ImGui::MenuItem("Plane"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateShape(Shape::Plane);
-				}
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("Extras"))
-			{
-				if (ImGui::MenuItem("Utah Teapot"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateExtra(Extra::UtahTeapot);
-				}
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("Light"))
-			{
-				if (ImGui::MenuItem("Directional Light"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateLight("Directional Light", LightType::Directional);
-				}
-				if (ImGui::MenuItem("Point Light"))
-				{
-					createdNewEntity = true;
-					m_SelectedEntity = m_pScene->CreateLight("Point Light", LightType::Point);
-				}
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::MenuItem("Camera"))
-			{
-				createdNewEntity = true;
-				m_SelectedEntity = m_pScene->CreateCamera("Camera");
-			}
-
-			if (createdNewEntity)
-			{
-				m_OnEntityCreatedCallBack(m_SelectedEntity);
-			}
-
-			ImGui::EndPopup();
-		}
-
-		//One can drop an entity onto the panel itself to return it to an unparented root state:
-		if (ImGui::IsDragDropActive())
-		{
-			auto panelSize = ImGui::GetWindowSize();
-			auto currentCursorPosition = ImGui::GetCursorPos();
-
-			panelSize.x -= 20;
-			panelSize.y -= (currentCursorPosition.y + 10);
-			ImGui::InvisibleButton("SCENE_HIERARCHY_PANEL_EMPTY_SPACE", panelSize);
+		
+			m_TableEmptySpaceHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+		
 			if (ImGui::BeginDragDropTarget())
 			{
-				if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CHILD_PAYLOAD"))
+				if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("OUTLINER_TABLE_PAYLOAD"))
 				{
-					auto& mgr = m_pScene->GetEntityManager();
-
-					entity entityToOrphan = *(entity*)payLoad->Data;
-					if (mgr.Has<IsChildComponent>(entityToOrphan))
-					{
-						entity parent = mgr.Get<IsChildComponent>(entityToOrphan).Parent;
-						auto& children = mgr.Get<ParentComponent>(parent).Children;
-						for (uint32_t childIndex{ 0u }; childIndex < children.size(); ++childIndex)
+					const entity entityToDetach = *(entity*)payLoad->Data;
+			
+					EntityManager& entityManager = m_pScene->GetEntityManager();
+			
+					if (!std::any_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [&entityManager](entity e)
 						{
-							if (children[childIndex] == entityToOrphan)
+							return entityManager.Has<RootComponent>(e);
+						}))
+					{
+						std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this](entity e1)
 							{
-								children.erase(children.begin() + childIndex);
-								if (children.empty())
-									mgr.Remove<ParentComponent>(parent);
-
-								break;
-							}
-						}
-						mgr.Remove<IsChildComponent>(entityToOrphan);
+								if (!std::any_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this, e1](entity e2)
+									{
+										return m_pScene->EntityIsParent(e1, e2);
+									}))
+								{
+									m_pScene->DetachEntity(e1);
+								}
+							});
 					}
-					mgr.AddOrReplace<RootComponent>(entityToOrphan);
+					ImGui::EndDragDropTarget();
 				}
-				ImGui::EndDragDropTarget();
 			}
 		}
+		
+		ImGui::PopStyleColor(2);
 		ImGui::End();
 
-		//Any deletion of an entity in the scene hierarchy has been deferred until now:
-		if (m_EntityScheduledForDestruction != NULL_ENTITY)
-		{
-			//We need to check if a child of the deleted entity is currently selected, and if so, notify the editor layer,
-			//as that child will get destroyed in the process.
-			if (m_pScene->GetEntityManager().Has<ParentComponent>(m_EntityScheduledForDestruction))
-			{
-				auto& children = m_pScene->GetEntityManager().Get<ParentComponent>(m_EntityScheduledForDestruction).Children;
-				for (auto child : children)
-				{
-					if (child == m_SelectedEntity)
-					{
-						m_OnEntityDestroyedCallBack(child);
-						m_SelectedEntity = NULL_ENTITY;
-						break;
-					}
-				}
-			}
-
-			m_pScene->DestroyEntity(m_EntityScheduledForDestruction);
-			m_OnEntityDestroyedCallBack(m_EntityScheduledForDestruction);
-			if (m_SelectedEntity == m_EntityScheduledForDestruction)
-			{
-				m_SelectedEntity = NULL_ENTITY;
-			}
-			m_EntityScheduledForDestruction = NULL_ENTITY;
-		}
+		////Any deletion of an entity in the scene hierarchy has been deferred until now:
+		//if (m_EntityScheduledForDestruction != NULL_ENTITY)
+		//{
+		//	//We need to check if a child of the deleted entity is currently selected, and if so, notify the editor layer,
+		//	//as that child will get destroyed in the process.
+		//	if (m_pScene->GetEntityManager().Has<ParentComponent>(m_EntityScheduledForDestruction))
+		//	{
+		//		auto& children = m_pScene->GetEntityManager().Get<ParentComponent>(m_EntityScheduledForDestruction).Children;
+		//		for (auto child : children)
+		//		{
+		//			if (child == m_SelectedEntity)
+		//			{
+		//				m_OnEntityDestroyedCallBack(child);
+		//				m_SelectedEntity = NULL_ENTITY;
+		//				break;
+		//			}
+		//		}
+		//	}
+		//
+		//	m_pScene->DestroyEntity(m_EntityScheduledForDestruction);
+		//	m_OnEntityDestroyedCallBack(m_EntityScheduledForDestruction);
+		//	if (m_SelectedEntity == m_EntityScheduledForDestruction)
+		//	{
+		//		m_SelectedEntity = NULL_ENTITY;
+		//	}
+		//	m_EntityScheduledForDestruction = NULL_ENTITY;
+		//}
 	}
 
 	void SceneHierarchyPanel::SetActiveScene(Scene* const pScene) noexcept
@@ -370,70 +243,6 @@ namespace Relentless
 		RLS_ASSERT(pScene, "Scene is nullptr.");
 		m_pScene = pScene;
 		m_SelectedEntity = NULL_ENTITY;
-	}
-
-	void SceneHierarchyPanel::DrawEntityNode(const entity entityID) noexcept
-	{
-		auto& mgr = m_pScene->GetEntityManager();
-
-		ImGuiTreeNodeFlags entityNodeflags = ((entityID == m_SelectedEntity) ? ImGuiTreeNodeFlags_Selected : 0);
-		entityNodeflags |= mgr.Has<ParentComponent>(entityID) ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_Leaf;
-		entityNodeflags |= ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_SpanFullWidth;
-		entityNodeflags |= ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_OpenOnArrow;
-
-		ImGuiStyle* style = &ImGui::GetStyle();
-		style->Alpha = (entityID == m_SelectedEntity) ? 1.0f : 0.5f;
-
-		auto& nc = mgr.Get<NameComponent>(entityID);
-
-		bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entityID, entityNodeflags, nc.Name.c_str());
-		if (ImGui::IsItemClicked())
-		{
-			m_SelectedEntity = entityID;
-			m_OnEntitySelectedCallBack(m_SelectedEntity);
-		}
-
-		if (ImGui::BeginPopupContextItem())
-		{
-			if (ImGui::MenuItem("Delete Entity"))
-			{
-				m_EntityScheduledForDestruction = entityID;
-			}
-
-			ImGui::EndPopup();
-		}
-
-		if (ImGui::BeginDragDropSource())
-		{
-			ImGui::SetDragDropPayload("CHILD_PAYLOAD", &entityID, sizeof(entity), ImGuiCond_::ImGuiCond_Once);
-			ImGui::EndDragDropSource();
-		}
-		if (ImGui::BeginDragDropTarget())
-		{
-			if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CHILD_PAYLOAD"))
-			{
-				entity toBecomeChild = *(entity*)payLoad->Data;
-				if (entityID != toBecomeChild && !m_pScene->EntityIsDescendant(toBecomeChild, entityID))
-				{
-					m_pScene->ParentEntity(toBecomeChild, entityID);
-				}
-			}
-			ImGui::EndDragDropTarget();
-		}
-
-		if (opened && mgr.Exists(entityID) && mgr.Has<ParentComponent>(entityID))
-		{
-			auto& pc = mgr.Get<ParentComponent>(entityID);
-			for (auto child : pc.Children)
-				DrawEntityNode(child);
-		}
-
-		if (opened)
-			ImGui::TreePop();
-
-		style->Alpha = 1.0f;
-		
-		
 	}
 
 	void SceneHierarchyPanel::SetSelectedEntity(const entity entityID) noexcept
@@ -539,27 +348,27 @@ namespace Relentless
 	bool SceneHierarchyPanel::DrawTableEntry(entity currentEntity) noexcept
 	{
 		ImGui::TableNextRow();
-
+		
 		bool isHoveringRow = false;
 		ImRect cellRects[3];
-
+		
 		for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
 		{
 			ImGui::TableSetColumnIndex(column);
-
+		
 			cellRects[column] = ImGui::TableGetCellBgRect(ImGui::GetCurrentTable(), column);
 			cellRects[column].Max.y += ImGui::TableGetHeaderRowHeight() - 6.0f;
-
+		
 			isHoveringRow |= ImGui::IsMouseHoveringRect(cellRects[column].Min, cellRects[column].Max);
 		}
-
+		
 		const bool entityIsSelected = IsEntitySelected(currentEntity);
 		if (entityIsSelected)
 		{
 			for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
 			{
 				const ImU32 bgColor = m_IsTableFocused ? IM_COL32(30, 120, 255, 200) : IM_COL32(64.0f, 87.0f, 111.0f, 255.0f);
-
+		
 				ImGui::TableSetColumnIndex(column);
 				ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(bgColor));
 			}
@@ -569,7 +378,7 @@ namespace Relentless
 			for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
 			{
 				ImGui::TableSetColumnIndex(column);
-
+		
 				constexpr ImVec4 hoverColor = ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
 				ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(hoverColor));
 			}
@@ -586,20 +395,20 @@ namespace Relentless
 				ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(bgColor));
 			}
 		}
-
+		
 		if (isHoveringRow)
 			m_HoveredEntity = currentEntity;
-
+		
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-
+		
 		const bool isHiddenInGame = entityManager.Has<HiddenInGameComponent>(currentEntity);
-
+		
 		ImGui::TableSetColumnIndex(0);
-
+		
 		const bool hoversColumn0 = ImGui::IsMouseHoveringRect(cellRects[0].Min, cellRects[0].Max);
-
+		
 		const uint32_t nrOfAncestors = m_pScene->GetAllEntityAncestors(currentEntity).size();
-
+		
 		const float indentation = ImGui::GetTreeNodeToLabelSpacing() * (nrOfAncestors + 1);
 		ImGui::Unindent(indentation);
 		if (isHoveringRow || isHiddenInGame || entityIsSelected)
@@ -607,21 +416,21 @@ namespace Relentless
 			constexpr ImVec2 imageSize = ImVec2(22, 12);
 			constexpr float imagePositionPadding = 3.0f;
 			const ImVec4 imageTint = (hoversColumn0 || entityIsSelected) ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
-
+		
 			const float availableWidth = ImGui::GetContentRegionAvail().x;
 			const float availableHeight = ImGui::GetTextLineHeightWithSpacing();
 			const float offsetX = (availableWidth - imageSize.x) * 0.5f;
 			const float offsetY = (availableHeight - imageSize.y) * 0.5f;
-
+		
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX + imagePositionPadding);
 			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY - imagePositionPadding);
-
+		
 			const std::shared_ptr<Texture2D> visibilityIconTexture = isHiddenInGame ? AssetManager::Get<Texture2D>(m_HideEntityTextureIconHandle) : AssetManager::Get<Texture2D>(m_ShowEntityTextureIconHandle);
 			ImGui::Image((ImTextureID)visibilityIconTexture->GetSRVDescriptorHandle().GPUHandle.ptr, imageSize, ImVec2(0, 0), ImVec2(1, 1), imageTint);
-
+		
 			if (hoversColumn0)
 				UI::Utility::DrawTooltip("Toggles the visibility of this entity in the level editor.");
-
+		
 			if (hoversColumn0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			{
 				if (isHiddenInGame)
@@ -631,36 +440,38 @@ namespace Relentless
 			}
 		}
 		ImGui::Indent(indentation);
-
+		
 		ImGui::TableSetColumnIndex(1);
-
+		
 		auto& nameComponent = entityManager.Get<NameComponent>(currentEntity);
 		
 		ImGuiStyle& style = ImGui::GetStyle();
 		const ImVec4 originalHoverColor = style.Colors[ImGuiCol_HeaderHovered];
 		const ImVec4 originalActiveColor = style.Colors[ImGuiCol_HeaderActive];
-
+		
 		style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 		style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-
+		
 		const bool isParent = entityManager.Has<ParentComponent>(currentEntity);
 		ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_SpanAvailWidth;
 		if (isParent)
-			nodeFlags |= (ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_OpenOnArrow);
+			nodeFlags |= (ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow);
 		else
 			nodeFlags |= ImGuiTreeNodeFlags_Leaf;
-
+		
 		ImGui::Indent(indentation);
 		const bool isOpen = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)currentEntity, nodeFlags, nameComponent.Name.c_str());
+		bool hoversName = ImGui::IsItemHovered();
+		
 		ImGui::Unindent(indentation);
 		
 		style.Colors[ImGuiCol_HeaderHovered] = originalHoverColor;
 		style.Colors[ImGuiCol_HeaderActive] = originalActiveColor;
-
+		
 		if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoDisableHover))
 		{
 			m_DraggedEntity = currentEntity;
-
+		
 			ImGui::SetDragDropPayload("OUTLINER_TABLE_PAYLOAD", &currentEntity, sizeof(entity), ImGuiCond_::ImGuiCond_Once);
 			ImGui::EndDragDropSource();
 		}
@@ -669,37 +480,82 @@ namespace Relentless
 			if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("OUTLINER_TABLE_PAYLOAD"))
 			{
 				const entity toBecomeChild = *(entity*)payLoad->Data;
-
-				if (currentEntity != toBecomeChild && !m_pScene->EntityIsDescendant(toBecomeChild, currentEntity))
+		
+				if (std::all_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this, currentEntity](entity e)
+					{
+						return e != currentEntity && !m_pScene->EntityIsDescendant(e, currentEntity);
+					}))
 				{
-					if (entityManager.Has<IsChildComponent>(toBecomeChild) && entityManager.Get<IsChildComponent>(toBecomeChild).Parent == currentEntity)
-						m_pScene->DetachEntity(toBecomeChild);
-					else
-						m_pScene->ParentEntity(toBecomeChild, currentEntity);
+					//We know ALL entities are not the one being dragged upon and we know the target for drag drop is not child of any dragged entity.
+					//Now we either attach or detach.
+
+					//Rule 1: if ALL selected entities are direct children of targetted entity, we should detach all of them outright:
+					if (std::all_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this, currentEntity](entity e)
+						{
+							return m_pScene->EntityIsChild(e, currentEntity);
+						}))
+					{
+						std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this](entity e)
+							{
+								m_pScene->DetachEntity(e);
+							});
+					} //Rule 2: If any selected entity is direct child of target entity, ALL entities remain as or become direct children of targetted entity.
+					else if (std::any_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this, currentEntity](entity e)
+						{
+							return m_pScene->EntityIsChild(e, currentEntity);
+						}))
+					{
+						std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this, currentEntity](entity e)
+							{
+								if (m_pScene->EntityIsChild(e, currentEntity))
+								return;
+
+						m_pScene->AttachEntity(e, currentEntity);
+							});
+					}
+					else //Just regular attach all:
+					{
+						std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this, currentEntity](entity e)
+							{
+								m_pScene->AttachEntity(e, currentEntity);
+							});
+					}
 				}
 			}
 			ImGui::EndDragDropTarget();
 		}
-
+		
 		const bool hoversColumn1 = ImGui::IsMouseHoveringRect(cellRects[1].Min, cellRects[1].Max);
-
+		
+		ImRect collapseArrowRect;
+		collapseArrowRect.Min = cellRects[1].Min;
+		collapseArrowRect.Min.x += indentation;
+		collapseArrowRect.Min.x += ImGui::GetStyle().FramePadding.x;
+		collapseArrowRect.Min.x += 3.0f;
+		collapseArrowRect.Max = ImVec2(collapseArrowRect.Min.x, cellRects[1].Max.y);
+		collapseArrowRect.Max.x += indentation;
+		collapseArrowRect.Max.x -= 3.0f;
+		const bool hoversCollapseArrowRect = ImGui::IsMouseHoveringRect(collapseArrowRect.Min, collapseArrowRect.Max);
+		
 		ImGui::TableSetColumnIndex(2);
-
+		
 		ImGui::Text("Entity");
 		const bool hoversColumn2 = ImGui::IsMouseHoveringRect(cellRects[2].Min, cellRects[2].Max);
-
-		if ((hoversColumn1 || hoversColumn2) && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+		
+		const bool isHoveringSelectableRowSpace = isParent ? (hoversColumn1 && !hoversCollapseArrowRect) : hoversColumn1;
+		
+		if ((isHoveringSelectableRowSpace || hoversColumn2) && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
 			OnMouseReleasedOverTableEntry();
-		else if ((hoversColumn1 || hoversColumn2) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		else if ((isHoveringSelectableRowSpace || hoversColumn2) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			OnTableEntryClicked();
-
+		
 		if (isOpen && entityManager.Has<ParentComponent>(currentEntity))
 		{
 			auto& pc = entityManager.Get<ParentComponent>(currentEntity);
 			for (entity child : pc.Children)
 				isHoveringRow |= DrawTableEntry(child);
 		}
-
+		
 		if (isOpen)
 			ImGui::TreePop();
 
@@ -709,20 +565,20 @@ namespace Relentless
 	bool SceneHierarchyPanel::DrawTableRootEntry(bool& outIsOpen) noexcept
 	{
 		ImGui::TableNextRow();
-
+		
 		bool isHoveringRow = false;
 		ImRect cellRects[3];
-
+		
 		for (int column = 0; column < SceneHierarchyPanel_private::TABLE_COLUMN_COUNT; column++)
 		{
 			ImGui::TableSetColumnIndex(column);
-
+		
 			cellRects[column] = ImGui::TableGetCellBgRect(ImGui::GetCurrentTable(), column);
 			cellRects[column].Max.y += ImGui::TableGetHeaderRowHeight() - 6.0f;
-
+		
 			isHoveringRow |= ImGui::IsMouseHoveringRect(cellRects[column].Min, cellRects[column].Max);
 		}
-
+		
 		if (m_SceneTableEntrySelected)
 		{
 			const ImU32 bgColor = m_IsTableFocused ? IM_COL32(30, 120, 255, 200) : IM_COL32(64.0f, 87.0f, 111.0f, 255.0f);
@@ -750,75 +606,111 @@ namespace Relentless
 				ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(bgColor));
 			}
 		}
-
+		
 		if (isHoveringRow)
 			m_SceneTableEntryIsHovered = true;
 		else
 			m_SceneTableEntryIsHovered = false;
-
+		
 		ImGui::TableSetColumnIndex(0);
-
+		
 		const bool hoversColumn0 = ImGui::IsMouseHoveringRect(cellRects[0].Min, cellRects[0].Max);
-
+		
 		if (isHoveringRow || m_SceneIsHiddenInGame || m_SceneTableEntrySelected)
 		{
 			constexpr ImVec2 imageSize = ImVec2(22, 12);
 			constexpr float imagePositionPadding = 3.0f;
 			const ImVec4 imageTint = (hoversColumn0 || m_SceneTableEntrySelected) ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
-
+		
 			const float availableWidth = ImGui::GetContentRegionAvail().x;
 			const float availableHeight = ImGui::GetTextLineHeightWithSpacing();
 			const float offsetX = (availableWidth - imageSize.x) * 0.5f;
 			const float offsetY = (availableHeight - imageSize.y) * 0.5f;
-
+		
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX + imagePositionPadding);
 			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY - imagePositionPadding);
-
+		
 			const std::shared_ptr<Texture2D> visibilityIconTexture = m_SceneIsHiddenInGame ? AssetManager::Get<Texture2D>(m_HideEntityTextureIconHandle) : AssetManager::Get<Texture2D>(m_ShowEntityTextureIconHandle);
 			ImGui::Image((ImTextureID)visibilityIconTexture->GetSRVDescriptorHandle().GPUHandle.ptr, imageSize, ImVec2(0, 0), ImVec2(1, 1), imageTint);
-
+		
 			if (hoversColumn0)
 				UI::Utility::DrawTooltip("Toggles the visibility of this entity in the level editor.");
-
+		
 			if (hoversColumn0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			{
 				m_SceneIsHiddenInGame = !m_SceneIsHiddenInGame;
+				EntityManager& entityManager = m_pScene->GetEntityManager();
+
+				entityManager.Collect<IDComponent>().Do([this, &entityManager](entity e)
+					{
+						const bool isHidden = entityManager.Has<HiddenInGameComponent>(e);
+						if (m_SceneIsHiddenInGame && !isHidden)
+							entityManager.Add<HiddenInGameComponent>(e);
+						else if (!m_SceneIsHiddenInGame && isHidden)
+							entityManager.Remove<HiddenInGameComponent>(e);
+					});
+			}
 		}
-
+		
 		ImGui::TableSetColumnIndex(1);
-
+		
 		ImGuiStyle& style = ImGui::GetStyle();
 		const ImVec4 originalHoverColor = style.Colors[ImGuiCol_HeaderHovered];
 		const ImVec4 originalActiveColor = style.Colors[ImGuiCol_HeaderActive];
-
+		
 		style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 		style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-
+		
 		const bool isOpen = ImGui::TreeNodeEx(m_pScene->GetName().c_str(), ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow);
+		
 		style.Colors[ImGuiCol_HeaderHovered] = originalHoverColor;
 		style.Colors[ImGuiCol_HeaderActive] = originalActiveColor;
-
+		
 		const bool hoversColumn1 = ImGui::IsMouseHoveringRect(cellRects[1].Min, cellRects[1].Max);
-
+		
 		if (ImGui::BeginDragDropTarget())
 		{
 			if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("OUTLINER_TABLE_PAYLOAD"))
 			{
 				const entity entityToDetach = *(entity*)payLoad->Data;
-
+		
 				EntityManager& entityManager = m_pScene->GetEntityManager();
-
-				if (!entityManager.Has<RootComponent>(entityToDetach))
-					m_pScene->DetachEntity(entityToDetach);
+		
+				if (!std::any_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [&entityManager](entity e)
+					{
+						return entityManager.Has<RootComponent>(e);
+					}))
+				{
+					std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this](entity e1)
+						{
+							if (!std::any_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this, e1](entity e2)
+								{
+									return m_pScene->EntityIsParent(e1, e2);
+								}))
+							{
+								m_pScene->DetachEntity(e1);
+							}
+						});
+				}
 			}
 			ImGui::EndDragDropTarget();
 		}
 		
+		ImRect collapseArrowRect;
+		collapseArrowRect.Min = cellRects[1].Min;
+		collapseArrowRect.Min.x += ImGui::GetStyle().ItemSpacing.x;
+		collapseArrowRect.Max = ImVec2(collapseArrowRect.Min.x, cellRects[1].Max.y);
+		collapseArrowRect.Max.x += ImGui::GetFontSize();
+		collapseArrowRect.Max.x += 3.0f;
+		const bool hoversCollapseArrowRect = ImGui::IsMouseHoveringRect(collapseArrowRect.Min, collapseArrowRect.Max);
+		ImGui::GetWindowDrawList()->AddRect(collapseArrowRect.Min, collapseArrowRect.Max, ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)));
+		
 		ImGui::TableSetColumnIndex(2);
-
+		
 		ImGui::Text("Scene");
 		const bool hoversColumn2 = ImGui::IsMouseHoveringRect(cellRects[2].Min, cellRects[2].Max);
-
-		if ((hoversColumn1 || hoversColumn2) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		
+		if (((hoversColumn1 && !hoversCollapseArrowRect) || hoversColumn2) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 		{
 			if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
 				m_SceneTableEntrySelected = !m_SceneTableEntrySelected;
@@ -828,7 +720,7 @@ namespace Relentless
 				m_SelectedEntities.clear();
 			}
 		}
-
+		
 		outIsOpen = isOpen;
 
 		return isHoveringRow;
@@ -838,33 +730,56 @@ namespace Relentless
 	{
 		if (!ImGui::IsDragDropActive())
 			return;
-
+		
+		if (!m_pScene)
+			return;
+		
 		const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("OUTLINER_TABLE_PAYLOAD", ImGuiDragDropFlags_AcceptPeekOnly);
 		if (!payload)
 			return;
-
+		
 		const entity toBecomeChild = *(entity*)payload->Data;
 		EntityManager& entityManager = m_pScene->GetEntityManager();
-
+		
 		if (m_HoveredEntity != NULL_ENTITY)
 		{
 			auto& nameComponent = entityManager.Get<NameComponent>(m_HoveredEntity);
-
-			if (entityManager.Has<IsChildComponent>(toBecomeChild) && entityManager.Get<IsChildComponent>(toBecomeChild).Parent == m_HoveredEntity)
+		
+			if (std::all_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [&entityManager, this](entity e)
+				{
+					return entityManager.Has<IsChildComponent>(e) && (entityManager.Get<IsChildComponent>(e).Parent == m_HoveredEntity); //Entity is parent?
+				}))
+			{
 				ImGui::SetTooltip("Detach from %s.", nameComponent.Name.c_str());
-			else if (toBecomeChild == m_HoveredEntity)
+			}
+			else if (std::any_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this](entity e)
+				{
+					return e == m_HoveredEntity;
+				}))
+			{
 				ImGui::SetTooltip("Cannot attach entity to self.", nameComponent.Name.c_str());
-			else if (m_pScene->EntityIsDescendant(toBecomeChild, m_HoveredEntity))
+			}
+			else if (std::any_of(m_SelectedEntities.begin(), m_SelectedEntities.end(), [this](entity e)
+				{
+					return m_pScene->EntityIsDescendant(e, m_HoveredEntity);
+				}))
+			{
 				ImGui::SetTooltip("Parent entity cannot become the child of their descendant.");
+			}
 			else
 				ImGui::SetTooltip("Attach to %s.", nameComponent.Name.c_str());
 		}
 		else
 		{
-			if (m_SceneTableEntryIsHovered || m_IsTableHovered)
+			if (m_SceneTableEntryIsHovered || m_TableEmptySpaceHovered)
 			{
-				if (entityManager.Has<RootComponent>(toBecomeChild))
-					ImGui::SetTooltip("%s is already attached to root.", entityManager.Get<NameComponent>(toBecomeChild).Name.c_str());
+				if (auto it = std::find_if(m_SelectedEntities.begin(), m_SelectedEntities.end(), [&entityManager](entity e)
+					{
+						return entityManager.Has<RootComponent>(e);
+					}); it != m_SelectedEntities.end())
+				{
+					ImGui::SetTooltip("%s is already attached to root.", entityManager.Get<NameComponent>(*it).Name.c_str());
+				}
 				else
 					ImGui::SetTooltip("Move to root.");
 			}
@@ -873,9 +788,9 @@ namespace Relentless
 				std::string tooltip = entityManager.Get<NameComponent>(m_DraggedEntity).Name;
 				if (m_SelectedEntities.size() > 1)
 					tooltip += std::format(" and {} other{}.", m_SelectedEntities.size() - 1, (m_SelectedEntities.size() - 1) > 1 ? "s" : "");
-
+		
 				ImGui::SetTooltip(tooltip.c_str());
 			}
 		}
-	}
+	}	
 }

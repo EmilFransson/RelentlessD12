@@ -757,7 +757,21 @@ namespace Relentless
 		return EntityIsDescendant(ancestor, descendant);
 	}
 
-	void Scene::ParentEntity(const entity toBecomeChild, const entity toBecomeParent) noexcept
+	bool Scene::EntityIsParent(entity possibleChild, entity possibleParent) noexcept
+	{
+		return m_EntityManager.Has<IsChildComponent>(possibleChild) && m_EntityManager.Get<IsChildComponent>(possibleChild).Parent == possibleParent;
+	}
+
+	bool Scene::EntityIsChild(entity possibleChild, entity possibleParent) noexcept
+	{
+		if (!m_EntityManager.Has<ParentComponent>(possibleParent))
+			return false;
+
+		auto& pc = m_EntityManager.Get<ParentComponent>(possibleParent);
+		return std::any_of(pc.Children.begin(), pc.Children.end(), [possibleChild](entity e) { return e == possibleChild; });
+	}
+
+	void Scene::AttachEntity(const entity toBecomeChild, const entity toBecomeParent) noexcept
 	{
 		RLS_ASSERT(m_EntityManager.Exists(toBecomeChild), "Entity to become child does not exist");
 		RLS_ASSERT(m_EntityManager.Exists(toBecomeParent), "Entity to become parent does not exist");

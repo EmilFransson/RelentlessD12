@@ -10,7 +10,6 @@ namespace Relentless
 		void OnEvent(IEvent& event);
 		void OnImGuiRender(const bool show) noexcept;
 		void SetActiveScene(Scene* const pScene) noexcept;
-		void DrawEntityNode(const entity entityID) noexcept;
 		void SetSelectedEntity(const entity entityID) noexcept;
 		void SetOnEntityDestroyFunction(std::function<void(entity id)> callBackFunction) noexcept;
 		void SetOnEntityCreatedFunction(std::function<void(entity id)> callBackFunction) noexcept;
@@ -32,7 +31,6 @@ namespace Relentless
 		std::function<void(entity)> m_OnEntityDestroyedCallBack;
 		std::function<void(entity)> m_OnEntityCreatedCallBack;
 		std::function<void(entity)> m_OnEntitySelectedCallBack;
-		entity m_EntityScheduledForDestruction;
 
 		AssetHandle m_ShowEntityTextureIconHandle = NULL_HANDLE;
 		AssetHandle m_HideEntityTextureIconHandle = NULL_HANDLE;
@@ -42,12 +40,13 @@ namespace Relentless
 		entity m_DraggedEntity = NULL_ENTITY;
 
 		bool m_IsTableFocused = false;
-		bool m_IsTableHovered = false;
 
 		std::string m_ContentFilter{};
 
 		bool m_SceneTableEntrySelected = false;
 		bool m_SceneTableEntryIsHovered = false;
 		bool m_SceneIsHiddenInGame = false;
+
+		bool m_TableEmptySpaceHovered = false;
 	};
 }

@@ -33,7 +33,9 @@ namespace Relentless
 		void SetViewportPanelSize(const ImVec2& viewportPanelSize) noexcept;
 		[[nodiscard]] bool EntityIsDescendant(const entity ancestor, const entity descendant) noexcept;
 		[[nodiscard]] bool EntityIsAncestor(const entity ancestor, const entity descendant) noexcept;
-		void ParentEntity(const entity toBecomeChild, const entity toBecomeParent) noexcept;
+		[[nodiscard]] bool EntityIsParent(entity possibleChild, entity possibleParent) noexcept;
+		[[nodiscard]] bool EntityIsChild(entity possibleChild, entity possibleParent) noexcept;
+		void AttachEntity(const entity toBecomeChild, const entity toBecomeParent) noexcept;
 		bool DetachEntity(const entity entityToDetach) noexcept;
 		[[nodiscard]] std::vector<entity> GetAllEntityDescendants(entity rootEntity) noexcept;
 		[[nodiscard]] std::vector<entity> GetAllEntityAncestors(entity rootEntity) noexcept;

@@ -182,6 +182,9 @@ namespace Relentless
 
 		colors[ImGuiCol_ScrollbarBg] = colors[ImGuiCol_WindowBg];
 
+		// Drag Drop
+		colors[ImGuiCol_DragDropTarget] = ImVec4();
+
 		style.ScrollbarSize = style.ScrollbarSize - 3.0f;
 
 		float scaleFactor = 1.8f;  // Adjust this scale factor as needed
