@@ -47,12 +47,12 @@ namespace Relentless
 
 		if (!InputFieldContainsText())
 		{
-			ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + 3.0f, cursorPositionPreSearchBar.y + 5.0f));
+			ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + 6.0f, cursorPositionPreSearchBar.y + 6.0f));
 			DrawSearchIcon();
 		}
 		else
 		{
-			ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + 6.0f, cursorPositionPreSearchBar.y + 8.0f));
+			ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + 9.0f, cursorPositionPreSearchBar.y + 12.0f));
 			DrawCancelIcon();
 		}
 
@@ -85,11 +85,11 @@ namespace Relentless
 				for (uint8_t i = 0; i < paddingLength; ++i)
 				{
 					if (data->Buf[i] != ' ')
-					{
 						data->InsertChars(i, " ");
-						data->CursorPos += 1;
-					}
 				}
+
+				if (data->CursorPos < paddingLength)
+					data->CursorPos = paddingLength;
 
 				const bool searchBarContainsText = paddingLength <= strlen(data->Buf);
 				if (searchBarContainsText)
@@ -112,7 +112,7 @@ namespace Relentless
 		if (!InputFieldContainsText())
 		{
 			//Draw hint text:
-			ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + 32.0f, cursorPositionPreSearchBar.y + 6.0f));
+			ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + 40.0f, cursorPositionPreSearchBar.y + 6.0f));
 			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
 			ImGui::Text(hintText.data());
 			ImGui::PopStyleVar();

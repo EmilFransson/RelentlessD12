@@ -2,6 +2,7 @@
 
 #pragma warning(push, 0)
 #include <algorithm>
+#include <any>
 #include <array>
 #include <atomic>
 #include <bitset>

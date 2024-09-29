@@ -21,6 +21,11 @@
 
 //UI:
 #include <src/UI/UI.h>
+#include <src/UI/Table/Table.h>
+#include <src/UI/Table/TableData.h>
+#include <src/UI/Table/TableDataSelection.h>
+#include <src/UI/Table/TableDataSlice.h>
+
 
 //Graphics:
 #include <src/Graphics/D3D12Core.h>

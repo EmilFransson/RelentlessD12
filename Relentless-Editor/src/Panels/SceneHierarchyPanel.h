@@ -1,5 +1,6 @@
 #pragma once
 #include <Relentless.h>
+#include "../UI/OutlinerTable.h"
 namespace Relentless
 {
 	class SceneHierarchyPanel
@@ -48,5 +49,7 @@ namespace Relentless
 		bool m_SceneIsHiddenInGame = false;
 
 		bool m_TableEmptySpaceHovered = false;
+
+		OutlinerTable m_Table;
 	};
 }

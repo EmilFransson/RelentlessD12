@@ -1,3 +1,4 @@
+#pragma once
 #include "ImGui/ImguiLayer.h"
 
 namespace Relentless
@@ -35,6 +36,8 @@ namespace Relentless
 	class UI
 	{
 	public:
+		enum class Alignment : uint8_t { Left, Center, Right };
+
 		static void Initialize() noexcept;
 		static [[nodiscard]] std::string SearchBar(const char* uniqueID, const char* hintText, bool displaySearchHistory = false, float width = ImGui::GetContentRegionAvail().x) noexcept;
 		

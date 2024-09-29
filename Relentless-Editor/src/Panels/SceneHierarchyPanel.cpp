@@ -61,6 +61,13 @@ namespace Relentless
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
 		m_ContentFilter = UI::SearchBar("OutlinerSearchBar", "Search...", true);
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
+
+		m_Table.Draw();
+		ImGui::End();
+		return;
+
+
+
 		
 		constexpr ImVec4 evenTableRowBgColor = ImVec4(21.0f / 255.0f, 21.0f / 255.0f, 21.0f / 255.0f, 255.0f / 255.0f);
 		constexpr ImVec4 oddTableRowBgColor = ImVec4(26.0f / 255.0f, 26.0f / 255.0f, 26.0f / 255.0f, 255.0f / 255.0f);
@@ -243,6 +250,8 @@ namespace Relentless
 		RLS_ASSERT(pScene, "Scene is nullptr.");
 		m_pScene = pScene;
 		m_SelectedEntity = NULL_ENTITY;
+
+		m_Table.OnSceneChanged(pScene);
 	}
 
 	void SceneHierarchyPanel::SetSelectedEntity(const entity entityID) noexcept
@@ -531,11 +540,12 @@ namespace Relentless
 		collapseArrowRect.Min = cellRects[1].Min;
 		collapseArrowRect.Min.x += indentation;
 		collapseArrowRect.Min.x += ImGui::GetStyle().FramePadding.x;
-		collapseArrowRect.Min.x += 3.0f;
+		collapseArrowRect.Min.x += 6.0f;
 		collapseArrowRect.Max = ImVec2(collapseArrowRect.Min.x, cellRects[1].Max.y);
-		collapseArrowRect.Max.x += indentation;
-		collapseArrowRect.Max.x -= 3.0f;
+		collapseArrowRect.Max.x += ImGui::GetTreeNodeToLabelSpacing();
+		collapseArrowRect.Max.x -= 9.0f;
 		const bool hoversCollapseArrowRect = ImGui::IsMouseHoveringRect(collapseArrowRect.Min, collapseArrowRect.Max);
+		ImGui::GetWindowDrawList()->AddRect(collapseArrowRect.Min, collapseArrowRect.Max, ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)));
 		
 		ImGui::TableSetColumnIndex(2);
 		

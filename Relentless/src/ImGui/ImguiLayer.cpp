@@ -187,7 +187,7 @@ namespace Relentless
 
 		style.ScrollbarSize = style.ScrollbarSize - 3.0f;
 
-		float scaleFactor = 1.8f;  // Adjust this scale factor as needed
+		float scaleFactor = 1.0f;  // Adjust this scale factor as needed
 		style.ScaleAllSizes(scaleFactor);
 		
 		ImGui_ImplWin32_Init(::GetActiveWindow());
@@ -203,7 +203,5 @@ namespace Relentless
 			memorymanager.GetShaderBindableDescriptorHeap()->GetCPUStartHandle(),
 			memorymanager.GetShaderBindableDescriptorHeap()->GetGPUStartHandle()
 		);
-
-
 	}
 }
