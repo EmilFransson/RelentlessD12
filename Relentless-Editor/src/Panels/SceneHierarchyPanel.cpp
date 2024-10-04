@@ -26,8 +26,11 @@ namespace Relentless
 			{
 			case RLS_KEY::A:
 			{
-				if (m_IsTableFocused && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
-					OnSelectAll();
+				if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+				{
+					m_Table.SelectAllExpandedEntityRows();
+					event.StopPropagation();
+				}
 				break;
 			}
 			}
@@ -37,18 +40,6 @@ namespace Relentless
 
 	void SceneHierarchyPanel::OnImGuiRender(const bool show) noexcept
 	{
-		m_HoveredEntity = NULL_ENTITY;
-
-		EntityManager& entityManager = m_pScene->GetEntityManager();
-
-		for (uint32_t i = 0u; i < m_SelectedEntities.size(); ++i)
-		{
-			if (!entityManager.Exists(m_SelectedEntities[i]))
-				m_SelectedEntities.erase(m_SelectedEntities.begin() + i);
-		}
-		
-		m_SceneIsHiddenInGame = entityManager.GetEntityCountForPool<HiddenInGameComponent>() == entityManager.GetEntityAliveCount();
-
 		if (!show)
 			return;
 		
@@ -58,15 +49,75 @@ namespace Relentless
 		ImGui::Begin("Outliner");
 		ImGui::PopStyleVar();
 		
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
-		m_ContentFilter = UI::SearchBar("OutlinerSearchBar", "Search...", true);
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
+		constexpr float bannerHeight = 40.0f;
 
-		m_Table.Draw();
+		{
+			ImGui::BeginChild("Outliner SearchBar Child", ImVec2(0.0f, 50.0f));
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
+			m_ContentFilter = UI::SearchBar("OutlinerSearchBar", "Search...", true);
+			ImGui::EndChild();
+		}
+
+		{
+			ImGui::BeginChild("Outliner Table Child", ImVec2(0, ImGui::GetContentRegionAvail().y - bannerHeight));
+			m_Table.Draw();
+
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered() && !m_Table.IsHovered())
+				m_Table.ClearAllSelections();
+
+			ImGui::EndChild();
+		}
+
+		{
+			ImGui::BeginChild("Outliner Banner Child");
+			
+			const ImVec2 bannerStartPos = ImGui::GetCursorScreenPos();
+			const ImVec2 availableSpace = ImGui::GetContentRegionAvail();
+			const ImVec2 bannerEndPos = ImVec2(bannerStartPos.x + availableSpace.x, bannerStartPos.y + availableSpace.y);
+
+			ImDrawList* pDrawList = ImGui::GetWindowDrawList();
+			pDrawList->AddRectFilled(bannerStartPos, bannerEndPos, ImGui::ColorConvertFloat4ToU32(ImVec4(0.2f, 0.2f, 0.2f, 1.0f)));
+
+			const uint32_t numEntities = m_Table.GetNrOfEntityEntries();
+			const uint32_t selectedEntities = m_Table.GetNrOfSelectedEntities();
+
+			std::string bannerLabel = std::format("{} Entities", numEntities);
+			if (selectedEntities > 0)
+				bannerLabel += std::format(" ({} selected)", selectedEntities);
+
+			constexpr float bannerLabelOffsetFromBorder = 10.0f;
+			const float bannerLabelXPos = bannerStartPos.x + bannerLabelOffsetFromBorder;
+
+			const float bannerLabelHeight = UI::Utility::CalculateTextHeight(bannerLabel);
+			const float bannerLabelYPos = bannerStartPos.y + (bannerHeight / 2.0f) - (bannerLabelHeight / 2.0f);
+
+			pDrawList->AddText(ImVec2(bannerLabelXPos, bannerLabelYPos), ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), bannerLabel.c_str());
+
+			ImGui::EndChild();
+		}
+
 		ImGui::End();
 		return;
 
 
+
+
+
+
+
+
+
+		m_HoveredEntity = NULL_ENTITY;
+
+		EntityManager& entityManager = m_pScene->GetEntityManager();
+
+		for (uint32_t i = 0u; i < m_SelectedEntities.size(); ++i)
+		{
+			if (!entityManager.Exists(m_SelectedEntities[i]))
+				m_SelectedEntities.erase(m_SelectedEntities.begin() + i);
+		}
+
+		m_SceneIsHiddenInGame = entityManager.GetEntityCountForPool<HiddenInGameComponent>() == entityManager.GetEntityAliveCount();
 
 		
 		constexpr ImVec4 evenTableRowBgColor = ImVec4(21.0f / 255.0f, 21.0f / 255.0f, 21.0f / 255.0f, 255.0f / 255.0f);

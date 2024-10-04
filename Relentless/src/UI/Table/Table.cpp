@@ -24,7 +24,7 @@ namespace Relentless
 	Table::Table() noexcept
 	{
 		//Default selection context:
-		m_SelectionContext = std::make_shared<TableDataSelection>(this);
+		m_pSelectionContext = std::make_shared<TableDataSelection>(this);
 	}
 
 	Table::~Table() noexcept
@@ -59,7 +59,7 @@ namespace Relentless
 
 	void Table::SetTableDataSelection(const std::shared_ptr<TableDataSelection>& tableDataSelection) noexcept
 	{
-		m_SelectionContext = tableDataSelection;
+		m_pSelectionContext = tableDataSelection;
 	}
 
 	void Table::AddEntry(const std::shared_ptr<TableData>& pTableData) noexcept
@@ -77,9 +77,21 @@ namespace Relentless
 		return m_Entries;
 	}
 
+
+	const std::shared_ptr<TableDataSelection>& Table::GetTableDataSelection() const noexcept
+	{
+		return m_pSelectionContext;
+	}
+
 	void Table::RemoveAll() noexcept
 	{
 		m_Entries.clear();
+	}
+
+
+	void Table::ClearAllSelections() noexcept
+	{
+		m_pSelectionContext->DeselectAll();
 	}
 
 	bool Table::IsFocused() const noexcept
@@ -183,7 +195,7 @@ namespace Relentless
 		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBg, m_EvenRowColor);
 		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBgAlt, m_OddRowColor);
 
-		m_SelectionContext->OnDrawBegin();
+		m_pSelectionContext->OnDrawBegin();
 
 		m_OuterRect.Min = ImGui::GetCursorScreenPos();
 	}
@@ -224,7 +236,7 @@ namespace Relentless
 		m_OuterRect.Max.y -= ImGui::GetStyle().ItemSpacing.y;
 
 		ImGui::PopStyleColor(2);
-		m_SelectionContext->OnDrawEnd();
+		m_pSelectionContext->OnDrawEnd();
 	}
 
 	void Table::DrawRow(const std::shared_ptr<TableData>& tableData, uint32_t indentationLevel) noexcept
@@ -274,11 +286,11 @@ namespace Relentless
 	{
 		ImU32 targetColor = IM_COL32(0,0,0, 255);
 
-		if (m_SelectionContext->IsSelected(tableData))
+		if (m_pSelectionContext->IsSelected(tableData))
 			targetColor = m_IsFocused ? ImGui::GetColorU32(m_RowSelectedFocusedColor) : ImGui::GetColorU32(m_RowSelectedColor);
-		else if (m_SelectionContext->IsHovered(tableData))
+		else if (m_pSelectionContext->IsHovered(tableData))
 			targetColor = ImGui::GetColorU32(m_RowHoverColor);
-		else if (m_SelectionContext->IsAncestorToAnySelected(tableData))
+		else if (m_pSelectionContext->IsAncestorToAnySelected(tableData))
 			targetColor = ImGui::GetColorU32(m_RowAncestorToSelectedColor);
 		else
 			return; // Use default color!
@@ -342,27 +354,28 @@ namespace Relentless
 
 			const ImRect cellRect = ImGui::TableGetCellBgRect(ImGui::GetCurrentTable(), columnIndex);
 			const bool hoversCell = ImGui::IsMouseHoveringRect(cellRect.Min, cellRect.Max);
-			//if (m_SelectionContext->IsReferenceSelection(tableData))
-			//	ImGui::GetForegroundDrawList()->AddRect(cellRect.Min, cellRect.Max, ImGui::GetColorU32(ImVec4(255.0f, 0.0f, 0.0f, 255.0f)));
-			//else
-			//	ImGui::GetWindowDrawList()->AddRect(cellRect.Min, cellRect.Max, ImGui::GetColorU32(ImVec4(255.0f, 255.0f, 255.0f, 255.0f)));
 
 			if (hoversCell)
 			{
-				m_SelectionContext->SetHovered(tableData);
+				m_pSelectionContext->SetHovered(tableData);
 				const char* toolTip = tableData->GetColumnTooltip(columnIndex);
 				if (std::strcmp(toolTip, "") != 0)
 					UI::Utility::DrawTooltip(toolTip);
 
+				if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+				{
+					if (!m_TreeNodeToggled)
+						m_pSelectionContext->OnClickedOnRow(tableData, Table_private::GetSelectionMode(), columnIndex, true);
+				}
 				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 				{
-					if (m_Columns[columnIndex].AllowSelection && !m_TreeNodeToggled)
-						m_SelectionContext->OnClickedOnRow(tableData, Table_private::GetSelectionMode());
+					if (!m_TreeNodeToggled)
+						m_pSelectionContext->OnClickedOnRow(tableData, Table_private::GetSelectionMode(), columnIndex, false);
 				}
 				else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
 				{
-					if (m_Columns[columnIndex].AllowSelection && !m_TreeNodeToggled)
-						m_SelectionContext->OnReleasedOnRow(tableData, Table_private::GetSelectionMode());
+					if (!m_TreeNodeToggled)
+						m_pSelectionContext->OnReleasedOnRow(tableData, Table_private::GetSelectionMode());
 				}
 			}
 		}

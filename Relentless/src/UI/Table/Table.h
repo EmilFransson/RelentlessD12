@@ -54,8 +54,10 @@ namespace Relentless
 		void AddColumn(const ColumnProperties& column) noexcept;
 
 		[[nodiscard]] std::vector<std::shared_ptr<TableData>>& GetRootEntries() noexcept;
+		[[nodiscard]] const std::shared_ptr<TableDataSelection>& GetTableDataSelection() const noexcept;
 
 		void RemoveAll() noexcept;
+		void ClearAllSelections() noexcept;
 
 		[[nodiscard]] bool IsFocused() const noexcept;
 		[[nodiscard]] bool IsHovered() const noexcept;
@@ -93,7 +95,7 @@ namespace Relentless
 		ImVec4 m_RowSelectedFocusedColor = ImVec4(30.0f / 255.0f, 120.0f / 255.0f, 255.0f / 255.0f, 200.0f / 255.0f);
 		ImVec4 m_RowAncestorToSelectedColor = ImVec4(44.0f / 255.0f, 50.0f / 255.0f, 58.0f / 255.0f, 1.0f);
 
-		std::shared_ptr<TableDataSelection> m_SelectionContext = nullptr;
+		std::shared_ptr<TableDataSelection> m_pSelectionContext = nullptr;
 		std::vector<std::shared_ptr<TableData>> m_Entries;
 
 		ImRect m_OuterRect;

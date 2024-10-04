@@ -9,8 +9,14 @@ namespace Relentless
 		OutlinerTable() noexcept;
 		virtual ~OutlinerTable() noexcept override = default;
 
-		void AddEntry(const std::shared_ptr<TableData>& pTableData) noexcept override;
 		void OnSceneChanged(Scene* pScene) noexcept;
+		void AddEntityEntry(entity e) noexcept;
+		void SelectAllExpandedEntityRows() noexcept;
+
+		[[nodiscard]] uint32_t GetNrOfEntityEntries() const noexcept;
+		[[nodiscard]] uint32_t GetNrOfSelectedEntities() const noexcept;
+
+		[[nodiscard]] Scene* GetScene() noexcept;
 	private:
 		virtual [[nodiscard]] const char* GetID() const noexcept override;
 	private:
@@ -18,5 +24,7 @@ namespace Relentless
 
 		AssetHandle m_ShowEntityTextureIconHandle = NULL_HANDLE;
 		AssetHandle m_HideEntityTextureIconHandle = NULL_HANDLE;
+
+		uint32_t m_NrOfEntityEntries = 0u;
 	};
 }

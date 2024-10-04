@@ -28,38 +28,39 @@ namespace Relentless
 			m_pHovered = nullptr;
 	}
 
-	void TableDataSelection::OnClickedOnRow(const std::shared_ptr<TableData>& tableData, SelectionMode selectionMode) noexcept
+	void TableDataSelection::OnClickedOnRow(const std::shared_ptr<TableData>& pTableData, SelectionMode selectionMode, uint32_t column, bool doubleClicked) noexcept
 	{
 		switch (selectionMode)
 		{
 		case SelectionMode::Single:
 		{
-			if (GetSelectedCount() > 1 && IsSelected(tableData))
+			if (GetSelectedCount() > 1 && IsSelected(pTableData))
 				return;
 
-			if (IsSelectable(tableData, SelectionMode::Single))
+			if (IsSelectable(pTableData, SelectionMode::Single))
 			{
 				DeselectAll();
-				Select(tableData);
-				SetReferenceSelection(tableData);
+				Select(pTableData);
+				SetReferenceSelection(pTableData);
 			}
+			OnClicked(pTableData, column, doubleClicked);
 
 			break;
 		}
 		case SelectionMode::Toggle:
 		{
-			if (IsSelected(tableData))
+			if (IsSelected(pTableData))
 			{
-				Deselect(tableData);
+				Deselect(pTableData);
 				if (GetSelectedCount() > 0)
 					SetReferenceSelection(m_Selected.front());
 			}
 			else
 			{
-				if (IsSelectable(tableData, SelectionMode::Toggle))
+				if (IsSelectable(pTableData, SelectionMode::Toggle))
 				{
-					Select(tableData);
-					SetReferenceSelection(tableData);
+					Select(pTableData);
+					SetReferenceSelection(pTableData);
 				}
 			}
 
@@ -85,7 +86,7 @@ namespace Relentless
 
 			auto it = std::find_if(tableDatas.begin(), tableDatas.end(), [&](const Table::TableDataRow& row)
 				{
-					return row.Entry == tableData;
+					return row.Entry == pTableData;
 				});
 
 			size_t endIndex = std::distance(tableDatas.begin(), it);

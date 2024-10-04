@@ -1,5 +1,6 @@
 #include "OutlinerTable.h"
 #include "OutlinerTableData.h"
+#include "OutlinerTableDataSelection.h"
 #include "OutlinerTableDataSlice.h"
 
 namespace Relentless
@@ -45,32 +46,56 @@ namespace Relentless
 		}
 
 		SetFlags(ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody);
-	}
 
-	void OutlinerTable::AddEntry(const std::shared_ptr<TableData>& pTableData) noexcept
-	{
-		if (!std::dynamic_pointer_cast<OutlinerSceneTableData>(pTableData))
-		{
-			std::unique_ptr<TableDataSlice>& pSlice = GetRootEntries()[0]->GetSlice();
-			if (!pSlice) [[unlikely]]
-				pSlice = std::make_unique<OutlinerTableDataSlice>(this, pTableData.get());
-				
-			pSlice->Add(pTableData);
-		}
-		else
-			Table::AddEntry(pTableData);
+		SetTableDataSelection(std::make_shared<OutlinerTableDataSelection>(this));
 	}
 
 	void OutlinerTable::OnSceneChanged(Scene* pScene) noexcept
 	{
 		m_pScene = pScene;
 		
+		ClearAllSelections();
 		RemoveAll();
 
-		AddEntry(std::make_shared<OutlinerSceneTableData>(m_pScene, m_ShowEntityTextureIconHandle, m_HideEntityTextureIconHandle));
-		AddEntry(std::make_shared<OutlinerEntityTableData>(0, m_pScene, m_ShowEntityTextureIconHandle, m_HideEntityTextureIconHandle));
-		AddEntry(std::make_shared<OutlinerEntityTableData>(m_pScene->CreateEntity("Entity1"), m_pScene, m_ShowEntityTextureIconHandle, m_HideEntityTextureIconHandle));
-		AddEntry(std::make_shared<OutlinerEntityTableData>(m_pScene->CreateEntity("Entity2"), m_pScene, m_ShowEntityTextureIconHandle, m_HideEntityTextureIconHandle));
+		Table::AddEntry(std::make_shared<OutlinerSceneTableData>(m_pScene, m_ShowEntityTextureIconHandle, m_HideEntityTextureIconHandle));
+		AddEntityEntry(0);
+		AddEntityEntry(m_pScene->CreateEntity("Entity1"));
+		AddEntityEntry(m_pScene->CreateEntity("Entity2"));
+	}
+
+	//TODO: forming proper hierarchy
+	void OutlinerTable::AddEntityEntry(entity e) noexcept
+	{
+		std::shared_ptr<OutlinerEntityTableData> pTableData = std::make_shared<OutlinerEntityTableData>(e, m_pScene, m_ShowEntityTextureIconHandle, m_HideEntityTextureIconHandle);
+
+		std::unique_ptr<TableDataSlice>& pSlice = GetRootEntries()[0]->GetSlice();
+		if (!pSlice) [[unlikely]]
+			pSlice = std::make_unique<OutlinerTableDataSlice>(this, pTableData.get());
+
+		pSlice->Add(std::move(pTableData));
+
+		m_NrOfEntityEntries++;
+	}
+
+
+	void OutlinerTable::SelectAllExpandedEntityRows() noexcept
+	{
+		static_pointer_cast<OutlinerTableDataSelection>(GetTableDataSelection())->SelectAllExpandedEntityRows();
+	}
+
+	uint32_t OutlinerTable::GetNrOfEntityEntries() const noexcept
+	{
+		return m_NrOfEntityEntries;
+	}
+
+	uint32_t OutlinerTable::GetNrOfSelectedEntities() const noexcept
+	{
+		return static_pointer_cast<OutlinerTableDataSelection>(GetTableDataSelection())->GetNrOfSelectedEntities();
+	}
+
+	Scene* OutlinerTable::GetScene() noexcept
+	{
+		return m_pScene;
 	}
 
 	const char* OutlinerTable::GetID() const noexcept

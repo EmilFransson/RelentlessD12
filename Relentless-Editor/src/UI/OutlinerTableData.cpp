@@ -40,6 +40,12 @@ namespace Relentless
 			return m_ShowEntityTextureIconHandle;
 	}
 
+
+	entity OutlinerEntityTableData::GetEntityID() const noexcept
+	{
+		return m_EntityID;
+	}
+
 	OutlinerSceneTableData::OutlinerSceneTableData(Scene* pScene, const AssetHandle& showTextureIconHandle, const AssetHandle& hideTextureIconHandle) noexcept
 		: 
 		m_pScene{ pScene },
@@ -75,4 +81,10 @@ namespace Relentless
 		else
 			return m_ShowEntityTextureIconHandle;
 	}
+
+	Scene* OutlinerSceneTableData::GetScene() noexcept
+	{
+		return m_pScene;
+	}
+
 }

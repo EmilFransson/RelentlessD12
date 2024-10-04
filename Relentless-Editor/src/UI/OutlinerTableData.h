@@ -12,6 +12,8 @@ namespace Relentless
 		[[nodiscard]] const char* GetColumnString(uint32_t columnIndex) const noexcept override;
 		[[nodiscard]] const char* GetColumnTooltip(uint32_t columnIndex) const noexcept override;
 		[[nodiscard]] AssetHandle GetColumnIcon(uint32_t columnIndex) const noexcept override;
+
+		[[nodiscard]] entity GetEntityID() const noexcept;
 	private:
 		Scene* m_pOwningScene = nullptr;
 		entity m_EntityID = NULL_ENTITY;
@@ -28,6 +30,8 @@ namespace Relentless
 		[[nodiscard]] const char* GetColumnString(uint32_t columnIndex) const noexcept override;
 		[[nodiscard]] const char* GetColumnTooltip(uint32_t columnIndex) const noexcept override;
 		[[nodiscard]] AssetHandle GetColumnIcon(uint32_t columnIndex) const noexcept override;
+
+		[[nodiscard]] Scene* GetScene() noexcept;
 	private:
 		Scene* m_pScene = nullptr;
 

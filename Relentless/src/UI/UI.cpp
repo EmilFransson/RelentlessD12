@@ -330,4 +330,12 @@ namespace Relentless
 		ImGui::PopStyleColor(2);
 	}
 
+	float UI::Utility::CalculateTextHeight(const std::string& text, float wrapWidth) noexcept
+	{
+		const float paddingTop = GImGui->Style.FramePadding.y;
+		const float paddingBottom = GImGui->Style.FramePadding.y;
+
+		return ImGui::CalcTextSize(text.c_str(), nullptr, false, wrapWidth).y + paddingTop + paddingBottom;
+	}
+
 }
