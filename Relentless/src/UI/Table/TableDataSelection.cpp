@@ -25,7 +25,10 @@ namespace Relentless
 	void TableDataSelection::OnDrawEnd() noexcept
 	{
 		if (!m_HoveredStateSetThisFrame)
+		{
 			m_pHovered = nullptr;
+			m_HoveredColumn = ANY_COLUMN_HOVERED;
+		}
 	}
 
 	void TableDataSelection::OnClickedOnRow(const std::shared_ptr<TableData>& pTableData, SelectionMode selectionMode, uint32_t column, bool doubleClicked) noexcept
@@ -37,7 +40,7 @@ namespace Relentless
 			if (GetSelectedCount() > 1 && IsSelected(pTableData))
 				return;
 
-			if (IsSelectable(pTableData, SelectionMode::Single))
+			if (IsSelectable(pTableData, column, SelectionMode::Single))
 			{
 				DeselectAll();
 				Select(pTableData);
@@ -57,7 +60,7 @@ namespace Relentless
 			}
 			else
 			{
-				if (IsSelectable(pTableData, SelectionMode::Toggle))
+				if (IsSelectable(pTableData, column, SelectionMode::Toggle))
 				{
 					Select(pTableData);
 					SetReferenceSelection(pTableData);
@@ -96,7 +99,7 @@ namespace Relentless
 			
 			for (size_t i = startIndex; i <= endIndex; ++i)
 			{
-				if (IsSelectable(tableDatas[i].Entry, SelectionMode::Range) && !IsSelected(tableDatas[i].Entry))
+				if (IsSelectable(tableDatas[i].Entry, column, SelectionMode::Range) && !IsSelected(tableDatas[i].Entry))
 					Select(tableDatas[i].Entry);
 			}
 
@@ -160,17 +163,24 @@ namespace Relentless
 		return m_Selected.size();
 	}
 
-	void TableDataSelection::SetHovered(const std::shared_ptr<TableData>& tableData) noexcept
+
+	const std::vector<std::shared_ptr<Relentless::TableData>>& TableDataSelection::GetSelected() const noexcept
+	{
+		return m_Selected;
+	}
+
+	void TableDataSelection::SetHovered(const std::shared_ptr<TableData>& tableData, uint32_t column) noexcept
 	{
 		m_pHovered = tableData;
+		m_HoveredColumn = column;
 		m_HoveredStateSetThisFrame = true;
 
 		OnHovered(m_pHovered);
 	}
 
-	bool TableDataSelection::IsHovered(const std::shared_ptr<TableData>& tableData) const noexcept
+	bool TableDataSelection::IsHovered(const std::shared_ptr<TableData>& tableData, uint32_t column) const noexcept
 	{
-		return m_pHovered && m_pHovered == tableData;
+		return m_pHovered && m_pHovered == tableData && (column == ANY_COLUMN_HOVERED || column == m_HoveredColumn);
 	}
 
 	bool TableDataSelection::IsAncestorToAnySelected(const std::shared_ptr<TableData>& tableData) const noexcept

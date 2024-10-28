@@ -3,8 +3,9 @@
 
 namespace Relentless
 {
-	class OutlinerSceneTableData;
 	class OutlinerEntityTableData;
+	class OutlinerFolderTableData;
+	class OutlinerSceneTableData;
 
 	class OutlinerTableDataSelection : public TableDataSelection
 	{
@@ -14,14 +15,14 @@ namespace Relentless
 
 		void SelectAllExpandedEntityRows() noexcept;
 		[[nodiscard]] uint32_t GetNrOfSelectedEntities() const noexcept;
+		[[nodiscard]] const std::vector<entity>& GetSelectedEntities() const noexcept;
+		void DeselectAllEntities() noexcept;
 	private:
 		virtual void OnSelected(const std::shared_ptr<TableData>& pTableData) noexcept override;
 		virtual void OnDeselected(const std::shared_ptr<TableData>& pTableData) noexcept override;
 		virtual void OnClicked(const std::shared_ptr<TableData>& pTableData, uint32_t column, bool doubleClicked) noexcept override;
-
-		void OnSceneRowClicked(const std::shared_ptr<OutlinerSceneTableData>& pSceneTableData, uint32_t column) noexcept;
-		void OnEntityRowClicked(const std::shared_ptr<OutlinerEntityTableData>& pEntityTableData, uint32_t column, bool doubleClicked) noexcept;
+		bool IsSelectable(const std::shared_ptr<TableData>& tableData, uint32_t column, SelectionMode selectionMode) noexcept override;
 	private:
-		uint32_t m_NrOfSelectedEntities = 0u;
+		std::vector<entity> m_SelectedEntities;
 	};
 }

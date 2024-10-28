@@ -10,8 +10,6 @@
 #include "UI/UI.h"
 #include "Window.h"
 
-#include "Math/Vector3.h"
-
 #include "Utility/SystemPaths.h"
 #include "Callback/Callback.h"
 

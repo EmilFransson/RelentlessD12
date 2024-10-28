@@ -26,4 +26,9 @@ namespace Relentless
 		return m_pOwningData;
 	}
 
+	Table* TableDataSlice::GetTable() const noexcept
+	{
+		return m_pTable;
+	}
+
 }

@@ -60,6 +60,6 @@
 #include "Core/Utility.h"
 #include "Graphics/D3D12Debug.h"
 #include "Math/CommonMath.h"
-#include "Math/Vector3.h"
+#include "Math/MathTypes.h"
 
 #include "../vendor/includes/directxtex/d3dx12.h"

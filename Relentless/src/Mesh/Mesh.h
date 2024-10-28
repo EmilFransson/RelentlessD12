@@ -2,7 +2,7 @@
 #include "Graphics/Resources/IndexBuffer.h"
 #include "Graphics/Resources/VertexBuffer.h"
 #include "Graphics/Resources/ResourceMeta.h"
-#include "Math/Transform.h"
+#include "Math/MathTypes.h"
 
 namespace Relentless
 {

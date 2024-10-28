@@ -102,11 +102,11 @@ namespace Relentless
 			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
 			bool changedValues = true;
 
-			changedValues = DrawVec3Control("Position", tc.Translation, 0.06f);
+			changedValues = DrawVec3Control("Location", tc.WorldTransform.Location, 0.06f);
 			ImGui::Separator();
-			changedValues |= DrawVec3Control("Rotation", tc.Rotation, 0.03f);
+			//changedValues |= DrawVec3Control("Rotation", tc.Rotation, 0.03f);
 			ImGui::Separator();
-			changedValues |= DrawVec3Control("Scale", tc.Scale, 0.03f, 1.0f, 0.01f);
+			changedValues |= DrawVec3Control("Scale", tc.WorldTransform.Scale, 0.03f, 1.0f, 0.01f);
 			
 			if (changedValues)
 				m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
@@ -118,11 +118,11 @@ namespace Relentless
 			{
 				auto& transformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
 
-				changedValues = DrawVec3Control("Local Position", transformComponent.LocalTranslation, 0.06f);
+				changedValues = DrawVec3Control("Local Location", transformComponent.LocalTransform.Location, 0.06f);
 				ImGui::Separator();
-				changedValues |= DrawVec3Control("Local Rotation", transformComponent.LocalRotation, 0.03f);
+				//changedValues |= DrawVec3Control("Local Rotation", transformComponent.LocalRotation, 0.03f);
 				ImGui::Separator();
-				changedValues |= DrawVec3Control("Local Scale", transformComponent.LocalScale, 0.03f, 1.0f, 0.01f);
+				changedValues |= DrawVec3Control("Local Scale", transformComponent.LocalTransform.Scale, 0.03f, 1.0f, 0.01f);
 
 				if (changedValues)
 					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = false;
@@ -196,7 +196,7 @@ namespace Relentless
 								dlc.Intensity = intensity;
 								m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 
-								m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
+								//m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
 							}
 						}
 						if (isSelected)

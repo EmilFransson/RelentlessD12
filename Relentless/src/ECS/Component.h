@@ -6,100 +6,23 @@
 #include "Graphics/Resources/Material.h"
 #include "Mesh/Mesh.h"
 #include "Core/Application.h"
+#include "Math/MathTypes.h"
 
 namespace Relentless
 {
 	struct TransformComponent
 	{
 		TransformComponent() noexcept
-			: Translation{ 0.0f, 0.0f, 0.0f },
-			  Rotation{ 0.0f, 0.0f, 0.0f },
-			  Scale{ 1.0f, 1.0f, 1.0f },
-			  LocalTranslation{ 0.0f, 0.0f, 0.0f },
-			  LocalRotation{0.0f, 0.0f, 0.0f },
-			  LocalScale{ 1.0f, 1.0f, 1.0f }
 		{
-			DirectX::XMStoreFloat4x4(&Transform, DirectX::XMMatrixIdentity());
-			DirectX::XMStoreFloat4x4(&LocalTransform, DirectX::XMMatrixIdentity());
-
 			ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet("", sizeof(Transform));
 		}
 
-		~TransformComponent() noexcept 
-		{
-			//if (ConstantBufferID != INVALID_CONSTANT_BUFFER_ID)
-			//{
-			//	Application::Get().GetMemorymanager().FreeConstantBuffer(ConstantBufferID);
-			//}
-		}
-
-		TransformComponent(const TransformComponent& otherComponent) noexcept
-		{
-			Transform = otherComponent.Transform;
-			Translation = otherComponent.Translation;
-			Rotation = otherComponent.Rotation;
-			Scale = otherComponent.Scale;
-
-			LocalTransform = otherComponent.LocalTransform;
-			LocalTranslation = otherComponent.LocalTranslation;
-			LocalRotation = otherComponent.LocalRotation;
-			LocalScale = otherComponent.LocalScale;
-
-			ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet("", sizeof(Transform));
-		}
-
-		TransformComponent(TransformComponent&& otherComponent) noexcept
-		{
-			Transform = std::move(otherComponent.Transform);
-			Translation = std::move(otherComponent.Translation);
-			Rotation = std::move(otherComponent.Rotation);
-			Scale = std::move(otherComponent.Scale);
-
-			LocalTransform = std::move(otherComponent.LocalTransform);
-			LocalTranslation = std::move(otherComponent.LocalTranslation);
-			LocalRotation = std::move(otherComponent.LocalRotation);
-			LocalScale = std::move(otherComponent.LocalScale);
-
-			ConstantBufferHandle = std::move(otherComponent.ConstantBufferHandle);
-
-			//Invalidate the moved from constant buffer ID to catch any misuse:
-			otherComponent.ConstantBufferHandle = NULL_RESOURCE_HANDLE;
-		}
-
-		TransformComponent& operator=(TransformComponent&& otherComponent) noexcept
-		{
-			if (this != &otherComponent)
-			{
-				Transform = std::move(otherComponent.Transform);
-				Translation = std::move(otherComponent.Translation);
-				Rotation = std::move(otherComponent.Rotation);
-				Scale = std::move(otherComponent.Scale);
-
-				LocalTransform = std::move(otherComponent.LocalTransform);
-				LocalTranslation = std::move(otherComponent.LocalTranslation);
-				LocalRotation = std::move(otherComponent.LocalRotation);
-				LocalScale = std::move(otherComponent.LocalScale);
-
-				ConstantBufferHandle = std::move(otherComponent.ConstantBufferHandle);
-
-				//Invalidate the moved from constant buffer ID to catch any misuse:
-				otherComponent.ConstantBufferHandle = NULL_RESOURCE_HANDLE;
-			}
-
-			return *this;
-		}
-
-		DirectX::XMFLOAT4X4 Transform;
-		DirectX::XMFLOAT3 Translation;
-		DirectX::XMFLOAT3 Rotation;
-		DirectX::XMFLOAT3 Scale;
-
-		DirectX::XMFLOAT4X4 LocalTransform;
-		DirectX::XMFLOAT3 LocalTranslation;
-		DirectX::XMFLOAT3 LocalRotation;
-		DirectX::XMFLOAT3 LocalScale;
+		Transform WorldTransform;
+		Transform LocalTransform;
 
 		ResourceHandle ConstantBufferHandle = NULL_RESOURCE_HANDLE;
+
+		bool IsDirty = false;
 	};
 
 	struct DirtyTransformComponent

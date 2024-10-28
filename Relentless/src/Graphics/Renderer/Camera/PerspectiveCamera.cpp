@@ -1,6 +1,7 @@
 #include "PerspectiveCamera.h"
-#include "../../../Input/Keyboard.h"
-#include "../../../Input/Mouse.h"
+#include "Core/Timer.h"
+#include "Input/Keyboard.h"
+#include "Input/Mouse.h"
 namespace Relentless
 {
 	PerspectiveCamera::PerspectiveCamera(const DirectX::XMVECTOR& position, const uint32_t width, const uint32_t height) noexcept
@@ -9,7 +10,7 @@ namespace Relentless
 		m_Yaw{ 134.0f },
 		m_Pitch{ -35.0f },
 		m_CameraSpeed{ 10.0f },
-		m_TiltSensitivity{ 0.25f },
+		m_TiltSensitivity{ 0.05f },
 		m_FieldOfViewDegrees{ 60.0f },
 		m_NearPlane{0.1f},
 		m_FarPlane{ 1000.f }
@@ -36,11 +37,6 @@ namespace Relentless
 		DirectX::XMStoreFloat4x4(&m_ProjectionMatrix, projectionMatrix);
 
 		m_pConstantBufferSet = std::make_unique<ConstantBufferSet>("Perspective Camera CB Set", sizeof(DirectX::XMFLOAT3));
-	}
-
-	PerspectiveCamera::~PerspectiveCamera() noexcept 
-	{
-		//m_pConstantBuffer->ReleaseHandles();
 	}
 
 	void PerspectiveCamera::RecalculateViewProjectionMatrix() noexcept

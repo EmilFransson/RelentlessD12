@@ -1,5 +1,6 @@
 #include "Scene.h"
 #include "../Assets/AssetManager.h"
+#include "Input/Keyboard.h"
 namespace Relentless
 {
 	Scene::Scene(const char* name) noexcept
@@ -49,395 +50,20 @@ namespace Relentless
 		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		/*TRANSFORMS*/
-		m_EntityManager.Collect<DirtyTransformComponent, RootComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dtc)
-			{
-				TransformComponent& transformComponent = m_EntityManager.Get<TransformComponent>(entityHandle);
-				if (dtc.AdjustedWorldSpace)
-				{
-					//Calculate world transform and convert to equivalent local
-					//As this is a root entity world == local!
-					const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.Rotation.x);
-					const float angleInRadiansY = DirectX::XMConvertToRadians(transformComponent.Rotation.y);
-					const float angleInRadiansZ = DirectX::XMConvertToRadians(transformComponent.Rotation.z);
+		m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)
+		{
+			const ResourceHandle handle = m_EntityManager.Get<TransformComponent>(entityHandle).ConstantBufferHandle;
+			DirectX::XMFLOAT4X4 transform = GetWorldTransform(entityHandle);
+			resourceManager.UploadConstantBufferData(handle, &transform, sizeof(transform), frameIndex);
+		});
 
-					const DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.Scale))
-						* DirectX::XMMatrixRotationX(angleInRadiansX)
-						* DirectX::XMMatrixRotationY(angleInRadiansY)
-						* DirectX::XMMatrixRotationZ(angleInRadiansZ)
-						* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.Translation));
-
-					DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
-
-					transformComponent.LocalTransform = transformComponent.Transform;
-					transformComponent.LocalTranslation = transformComponent.Translation;
-					transformComponent.LocalRotation = transformComponent.Rotation;
-					transformComponent.LocalScale = transformComponent.Scale;
-				}
-				else
-				{
-					//Calculate local transform and convert to equivalent world:
-					//As this is a root entity local == world!
-					const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.LocalRotation.x);
-					const float angleInRadiansY = DirectX::XMConvertToRadians(transformComponent.LocalRotation.y);
-					const float angleInRadiansZ = DirectX::XMConvertToRadians(transformComponent.LocalRotation.z);
-				
-					const DirectX::XMMATRIX local = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.LocalScale))
-						* DirectX::XMMatrixRotationX(angleInRadiansX)
-						* DirectX::XMMatrixRotationY(angleInRadiansY)
-						* DirectX::XMMatrixRotationZ(angleInRadiansZ)
-						* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.LocalTranslation));
-				
-					DirectX::XMStoreFloat4x4(&transformComponent.LocalTransform, local);
-				
-					transformComponent.Transform = transformComponent.LocalTransform;
-					transformComponent.Translation = transformComponent.LocalTranslation;
-					transformComponent.Rotation = transformComponent.LocalRotation;
-					transformComponent.Scale = transformComponent.LocalScale;
-				}
-				
-				std::function<void(entity)> UpdateChildWorldMatrices;
-				UpdateChildWorldMatrices = [&](entity parentEntity)
-					{
-						if (m_EntityManager.Has<ParentComponent>(parentEntity))
-						{
-							auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(parentEntity);
-							DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
-				
-							for (auto& childEntity : m_EntityManager.Get<ParentComponent>(parentEntity).Children)
-							{
-								auto& childTransformComponent = m_EntityManager.Get<TransformComponent>(childEntity);
-				
-								DirectX::XMMATRIX childLocalMatrix = DirectX::XMLoadFloat4x4(&childTransformComponent.LocalTransform);
-								DirectX::XMMATRIX childWorldMatrix = DirectX::XMMatrixMultiply(childLocalMatrix, parentWorldMatrix);
-				
-								DirectX::XMStoreFloat4x4(&childTransformComponent.Transform, childWorldMatrix);
-								ImGuizmo::DecomposeMatrixToComponents
-								(
-									*childTransformComponent.Transform.m,
-									&childTransformComponent.Translation.x,
-									&childTransformComponent.Rotation.x,
-									&childTransformComponent.Scale.x
-								);
-				
-								// Recursively update the world matrices for this child's children
-								
-								resourceManager.UploadConstantBufferData(childTransformComponent.ConstantBufferHandle, &childTransformComponent.Transform, sizeof(childTransformComponent.Transform), frameIndex);
-								//Application::Get().GetMemorymanager().UpdateConstantBuffer(childTransformComponent.ConstantBufferID, &childTransformComponent.Transform);
-								UpdateChildWorldMatrices(childEntity);
-							}
-						}
-					};
-				
-				// Kick off the recursive update for this entity's children
-				UpdateChildWorldMatrices(entityHandle);
-				resourceManager.UploadConstantBufferData(transformComponent.ConstantBufferHandle, &transformComponent.Transform, sizeof(transformComponent.Transform), frameIndex);
-
-				//Application::Get().GetMemorymanager().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
-			});
-
-		/*TRANSFORMS*/
-		m_EntityManager.Collect<DirtyTransformComponent, IsChildComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dtc)
-			{
-				TransformComponent& transformComponent = m_EntityManager.Get<TransformComponent>(entityHandle);
-				if (dtc.AdjustedWorldSpace)
-				{
-					//Calculate world transform and convert to equivalent local
-					//As this is a root entity world == local!
-					const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.Rotation.x);
-					const float angleInRadiansY = DirectX::XMConvertToRadians(transformComponent.Rotation.y);
-					const float angleInRadiansZ = DirectX::XMConvertToRadians(transformComponent.Rotation.z);
-
-					const DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.Scale))
-						* DirectX::XMMatrixRotationX(angleInRadiansX)
-						* DirectX::XMMatrixRotationY(angleInRadiansY)
-						* DirectX::XMMatrixRotationZ(angleInRadiansZ)
-						* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.Translation));
-
-					DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
-
-					auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(m_EntityManager.Get<IsChildComponent>(entityHandle).Parent);
-
-					DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
-					DirectX::XMMATRIX inverseParentWorldMatrix = DirectX::XMMatrixInverse(nullptr, parentWorldMatrix);
-					DirectX::XMMATRIX local = DirectX::XMMatrixMultiply(world, inverseParentWorldMatrix);
-
-					DirectX::XMStoreFloat4x4(&transformComponent.LocalTransform, local);
-
-					ImGuizmo::DecomposeMatrixToComponents
-					(
-						&transformComponent.LocalTransform.m[0][0],
-						&transformComponent.LocalTranslation.x,
-						&transformComponent.LocalRotation.x,
-						&transformComponent.LocalScale.x
-					);
-				}
-				else
-				{
-					//Calculate local transform and convert to equivalent world:
-					const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.LocalRotation.x);
-					const float angleInRadiansY = DirectX::XMConvertToRadians(transformComponent.LocalRotation.y);
-					const float angleInRadiansZ = DirectX::XMConvertToRadians(transformComponent.LocalRotation.z);
-
-					const DirectX::XMMATRIX local = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.LocalScale))
-						* DirectX::XMMatrixRotationX(angleInRadiansX)
-						* DirectX::XMMatrixRotationY(angleInRadiansY)
-						* DirectX::XMMatrixRotationZ(angleInRadiansZ)
-						* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.LocalTranslation));
-
-					DirectX::XMStoreFloat4x4(&transformComponent.LocalTransform, local);
-
-					auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(m_EntityManager.Get<IsChildComponent>(entityHandle).Parent);
-
-					DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
-					DirectX::XMMATRIX world = DirectX::XMMatrixMultiply(local, parentWorldMatrix);
-
-					DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
-					ImGuizmo::DecomposeMatrixToComponents
-					(
-						&transformComponent.Transform.m[0][0],
-						&transformComponent.Translation.x,
-						&transformComponent.Rotation.x,
-						&transformComponent.Scale.x
-					);
-				}
-
-				std::function<void(entity)> UpdateChildWorldMatrices;
-				UpdateChildWorldMatrices = [&](entity parentEntity)
-					{
-						if (m_EntityManager.Has<ParentComponent>(parentEntity))
-						{
-							auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(parentEntity);
-							DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
-
-							for (auto& childEntity : m_EntityManager.Get<ParentComponent>(parentEntity).Children)
-							{
-								auto& childTransformComponent = m_EntityManager.Get<TransformComponent>(childEntity);
-
-								DirectX::XMMATRIX childLocalMatrix = DirectX::XMLoadFloat4x4(&childTransformComponent.LocalTransform);
-								DirectX::XMMATRIX childWorldMatrix = DirectX::XMMatrixMultiply(childLocalMatrix, parentWorldMatrix);
-
-								DirectX::XMStoreFloat4x4(&childTransformComponent.Transform, childWorldMatrix);
-								ImGuizmo::DecomposeMatrixToComponents
-								(
-									*childTransformComponent.Transform.m,
-									&childTransformComponent.Translation.x,
-									&childTransformComponent.Rotation.x,
-									&childTransformComponent.Scale.x
-								);
-
-								// Recursively update the world matrices for this child's children
-								resourceManager.UploadConstantBufferData(childTransformComponent.ConstantBufferHandle, &childTransformComponent.Transform, sizeof(childTransformComponent.Transform), frameIndex);
-								//Application::Get().GetMemorymanager().UpdateConstantBuffer(childTransformComponent.ConstantBufferID, &childTransformComponent.Transform);
-								UpdateChildWorldMatrices(childEntity);
-							}
-						}
-					};
-
-				// Kick off the recursive update for this entity's children
-				UpdateChildWorldMatrices(entityHandle);
-
-				//Application::Get().GetMemorymanager().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
-				resourceManager.UploadConstantBufferData(transformComponent.ConstantBufferHandle, &transformComponent.Transform, sizeof(transformComponent.Transform), frameIndex);
-
-			});
-
-
-		//m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)
-		//	{
-				//if (dirty.AdjustedWorldSpace)
-				//{
-				//	const float angleInRadiansX = DirectX::XMConvertToRadians(transformComponent.Rotation.x);
-				//	const float angleInRadiansY = DirectX::XMConvertToRadians(transformComponent.Rotation.y);
-				//	const float angleInRadiansZ = DirectX::XMConvertToRadians(transformComponent.Rotation.z);
-				//
-				//	const DirectX::XMMATRIX world = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&transformComponent.Scale))
-				//		* DirectX::XMMatrixRotationX(angleInRadiansX) * DirectX::XMMatrixRotationY(angleInRadiansY) * DirectX::XMMatrixRotationZ(angleInRadiansZ)
-				//		* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&transformComponent.Translation));
-				//	
-				//	
-				//	DirectX::XMStoreFloat4x4(&transformComponent.Transform, world);
-				//
-				//	if (m_EntityManager.Has<IsChildComponent>(entityHandle))
-				//	{
-				//		auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityHandle);
-				//		auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(childComponent.Parent);
-				//		DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
-				//
-				//		DirectX::XMMATRIX childWorldMatrix = DirectX::XMLoadFloat4x4(&transformComponent.Transform);
-				//		DirectX::XMMATRIX inverseParentWorldMatrix = DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform));
-				//		DirectX::XMMATRIX childLocalMatrix = childWorldMatrix * inverseParentWorldMatrix;
-				//		DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, childLocalMatrix);
-				//
-				//		ImGuizmo::DecomposeMatrixToComponents
-				//		(
-				//			&childComponent.LocalTransform.m[0][0],
-				//			&childComponent.LocalTranslation.x,
-				//			&childComponent.LocalRotation.x,
-				//			&childComponent.LocalScale.x
-				//		);
-				//	}
-				//}
-				//else
-				//{
-				//	if (m_EntityManager.Has<IsChildComponent>(entityHandle))
-				//	{
-				//		auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityHandle);
-				//
-				//		const float angleInRadiansX = DirectX::XMConvertToRadians(childComponent.LocalRotation.x);
-				//		const float angleInRadiansY = DirectX::XMConvertToRadians(childComponent.LocalRotation.y);
-				//		const float angleInRadiansZ = DirectX::XMConvertToRadians(childComponent.LocalRotation.z);
-				//
-				//		const DirectX::XMMATRIX localTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childComponent.LocalScale))
-				//			* DirectX::XMMatrixRotationX(angleInRadiansX) * DirectX::XMMatrixRotationY(angleInRadiansY) * DirectX::XMMatrixRotationZ(angleInRadiansZ)
-				//			* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childComponent.LocalTranslation));
-				//		DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, localTransform);
-				//
-				//		//child local * parent world = child world
-				//		auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(childComponent.Parent);
-				//		DirectX::XMMATRIX parentWorldMatrix = DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform);
-				//		DirectX::XMMATRIX childLocalMatrix = DirectX::XMLoadFloat4x4(&childComponent.LocalTransform);
-				//		DirectX::XMMATRIX childWorldMatrix = childLocalMatrix * parentWorldMatrix;
-				//
-				//		DirectX::XMStoreFloat4x4(&transformComponent.Transform, childWorldMatrix);
-				//		ImGuizmo::DecomposeMatrixToComponents
-				//		(
-				//			&transformComponent.Transform.m[0][0],
-				//			&transformComponent.Translation.x,
-				//			&transformComponent.Rotation.x,
-				//			&transformComponent.Scale.x
-				//		);
-				//	}
-				//}
-				//
-				//if (m_EntityManager.Has<ParentComponent>(entityHandle))
-				//{
-				//	std::function<void(entity, DirectX::XMFLOAT4X4&)> SceneGraph;
-				//	SceneGraph = [&](entity entityID, DirectX::XMFLOAT4X4& accumulatedT)
-				//	{
-				//		auto& childComponent = m_EntityManager.Get<IsChildComponent>(entityID);
-				//		auto& childTransformComponent = m_EntityManager.Get<TransformComponent>(entityID);
-				//
-				//		const float angleInRadiansX = DirectX::XMConvertToRadians(childComponent.LocalRotation.x);
-				//		const float angleInRadiansY = DirectX::XMConvertToRadians(childComponent.LocalRotation.y);
-				//		const float angleInRadiansZ = DirectX::XMConvertToRadians(childComponent.LocalRotation.z);
-				//
-				//		const DirectX::XMMATRIX childLocalTransform = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&childComponent.LocalScale))
-				//			* DirectX::XMMatrixRotationX(angleInRadiansX)
-				//			* DirectX::XMMatrixRotationY(angleInRadiansY)
-				//			* DirectX::XMMatrixRotationZ(angleInRadiansZ)
-				//			* DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&childComponent.LocalTranslation));
-				//		DirectX::XMStoreFloat4x4(&childComponent.LocalTransform, childLocalTransform);
-				//
-				//		DirectX::XMMATRIX accumulatedTransformAsXMMatrix = DirectX::XMLoadFloat4x4(&accumulatedT);
-				//		DirectX::XMStoreFloat4x4(&childTransformComponent.Transform, DirectX::XMMatrixMultiply(childLocalTransform, accumulatedTransformAsXMMatrix));
-				//
-				//		ImGuizmo::DecomposeMatrixToComponents
-				//		(
-				//			*childTransformComponent.Transform.m,
-				//			&childTransformComponent.Translation.x,
-				//			&childTransformComponent.Rotation.x,
-				//			&childTransformComponent.Scale.x
-				//		);
-				//
-				//		m_EntityManager.AddOrReplace<DirtyTransformComponent>(entityID).AdjustedWorldSpace = false;
-				//
-				//		//Child is also a parent:
-				//		if (m_EntityManager.Has<ParentComponent>(entityID))
-				//		{
-				//			auto& pc = m_EntityManager.Get<ParentComponent>(entityID);
-				//			for (auto child : pc.Children)
-				//			{
-				//				SceneGraph(child, childTransformComponent.Transform);
-				//			}
-				//		}
-				//	};
-				//
-				//	auto& children = m_EntityManager.Get<ParentComponent>(entityHandle).Children;
-				//	for (auto child : children)
-				//	{
-				//		SceneGraph(child, transformComponent.Transform);
-				//	}
-				//}
-		//auto&& GetLocalModelMatrix = [&](const DirectX::XMFLOAT3& translation, const DirectX::XMFLOAT3& rotation, const DirectX::XMFLOAT3& scale) -> DirectX::XMFLOAT4X4
-				//	{
-				//		DirectX::XMMATRIX transformX = DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(rotation.x));
-				//		DirectX::XMMATRIX transformY = DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(rotation.y));
-				//		DirectX::XMMATRIX transformZ = DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(rotation.z));
-				//
-				//		DirectX::XMMATRIX rotationMatrix = transformY * transformX * transformZ;
-				//
-				//		// Create the translation and scaling matrices
-				//		DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&translation));
-				//		DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&scale));
-				//
-				//		// Create the final transformation matrix: translation * rotation * scale
-				//		DirectX::XMMATRIX localModelMatrix = scaleMatrix * rotationMatrix * translationMatrix;
-				//		DirectX::XMFLOAT4X4 localModelMatrix4x4;
-				//		DirectX::XMStoreFloat4x4(&localModelMatrix4x4, localModelMatrix);
-				//		return localModelMatrix4x4;
-				//	};
-				//
-				//std::function<void(entity)> UpdateSelfAndChild;
-				//UpdateSelfAndChild = [&](entity e)
-				//	{
-				//		if (m_EntityManager.Has<IsChildComponent>(e))
-				//		{
-				//			auto& icc = m_EntityManager.Get<IsChildComponent>(e);
-				//			entity parent = icc.Parent;
-				//
-				//			DirectX::XMMATRIX mat1 = DirectX::XMLoadFloat4x4(&m_EntityManager.Get<TransformComponent>(parent).Transform);
-				//			DirectX::XMFLOAT4X4 mat2prev = GetLocalModelMatrix(icc.LocalTranslation, icc.LocalRotation, icc.LocalScale);
-				//			DirectX::XMMATRIX mat2 = DirectX::XMLoadFloat4x4(&mat2prev);
-				//
-				//			// Multiply the matrices
-				//			DirectX::XMMATRIX resultMatrix = DirectX::XMMatrixMultiply(mat1, mat2);
-				//
-				//			// Store the result back into an XMFLOAT4X4
-				//			DirectX::XMStoreFloat4x4(&icc.LocalTransform, resultMatrix);
-				//			ImGuizmo::DecomposeMatrixToComponents(*icc.LocalTransform.m,
-				//				&icc.LocalTranslation.x,
-				//				&icc.LocalRotation.x,
-				//				&icc.LocalScale.x);
-				//
-				//			std::cout << "CHILD LOCAL TRANSLATION = [" << icc.LocalTranslation.x << "," << icc.LocalTranslation.y << "," << icc.LocalTranslation.z << "]\n";
-				//			std::cout << "CHILD LOCAL ROTATION = [" << icc.LocalRotation.x << "," << icc.LocalRotation.y << "," << icc.LocalRotation.z << "]\n";
-				//			std::cout << "CHILD LOCAL SCALE = [" << icc.LocalScale.x << "," << icc.LocalScale.y << "," << icc.LocalScale.z << "]\n";
-				//		}
-				//		else
-				//		{
-				//			auto& transformComponent = m_EntityManager.Get<TransformComponent>(e);
-				//
-				//			transformComponent.Transform = GetLocalModelMatrix(transformComponent.Translation, transformComponent.Rotation, transformComponent.Scale);
-				//			ImGuizmo::DecomposeMatrixToComponents(*transformComponent.Transform.m,
-				//				&transformComponent.Translation.x,
-				//				&transformComponent.Rotation.x,
-				//				&transformComponent.Scale.x);
-				//
-				//			MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
-				//		}
-				//		
-				//		if (m_EntityManager.Has<ParentComponent>(e))
-				//		{
-				//			auto& children = m_EntityManager.Get<ParentComponent>(e).Children;
-				//			for (auto& child : children)
-				//			{
-				//				UpdateSelfAndChild(child);
-				//			}
-				//		}
-				//	};
-				//
-				//UpdateSelfAndChild(entityHandle);
-				//auto& transformComponent = m_EntityManager.Get<TransformComponent>(entityHandle);
-				//MemoryManager::Get().UpdateConstantBuffer(transformComponent.ConstantBufferID, &transformComponent.Transform);
-			//});
-
+		/*MATERIALS*/
 		m_EntityManager.Collect<MeshRendererComponent, DirtyMeshRendererComponent>().Do([this](entity e, MeshRendererComponent& mrc)
 			{
 				Application::Get().GetMemorymanager().SetDirtyMaterial(mrc.AssetHandle);
 				m_EntityManager.Remove<DirtyMeshRendererComponent>(e);
 			});
 
-		/*MATERIALS*/
 		Application::Get().GetMemorymanager().UpdateDirtyMaterials();
 
 		/****LIGHTS****/
@@ -445,9 +71,9 @@ namespace Relentless
 			{
 				auto& tc = m_EntityManager.Get<TransformComponent>(entityID);
 
-				lc.Direction.x = std::sin(DirectX::XMConvertToRadians(tc.Rotation.y));
-				lc.Direction.y = std::cos(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
-				lc.Direction.z = std::sin(DirectX::XMConvertToRadians(tc.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.Rotation.y));
+				lc.Direction.x = std::sin(DirectX::XMConvertToRadians(tc.WorldTransform.Rotation.y));
+				lc.Direction.y = std::cos(DirectX::XMConvertToRadians(tc.WorldTransform.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.WorldTransform.Rotation.y));
+				lc.Direction.z = std::sin(DirectX::XMConvertToRadians(tc.WorldTransform.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.WorldTransform.Rotation.y));
 
 				m_LightManager.UpdateDirectionalLight(lc, entityID);
 			});
@@ -456,7 +82,7 @@ namespace Relentless
 			{
 				auto& tc = m_EntityManager.Get<TransformComponent>(entityID);
 
-				lc.Position = tc.Translation;
+				lc.Position = tc.WorldTransform.Location;
 				m_LightManager.UpdatePointLight(lc, entityID);
 			});
 
@@ -496,15 +122,15 @@ namespace Relentless
 		if (type == LightType::Directional)
 		{
 			auto& tc = m_EntityManager.Get<TransformComponent>(lightEntity);
-			tc.Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
-			tc.Translation = { 0.0f, 3.0f, 0.0f };
+			SetLocalRotationFromEulerDegrees(lightEntity, 50.0f, -30.0f, 0.0f);
+			tc.WorldTransform.Location = { 0.0f, 3.0f, 0.0f };
 			auto& dlc = m_EntityManager.Add<DirectionalLightComponent>(lightEntity);
 			dlc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
 			m_LightManager.AllocateDirectionalLight(lightEntity);
 		}
 		else if (type == LightType::Point)
 		{
-			m_EntityManager.Get<TransformComponent>(lightEntity).Translation = { 0.0f, 3.0f, 0.0f };
+			m_EntityManager.Get<TransformComponent>(lightEntity).WorldTransform.Location = { 0.0f, 3.0f, 0.0f };
 			auto& plc = m_EntityManager.Add<PointLightComponent>(lightEntity);
 			plc.Position = { 0.0f, 3.0f, 0.0f };
 			plc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
@@ -654,11 +280,11 @@ namespace Relentless
 		auto camera = CreateEntity(name);
 		auto& cc = m_EntityManager.Add<CameraComponent>(camera);
 		auto& tc = m_EntityManager.Get<TransformComponent>(camera);
-		tc.Translation = {0.0f, 0.0f, -5.0f};
+		tc.WorldTransform.Location = {0.0f, 0.0f, -5.0f};
 
-		DirectX::XMVECTOR forward = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract({ 0.0f, 0.0f, 0.0f }, DirectX::XMLoadFloat3(&tc.Translation)));
-		DirectX::XMVECTOR lookAt = DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&tc.Translation), forward);
-		DirectX::XMMATRIX viewMatrix = DirectX::XMMatrixLookAtLH(DirectX::XMLoadFloat3(&tc.Translation), lookAt, DirectX::FXMVECTOR{ 0.0f, 1.0f, 0.0f });
+		DirectX::XMVECTOR forward = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract({ 0.0f, 0.0f, 0.0f }, DirectX::XMLoadFloat3(&tc.WorldTransform.Location)));
+		DirectX::XMVECTOR lookAt = DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&tc.WorldTransform.Location), forward);
+		DirectX::XMMATRIX viewMatrix = DirectX::XMMatrixLookAtLH(DirectX::XMLoadFloat3(&tc.WorldTransform.Location), lookAt, DirectX::FXMVECTOR{ 0.0f, 1.0f, 0.0f });
 
 		float aspectRatio = static_cast<float>(m_ViewportPanelSize.x) / static_cast<float>(m_ViewportPanelSize.y);
 		DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(cc.FieldOfViewDegrees),
@@ -812,18 +438,16 @@ namespace Relentless
 		auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(toBecomeParent);
 		auto& childTransformComponent = m_EntityManager.Get<TransformComponent>(toBecomeChild);
 
-		DirectX::XMMATRIX childWorldMatrix = DirectX::XMLoadFloat4x4(&childTransformComponent.Transform);
-		DirectX::XMMATRIX inverseParentWorldMatrix = DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&parentTransformComponent.Transform));
-		DirectX::XMMATRIX childLocalMatrix = childWorldMatrix * inverseParentWorldMatrix;
+		const Matrix childWorldMatrix = childTransformComponent.WorldTransform.Matrix;
+		Matrix inverseParentWorldMatrix = parentTransformComponent.WorldTransform.Matrix;
+		inverseParentWorldMatrix.Invert();
 
-		DirectX::XMStoreFloat4x4(&childTransformComponent.LocalTransform, childLocalMatrix);
-		ImGuizmo::DecomposeMatrixToComponents
-		(
-			&childTransformComponent.LocalTransform.m[0][0],
-			&childTransformComponent.LocalTranslation.x,
-			&childTransformComponent.LocalRotation.x,
-			&childTransformComponent.LocalScale.x
-		);
+		Transform& childLocalTransform = childTransformComponent.LocalTransform;
+
+		childLocalTransform.Matrix = childWorldMatrix * inverseParentWorldMatrix;
+		childLocalTransform.Matrix.Decompose(childLocalTransform.Scale, childLocalTransform.Rotation, childLocalTransform.Location);
+
+		childTransformComponent.IsDirty = true;
 	}
 
 	bool Scene::DetachEntity(const entity entityToDetach) noexcept
@@ -895,6 +519,18 @@ namespace Relentless
 		return toReturn;
 	}
 
+	bool Scene::HasParent(entity e) noexcept
+	{
+		return m_EntityManager.Has<IsChildComponent>(e);
+	}
+
+	entity Scene::GetParent(entity e) noexcept
+	{
+		RLS_ASSERT(HasParent(e), "[Scene]: Entity has no parent.");
+
+		return m_EntityManager.Get<IsChildComponent>(e).Parent;
+	}
+
 	void Scene::SetHoveredEntity(entity hoveredEntity) noexcept
 	{
 		m_HoveredEntity = hoveredEntity;
@@ -903,6 +539,478 @@ namespace Relentless
 	entity Scene::GetHoveredEntity() const noexcept
 	{
 		return m_HoveredEntity;
+	}
+
+	void Scene::SetLocalTransform(entity e, const Matrix& localTransform) noexcept
+	{
+		using namespace DirectX;
+
+		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
+		tc.LocalTransform.Matrix = localTransform;
+		
+		XMMATRIX localXMTransform = XMLoadFloat4x4(&tc.LocalTransform.Matrix);
+
+		XMVECTOR localTranslation;
+		XMVECTOR localRotation;
+		XMVECTOR localScale;
+
+		if (XMMatrixDecompose(&localScale, &localRotation, &localTranslation, localXMTransform))
+		{
+			XMStoreFloat3(&tc.LocalTransform.Location, localTranslation);
+			XMStoreFloat4(&tc.LocalTransform.Rotation, localRotation);
+			XMStoreFloat3(&tc.LocalTransform.Scale, localScale);
+		}
+
+		tc.IsDirty = true;
+
+		std::vector<entity> descendants = GetAllEntityDescendants(e);
+		for (auto& child : descendants)
+		{
+			m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
+			m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
+		}
+	}
+
+	void Scene::SetLocalLocation(entity e, const Vector3& localLocation) noexcept
+	{
+		m_EntityManager.Get<TransformComponent>(e).LocalTransform.Location = localLocation;
+		UpdateLocalTransform(e);
+	}
+
+	void Scene::SetLocalRotation(entity e, const Quaternion& localQuaternion) noexcept
+	{
+		m_EntityManager.Get<TransformComponent>(e).LocalTransform.Rotation = localQuaternion;
+		UpdateLocalTransform(e);
+	}
+
+	void Scene::SetLocalScale(entity e, const Vector3& localScale) noexcept
+	{
+		m_EntityManager.Get<TransformComponent>(e).LocalTransform.Scale = localScale;
+		UpdateLocalTransform(e);
+	}
+
+	void Scene::AddLocalOffset(entity e, const Vector3& localOffset) noexcept
+	{
+		const Vector3 currentLocalLocation = GetLocalLocation(e);
+
+		const Vector3 desiredLocalLocation =
+		{
+			currentLocalLocation.x + localOffset.x,
+			currentLocalLocation.y + localOffset.y,
+			currentLocalLocation.z + localOffset.z
+		};
+
+		SetLocalLocation(e, desiredLocalLocation);
+	}
+
+	void Scene::AddLocalRotation(entity e, const Vector3& rotationEulerAnglesDegrees) noexcept
+	{
+		using namespace DirectX;
+
+		// Convert rotation increments from degrees to radians
+		const float pitchRadians = XMConvertToRadians(rotationEulerAnglesDegrees.x);
+		const float yawRadians = XMConvertToRadians(rotationEulerAnglesDegrees.y);
+		const float rollRadians = XMConvertToRadians(rotationEulerAnglesDegrees.z);
+
+		// Create a quaternion representing the rotation increment
+		const XMVECTOR rotationIncrementQuat = XMQuaternionRotationRollPitchYaw(pitchRadians, yawRadians, rollRadians);
+
+		// Load the current local rotation quaternion
+		const Quaternion localRotation = GetLocalRotation(e);
+		const XMVECTOR currentLocalRotationQuat = XMLoadFloat4(&localRotation);
+
+		// Compute the new local rotation quaternion
+		XMVECTOR newLocalRotationQuat = XMQuaternionMultiply(currentLocalRotationQuat, rotationIncrementQuat);
+
+		// Normalize the quaternion
+		newLocalRotationQuat = XMQuaternionNormalize(newLocalRotationQuat);
+
+		// Set the new local rotation
+		XMFLOAT4 newLocalRotation;
+		XMStoreFloat4(&newLocalRotation, newLocalRotationQuat);
+		SetLocalRotation(e, newLocalRotation);
+	}
+
+	void Scene::AddLocalScale(entity e, const Vector3& localScale) noexcept
+	{
+		const Vector3 currentLocalScale = GetLocalScale(e);
+		const Vector3 newScale = Vector3(currentLocalScale.x + localScale.x, currentLocalScale.y + localScale.y, currentLocalScale.z + localScale.z);
+		SetLocalScale(e, newScale);
+	}
+
+	void Scene::SetWorldTransform(entity e, const Matrix& worldMatrix) noexcept
+	{
+		using namespace DirectX;
+
+		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
+		Matrix parentLocalMatrix = Matrix::Identity;
+		if (HasParent(e))
+		{
+			parentLocalMatrix = GetWorldTransform(GetParent(e));
+			parentLocalMatrix.Invert();
+		}
+
+		Matrix localMatrix = worldMatrix * parentLocalMatrix;
+		Vector3 scale = Vector3::Zero;
+		Quaternion rotationQuat = Quaternion::Identity;
+		Vector3 translation = Vector3::Zero;
+
+		if (localMatrix.Decompose(scale, rotationQuat, translation))
+		{
+			tc.LocalTransform.Matrix = localMatrix;
+			rotationQuat.Normalize();
+			tc.LocalTransform.Scale = scale;
+			tc.LocalTransform.Rotation = rotationQuat;
+			tc.LocalTransform.Location = translation;
+		}
+		
+		tc.IsDirty = true;
+		m_EntityManager.AddOrReplace<DirtyTransformComponent>(e);
+
+		const std::vector<entity> descendants = GetAllEntityDescendants(e);
+		for (auto& child : descendants)
+		{
+			m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
+			m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
+		}
+	}
+
+	void Scene::SetWorldLocation(entity e, const Vector3& worldLocation) noexcept
+	{
+		using namespace DirectX;
+		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
+		
+		XMMATRIX parentWorldTransform = XMMatrixIdentity();
+		if (HasParent(e)) 
+		{
+			DirectX::XMFLOAT4X4 worldTransform = GetWorldTransform(GetParent(e));
+			parentWorldTransform = XMLoadFloat4x4(&worldTransform);
+		}
+		const XMVECTOR desiredWorldPosition = XMLoadFloat3(&worldLocation);
+		const XMVECTOR localPosition = XMVector3TransformCoord(desiredWorldPosition, XMMatrixInverse(nullptr, parentWorldTransform));
+		XMStoreFloat3(&tc.LocalTransform.Location, localPosition);
+		
+		UpdateLocalTransform(e);
+	}
+
+	void Scene::SetWorldRotation(entity e, const Quaternion& worldQuaternion) noexcept
+	{
+		using namespace DirectX;
+		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
+
+		XMVECTOR parentWorldRotation = XMQuaternionIdentity();
+		if (HasParent(e)) 
+		{
+			XMFLOAT4 worldRotation = GetWorldRotation(GetParent(e));
+			parentWorldRotation = XMLoadFloat4(&worldRotation);
+		}
+		XMVECTOR desiredWorldRotation = XMLoadFloat4(&worldQuaternion);
+		XMVECTOR localRotation = XMQuaternionMultiply(XMQuaternionInverse(parentWorldRotation), desiredWorldRotation);
+		XMStoreFloat4(&tc.LocalTransform.Rotation, localRotation);
+		
+		UpdateLocalTransform(e);
+	}
+
+	void Scene::SetWorldScale(entity e, const Vector3& worldScale) noexcept
+	{
+		// Assuming uniform scaling in the hierarchy for simplicity
+		// Non-uniform scaling in parents complicates this process
+		using namespace DirectX;
+		Vector3 parentWorldScale = Vector3::One;
+		if (HasParent(e)) 
+			parentWorldScale = GetWorldScale(GetParent(e));
+
+		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
+
+		tc.LocalTransform.Scale.x = worldScale.x / parentWorldScale.x;
+		tc.LocalTransform.Scale.y = worldScale.y / parentWorldScale.y;
+		tc.LocalTransform.Scale.z = worldScale.z / parentWorldScale.z;
+		UpdateLocalTransform(e);
+	}
+
+	void Scene::AddWorldOffset(entity e, const Vector3& worldOffset) noexcept
+	{
+		const Vector3 currentWorldLocation = GetWorldLocation(e);
+
+		const Vector3 desiredWorldLocation = 
+		{
+			currentWorldLocation.x + worldOffset.x,
+			currentWorldLocation.y + worldOffset.y,
+			currentWorldLocation.z + worldOffset.z
+		};
+
+		SetWorldLocation(e, desiredWorldLocation);
+	}
+
+	void Scene::AddWorldRotation(entity e, const Vector3& rotationEulerAnglesDegrees) noexcept
+	{
+		using namespace DirectX;
+
+		// Step 1: Convert rotation increment from degrees to radians
+		const float pitchRadians = XMConvertToRadians(rotationEulerAnglesDegrees.x);
+		const float yawRadians = XMConvertToRadians(rotationEulerAnglesDegrees.y);
+		const float rollRadians = XMConvertToRadians(rotationEulerAnglesDegrees.z);
+
+		// Step 2: Create a quaternion representing the rotation increment
+		const XMVECTOR rotationIncrementQuat = XMQuaternionRotationRollPitchYaw(pitchRadians, yawRadians, rollRadians);
+
+		// Step 3: Get the current global rotation quaternion
+		const DirectX::XMFLOAT4 currentRotation = GetWorldRotation(e);
+		const XMVECTOR currentWorldRotationQuat = XMLoadFloat4(&currentRotation);
+
+		// Step 4: Compute the desired new global rotation quaternion
+		// The new rotation is the rotation increment applied to the current rotation
+		XMVECTOR desiredWorldRotationQuat = XMQuaternionMultiply(rotationIncrementQuat, currentWorldRotationQuat);
+
+		// Step 5: Adjust the local rotation
+		// Get parent's global rotation
+		XMVECTOR parentWorldRotationQuat = XMQuaternionIdentity();
+		if (HasParent(e))
+		{
+			DirectX::XMFLOAT4 parentWorldRotation = GetWorldRotation(GetParent(e));
+			parentWorldRotationQuat = XMLoadFloat4(&parentWorldRotation);
+		}
+
+		// Compute the new local rotation
+		XMVECTOR newLocalRotationQuat = XMQuaternionMultiply(XMQuaternionInverse(parentWorldRotationQuat), desiredWorldRotationQuat);
+
+		newLocalRotationQuat = XMQuaternionNormalize(newLocalRotationQuat);
+
+		// Step 6: Store the new local rotation and update the transform
+		XMFLOAT4 newRotation;
+		XMStoreFloat4(&newRotation, newLocalRotationQuat);
+		SetLocalRotation(e, newRotation);
+	}
+
+	Matrix Scene::GetWorldTransform(entity e) noexcept
+	{
+		UpdateWorldTransformIfDirty(e);
+		return m_EntityManager.Get<TransformComponent>(e).WorldTransform.Matrix;
+	}
+
+	Vector3 Scene::GetWorldLocation(entity e) noexcept
+	{
+		UpdateWorldTransformIfDirty(e);
+		return m_EntityManager.Get<TransformComponent>(e).WorldTransform.Location;
+	}
+
+	Vector3 Scene::GetWorldScale(entity e) noexcept
+	{
+		UpdateWorldTransformIfDirty(e);
+		return m_EntityManager.Get<TransformComponent>(e).WorldTransform.Scale;
+	}
+
+	Quaternion Scene::GetWorldRotation(entity e) noexcept
+	{
+		UpdateWorldTransformIfDirty(e);
+		return m_EntityManager.Get<TransformComponent>(e).WorldTransform.Rotation;
+	}
+
+	Vector3 Scene::GetWorldForward(entity e) noexcept
+	{
+		using namespace DirectX;
+
+		// Get the entity's global rotation quaternion
+		const XMFLOAT4 worldRotation = GetWorldRotation(e);
+		XMVECTOR rotationQuat = XMLoadFloat4(&worldRotation);
+
+		// Ensure the quaternion is normalized
+		rotationQuat = XMQuaternionNormalize(rotationQuat);
+
+		// Local forward vector (positive Z-axis)
+		const XMVECTOR localForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+
+		// Rotate the local forward vector by the entity's global rotation
+		XMVECTOR worldForwardVector = XMVector3Rotate(localForward, rotationQuat);
+
+		// Normalize the forward vector
+		worldForwardVector = XMVector3Normalize(worldForwardVector);
+
+		// Store the result in XMFLOAT3
+		XMFLOAT3 forward;
+		XMStoreFloat3(&forward, worldForwardVector);
+
+		return forward;
+	}
+
+	Vector3 Scene::GetWorldRight(entity e) noexcept
+	{
+		using namespace DirectX;
+
+		// Get the entity's global rotation quaternion
+		const XMFLOAT4 worldRotation = GetWorldRotation(e);
+		XMVECTOR rotationQuat = XMLoadFloat4(&worldRotation);
+
+		// Ensure the quaternion is normalized
+		rotationQuat = XMQuaternionNormalize(rotationQuat);
+
+		// Local right vector (positive X-axis)
+		const XMVECTOR localRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+
+		// Rotate the local right vector by the entity's global rotation
+		XMVECTOR worldRightVector = XMVector3Rotate(localRight, rotationQuat);
+
+		// Normalize the right vector
+		worldRightVector = XMVector3Normalize(worldRightVector);
+
+		// Store the result in XMFLOAT3
+		XMFLOAT3 right;
+		XMStoreFloat3(&right, worldRightVector);
+
+		return right;
+	}
+
+	Vector3 Scene::GetWorldUp(entity e) noexcept
+	{
+		using namespace DirectX;
+
+		Quaternion worldRotation = GetWorldRotation(e);
+		worldRotation.Normalize();
+
+		Vector3 worldUpVector = Vector3::Transform(Vector3::Up, worldRotation);
+		worldUpVector.Normalize();
+
+		return worldUpVector;
+	}
+
+	Matrix Scene::GetLocalTransform(entity e) noexcept
+	{
+		return m_EntityManager.Get<TransformComponent>(e).LocalTransform.Matrix;
+	}
+
+	Vector3 Scene::GetLocalLocation(entity e) noexcept
+	{
+		return m_EntityManager.Get<TransformComponent>(e).LocalTransform.Location;
+	}
+
+	Quaternion Scene::GetLocalRotation(entity e) noexcept
+	{
+		return m_EntityManager.Get<TransformComponent>(e).LocalTransform.Rotation;
+	}
+
+	Vector3 Scene::GetLocalScale(entity e) noexcept
+	{
+		return m_EntityManager.Get<TransformComponent>(e).LocalTransform.Scale;
+	}
+
+	void Scene::SetLocalRotationFromEulerDegrees(entity e, float pitchDegrees, float yawDegrees, float rollDegrees) noexcept
+	{
+		// Convert degrees to radians
+		const float pitchRadians = DirectX::XMConvertToRadians(pitchDegrees);
+		const float yawRadians = DirectX::XMConvertToRadians(yawDegrees);
+		const float rollRadians = DirectX::XMConvertToRadians(rollDegrees);
+
+		// Create quaternion from Euler angles
+		const DirectX::XMVECTOR quaternion = DirectX::XMQuaternionRotationRollPitchYaw(
+			pitchRadians,
+			yawRadians,
+			rollRadians
+		);
+
+		// Store quaternion in XMFLOAT4
+		DirectX::XMFLOAT4 rotationQuaternion;
+		DirectX::XMStoreFloat4(&rotationQuaternion, quaternion);
+
+		// Set the rotation
+		SetLocalRotation(e, rotationQuaternion);
+	}
+
+	Vector3 Scene::GetLocalRotationInEulerDegrees(entity e)
+	{
+		DirectX::XMFLOAT4 localRotation = m_EntityManager.Get<TransformComponent>(e).LocalTransform.Rotation;
+
+		DirectX::XMFLOAT4X4 matrix;
+		DirectX::XMStoreFloat4x4(&matrix, DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&localRotation)));
+
+		const float pitch = DirectX::XMScalarASin(-matrix._32);
+
+		const DirectX::XMVECTOR from(DirectX::XMVectorSet(matrix._12, matrix._31, 0.0f, 0.0f));
+		const DirectX::XMVECTOR to(DirectX::XMVectorSet(matrix._22, matrix._33, 0.0f, 0.0f));
+		const DirectX::XMVECTOR res(DirectX::XMVectorATan2(from, to));
+
+		const float roll = DirectX::XMVectorGetX(res);
+		const float yaw = DirectX::XMVectorGetY(res);
+
+		DirectX::XMFLOAT3 euler;
+		euler.x = Math::RadToDeg(pitch);
+		euler.y = Math::RadToDeg(yaw);
+		euler.z = Math::RadToDeg(roll);
+
+		return euler;
+	}
+
+	void Scene::UpdateWorldTransformIfDirty(entity e) noexcept
+	{
+		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
+		if (tc.IsDirty)
+		{
+			UpdateWorldTransform(e);
+			tc.IsDirty = false;
+		}
+	}
+
+	void Scene::UpdateWorldTransform(entity e) noexcept
+	{
+		using namespace DirectX;
+		
+		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
+
+		const XMMATRIX localMatrix = XMLoadFloat4x4(&tc.LocalTransform.Matrix);
+
+		if (HasParent(e)) 
+		{
+			const entity parent = GetParent(e);
+			const XMFLOAT4X4 parentWorld = GetWorldTransform(parent);
+
+			const XMMATRIX parentWorldMatrix = XMLoadFloat4x4(&parentWorld);
+			const XMMATRIX worldMatrix = XMMatrixMultiply(localMatrix, parentWorldMatrix);
+			XMStoreFloat4x4(&tc.WorldTransform.Matrix, worldMatrix);
+		}
+		else 
+			XMStoreFloat4x4(&tc.WorldTransform.Matrix, localMatrix);
+
+		XMMATRIX worldXMTransform = XMLoadFloat4x4(&tc.WorldTransform.Matrix);
+
+		XMVECTOR worldTranslation;
+		XMVECTOR worldRotation;
+		XMVECTOR worldScale;
+
+		if (XMMatrixDecompose(&worldScale, &worldRotation, &worldTranslation, worldXMTransform))
+		{
+			XMStoreFloat3(&tc.WorldTransform.Location, worldTranslation);
+			XMStoreFloat4(&tc.WorldTransform.Rotation, worldRotation);
+			XMStoreFloat3(&tc.WorldTransform.Scale, worldScale);
+		}
+
+		m_EntityManager.AddOrReplace<DirtyTransformComponent>(e);
+	}
+
+	void Scene::UpdateLocalTransform(entity e) noexcept
+	{
+		using namespace DirectX;
+
+		const XMFLOAT3 localTranslation = GetLocalLocation(e);
+		const XMFLOAT4 localRotation = GetLocalRotation(e);
+		const XMFLOAT3 localScale = GetLocalScale(e);
+
+		const XMMATRIX scaleMatrix = XMMatrixScalingFromVector(XMLoadFloat3(&localScale));
+		const XMMATRIX rotationMatrix = XMMatrixRotationQuaternion(XMLoadFloat4(&localRotation));
+		const XMMATRIX translationMatrix = XMMatrixTranslationFromVector(XMLoadFloat3(&localTranslation));
+
+		const XMMATRIX localMatrix = scaleMatrix * rotationMatrix * translationMatrix;
+		
+		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
+		XMStoreFloat4x4(&tc.LocalTransform.Matrix, localMatrix);
+
+		tc.IsDirty = true;
+		m_EntityManager.AddOrReplace<DirtyTransformComponent>(e);
+
+		std::vector<entity> descendants = GetAllEntityDescendants(e);
+		for (auto& child : descendants)
+		{
+			m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
+			m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
+		}
 	}
 
 	template<typename ComponentType>

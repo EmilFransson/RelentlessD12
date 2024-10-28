@@ -455,6 +455,9 @@ namespace Relentless
 				if (!mrc.AssetHandle.IsValid() || !mfc.AssetHandle.IsValid())
 					return;
 
+				if (m_pScene->GetEntityManager().Has<HiddenInGameComponent>(e))
+					return;
+
 				const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
 				switch (material->GetRenderMode())
 				{
@@ -483,8 +486,8 @@ namespace Relentless
 						TransformComponent& tcA = mgr.Get<TransformComponent>(a);
 						TransformComponent& tcB = mgr.Get<TransformComponent>(b);
 
-						double squaredDistanceA = std::pow(tcA.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcA.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcA.Translation.z - pEditorCamera->GetPosition().z, 2);
-						double squaredDistanceB = std::pow(tcB.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcB.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcB.Translation.z - pEditorCamera->GetPosition().z, 2);
+						double squaredDistanceA = std::pow(tcA.WorldTransform.Location.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcA.WorldTransform.Location.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcA.WorldTransform.Location.z - pEditorCamera->GetPosition().z, 2);
+						double squaredDistanceB = std::pow(tcB.WorldTransform.Location.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcB.WorldTransform.Location.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcB.WorldTransform.Location.z - pEditorCamera->GetPosition().z, 2);
 
 						return squaredDistanceA > squaredDistanceB;
 					});
@@ -499,8 +502,8 @@ namespace Relentless
 						TransformComponent& tcA = mgr.Get<TransformComponent>(a);
 						TransformComponent& tcB = mgr.Get<TransformComponent>(b);
 
-						double squaredDistanceA = std::pow(tcA.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcA.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcA.Translation.z - pEditorCamera->GetPosition().z, 2);
-						double squaredDistanceB = std::pow(tcB.Translation.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcB.Translation.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcB.Translation.z - pEditorCamera->GetPosition().z, 2);
+						double squaredDistanceA = std::pow(tcA.WorldTransform.Location.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcA.WorldTransform.Location.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcA.WorldTransform.Location.z - pEditorCamera->GetPosition().z, 2);
+						double squaredDistanceB = std::pow(tcB.WorldTransform.Location.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcB.WorldTransform.Location.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcB.WorldTransform.Location.z - pEditorCamera->GetPosition().z, 2);
 
 						return squaredDistanceA < squaredDistanceB;
 					});
@@ -524,16 +527,16 @@ namespace Relentless
 			//Note: Could actually be just one constant buffer:
 			{
 				DirectX::XMMATRIX world = DirectX::XMMatrixScaling(10000.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(offset.x, 0.0f, 200.0f + offset.z);
-				DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent1.Transform, world);
+				DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent1.WorldTransform.Matrix, world);
 
-				resourceManager.UploadConstantBufferData(m_EditorTransformCB1Handle, &m_EditorGridTransformComponent1.Transform, sizeof(DirectX::XMFLOAT4X4), frameIndex);
+				resourceManager.UploadConstantBufferData(m_EditorTransformCB1Handle, &m_EditorGridTransformComponent1.WorldTransform.Matrix, sizeof(DirectX::XMFLOAT4X4), frameIndex);
 			}
 
 			{
 				DirectX::XMMATRIX world = DirectX::XMMatrixScaling(10000.0f, 1.0f, 1.0f) * DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(90.0f)) * DirectX::XMMatrixTranslation(offset.x - 200.0f, 0.0f, offset.z);
-				DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent2.Transform, world);
+				DirectX::XMStoreFloat4x4(&m_EditorGridTransformComponent2.WorldTransform.Matrix, world);
 
-				resourceManager.UploadConstantBufferData(m_EditorTransformCB2Handle, &m_EditorGridTransformComponent2.Transform, sizeof(DirectX::XMFLOAT4X4), frameIndex);
+				resourceManager.UploadConstantBufferData(m_EditorTransformCB2Handle, &m_EditorGridTransformComponent2.WorldTransform.Matrix, sizeof(DirectX::XMFLOAT4X4), frameIndex);
 			}
 		}
 

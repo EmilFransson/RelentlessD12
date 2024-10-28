@@ -3,22 +3,7 @@
 namespace Relentless
 {
 	EditorLayer::EditorLayer(const std::string& layerName) noexcept
-		: Layer{layerName}, 
-		  m_ViewportPanelSize{800.0f, 600.0f}, 
-		  m_SceneViewportChanged{ false },
-		  m_HoveringSceneViewport{ false },
-		  m_HoveredEntity{ NULL_ENTITY },
-		  m_SelectedEntity{ NULL_ENTITY },
-		  m_CurrentGizmoType{ GizmoType::NONE },
-		  m_CurrentGizmoMode{ GizmoMode::LOCAL },
-		  m_DisplaySceneHierarchyPanel{ true },
-		  m_DisplayContentBrowserPanel{ true },
-		  m_DisplayPropertiesPanel{ true },
-		  m_DisplayInspectorPanel{false},
-		  m_DisplayMetricsPanel{ true },
-		  m_DisplaySceneRendererPanel{ true },
-		  m_DisplayStatisticsPanel{ true },
-		  m_ImmersiveModeEnabled{ false }
+		: Layer{layerName} 
 	{}
 
 	void EditorLayer::OnEvent(IEvent& event) noexcept
@@ -63,26 +48,24 @@ namespace Relentless
 			if (ImGuizmo::IsUsing())
 				return;
 
-			if (m_HoveredEntity == NULL_ENTITY)
-			{
-				if (m_SelectedEntity != NULL_ENTITY)
-				{
-					m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
-				}
-				m_SelectedEntity = NULL_ENTITY;
-				m_CurrentGizmoType = GizmoType::NONE;
-			}
-			else
-			{
-				if (m_SelectedEntity != NULL_ENTITY)
-					m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+			OutlinerTable& table = m_OutlinerPanel.GetTable();
 
-				m_SelectedEntity = m_HoveredEntity;
-				m_pActiveScene->GetEntityManager().Add<SelectedInEditorComponent>(m_SelectedEntity);
-				m_CurrentGizmoType = GizmoType::TRANSLATE;
+			const bool lCtrlDown = Keyboard::IsKeyPressed(RLS_KEY::LCtrl);
+			const bool lShiftDown = Keyboard::IsKeyPressed(RLS_KEY::LShift);;
+			const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
+
+			if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
+				table.DeselectAllEntities();
+
+			if (isHoveringEntity)
+			{
+				if (lCtrlDown && table.IsEntitySelected(m_HoveredEntity))
+					table.DeselectEntity(m_HoveredEntity);
+				else 
+					table.SelectEntity(m_HoveredEntity);
 			}
-			m_SceneHierarchyPanel.SetSelectedEntity(m_SelectedEntity);
-			m_PropertiesPanel.SetSelectedEntity(m_SelectedEntity);
+				
+				//m_PropertiesPanel.SetSelectedEntity(m_SelectedEntity);
 
 			break;
 		}
@@ -110,7 +93,7 @@ namespace Relentless
 					m_CreateNewScene = true;
 				else if (key == RLS_KEY::O && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
 				{
-					//TODO: FIX IMOPORT
+					//TODO: FIX IMPORT
 					RLS_ASSERT(false, "FIX!");
 					
 					//std::string filepath = FileDialogs::OpenFile("Relentless Scene (*.Relentless)\0*.Relentless\0");
@@ -136,7 +119,7 @@ namespace Relentless
 				}
 				else if (key == RLS_KEY::S && Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
 				{
-					SaveScene(std::string(EDITOR_ASSET_DIRECTORY) + "Scenes/Example.Relentless");
+					//SaveScene(std::string(EDITOR_ASSET_DIRECTORY) + "Scenes/Example.Relentless");
 				}
 			}
 			event.StopPropagation();
@@ -145,7 +128,7 @@ namespace Relentless
 		}
 
 		m_ContentBrowserPanel.OnEvent(event);
-		m_SceneHierarchyPanel.OnEvent(event);
+		m_OutlinerPanel.OnEvent(event);
 	}
 
 	void EditorLayer::OnImGuiRender() noexcept
@@ -227,17 +210,15 @@ namespace Relentless
 			ImGui::EndDragDropTarget();
 		}
 		
-		if (m_SelectedEntity != NULL_ENTITY && m_CurrentGizmoType != GizmoType::NONE)
-		{
+		if (m_CurrentGizmoType != GizmoType::NONE)
 			ManipulateTransformGizmo();
-		}
 		
 		ImGui::End();
 		ImGui::PopStyleVar();
 		
 		UI_DrawStatisticsPanel();
 		
-		m_SceneHierarchyPanel.OnImGuiRender(m_DisplaySceneHierarchyPanel && !m_ImmersiveModeEnabled);
+		m_OutlinerPanel.OnImGuiRender(m_DisplayOutlinerPanel && !m_ImmersiveModeEnabled);
 		m_InspectorPanel.OnImGuiRender(m_DisplayInspectorPanel && !m_ImmersiveModeEnabled);
 		m_SceneRendererPanel.OnImGuiRender(m_DisplaySceneRendererPanel && !m_ImmersiveModeEnabled);
 		m_PropertiesPanel.OnImGuiRender(m_DisplayPropertiesPanel && !m_ImmersiveModeEnabled);
@@ -248,59 +229,14 @@ namespace Relentless
 	void EditorLayer::OnAttach() noexcept
 	{
 		m_pActiveScene = std::make_shared<Scene>();
+		m_pEditorScene = m_pActiveScene;
 		m_pActiveScene->SetViewportPanelSize(m_ViewportPanelSize);
+
 		LoadStarterMeshes();
 		CreateStartScene();
+
 		m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pActiveScene);
 		m_pUtilityRenderer = std::make_shared<UtilityRenderer>();
-
-		m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
-		m_SceneHierarchyPanel.SetActiveScene(m_pActiveScene.get());
-		m_SceneRendererPanel.SetActiveRenderer(m_pSceneRenderer);
-
-		m_pEditorScene = m_pActiveScene;
-
-		//TODO: Collapse into one switch-case-callback-function
-		m_SceneHierarchyPanel.SetOnEntityDestroyFunction([this](entity entityID)
-			{
-				if (entityID == m_SelectedEntity)
-				{
-					m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
-					m_SelectedEntity = NULL_ENTITY;
-				}
-				if (entityID == m_HoveredEntity)
-					m_HoveredEntity = NULL_ENTITY;
-			});
-		m_SceneHierarchyPanel.SetOnEntityCreatedFunction([this](entity entityID)
-			{
-				if (m_SelectedEntity != NULL_ENTITY)
-				{
-					m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
-				}
-				m_pActiveScene->GetEntityManager().Add<SelectedInEditorComponent>(entityID);
-				m_PropertiesPanel.SetSelectedEntity(entityID);
-				m_SelectedEntity = entityID;
-
-				if (m_CurrentGizmoType == GizmoType::NONE)
-				{
-					m_CurrentGizmoType = GizmoType::TRANSLATE;
-				}
-			});
-		m_SceneHierarchyPanel.SetOnEntitySelectedFunction([this](entity entityID)
-			{
-				if (m_SelectedEntity != NULL_ENTITY)
-				{
-					m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
-				}
-				m_pActiveScene->GetEntityManager().Add<SelectedInEditorComponent>(entityID);
-				m_PropertiesPanel.SetSelectedEntity(entityID);
-				m_SelectedEntity = entityID;
-
-				if (m_CurrentGizmoType == GizmoType::NONE)
-				{
-					m_CurrentGizmoType = GizmoType::TRANSLATE;
-				}
-			});
 
 		m_PropertiesPanel.SetOnMaterialSelectedCallback([this](const AssetHandle& materialHandle)
 			{
@@ -327,12 +263,7 @@ namespace Relentless
 		//m_SimulateButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\SimulateButton.png"), "");
 		//m_StepButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StepButton.png"), "");
 
-		m_pActiveScene->CreateShape(Shape::Cube);
-		m_pActiveScene->CreateShape(Shape::Plane);
-		m_pActiveScene->CreateShape(Shape::Cone);
-
-
-		std::filesystem::path srcPath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures/skybox2.rasset");
+		const std::filesystem::path srcPath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures/puresky.rasset");
 
 		AssetHandle handle;
 		if (AssetManager::RequestLoadAsset(srcPath, handle))
@@ -351,6 +282,10 @@ namespace Relentless
 						});
 				});
 		}
+
+		m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
+		m_OutlinerPanel.SetActiveScene(m_pActiveScene.get());
+		m_SceneRendererPanel.SetActiveRenderer(m_pSceneRenderer);
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
@@ -417,10 +352,9 @@ namespace Relentless
 			m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
 			m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
 
-			m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
-			m_SceneHierarchyPanel.SetActiveScene(m_pActiveScene.get());
+			m_OutlinerPanel.SetActiveScene(m_pActiveScene.get());
 
-			m_SelectedEntity = m_HoveredEntity = NULL_ENTITY;
+			m_HoveredEntity = NULL_ENTITY;
 
 			m_SceneViewportChanged = true;
 			m_CreateNewScene = false;
@@ -458,6 +392,13 @@ namespace Relentless
 
 	void EditorLayer::CreateStartScene() noexcept
 	{
+		entity parent = m_pActiveScene->CreateShape(Shape::Cube);
+		entity child = m_pActiveScene->CreateShape(Shape::Cube);
+		entity otherCube = m_pActiveScene->CreateShape(Shape::Cube);
+		m_pActiveScene->SetLocalLocation(parent, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+		m_pActiveScene->SetLocalLocation(child, DirectX::XMFLOAT3(5.0f, 0.0f, 0.0f));
+		m_pActiveScene->SetLocalLocation(otherCube, DirectX::XMFLOAT3(-5.0f, 0.0f, 0.0f));
+
 		//SceneSerializer::Deserialize(m_pActiveScene, ENGINE_ASSET_DIRECTORY + std::string("Scenes\\StarterScene.Relentless"));
 	}
 
@@ -473,133 +414,135 @@ namespace Relentless
 
 	void EditorLayer::DestroySelectedEntity() noexcept
 	{
-		if (m_SelectedEntity == NULL_ENTITY)
-			return;
+		RLS_ASSERT(false, "Not implemented");
 
-		m_pActiveScene->DestroyEntity(m_SelectedEntity);
-		m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
+		//if (m_SelectedEntity == NULL_ENTITY)
+		//	return;
+
+		//m_pActiveScene->DestroyEntity(m_SelectedEntity);
 		m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
-		m_SelectedEntity = NULL_ENTITY;
 	}
 
 	//Should be extended to perform full copies, however as for now
 	//it serves as an easy way of getting more meshes/models on screen.
 	void EditorLayer::CopySelectedEntity() noexcept
 	{
-		if (m_SelectedEntity == NULL_ENTITY)
-			return;
+		RLS_ASSERT(false, "Not implemented");
 
-		auto& mgr = m_pActiveScene->GetEntityManager();
-		auto newEntity = m_pActiveScene->CreateEntityWithUUID(mgr.Get<NameComponent>(m_SelectedEntity).Name.c_str(), IDComponent().UuId);
-		auto& tc1 = mgr.Get<TransformComponent>(m_SelectedEntity);
-		auto& tc2 = mgr.Get<TransformComponent>(newEntity);
-		tc2.Translation = tc1.Translation;
-		tc2.Rotation = tc1.Rotation;
-		tc2.Scale = tc1.Scale;
-		tc2.Transform = tc1.Transform;
 
-		if (mgr.Has<MeshFilterComponent>(m_SelectedEntity))
-		{
-			auto& mfcNew = mgr.Add<MeshFilterComponent>(newEntity);
-			auto& mfc = mgr.Get<MeshFilterComponent>(m_SelectedEntity);
 
-			mfcNew.AssetHandle = mfc.AssetHandle;
-		}
-		if (mgr.Has<MeshRendererComponent>(m_SelectedEntity))
-		{
-			auto& mrcNew = mgr.Add<MeshRendererComponent>(newEntity);
-			auto& mrc = mgr.Get<MeshRendererComponent>(m_SelectedEntity);
-			mrcNew.AssetHandle = mrc.AssetHandle;
-			mgr.Add<DirtyMeshRendererComponent>(newEntity);
-		}
-		if (mgr.Has<OpaquePassComponent>(m_SelectedEntity))
-			mgr.Add<OpaquePassComponent>(newEntity);
-		if (mgr.Has<DirectionalLightComponent>(m_SelectedEntity))
-		{
-			auto& newDlc = mgr.Add<DirectionalLightComponent>(newEntity);
-			auto& dlc = mgr.Get<DirectionalLightComponent>(m_SelectedEntity);
-			m_pActiveScene->GetLightManager().AllocateDirectionalLight(newEntity);
-			newDlc.Color = dlc.Color;
-			newDlc.Intensity = dlc.Intensity;
-		}
-		else if (mgr.Has<PointLightComponent>(m_SelectedEntity))
-		{
-			auto& newPlc = mgr.Add<PointLightComponent>(newEntity);
-			auto& plc = mgr.Get<PointLightComponent>(m_SelectedEntity);
-			m_pActiveScene->GetLightManager().AllocatePointLight(newEntity);
-			newPlc.Color = plc.Color;
-			newPlc.Intensity = plc.Intensity;
-		}
-
-		mgr.Remove<SelectedInEditorComponent>(m_SelectedEntity);
-		mgr.AddOrReplace<SelectedInEditorComponent>(newEntity);
-
-		m_SelectedEntity = newEntity;
-		m_SceneHierarchyPanel.SetSelectedEntity(m_SelectedEntity);
-		m_PropertiesPanel.SetSelectedEntity(m_SelectedEntity);
+		//auto& mgr = m_pActiveScene->GetEntityManager();
+		//auto newEntity = m_pActiveScene->CreateEntityWithUUID(mgr.Get<NameComponent>(m_SelectedEntity).Name.c_str(), IDComponent().UuId);
+		//auto& tc1 = mgr.Get<TransformComponent>(m_SelectedEntity);
+		//auto& tc2 = mgr.Get<TransformComponent>(newEntity);
+		//tc2.Translation = tc1.Translation;
+		//tc2.Rotation = tc1.Rotation;
+		//tc2.Scale = tc1.Scale;
+		//tc2.Transform = tc1.Transform;
+		//
+		//if (mgr.Has<MeshFilterComponent>(m_SelectedEntity))
+		//{
+		//	auto& mfcNew = mgr.Add<MeshFilterComponent>(newEntity);
+		//	auto& mfc = mgr.Get<MeshFilterComponent>(m_SelectedEntity);
+		//
+		//	mfcNew.AssetHandle = mfc.AssetHandle;
+		//}
+		//if (mgr.Has<MeshRendererComponent>(m_SelectedEntity))
+		//{
+		//	auto& mrcNew = mgr.Add<MeshRendererComponent>(newEntity);
+		//	auto& mrc = mgr.Get<MeshRendererComponent>(m_SelectedEntity);
+		//	mrcNew.AssetHandle = mrc.AssetHandle;
+		//	mgr.Add<DirtyMeshRendererComponent>(newEntity);
+		//}
+		//if (mgr.Has<OpaquePassComponent>(m_SelectedEntity))
+		//	mgr.Add<OpaquePassComponent>(newEntity);
+		//if (mgr.Has<DirectionalLightComponent>(m_SelectedEntity))
+		//{
+		//	auto& newDlc = mgr.Add<DirectionalLightComponent>(newEntity);
+		//	auto& dlc = mgr.Get<DirectionalLightComponent>(m_SelectedEntity);
+		//	m_pActiveScene->GetLightManager().AllocateDirectionalLight(newEntity);
+		//	newDlc.Color = dlc.Color;
+		//	newDlc.Intensity = dlc.Intensity;
+		//}
+		//else if (mgr.Has<PointLightComponent>(m_SelectedEntity))
+		//{
+		//	auto& newPlc = mgr.Add<PointLightComponent>(newEntity);
+		//	auto& plc = mgr.Get<PointLightComponent>(m_SelectedEntity);
+		//	m_pActiveScene->GetLightManager().AllocatePointLight(newEntity);
+		//	newPlc.Color = plc.Color;
+		//	newPlc.Intensity = plc.Intensity;
+		//}
+		//
+		//mgr.Remove<SelectedInEditorComponent>(m_SelectedEntity);
+		//mgr.AddOrReplace<SelectedInEditorComponent>(newEntity);
+		//
+		//m_SelectedEntity = newEntity;
+		//m_PropertiesPanel.SetSelectedEntity(m_SelectedEntity);
 	}
 
 	void EditorLayer::ManipulateTransformGizmo() noexcept
 	{
+		using namespace DirectX;
+
+		const std::vector<entity>& selectedEntities = m_OutlinerPanel.GetTable().GetSelectedEntities();
+		if (selectedEntities.empty())
+		    return;
+
+		std::vector<entity> participatingEntities;
+		participatingEntities.reserve(selectedEntities.size());
+
+		for (int i = 0; i < selectedEntities.size(); ++i)
+		{
+		    const entity e = selectedEntities[i];
+
+		    if (!std::any_of(selectedEntities.begin(), selectedEntities.end(), [&](entity currentEntity)
+		        {
+		            return m_pActiveScene->EntityIsAncestor(currentEntity, e);
+		        }))
+		    {
+		        participatingEntities.push_back(e);
+		    }
+		}
+
+		if (participatingEntities.empty())
+		    return;
+
+		const entity pivotEntity = participatingEntities.back();
+
+		DirectX::XMFLOAT4X4 pivot4x4 = m_CurrentGizmoMode == GizmoMode::WORLD ? m_pActiveScene->GetWorldTransform(pivotEntity) : m_pActiveScene->GetLocalTransform(pivotEntity);
+		const DirectX::XMMATRIX pivotMatrix = DirectX::XMLoadFloat4x4(&pivot4x4);
+
 		ImGuizmo::SetOrthographic(false);
 		ImGuizmo::SetDrawlist();
 		ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 
-		ImGuizmo::MODE mode;
-		if (m_CurrentGizmoType == GizmoType::SCALE)
+		const ImGuizmo::MODE mode = (m_CurrentGizmoType == GizmoType::SCALE) ? ImGuizmo::LOCAL : (ImGuizmo::MODE)m_CurrentGizmoMode;
+
+		const bool manipulated = ImGuizmo::Manipulate(*m_pActiveScene->GetEditorCamera()->GetViewMatrix().m, *m_pActiveScene->GetEditorCamera()->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, pivot4x4.m[0]);
+		if (manipulated)
 		{
-			mode = ImGuizmo::LOCAL;
-		}
-		else
-		{
-			mode = (ImGuizmo::MODE)m_CurrentGizmoMode;
-		}
+			m_pActiveScene->SetWorldTransform(pivotEntity, pivot4x4);
 
-		auto& tc = m_pActiveScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
+			const DirectX::XMMATRIX manipulatedPivotMatrix = DirectX::XMLoadFloat4x4(&pivot4x4);
+			const DirectX::XMMATRIX pivotInverseMatrix = DirectX::XMMatrixInverse(nullptr, pivotMatrix);
 
-		DirectX::XMFLOAT4X4 visualizationMatrix;
-		visualizationMatrix = tc.Transform;
-		ImGuizmo::Manipulate(*m_pActiveScene->GetEditorCamera()->GetViewMatrix().m, *m_pActiveScene->GetEditorCamera()->GetProjectionMatrix().m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, *visualizationMatrix.m);
-		if (ImGuizmo::IsUsing())
-		{
-			if (m_pActiveScene->GetEntityManager().Has<IsChildComponent>(m_SelectedEntity) && mode == ImGuizmo::LOCAL)
+			participatingEntities.pop_back();
+
+			for (auto e : participatingEntities)
 			{
-				entity parent = m_pActiveScene->GetEntityManager().Get<IsChildComponent>(m_SelectedEntity).Parent;
-				auto& parentTC = m_pActiveScene->GetEntityManager().Get<TransformComponent>(parent);
-				DirectX::XMMATRIX parentTransform = DirectX::XMLoadFloat4x4(&parentTC.Transform);
-				DirectX::XMMATRIX inverseParentTransform = DirectX::XMMatrixInverse(nullptr, parentTransform);
-				DirectX::XMMATRIX visMatrix = DirectX::XMLoadFloat4x4(&visualizationMatrix);
-				DirectX::XMMATRIX result = DirectX::XMMatrixMultiply(visMatrix, inverseParentTransform);
-				DirectX::XMStoreFloat4x4(&visualizationMatrix, result);
-			}
+				// Get the entity's world transform
+				XMFLOAT4X4 entityWorld4x4 = m_pActiveScene->GetWorldTransform(e);
+				const XMMATRIX entityXMMatrix = XMLoadFloat4x4(&entityWorld4x4);
 
-			DirectX::XMFLOAT3 translation, rotation, scale;
-			ImGuizmo::DecomposeMatrixToComponents(&visualizationMatrix.m[0][0], &translation.x, &rotation.x, &scale.x);
-			if (mode == ImGuizmo::WORLD)
-			{
-				tc.Translation = translation;
-				float deltaRotationX = rotation.x - tc.Rotation.x;
-				float deltaRotationY = rotation.y - tc.Rotation.y;
-				float deltaRotationZ = rotation.z - tc.Rotation.z;
-				tc.Rotation.x += deltaRotationX;
-				tc.Rotation.y += deltaRotationY;
-				tc.Rotation.z += deltaRotationZ;
-				tc.Scale = scale;
+				// Transform the entity into the pivot's local space
+				const XMMATRIX entityLocalToPivotMatrix = entityXMMatrix * pivotInverseMatrix;
 
-				m_pActiveScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
-			}
-			else
-			{
-				tc.LocalTranslation = translation;
-				float deltaRotationX = rotation.x - tc.LocalRotation.x;
-				float deltaRotationY = rotation.y - tc.LocalRotation.y;
-				float deltaRotationZ = rotation.z - tc.LocalRotation.z;
-				tc.LocalRotation.x += deltaRotationX;
-				tc.LocalRotation.y += deltaRotationY;
-				tc.LocalRotation.z += deltaRotationZ;
-				tc.LocalScale = scale;
+				// Transform back to world space using the pivot's new transform
+				const XMMATRIX newEntityXMMatrix = entityLocalToPivotMatrix * manipulatedPivotMatrix;
 
-				m_pActiveScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = false;
+				// Store the final transformation
+				XMStoreFloat4x4(&entityWorld4x4, newEntityXMMatrix);
+				m_pActiveScene->SetWorldTransform(e, entityWorld4x4);
 			}
 		}
 	}
@@ -615,10 +558,9 @@ namespace Relentless
 		m_PropertiesPanel.SetSelectedEntity(NULL_ENTITY);
 		m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
 
-		m_SceneHierarchyPanel.SetSelectedEntity(NULL_ENTITY);
-		m_SceneHierarchyPanel.SetActiveScene(m_pActiveScene.get());
+		m_OutlinerPanel.SetActiveScene(m_pActiveScene.get());
 
-		m_SelectedEntity = m_HoveredEntity = NULL_ENTITY;
+		m_HoveredEntity = NULL_ENTITY;
 
 		m_SceneViewportChanged = true;
 	}
@@ -630,23 +572,25 @@ namespace Relentless
 
 	void EditorLayer::OnScenePlay() noexcept
 	{
-		Application::Get().SubmitToMainThread([&]()
-			{
-				Application::Get().GetGPUTaskManager().WaitForAllFramesComplete();
+		RLS_ASSERT(false, "Not implemented");
 
-				m_SceneState = SceneState::Play;
-
-				if (m_SelectedEntity != NULL_ENTITY)
-				{
-					m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
-					m_SelectedEntity = NULL_ENTITY;
-				}
-
-				m_pActiveScene = Scene::Copy(m_pEditorScene);
-				m_pActiveScene->OnRuntimeStart();
-				
-				SetSceneContext(m_pActiveScene);
-			});
+		//Application::Get().SubmitToMainThread([&]()
+		//	{
+		//		Application::Get().GetGPUTaskManager().WaitForAllFramesComplete();
+		//
+		//		m_SceneState = SceneState::Play;
+		//
+		//		if (m_SelectedEntity != NULL_ENTITY)
+		//		{
+		//			m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(m_SelectedEntity);
+		//			m_SelectedEntity = NULL_ENTITY;
+		//		}
+		//
+		//		m_pActiveScene = Scene::Copy(m_pEditorScene);
+		//		m_pActiveScene->OnRuntimeStart();
+		//		
+		//		SetSceneContext(m_pActiveScene);
+		//	});
 	}
 
 	void EditorLayer::OnSceneStop() noexcept
@@ -661,7 +605,9 @@ namespace Relentless
 
 				SetSceneContext(m_pActiveScene);
 
-				m_SelectedEntity = NULL_ENTITY;
+				RLS_ASSERT(false, "Not implemented");
+
+				//m_SelectedEntity = NULL_ENTITY;
 			});
 	}
 
@@ -672,7 +618,7 @@ namespace Relentless
 		m_pSceneRenderer->SetContext(pScene);
 
 		m_PropertiesPanel.SetActiveScene(pScene.get());
-		m_SceneHierarchyPanel.SetActiveScene(pScene.get());
+		m_OutlinerPanel.SetActiveScene(pScene.get());
 
 		pScene->GetEditorCamera()->RecalculateProjectionMatrix(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
 	}
@@ -696,7 +642,7 @@ namespace Relentless
 		}
 		ImGui::Text("Selected entity:");
 		ImGui::SameLine();
-		m_SelectedEntity == NULL_ENTITY ? ImGui::Text("None") : ImGui::Text("%s (%d)", m_pActiveScene->GetEntityManager().Get<NameComponent>(m_SelectedEntity).Name.c_str(), (m_SelectedEntity >> 12));
+		//m_SelectedEntity == NULL_ENTITY ? ImGui::Text("None") : ImGui::Text("%s (%d)", m_pActiveScene->GetEntityManager().Get<NameComponent>(m_SelectedEntity).Name.c_str(), (m_SelectedEntity >> 12));
 
 		ImGui::Text("#Shader bindable descriptors: ");
 		ImGui::SameLine();
@@ -769,7 +715,7 @@ namespace Relentless
 
 		if (ImGui::BeginMenu("View"))
 		{
-			ImGui::MenuItem("Scene Hierarchy Panel", nullptr, &m_DisplaySceneHierarchyPanel);
+			ImGui::MenuItem("Scene Hierarchy Panel", nullptr, &m_DisplayOutlinerPanel);
 			ImGui::MenuItem("Content Browser Panel", nullptr, &m_DisplayContentBrowserPanel);
 			ImGui::MenuItem("Properties Panel", nullptr, &m_DisplayPropertiesPanel);
 			ImGui::MenuItem("Inspector Panel", nullptr, &m_DisplayInspectorPanel);
@@ -888,24 +834,24 @@ namespace Relentless
 
 	void EditorLayer::CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept
 	{
-		std::shared_ptr<Mesh> pMesh = AssetManager::Get<Mesh>(meshHandle);
-		const entity newEntity = m_pActiveScene->CreateEntity(pMesh->GetName().c_str());
-		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
-		MeshRendererComponent& mrc = entityManager.Add<MeshRendererComponent>(newEntity);
-		mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
-
-		MeshFilterComponent& mfc = entityManager.Add<MeshFilterComponent>(newEntity);
-		mfc.AssetHandle = meshHandle;
-
-		const Transform& transform = pMesh->GetOffsetTransform();
-
-		auto& tc = entityManager.Get<TransformComponent>(newEntity);
-		tc.Transform = transform.Matrix.M;
-		tc.Translation = { transform.Translation.x, transform.Translation.y, transform.Translation.z };
-		tc.Rotation = { transform.Rotation.x, transform.Rotation.y, transform.Rotation.z };
-		tc.Scale = { transform.Scale.x, transform.Scale.y, transform.Scale.z };
-
-		entityManager.AddOrReplace<DirtyTransformComponent>(newEntity).AdjustedWorldSpace = true;
+		//std::shared_ptr<Mesh> pMesh = AssetManager::Get<Mesh>(meshHandle);
+		//const entity newEntity = m_pActiveScene->CreateEntity(pMesh->GetName().c_str());
+		//EntityManager& entityManager = m_pActiveScene->GetEntityManager();
+		//MeshRendererComponent& mrc = entityManager.Add<MeshRendererComponent>(newEntity);
+		//mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
+		//
+		//MeshFilterComponent& mfc = entityManager.Add<MeshFilterComponent>(newEntity);
+		//mfc.AssetHandle = meshHandle;
+		//
+		//const Transform& transform = pMesh->GetOffsetTransform();
+		//
+		//auto& tc = entityManager.Get<TransformComponent>(newEntity);
+		//tc.Transform = transform.Matrix.M;
+		//tc.Translation = { transform.Translation.x, transform.Translation.y, transform.Translation.z };
+		//tc.Rotation = { transform.Rotation.x, transform.Rotation.y, transform.Rotation.z };
+		//tc.Scale = { transform.Scale.x, transform.Scale.y, transform.Scale.z };
+		//
+		//entityManager.AddOrReplace<DirtyTransformComponent>(newEntity).AdjustedWorldSpace = true;
 	}
 
 }

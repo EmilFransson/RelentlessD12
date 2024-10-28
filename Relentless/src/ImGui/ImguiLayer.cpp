@@ -117,7 +117,7 @@ namespace Relentless
 	void ImguiLayer::OnImGuiRender() noexcept
 	{
 		static bool showWindow = true;
-		ImGui::ShowDemoWindow(&showWindow);
+		//ImGui::ShowDemoWindow(&showWindow);
 	}
 
 	void ImguiLayer::OnAttach()

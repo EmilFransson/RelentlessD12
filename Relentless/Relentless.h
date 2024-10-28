@@ -11,7 +11,8 @@
 //Utility:
 #include <src/Utility/FileDialogs.h>
 #include <src/Utility/Common.h>
-
+#include <src/Callback/Broadcaster.h>
+#include <src/Callback/Callback.h>
 
 //Events:
 #include <src/ImGui/ImguiLayer.h>
@@ -25,7 +26,8 @@
 #include <src/UI/Table/TableData.h>
 #include <src/UI/Table/TableDataSelection.h>
 #include <src/UI/Table/TableDataSlice.h>
-
+#include <src/UI/Table/TableStyling.h>
+#include <src/UI/Table/TableInteraction.h>
 
 //Graphics:
 #include <src/Graphics/D3D12Core.h>

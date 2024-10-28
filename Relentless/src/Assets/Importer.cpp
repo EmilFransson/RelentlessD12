@@ -47,8 +47,8 @@ namespace Relentless
 		{
 			aiMesh* pMesh = pAssimpScene->mMeshes[pNode->mMeshes[i]];
 			Transform transform;
-			transform.Matrix.M = currentTransform;
-			ImGuizmo::DecomposeMatrixToComponents(*currentTransform.m, &transform.Translation.x, &transform.Rotation.x, &transform.Scale.x);
+			transform.Matrix = currentTransform;
+			ImGuizmo::DecomposeMatrixToComponents(*currentTransform.m, &transform.Location.x, &transform.Rotation.x, &transform.Scale.x);
 			aiMeshToImportedTransformMap[pMesh] = transform;
 		}
 	

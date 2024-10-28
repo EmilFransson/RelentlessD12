@@ -7,7 +7,7 @@ namespace Relentless
 	{
 	public:
 		PerspectiveCamera(const DirectX::XMVECTOR& position, const uint32_t width, const uint32_t height) noexcept;
-		virtual ~PerspectiveCamera() noexcept override final;
+		virtual ~PerspectiveCamera() noexcept override final = default;
 		void RecalculateViewProjectionMatrix() noexcept;
 
 		[[nodiscard]] constexpr DirectX::XMFLOAT4X4& GetViewMatrix() noexcept { return m_ViewMatrix; }

@@ -13,9 +13,9 @@ namespace Relentless
 		virtual void OnEntryAdded([[maybe_unused]] const std::shared_ptr<TableData>& pTableData) noexcept {};
 		const std::vector<std::shared_ptr<TableData>>& GetData() const;
 		const TableData* GetOwner() const noexcept;
+		Table* GetTable() const noexcept;
 	private:
 		Table* m_pTable = nullptr;
-
 		TableData* m_pOwningData = nullptr;
 		std::vector<std::shared_ptr<TableData>> m_SliceDatas;
 	};

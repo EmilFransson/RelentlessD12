@@ -45,6 +45,9 @@ namespace Relentless
 		[[nodiscard]] const RECT& GetScissorRect() const noexcept { return m_ScissorRect; }
 		[[nodiscard]] const std::shared_ptr<PerspectiveCamera>& GetEditorCamera() const noexcept { return m_pEditorCamera; }
 
+		[[nodiscard]] bool HasParent(entity e) noexcept;
+		[[nodiscard]] entity GetParent(entity e)noexcept;
+
 		void SetMousePosition(const ImVec2& newMousePosition) noexcept { m_MousePosition = newMousePosition; }
 		[[nodiscard]] const ImVec2& GetMousePosition() const noexcept { return m_MousePosition; }
 
@@ -54,10 +57,49 @@ namespace Relentless
 		static [[nodiscard]] std::shared_ptr<Scene> Copy(std::shared_ptr<Scene> pSrcScene) noexcept;
 		void SetHoveredEntity(entity hoveredEntity) noexcept;
 		[[nodiscard]] entity GetHoveredEntity() const noexcept;
+
+		//Transform
+		void SetLocalTransform(entity e, const Matrix& localMatrix) noexcept;
+		void SetLocalLocation(entity e, const Vector3& localLocation) noexcept;
+		void SetLocalRotation(entity e, const Quaternion& localQuaternion) noexcept;
+		void SetLocalScale(entity e, const Vector3& localScale) noexcept;
+
+		void AddLocalOffset(entity e, const Vector3& localOffset) noexcept;
+		void AddLocalRotation(entity e, const Vector3& rotationEulerAnglesDegrees) noexcept;
+		void AddLocalScale(entity e, const Vector3& localScale) noexcept;
+
+		void SetWorldTransform(entity e, const Matrix& worldMatrix) noexcept;
+		void SetWorldLocation(entity e, const Vector3& worldLocation) noexcept;
+		void SetWorldRotation(entity e, const Quaternion& worldQuaternion) noexcept;
+		void SetWorldScale(entity e, const Vector3& worldScale) noexcept;
+
+		void AddWorldOffset(entity e, const Vector3& worldOffset) noexcept;
+		void AddWorldRotation(entity e, const Vector3& rotationEulerAnglesDegrees) noexcept;
+		void AddWorldScale(entity e, const Vector3& worldscale) noexcept;
+
+		[[nodiscard]] Matrix GetWorldTransform(entity e) noexcept;
+		[[nodiscard]] Vector3 GetWorldLocation(entity e) noexcept;
+		[[nodiscard]] Vector3 GetWorldScale(entity e) noexcept;
+		[[nodiscard]] Quaternion GetWorldRotation(entity e) noexcept;
+		[[nodiscard]] Vector3 GetWorldForward(entity e) noexcept;
+		[[nodiscard]] Vector3 GetWorldRight(entity e) noexcept;
+		[[nodiscard]] Vector3 GetWorldUp(entity e) noexcept;
+
+		[[nodiscard]] Matrix GetLocalTransform(entity e) noexcept;
+		[[nodiscard]] Vector3 GetLocalLocation(entity e) noexcept;
+		[[nodiscard]] Quaternion GetLocalRotation(entity e) noexcept;
+		[[nodiscard]] Vector3 GetLocalScale(entity e) noexcept;
+
+		void SetLocalRotationFromEulerDegrees(entity e, float pitchDegrees, float yawDegrees, float rollDegrees) noexcept;
+		[[nodiscard]] Vector3 GetLocalRotationInEulerDegrees(entity e);
 		
 		std::shared_ptr<TextureCube> m_pSkyBox = nullptr;
 		std::shared_ptr<TextureCube> m_pIrradianceMap = nullptr;
 		std::shared_ptr<TextureCube> m_pRadianceMap = nullptr;
+	private:
+		void UpdateWorldTransformIfDirty(entity e) noexcept;
+		void UpdateWorldTransform(entity e) noexcept;
+		void UpdateLocalTransform(entity e) noexcept;
 	private:
 		EntityManager m_EntityManager;
 		LightManager m_LightManager;

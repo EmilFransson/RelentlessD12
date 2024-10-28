@@ -1,6 +1,6 @@
 #pragma once
 #include <Relentless.h>
-#include "../Panels/SceneHierarchyPanel.h"
+#include "../Panels/OutlinerPanel.h"
 #include "../Panels/PropertiesPanel.h"
 #include "../Panels/ContentBrowserPanel.h"
 #include "../Panels/MetricsPanel.h" 
@@ -47,18 +47,18 @@ namespace Relentless
 
 		void CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept;
 	private:
-		bool m_SceneViewportChanged;
-		bool m_HoveringSceneViewport;
-		ImVec2 m_ViewportPanelSize;
+		bool m_SceneViewportChanged = false;
+		bool m_HoveringSceneViewport = false;
+		ImVec2 m_ViewportPanelSize = ImVec2(800.0f, 600.0f);
 		ImVec2 vMin;
 		ImVec2 vMax;
 
-		entity m_HoveredEntity;
-		entity m_SelectedEntity;
-		GizmoType m_CurrentGizmoType;
-		GizmoMode m_CurrentGizmoMode;
+		entity m_HoveredEntity = NULL_ENTITY;
+		//entity m_SelectedEntity = NULL_ENTITY;
+		GizmoType m_CurrentGizmoType = GizmoType::NONE;
+		GizmoMode m_CurrentGizmoMode = GizmoMode::WORLD;
 
-		SceneHierarchyPanel m_SceneHierarchyPanel;
+		OutlinerPanel m_OutlinerPanel;
 		PropertiesPanel m_PropertiesPanel;
 		ContentBrowserPanel m_ContentBrowserPanel;
 		MetricsPanel m_MetricsPanel;
@@ -70,15 +70,15 @@ namespace Relentless
 		std::shared_ptr<SceneRenderer> m_pSceneRenderer = nullptr;
 		std::shared_ptr<UtilityRenderer> m_pUtilityRenderer = nullptr;
 	
-		bool m_DisplaySceneHierarchyPanel;
-		bool m_DisplayContentBrowserPanel;
-		bool m_DisplayPropertiesPanel;
-		bool m_DisplayInspectorPanel;
-		bool m_DisplayMetricsPanel;
-		bool m_DisplaySceneRendererPanel;
-		bool m_DisplayStatisticsPanel;
+		bool m_DisplayOutlinerPanel = true;
+		bool m_DisplayContentBrowserPanel = true;
+		bool m_DisplayPropertiesPanel = true;
+		bool m_DisplayInspectorPanel = false;
+		bool m_DisplayMetricsPanel = true;
+		bool m_DisplaySceneRendererPanel = true;
+		bool m_DisplayStatisticsPanel = true;
 
-		bool m_ImmersiveModeEnabled;
+		bool m_ImmersiveModeEnabled = false;
 
 		std::string m_Path{};
 		bool m_CreateNewScene{ false };
