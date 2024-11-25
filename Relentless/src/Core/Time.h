@@ -1,12 +1,12 @@
 #pragma once
 namespace Relentless
 {
-	class Timer
+	class Time
 	{
 	public:
-		Timer() noexcept = default;
-		~Timer() noexcept = default;
-		static void Update() noexcept;
+		Time() noexcept = default;
+		~Time() noexcept = default;
+		static void Tick() noexcept;
 		[[nodiscard]] static constexpr float GetDeltaTime() noexcept
 		{
 			return std::chrono::duration<float>(m_CurrentTimePoint - m_PreviousTimePoint).count();

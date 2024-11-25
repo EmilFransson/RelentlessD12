@@ -41,4 +41,13 @@ namespace Relentless
 		m_layers.erase(it);
 	}
 
+	void LayerStack::PopAllLayers() noexcept
+	{
+		for (int i = m_layers.size() - 1; i >= 0; --i)
+		{
+			m_layers[i]->OnDetach();
+			m_layers.pop_back();
+		}
+	}
+
 }

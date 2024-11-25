@@ -1,9 +1,9 @@
-#include "Table.h"
-#include "TableData.h"
-#include "TableDataSelection.h"
-#include "TableDataSlice.h"
-#include "TableInteraction.h"
-#include "TableStyling.h"
+#include "Tree.h"
+
+#include "UI/DragDropBehavior.h"
+#include "TreeItem.h"
+#include "TreeInteraction.h"
+#include "TreeStyle.h"
 #include "UI/UI.h"
 #include "Input/Keyboard.h"
 #include "Assets/AssetManager.h"
@@ -12,109 +12,126 @@ namespace Relentless
 {
 	namespace Table_private
 	{
-		[[nodiscard]] TableDataSelection::SelectionMode GetSelectionMode() noexcept
-		{
-			if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
-				return TableDataSelection::SelectionMode::Toggle;
-			else if (Keyboard::IsKeyPressed(RLS_KEY::LShift))
-				return TableDataSelection::SelectionMode::Range;
-			else
-				return TableDataSelection::SelectionMode::Single;
-		}
+		//[[nodiscard]] SelectionMode GetSelectionMode() noexcept
+		//{
+		//	if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+		//		return TableDataSelection::SelectionMode::Toggle;
+		//	else if (Keyboard::IsKeyPressed(RLS_KEY::LShift))
+		//		return TableDataSelection::SelectionMode::Range;
+		//	else
+		//		return TableDataSelection::SelectionMode::Single;
+		//}
 	}
 
-	Table::Table() noexcept
+	Tree::Tree(const std::shared_ptr<TreeDataView>& dataView) noexcept
 	{
-		m_pSelectionContext = std::make_shared<TableDataSelection>(this);
-		m_pTableStyling = std::make_shared<TableStyling>(m_pSelectionContext.get());
+		m_pDataView = dataView;
+
+		if (!m_pDataView->pTreeInteraction)
+			m_pDataView->pTreeInteraction = std::make_shared<TreeInteraction>();
+
+		if (!m_pDataView->pTreeStyle)
+			m_pDataView->pTreeStyle = std::make_shared<TreeStyle>();
 	}
 
-	Table::~Table() noexcept
+	Tree::~Tree() noexcept
 	{
 
 	}
 
-	void Table::SetFreezeHeader(bool state) noexcept
+	void Tree::SetFreezeHeader(bool state) noexcept
 	{
 		m_FreezeHeader = state;
 	}
 
-	void Table::SetFlags(ImGuiTableFlags flags)
+	void Tree::SetFlags(ImGuiTableFlags flags)
 	{
 		m_Flags = flags;
 	}
 
-	void Table::SetTableDataSelection(const std::shared_ptr<TableDataSelection>& tableDataSelection) noexcept
-	{
-		m_pSelectionContext = tableDataSelection;
-	}
-
-	void Table::SetTableStyling(const std::shared_ptr<TableStyling>& pTableStyling) noexcept
-	{
-		m_pTableStyling = pTableStyling;
-	}
-
-	void Table::SetTableInteraction(const std::shared_ptr<TableInteraction>& pTableInteraction) noexcept
-	{
-		m_pTableInteraction = pTableInteraction;
-	}
-
-	void Table::AddEntry(const std::shared_ptr<TableData>& pTableData) noexcept
+	void Tree::AddEntry(const std::shared_ptr<TreeItem>& pTableData) noexcept
 	{
 		m_Entries.push_back(pTableData);
 	}
 
-	void Table::AddColumn(const ColumnProperties& column) noexcept
+	void Tree::RemoveEntry(const std::shared_ptr<TreeItem>& pTreeItem) noexcept
+	{
+		std::erase_if(m_Entries, [pTreeItem](const std::shared_ptr<TreeItem>& pEntry)
+			{
+				return pEntry == pTreeItem;
+			});
+	}
+
+	void Tree::AddColumn(const ColumnProperties& column) noexcept
 	{
 		m_Columns.push_back(column);
 	}
 
-	std::vector<std::shared_ptr<TableData>>& Table::GetRootEntries() noexcept
+	std::vector<std::shared_ptr<TreeItem>>& Tree::GetRootEntries() noexcept
 	{
 		return m_Entries;
 	}
 
-	const std::shared_ptr<TableDataSelection>& Table::GetTableDataSelection() const noexcept
+	const std::shared_ptr<TableDataSelection>& Tree::GetTableDataSelection() const noexcept
 	{
 		return m_pSelectionContext;
 	}
 
-	void Table::RemoveAll() noexcept
+	void Tree::RemoveAll() noexcept
 	{
 		m_Entries.clear();
 	}
 
-	void Table::ClearAllSelections() noexcept
-	{
-		m_pSelectionContext->DeselectAll();
-	}
-
-	bool Table::IsFocused() const noexcept
+	bool Tree::IsFocused() const noexcept
 	{
 		return m_IsFocused;
 	}
 
-	bool Table::IsHovered() const noexcept
+	bool Tree::IsHovered() const noexcept
 	{
 		return ImGui::IsMouseHoveringRect(m_OuterRect.Min, m_OuterRect.Max);
 	}
 
-	bool Table::IsHeaderSpaceHovered() const noexcept
+	bool Tree::IsHeaderSpaceHovered() const noexcept
 	{
 		return ImGui::IsMouseHoveringRect(m_HeaderRect.Min, m_HeaderRect.Max);
 	}
 
-	bool Table::IsRowSpaceHovered() const noexcept
+	bool Tree::IsRowSpaceHovered() const noexcept
 	{
 		return IsHovered() && !IsHeaderSpaceHovered();
 	}
 
-	bool Table::IsTreeNodeToggled() const noexcept
+	bool Tree::IsTreeNodeToggled() const noexcept
 	{
 		return m_TreeNodeToggled;
 	}
 
-	void Table::DrawHeaderCellContent(const TableIcon& tableIcon, const std::string& label, UI::Alignment alignment, int column) noexcept
+	uint32_t Tree::GetNumColumns() const noexcept
+	{
+		return m_Columns.size();
+	}
+
+	std::vector<std::shared_ptr<TreeItem>> Tree::GetDescendants(const std::shared_ptr<TreeItem>& pTreeItem) const noexcept
+	{
+		std::vector<std::shared_ptr<TreeItem>> descendants;
+
+		std::function<void(const std::shared_ptr<TreeItem>& pTreeItem)> RecursivelyGetChildren;
+
+		RecursivelyGetChildren = [&](const std::shared_ptr<TreeItem>& pCurrentTreeItem)
+		{
+			descendants.push_back(pCurrentTreeItem);
+			const std::vector<std::shared_ptr<TreeItem>> children = pCurrentTreeItem->GetChildren();
+			for (auto& child : children)
+				RecursivelyGetChildren(child);
+		};
+
+		RecursivelyGetChildren(pTreeItem);
+
+		return descendants;
+	}
+
+	void Tree::DrawHeaderCellContent(const TableIcon& tableIcon, const std::string& label, UI::Alignment alignment, int column) noexcept
 	{
 		const bool hasIcon = tableIcon.IconTextureHandle.IsValid();
 		const bool hasText = !label.empty();
@@ -188,35 +205,41 @@ namespace Relentless
 		ImGui::SetCursorPos(cursorPos);
 	}
 
-	void Table::OnBeginDraw() noexcept
+	void Tree::OnBeginDraw() noexcept
 	{
 		m_TreeNodeToggled = false;
-		const TableGeneralStyle& style = m_pTableStyling->GetGeneralStyle();
 
-		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBg, style.EvenRowColor);
-		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBgAlt, style.OddRowColor);
+		if (m_pDataView->pTreeStyle->IsUsingAlternateRowColors())
+		{
+			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBg, TreeDefaultColors::EvenRowColor);
+			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBgAlt, TreeDefaultColors::OddRowColor);
+		}
 
 		ImGui::PushStyleColor(ImGuiCol_Header, IM_COL32(0, 0, 0, 0));
 		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, IM_COL32(0, 0, 0, 0));
 		ImGui::PushStyleColor(ImGuiCol_HeaderActive, IM_COL32(0, 0, 0, 0));
 
-		m_pSelectionContext->OnDrawBegin();
+		m_pDataView->pTreeInteraction->OnBeginTree();
 
 		m_OuterRect.Min = ImGui::GetCursorScreenPos();
 	}
 
-	void Table::Draw() noexcept
+	void Tree::Draw() noexcept
 	{
 		OnBeginDraw();
 
 		if (ImGui::BeginTable(GetID(), static_cast<int>(m_Columns.size()), m_Flags))
 		{
-			m_IsFocused = ImGui::IsWindowFocused();
+			if (m_IsFocused != ImGui::IsWindowFocused())
+			{
+				m_IsFocused = ImGui::IsWindowFocused();
+				OnFocusChanged(m_IsFocused);
+			}
 
 			SetupHeaderAndColumns();
 			HandleColumnTooltips(); 
 
-			const std::vector<TableDataRow> flattenedHierarchy = FlattenTree(); 
+			const std::vector<TreeDataRow> flattenedHierarchy = FlattenTree(); 
 
 			for (uint32_t entryIndex = 0u; entryIndex < flattenedHierarchy.size(); ++entryIndex)
 			{
@@ -234,17 +257,19 @@ namespace Relentless
 		OnEndDraw();
 	}
 
-	void Table::OnEndDraw() noexcept
+	void Tree::OnEndDraw() noexcept
 	{
 		m_OuterRect.Max = ImGui::GetCursorScreenPos();
 		m_OuterRect.Max.x += ImGui::GetContentRegionAvail().x;
 		m_OuterRect.Max.y -= ImGui::GetStyle().ItemSpacing.y;
 
-		ImGui::PopStyleColor(5);
-		m_pSelectionContext->OnDrawEnd();
+		const uint32_t nrOfColorsToPop = m_pDataView->pTreeStyle->IsUsingAlternateRowColors() ? 5 : 3;
+		ImGui::PopStyleColor(nrOfColorsToPop);
+
+		m_pDataView->pTreeInteraction->OnEndTree();
 	}
 
-	void Table::DrawRow(const std::shared_ptr<TableData>& pTableData, uint32_t indentationLevel) noexcept
+	void Tree::DrawRow(const std::shared_ptr<TreeItem>& pTableData, uint32_t indentationLevel) noexcept
 	{
 		for (uint32_t columnIndex = 0u; columnIndex < m_Columns.size(); ++columnIndex)
 		{
@@ -253,17 +278,18 @@ namespace Relentless
 		}
 	}
 
-	void Table::DrawRowCell(const std::shared_ptr<TableData>& pTableData, int columnIndex, uint32_t indentationLevel)
+	void Tree::DrawRowCell(const std::shared_ptr<TreeItem>& pTreeItem, int columnIndex, uint32_t indentationLevel)
 	{
 		const ImRect cellRect = ImGui::TableGetCellBgRect(ImGui::GetCurrentTable(), columnIndex);
 		const ImVec2 cellSize = cellRect.GetSize();
 		const ImVec2 cellPos = cellRect.Min;
 
 		const ColumnProperties& column = m_Columns[columnIndex];
-		const TableRowStyle rowStyle = m_pTableStyling->GetRowStyle(pTableData, columnIndex);
-		const AssetHandle iconHandle = pTableData->GetColumnIcon(columnIndex);
+		const TreeItemStyle rowStyle = pTreeItem->GetData().ColumnStyles[columnIndex];
+		const TableIcon& tableIcon = pTreeItem->GetData().ColumnIcons[columnIndex];
+		const AssetHandle iconHandle = pTreeItem->GetColumnIcon(columnIndex);
 
-		const char* label = pTableData->GetColumnString(columnIndex);
+		const char* label = pTreeItem->GetColumnLabel(columnIndex).c_str();
 
 		const bool hasIcon = iconHandle.IsValid();
 		const bool hasLabel = std::strcmp(label, "") != 0;
@@ -272,7 +298,7 @@ namespace Relentless
 		{
 			ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_AllowItemOverlap;
 
-			if (pTableData->HasChildren())
+			if (pTreeItem->HasChildren())
 				nodeFlags |= (ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow);
 			else
 				nodeFlags |= ImGuiTreeNodeFlags_Leaf;
@@ -280,11 +306,11 @@ namespace Relentless
 			if (indentationLevel > 0)
 				ImGui::Indent(indentationLevel * ImGui::GetTreeNodeToLabelSpacing() * 0.6f);
 			
-			const void* nodeID = (uint32_t*)pTableData.get() + columnIndex;
-			ImGui::SetNextItemOpen(pTableData->IsExpanded());
+			const void* nodeID = (uint32_t*)pTreeItem.get() + columnIndex;
+			ImGui::SetNextItemOpen(pTreeItem->IsExpanded());
 			const bool isExpanded = ImGui::TreeNodeEx(nodeID, nodeFlags, "");
 			m_TreeNodeToggled |= ImGui::IsItemToggledOpen();
-			pTableData->SetExpanded(isExpanded);
+			pTreeItem->SetExpanded(isExpanded);
 
 			ImGui::SameLine();
 			if (hasIcon)
@@ -295,7 +321,7 @@ namespace Relentless
 				ImGui::SetCursorScreenPos(ImVec2(ImGui::GetCursorScreenPos().x, iconPosY));
 
 				const std::shared_ptr<Texture2D> pIcon = AssetManager::Get<Texture2D>(iconHandle);
-				ImGui::Image((ImTextureID)pIcon->GetSRVDescriptorHandle().GPUHandle.ptr, iconSize, ImVec2(0, 0), ImVec2(1, 1), rowStyle.IconTint);
+				ImGui::Image((ImTextureID)pIcon->GetSRVDescriptorHandle().GPUHandle.ptr, iconSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
 				ImGui::SameLine();
 			}
 
@@ -337,7 +363,7 @@ namespace Relentless
 				ImGui::SetCursorScreenPos(ImVec2(ImGui::GetCursorScreenPos().x, offsetY));
 
 				const std::shared_ptr<Texture2D> pIcon = AssetManager::Get<Texture2D>(iconHandle);
-				ImGui::Image((ImTextureID)pIcon->GetSRVDescriptorHandle().GPUHandle.ptr, iconSize, ImVec2(0, 0), ImVec2(1, 1), rowStyle.IconTint);
+				ImGui::Image((ImTextureID)pIcon->GetSRVDescriptorHandle().GPUHandle.ptr, iconSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
 				ImGui::SameLine(0.0f, rowStyle.Spacing);
 			}
 
@@ -352,20 +378,22 @@ namespace Relentless
 		}
 	}
 
-	void Table::DetermineAndSetRowBackgroundColor(const std::shared_ptr<TableData>& pTableData) noexcept
+	void Tree::DetermineAndSetRowBackgroundColor(const std::shared_ptr<TreeItem>& pTreeItem) noexcept
 	{
-		const TableGeneralStyle& style = m_pTableStyling->GetGeneralStyle();
+		if (pTreeItem->GetData().UseDefaultItemColor)
+			return;
 
-		ImU32 targetColor = IM_COL32(0,0,0, 255);
+		const ImU32 targetColor = ImGui::GetColorU32(pTreeItem->GetData().BackgroundColor);
 
-		if (m_pSelectionContext->IsSelected(pTableData))
-			targetColor = m_IsFocused ? ImGui::GetColorU32(style.RowSelectedFocusedColor) : ImGui::GetColorU32(style.RowSelectedColor);
-		else if (m_pSelectionContext->IsHovered(pTableData))
-			targetColor = ImGui::GetColorU32(style.RowHoverColor);
-		else if (m_pSelectionContext->IsAncestorToAnySelected(pTableData))
-			targetColor = ImGui::GetColorU32(style.RowAncestorToSelectedColor);
-		else
-			return; // Use default color!
+		//const TableGeneralStyle& style = m_pTableStyling->GetGeneralStyle();
+		//if (m_pSelectionContext->IsSelected(pTableData))
+		//	targetColor = m_IsFocused ? ImGui::GetColorU32(style.RowSelectedFocusedColor) : ImGui::GetColorU32(style.RowSelectedColor);
+		//else if (m_pSelectionContext->IsHovered(pTableData))
+		//	targetColor = ImGui::GetColorU32(style.RowHoverColor);
+		//else if (m_pSelectionContext->IsAncestorToAnySelected(pTableData))
+		//	targetColor = ImGui::GetColorU32(style.RowAncestorToSelectedColor);
+		//else
+		//	return; // Use default color!
 
 		for (uint32_t columnIndex = 0u; columnIndex < m_Columns.size(); ++columnIndex)
 		{
@@ -374,7 +402,7 @@ namespace Relentless
 		}
 	}
 
-	void Table::SetupHeaderAndColumns() noexcept
+	void Tree::SetupHeaderAndColumns() noexcept
 	{
 		if (m_FreezeHeader)
 			ImGui::TableSetupScrollFreeze(0, 1);
@@ -387,14 +415,14 @@ namespace Relentless
 		for (int column = 0; column < m_Columns.size(); ++column)
 		{
 			ImGui::TableSetColumnIndex(column);
-			DrawHeaderCellContent(m_Columns[column].HeaderIcon, m_Columns[column].Name, m_Columns[column].Alignment, column);
+			DrawHeaderCellContent(m_Columns[column].HeaderIcon, m_Columns[column].Label, m_Columns[column].Alignment, column);
 		}
 
 		m_HeaderRect.Max = ImGui::GetCursorScreenPos();
 		m_HeaderRect.Max.x += ImGui::GetContentRegionAvail().x;
 	}
 
-	void Table::SetupColumns() noexcept
+	void Tree::SetupColumns() noexcept
 	{
 		for (int columnIndex = 0; columnIndex < m_Columns.size(); ++columnIndex)
 		{
@@ -403,7 +431,7 @@ namespace Relentless
 		}
 	}
 
-	void Table::HandleColumnTooltips() noexcept
+	void Tree::HandleColumnTooltips() noexcept
 	{
 		for (int columnIndex = 0; columnIndex < m_Columns.size(); ++columnIndex)
 		{
@@ -418,7 +446,7 @@ namespace Relentless
 		}
 	}
 
-	void Table::HandleRowInteraction(const std::shared_ptr<TableData>& pTableData, uint32_t indentationLevel) noexcept
+	void Tree::HandleRowInteraction(const std::shared_ptr<TreeItem>& pTreeItem, uint32_t indentationLevel) noexcept
 	{
 		for (uint32_t columnIndex = 0u; columnIndex < m_Columns.size(); ++columnIndex)
 		{
@@ -431,25 +459,22 @@ namespace Relentless
 			
 			if (hoversCell)
 			{
-				m_pSelectionContext->SetHovered(pTableData, columnIndex);
-				const char* toolTip = pTableData->GetColumnTooltip(columnIndex);
-				if (std::strcmp(toolTip, "") != 0)
-					UI::Utility::DrawTooltip(toolTip);
+				m_pDataView->pTreeInteraction->OnHoveringItem(pTreeItem, columnIndex);
 
 				if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
 				{
 					if (!m_TreeNodeToggled)
-						m_pSelectionContext->OnClickedOnRow(pTableData, Table_private::GetSelectionMode(), columnIndex, true);
+						m_pDataView->pTreeInteraction->OnClickedOnItem(pTreeItem, columnIndex, true);
 				}
 				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 				{
 					if (!m_TreeNodeToggled)
-						m_pSelectionContext->OnClickedOnRow(pTableData, Table_private::GetSelectionMode(), columnIndex, false);
+						m_pDataView->pTreeInteraction->OnClickedOnItem(pTreeItem, columnIndex, false);
 				}
 				else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
 				{
 					if (!m_TreeNodeToggled)
-						m_pSelectionContext->OnReleasedOnRow(pTableData, Table_private::GetSelectionMode());
+						m_pDataView->pTreeInteraction->OnReleasedMouseOnItem(pTreeItem, columnIndex);
 				}
 			}
 
@@ -458,7 +483,7 @@ namespace Relentless
 				std::vector<ImRect> toReturn;
 				ImVec2 min = cellRect.Min;
 
-				if (!(pTableData->HasChildren() && m_Columns[columnIndex].IsTreeNode))
+				if (!(pTreeItem->HasChildren() && m_Columns[columnIndex].IsTreeNode))
 				{
 					ImVec2 max = cellRect.Max;
 					toReturn.push_back(ImRect(min, max));
@@ -485,10 +510,12 @@ namespace Relentless
 			for (uint32_t i = 0u; i < nonArrowAreas.size(); ++i)
 			{
 				const ImRect& area = nonArrowAreas[i];
+				if (area.GetWidth() == 0)
+					continue;
 
 				// Create a unique ID for the invisible button
 				char buttonID[64];
-				snprintf(buttonID, sizeof(buttonID), "##cell_%p_%p", pTableData.get(), columnIndex + pTableData.get());
+				snprintf(buttonID, sizeof(buttonID), "##cell_%p_%p", pTreeItem.get(), columnIndex + pTreeItem.get());
 				
 				const float paddingY = ImGui::GetStyle().FramePadding.y;
 				float adjustedHeight = cellSize.y - paddingY;
@@ -505,26 +532,27 @@ namespace Relentless
 					ImGui::SetCursorScreenPos(ImVec2(ImGui::GetCursorScreenPos().x + (nonArrowAreas[i+1].Min.x - area.Max.x) + ((ImGui::GetTreeNodeToLabelSpacing() * indentationLevel * 0.6f)), cellPos.y));
 			}
 
-			if (!m_TreeNodeToggled && m_pTableInteraction && m_pTableInteraction->IsDragDropEnabled())
+			if (!m_TreeNodeToggled && m_pDataView->pDragDropBehavior)
 			{
-				if (m_pTableInteraction->IsDraggable(pTableData, columnIndex))
+				if (m_pDataView->pDragDropBehavior->BeginDragDropSource())
 				{
-					if (ImGui::BeginDragDropSource())
-					{
-						const TableInteraction::PayloadInfo payloadInfo = m_pTableInteraction->GetPayloadInfo(m_pSelectionContext->GetSelected());
-						ImGui::SetDragDropPayload(payloadInfo.ID, payloadInfo.Data, payloadInfo.Size, ImGuiCond_Once);
-						if (payloadInfo.TooltipLabel)
-							ImGui::Text(payloadInfo.TooltipLabel);
+					if (!m_pDataView->pDragDropBehavior->HasPayload())
+						m_pDataView->pDragDropBehavior->SetPayload(pTreeItem);
 
-						ImGui::EndDragDropSource();
-					}
+					m_pDataView->pDragDropBehavior->EndDragDropSource();
+				}
+
+				if (m_pDataView->pDragDropBehavior->BeginDragDropTarget())
+				{
+					m_pDataView->pDragDropBehavior->TryPayloadDelivery(pTreeItem, "TreeItem");
+					m_pDataView->pDragDropBehavior->EndDragDropTarget();
 				}
 			}
 			
 		}
 	}
 
-	float Table::CalculateCellContentStartPosition(ImRect cellRect, UI::Alignment alignment, float contentWidth) const noexcept
+	float Tree::CalculateCellContentStartPosition(ImRect cellRect, UI::Alignment alignment, float contentWidth) const noexcept
 	{
 		const ImVec2 cellSize = cellRect.GetSize();
 		const ImVec2 cellPos = cellRect.Min;
@@ -551,20 +579,19 @@ namespace Relentless
 		return contentStartX;
 	}
 
-	std::vector<Table::TableDataRow> Table::FlattenTree() const noexcept
+	std::vector<Tree::TreeDataRow> Tree::FlattenTree() const noexcept
 	{
-		std::vector<Table::TableDataRow> toReturn;
+		std::vector<Tree::TreeDataRow> toReturn;
 		uint32_t indentationLevel = 0u;
 
-		std::function<void(const std::unique_ptr<TableDataSlice>&, uint32_t)> AddAllChildren;
-		AddAllChildren = [&](const std::unique_ptr<TableDataSlice>& slice, uint32_t indentationLevel) 
+		std::function<void(const std::vector<std::shared_ptr<TreeItem>>&, uint32_t)> AddAllChildren;
+		AddAllChildren = [&](const std::vector<std::shared_ptr<TreeItem>>& children, uint32_t indentationLevel) 
 			{
-				const std::vector<std::shared_ptr<TableData>>& children = slice->GetData();
 				for (auto& child : children)
 				{
 					toReturn.push_back({ child, indentationLevel });
 					if (child->HasChildren() && child->IsExpanded())
-						AddAllChildren(child->GetSlice(), indentationLevel + 1);
+						AddAllChildren(child->GetChildren(), indentationLevel + 1);
 				}
 			};
 
@@ -572,7 +599,7 @@ namespace Relentless
 		{
 			toReturn.push_back({ m_Entries[i], indentationLevel });
 			if (m_Entries[i]->HasChildren() && m_Entries[i]->IsExpanded())
-				AddAllChildren(m_Entries[i]->GetSlice(), indentationLevel + 1);
+				AddAllChildren(m_Entries[i]->GetChildren(), indentationLevel + 1);
 		}
 
 		return toReturn;

@@ -39,11 +39,13 @@ namespace Relentless
 		bool DetachEntity(const entity entityToDetach) noexcept;
 		[[nodiscard]] std::vector<entity> GetAllEntityDescendants(entity rootEntity) noexcept;
 		[[nodiscard]] std::vector<entity> GetAllEntityAncestors(entity rootEntity) noexcept;
+		[[nodiscard]] std::vector<entity> GetEntityChildren(entity parent) noexcept;
 		[[nodiscard]] entity FindEntityByUUID(const UUID& uuid) noexcept;
 		[[nodiscard]] LightManager& GetLightManager() noexcept { return m_LightManager; }
 		[[nodiscard]] const D3D12_VIEWPORT& GetViewport() const noexcept { return m_Viewport; }
 		[[nodiscard]] const RECT& GetScissorRect() const noexcept { return m_ScissorRect; }
 		[[nodiscard]] const std::shared_ptr<PerspectiveCamera>& GetEditorCamera() const noexcept { return m_pEditorCamera; }
+		void SetEntityVisibleInGame(entity e, bool visibilityState) noexcept;
 
 		[[nodiscard]] bool HasParent(entity e) noexcept;
 		[[nodiscard]] entity GetParent(entity e)noexcept;
@@ -90,12 +92,22 @@ namespace Relentless
 		[[nodiscard]] Quaternion GetLocalRotation(entity e) noexcept;
 		[[nodiscard]] Vector3 GetLocalScale(entity e) noexcept;
 
+		[[nodiscard]] bool IsEntityVisible(entity e) noexcept;
+
 		void SetLocalRotationFromEulerDegrees(entity e, float pitchDegrees, float yawDegrees, float rollDegrees) noexcept;
 		[[nodiscard]] Vector3 GetLocalRotationInEulerDegrees(entity e);
 		
 		std::shared_ptr<TextureCube> m_pSkyBox = nullptr;
 		std::shared_ptr<TextureCube> m_pIrradianceMap = nullptr;
 		std::shared_ptr<TextureCube> m_pRadianceMap = nullptr;
+
+		Broadcaster<void(entity e)> OnEntityCreated;
+		Broadcaster<void(entity e)> OnEntityPreDestroyed;
+		Broadcaster<void(entity e)> OnEntityDestroyed;
+		Broadcaster<void(entity child, entity parent)> OnEntityAttached;
+		Broadcaster<void(entity detachedEntity, entity formerParent)> OnEntityDetached;
+		Broadcaster<void(entity e, bool visibilityState)> OnEntityVisibilityChanged;
+
 	private:
 		void UpdateWorldTransformIfDirty(entity e) noexcept;
 		void UpdateWorldTransform(entity e) noexcept;
@@ -112,7 +124,6 @@ namespace Relentless
 		friend class SceneSerializer;
 
 		bool m_IsPaused = false;
-
 		entity m_HoveredEntity = NULL_ENTITY;
 	};
 }

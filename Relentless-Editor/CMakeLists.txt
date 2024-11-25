@@ -1,7 +1,7 @@
 #Root/Relentless-Editor
 set(SourceFiles 
 		"src/Core/RelentlessEditorApp.cpp" "src/Core/EditorLayer.h" "src/Core/EditorLayer.cpp"
- "src/Panels/OutlinerPanel.h" "src/Panels/OutlinerPanel.cpp" "src/Panels/MetricsPanel.h" "src/Panels/MetricsPanel.cpp" "src/Panels/PropertiesPanel.h" "src/Panels/PropertiesPanel.cpp" "src/Panels/ContentBrowserPanel.h" "src/Panels/ContentBrowserPanel.cpp"   "src/Panels/SceneRendererPanel.h" "src/Panels/SceneRendererPanel.cpp" "src/Panels/InspectorPanel.h" "src/Panels/InspectorPanel.cpp" "src/UI/OutlinerTable.h" "src/UI/OutlinerTableData.h" "src/UI/OutlinerTableDataSelection.h" "src/UI/OutlinerTableDataSlice.h" "src/UI/OutlinerTable.cpp" "src/UI/OutlinerTableData.cpp" "src/UI/OutlinerTableDataSelection.cpp" "src/UI/OutlinerTableDataSlice.cpp" "src/UI/OutlinerTableStyling.h" "src/UI/OutlinerTableStyling.cpp" "src/UI/OutlinerTableInteraction.h" "src/UI/OutlinerTableInteraction.cpp")
+ "src/Panels/OutlinerPanel.h" "src/Panels/OutlinerPanel.cpp" "src/Panels/MetricsPanel.h" "src/Panels/MetricsPanel.cpp" "src/Panels/PropertiesPanel.h" "src/Panels/PropertiesPanel.cpp" "src/Panels/ContentBrowserPanel.h" "src/Panels/ContentBrowserPanel.cpp"   "src/Panels/SceneRendererPanel.h" "src/Panels/SceneRendererPanel.cpp" "src/Panels/InspectorPanel.h" "src/Panels/InspectorPanel.cpp" "src/UI/OutlinerTable.h" "src/UI/OutlinerTreeItem.h"   "src/UI/OutlinerTable.cpp" "src/UI/OutlinerTreeItem.cpp"       "src/Core/Selection.h" "src/Core/Selection.cpp" "src/Core/Editor.h" "src/Core/Editor.cpp" )
 		
 set(ExecutableName "Relentless-Editor")
 set (ExternalIncludePath "${CMAKE_SOURCE_DIR}/Relentless-Editor/vendor/includes/")

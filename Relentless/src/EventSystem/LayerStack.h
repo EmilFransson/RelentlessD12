@@ -10,6 +10,7 @@ namespace Relentless
 		void PushOverlay(Layer* layer) noexcept;
 		void PopLayer(Layer* layer) noexcept;
 		void PopOverlay(Layer* layer) noexcept;
+		void PopAllLayers() noexcept;
 
 		[[nodiscard]] std::vector<Layer*>::const_iterator begin() { return m_layers.begin(); }
 		[[nodiscard]] std::vector<Layer*>::const_iterator end() { return m_layers.end(); }

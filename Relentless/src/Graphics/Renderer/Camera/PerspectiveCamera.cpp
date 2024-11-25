@@ -1,177 +1,82 @@
 #include "PerspectiveCamera.h"
-#include "Core/Timer.h"
+#include "Core/Time.h"
 #include "Input/Keyboard.h"
 #include "Input/Mouse.h"
 namespace Relentless
 {
-	PerspectiveCamera::PerspectiveCamera(const DirectX::XMVECTOR& position, const uint32_t width, const uint32_t height) noexcept
-		: m_UpVector{ DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f) },
-		m_RightVector{ DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f) },
-		m_Yaw{ 134.0f },
-		m_Pitch{ -35.0f },
-		m_CameraSpeed{ 10.0f },
-		m_TiltSensitivity{ 0.05f },
-		m_FieldOfViewDegrees{ 60.0f },
-		m_NearPlane{0.1f},
-		m_FarPlane{ 1000.f }
+	using namespace DirectX;
+
+	PerspectiveCamera::PerspectiveCamera() noexcept
 	{
-		DirectX::XMStoreFloat3(&m_Position, position);
-
-		DirectX::XMVECTOR frontVector = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(DirectX::XMVectorZero(), position));
-		DirectX::XMStoreFloat3(&m_FrontVector, frontVector);
-
-		DirectX::XMVECTOR lookAt = DirectX::XMVectorAdd(position, frontVector);
-
-		/*View matrix*/
-		DirectX::XMMATRIX viewMatrix = DirectX::XMMatrixLookAtLH(position, lookAt, DirectX::XMLoadFloat3(&m_UpVector));
-
-		/*Perspective matrix*/
-		m_AspectRatio = static_cast<float>(width) / static_cast<float>(height);
-		DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(m_FieldOfViewDegrees),
-			m_AspectRatio,
-			m_NearPlane,
-			m_FarPlane);
-
-		DirectX::XMStoreFloat4x4(&m_ViewProjectionMatrix, viewMatrix * projectionMatrix);
-		DirectX::XMStoreFloat4x4(&m_ViewMatrix, viewMatrix);
-		DirectX::XMStoreFloat4x4(&m_ProjectionMatrix, projectionMatrix);
-
-		m_pConstantBufferSet = std::make_unique<ConstantBufferSet>("Perspective Camera CB Set", sizeof(DirectX::XMFLOAT3));
+		m_pConstantBufferSet = std::make_unique<ConstantBufferSet>("Perspective Camera CB Set", sizeof(Vector3));
 	}
 
-	void PerspectiveCamera::RecalculateViewProjectionMatrix() noexcept
+	void PerspectiveCamera::Update() noexcept
 	{
-		DirectX::XMVECTOR lookAt = DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&m_Position), DirectX::XMLoadFloat3(&m_FrontVector));
-		DirectX::XMMATRIX viewMatrix = DirectX::XMMatrixLookAtLH(DirectX::XMLoadFloat3(&m_Position),
-			lookAt,
-			DirectX::XMLoadFloat3(&m_UpVector));
+		Vector3 movement = Vector3::Zero;
+		bool ease = false;
 
-		DirectX::XMStoreFloat4x4(&m_ViewMatrix, viewMatrix);
-		DirectX::XMStoreFloat4x4(&m_ViewProjectionMatrix, viewMatrix * DirectX::XMLoadFloat4x4(&m_ProjectionMatrix));
-	}
-
-	void PerspectiveCamera::SetPosition(const DirectX::XMFLOAT3& position) noexcept
-	{
-		m_Position = position;
-		RecalculateViewProjectionMatrix();
-	}
-
-	void PerspectiveCamera::RecalculateProjectionMatrix(const uint32_t width, const uint32_t height) noexcept
-	{
-		m_AspectRatio = static_cast<float>(width) / static_cast<float>(height);
-		DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(m_FieldOfViewDegrees),
-			m_AspectRatio,
-			m_NearPlane,
-			m_FarPlane);
-		DirectX::XMStoreFloat4x4(&m_ProjectionMatrix, projectionMatrix);
-
-		RecalculateViewProjectionMatrix();
-	}
-
-	void PerspectiveCamera::RecalculateProjectionMatrix() noexcept
-	{
-		DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(m_FieldOfViewDegrees),
-			m_AspectRatio,
-			m_NearPlane,
-			m_FarPlane);
-		DirectX::XMStoreFloat4x4(&m_ProjectionMatrix, projectionMatrix);
-
-		RecalculateViewProjectionMatrix();
-	}
-
-	void PerspectiveCamera::Update(const float deltaTime) noexcept
-	{
-		DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&m_Position);
-		if (Keyboard::IsKeyPressed(RLS_KEY::W))
+		if (Mouse::IsButtonPressed(RLS_BUTTON::Right))
 		{
-			DirectX::XMVECTOR frontVector = DirectX::XMLoadFloat3(&m_FrontVector);
-			frontVector = DirectX::XMVectorScale(frontVector, m_CameraSpeed * deltaTime);
-			position = DirectX::XMVectorAdd(position, frontVector);
-		}
-		else if (Keyboard::IsKeyPressed(RLS_KEY::S))
-		{
-			DirectX::XMVECTOR frontVector = DirectX::XMLoadFloat3(&m_FrontVector);
-			frontVector = DirectX::XMVectorScale(frontVector, m_CameraSpeed * deltaTime);
-			position = DirectX::XMVectorSubtract(position, frontVector);
-		}
-		if (Keyboard::IsKeyPressed(RLS_KEY::D))
-		{
-			DirectX::XMVECTOR rightVector = DirectX::XMLoadFloat3(&m_RightVector);
-			rightVector = DirectX::XMVectorScale(rightVector, m_CameraSpeed * deltaTime);
-			position = DirectX::XMVectorAdd(position, rightVector);
-		}
-		else if (Keyboard::IsKeyPressed(RLS_KEY::A))
-		{
-			DirectX::XMVECTOR rightVector = DirectX::XMLoadFloat3(&m_RightVector);
-			rightVector = DirectX::XMVectorScale(rightVector, m_CameraSpeed * deltaTime);
-			position = DirectX::XMVectorSubtract(position, rightVector);
-		}
-		if (Keyboard::IsKeyPressed(RLS_KEY::Q))
-		{
-			DirectX::XMVECTOR upVector = DirectX::XMLoadFloat3(&m_UpVector);
-			upVector = DirectX::XMVectorScale(upVector, m_CameraSpeed * deltaTime);
-			position = DirectX::XMVectorSubtract(position, upVector);
-		}
-		else if (Keyboard::IsKeyPressed(RLS_KEY::E))
-		{
-			DirectX::XMVECTOR upVector = DirectX::XMLoadFloat3(&m_UpVector);
-			upVector = DirectX::XMVectorScale(upVector, m_CameraSpeed * deltaTime);
-			position = DirectX::XMVectorAdd(position, upVector);
-		}
+			if (!ImGui::IsAnyItemActive())
+			{
+				const Vector2i mouseDelta = Mouse::GetDeltaCoordinates();
+				const Quaternion yr = Quaternion::CreateFromYawPitchRoll(0, mouseDelta.y * Time::GetDeltaTime() * 0.3f, 0);
+				const Quaternion pr = Quaternion::CreateFromYawPitchRoll(mouseDelta.x * Time::GetDeltaTime() * 0.3f, 0, 0);
+				m_Rotation = yr * m_Rotation * pr;
+				m_Rotation.Normalize();
+			}
 
-		DirectX::XMStoreFloat3(&m_Position, position);
-		RecalculateViewProjectionMatrix();
+			movement.x -= static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::A));
+			movement.x += static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::D));
+			movement.z -= static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::S));
+			movement.z += static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::W));
+			movement.y -= static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::Q));
+			movement.y += static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::E));
+			movement.Normalize();
+
+			movement = Vector3::Transform(movement, m_Rotation);
+			ease = true;
+		}
+		else if (Mouse::IsButtonPressed(RLS_BUTTON::Left))
+		{
+			const Vector2i mouseDelta = Mouse::GetDeltaCoordinates();
+			if (!ImGui::IsAnyItemActive())
+			{
+				const Quaternion pr = Quaternion::CreateFromYawPitchRoll(mouseDelta.x * Time::GetDeltaTime() * 0.3f, 0, 0);
+				m_Rotation = m_Rotation * pr;
+				m_Rotation.Normalize();
+
+				movement.z -= static_cast<float>(mouseDelta.y);
+				movement = Vector3::Transform(movement, m_Rotation);
+				movement.y = 0.0f;
+			}
+		}
+		else if (Mouse::IsButtonPressed(RLS_BUTTON::Wheel))
+		{
+			const Vector2i mouseDelta = Mouse::GetDeltaCoordinates();
+
+			movement.x += static_cast<float>(mouseDelta.x);
+			movement = Vector3::Transform(movement, m_Rotation);
+			movement.y -= static_cast<float>(mouseDelta.y);
+			movement.Normalize();
+		}
+		
+		float speedMultiplier = Keyboard::IsKeyPressed(RLS_KEY::LShift) ? 2.0f : 1.0f;
+		speedMultiplier *= 5.0f;
+
+		if (ease)
+			m_Velocity = Vector3::SmoothStep(m_Velocity, movement, 0.1f);
+		else
+			m_Velocity = movement;
+		
+		m_Location += m_Velocity * Time::GetDeltaTime() * speedMultiplier;
+
+		Camera::Update();
 	}
 
-	void PerspectiveCamera::OnMouseMove() noexcept
+	std::shared_ptr<PerspectiveCamera> PerspectiveCamera::Create() noexcept
 	{
-		auto [xOffset, yOffset] = Mouse::GetDeltaCoordinates();
-		m_Yaw -= static_cast<float>(xOffset) * m_TiltSensitivity;
-		m_Pitch -= static_cast<float>(yOffset) * m_TiltSensitivity;
-
-		if (m_Pitch > 89.0f)
-			m_Pitch = 89.0f;
-		else if (m_Pitch < -89.0f)
-			m_Pitch = -89.0f;
-
-		float yawRadians = DirectX::XMConvertToRadians(m_Yaw);
-		float pitchRadians = DirectX::XMConvertToRadians(m_Pitch);
-		float forwardX = std::cos(yawRadians) * std::cos(pitchRadians);
-		float forwardY = std::sin(pitchRadians);
-		float forwardZ = std::sin(yawRadians) * std::cos(pitchRadians);
-
-		DirectX::XMVECTOR forwardVector = { forwardX, forwardY, forwardZ, 0.0f };
-		forwardVector = DirectX::XMVector3Normalize(forwardVector);
-		DirectX::XMStoreFloat3(&m_FrontVector, forwardVector);
-
-		DirectX::XMVECTOR rightVector = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(DirectX::XMLoadFloat3(&m_WorldUp), forwardVector));
-		DirectX::XMVECTOR upVector = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(forwardVector, rightVector));
-		DirectX::XMStoreFloat3(&m_RightVector, rightVector);
-		DirectX::XMStoreFloat3(&m_UpVector, upVector);
-
-		RecalculateViewProjectionMatrix();
-	}
-
-	std::shared_ptr<PerspectiveCamera> PerspectiveCamera::Create(const DirectX::XMVECTOR& position, const uint32_t width, const uint32_t height) noexcept
-	{
-		return std::make_shared<PerspectiveCamera>(position, width, height);
-	}
-
-	void PerspectiveCamera::SetFieldOfViewDegrees(const float fieldOfViewDegrees) noexcept
-	{
-		m_FieldOfViewDegrees = fieldOfViewDegrees;
-		RecalculateProjectionMatrix();
-	}
-
-	void PerspectiveCamera::SetNearPlane(const float nearPlane) noexcept
-	{
-		m_NearPlane = nearPlane;
-		RecalculateProjectionMatrix();
-	}
-
-	void PerspectiveCamera::SetFarPlane(const float farPlane) noexcept
-	{
-		m_FarPlane = farPlane;
-		RecalculateProjectionMatrix();
+		return std::make_shared<PerspectiveCamera>();
 	}
 }

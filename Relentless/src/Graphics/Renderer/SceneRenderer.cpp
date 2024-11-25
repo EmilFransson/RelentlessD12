@@ -486,8 +486,8 @@ namespace Relentless
 						TransformComponent& tcA = mgr.Get<TransformComponent>(a);
 						TransformComponent& tcB = mgr.Get<TransformComponent>(b);
 
-						double squaredDistanceA = std::pow(tcA.WorldTransform.Location.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcA.WorldTransform.Location.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcA.WorldTransform.Location.z - pEditorCamera->GetPosition().z, 2);
-						double squaredDistanceB = std::pow(tcB.WorldTransform.Location.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcB.WorldTransform.Location.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcB.WorldTransform.Location.z - pEditorCamera->GetPosition().z, 2);
+						double squaredDistanceA = std::pow(tcA.WorldTransform.Location.x - pEditorCamera->GetLocation().x, 2) + std::pow(tcA.WorldTransform.Location.y - pEditorCamera->GetLocation().y, 2) + std::pow(tcA.WorldTransform.Location.z - pEditorCamera->GetLocation().z, 2);
+						double squaredDistanceB = std::pow(tcB.WorldTransform.Location.x - pEditorCamera->GetLocation().x, 2) + std::pow(tcB.WorldTransform.Location.y - pEditorCamera->GetLocation().y, 2) + std::pow(tcB.WorldTransform.Location.z - pEditorCamera->GetLocation().z, 2);
 
 						return squaredDistanceA > squaredDistanceB;
 					});
@@ -502,8 +502,8 @@ namespace Relentless
 						TransformComponent& tcA = mgr.Get<TransformComponent>(a);
 						TransformComponent& tcB = mgr.Get<TransformComponent>(b);
 
-						double squaredDistanceA = std::pow(tcA.WorldTransform.Location.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcA.WorldTransform.Location.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcA.WorldTransform.Location.z - pEditorCamera->GetPosition().z, 2);
-						double squaredDistanceB = std::pow(tcB.WorldTransform.Location.x - pEditorCamera->GetPosition().x, 2) + std::pow(tcB.WorldTransform.Location.y - pEditorCamera->GetPosition().y, 2) + std::pow(tcB.WorldTransform.Location.z - pEditorCamera->GetPosition().z, 2);
+						double squaredDistanceA = std::pow(tcA.WorldTransform.Location.x - pEditorCamera->GetLocation().x, 2) + std::pow(tcA.WorldTransform.Location.y - pEditorCamera->GetLocation().y, 2) + std::pow(tcA.WorldTransform.Location.z - pEditorCamera->GetLocation().z, 2);
+						double squaredDistanceB = std::pow(tcB.WorldTransform.Location.x - pEditorCamera->GetLocation().x, 2) + std::pow(tcB.WorldTransform.Location.y - pEditorCamera->GetLocation().y, 2) + std::pow(tcB.WorldTransform.Location.z - pEditorCamera->GetLocation().z, 2);
 
 						return squaredDistanceA < squaredDistanceB;
 					});
@@ -516,11 +516,11 @@ namespace Relentless
 		//Camera:
 		{
 			ConstantBuffer2& cbc = m_pScene->GetEditorCamera()->m_pConstantBufferSet->At(frameIndex);
-			cbc.UploadData(&m_pScene->GetEditorCamera()->GetPosition(), cbc.GetSizeInBytes());
+			cbc.UploadData(&m_pScene->GetEditorCamera()->GetLocation(), cbc.GetSizeInBytes());
 		}
 
 		{
-			DirectX::XMFLOAT3 offset = m_pScene->GetEditorCamera()->GetPosition();
+			DirectX::XMFLOAT3 offset = m_pScene->GetEditorCamera()->GetLocation();
 			offset.x = static_cast<float>(std::floor(offset.x - fmod(offset.x, 100.0)));
 			offset.z = static_cast<float>(std::floor(offset.z - fmod(offset.z, 100.0)));
 
@@ -548,7 +548,7 @@ namespace Relentless
 
 		//View projection matrix:
 		{
-			auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewProjectionMatrix()));
+			auto vpMatrix = DirectX::XMLoadFloat4x4(&(m_pScene->GetEditorCamera()->GetViewTransform().ViewProjection));
 			DirectX::XMStoreFloat4x4(&m_VPData.VPMatrix, vpMatrix);
 
 			resourceManager.UploadConstantBufferData(m_ViewProjectionMatrixCBHandle, &m_VPData, sizeof(DirectX::XMFLOAT4X4), frameIndex);
@@ -769,7 +769,7 @@ namespace Relentless
 		InputData.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;
 		InputData.DepthData.FullResDepthTextureSRV.pResource = m_PreZRenderPass->GetDepthOutput()->GetInterface().Get();
 		InputData.DepthData.FullResDepthTextureSRV.GpuHandle = m_PreZRenderPass->GetDepthOutput()->GetSRVDescriptorHandle().GPUHandle.ptr;
-		InputData.DepthData.ProjectionMatrix.Data = GFSDK_SSAO_Float4x4((const GFSDK_SSAO_FLOAT*)&m_pScene->GetEditorCamera()->GetProjectionMatrix());
+		InputData.DepthData.ProjectionMatrix.Data = GFSDK_SSAO_Float4x4((const GFSDK_SSAO_FLOAT*)&m_pScene->GetEditorCamera()->GetViewTransform().Projection);
 		InputData.DepthData.ProjectionMatrix.Layout = GFSDK_SSAO_ROW_MAJOR_ORDER;
 		InputData.DepthData.MetersToViewSpaceUnits = 1.0f;
 		InputData.NormalData.Enable = false;

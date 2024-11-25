@@ -6,7 +6,7 @@
 #include "Graphics/Renderer/MasterRenderer.h"
 #include "Graphics/MemoryManager.h"
 #include "Input/Mouse.h"
-#include "Timer.h"
+#include "Time.h"
 #include "UI/UI.h"
 #include "Window.h"
 
@@ -48,7 +48,7 @@ namespace Relentless
 			if (!m_IsRunning)
 				break;
 
-			Timer::Update();
+			Time::Tick();
 			m_MemoryManager.PerformDeferredDeletion();
 
 			{
@@ -56,7 +56,7 @@ namespace Relentless
 
 				for (auto& pLayer : LayerStack::Get())
 				{
-					pLayer->OnUpdate(Timer::GetDeltaTime());
+					pLayer->OnUpdate(Time::GetDeltaTime());
 					pLayer->OnRender();
 				}
 			}
@@ -217,6 +217,7 @@ namespace Relentless
 		outFile << Window::GetHeight();
 		outFile.close();
 
+		LayerStack::Get().PopAllLayers();
 		m_GPUTaskManager.WaitForAllFramesComplete();
 		D3D12Core::ReportLiveObjects();
 	}

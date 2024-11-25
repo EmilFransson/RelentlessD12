@@ -20,7 +20,7 @@ namespace Relentless
 		static void HideCursor() noexcept;
 		static [[nodiscard]] const bool IsButtonPressed(const RLS_BUTTON button) noexcept;
 		static [[nodiscard]] const std::pair<uint32_t, uint32_t> GetCoordinates() noexcept;
-		static [[nodiscard]] const std::pair<int32_t, int32_t> GetDeltaCoordinates() noexcept;
+		static [[nodiscard]] const Vector2i GetDeltaCoordinates() noexcept;
 	private:
 		static std::bitset<BUTTON_COUNT> s_buttons;
 		static Vector2u s_currentMouseCoords;

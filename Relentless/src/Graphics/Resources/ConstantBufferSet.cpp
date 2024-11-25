@@ -60,7 +60,7 @@ namespace Relentless
 		return m_SizeInBytes;
 	}
 
-	void ConstantBuffer2::UploadData(void* ptrToData, size_t sizeInBytes, size_t offset)
+	void ConstantBuffer2::UploadData(const void* ptrToData, size_t sizeInBytes, size_t offset)
 	{
 		RLS_ASSERT(ptrToData, "[ConstantBuffer]: Data pointer is invalid.");
 		RLS_ASSERT(sizeInBytes <= m_SizeInBytes, "[ConstantBuffer]: Byte size of data to upload exceeds buffer capacity.");

@@ -14,7 +14,7 @@ namespace Relentless
 		{
 			if (ImGui::BeginTabItem("Performance"))
 			{
-				ImGui::Text("FPS: %d", Timer::GetFramesPerSecond());
+				ImGui::Text("FPS: %d", Time::GetFramesPerSecond());
 				ImGui::Separator();
 
 				static bool sortDurations = false;

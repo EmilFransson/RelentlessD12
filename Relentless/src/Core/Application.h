@@ -33,7 +33,7 @@ namespace Relentless
 		[[nodiscard]] ResourceManager& GetResourceManager() noexcept;
 	private:
 		void OnStartUp() noexcept;
-		void ShutDown() noexcept;
+		virtual void ShutDown() noexcept;
 		void ExecuteMainThreadQueue() noexcept;
 		[[nodiscard]] constexpr const bool IsInitialized() const noexcept { return m_IsRunning == true; }
 	private:

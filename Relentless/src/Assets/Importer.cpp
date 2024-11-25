@@ -16,13 +16,15 @@
 #include "../../vendor/includes/Assimp/scene.h"
 #include "../../vendor/includes/meshoptimizer/meshoptimizer.h"
 
+#include "Math/CommonMath.h"
+
 namespace Relentless
 {
 	using namespace Microsoft::WRL;
 
-	DirectX::XMMATRIX ConvertMatrix(aiMatrix4x4& inMat)
+	Matrix ConvertMatrix(aiMatrix4x4& inMat)
 	{
-		DirectX::XMFLOAT4X4 t = DirectX::XMFLOAT4X4
+		Matrix convertedMatrix = Matrix
 		(
 			inMat.a1, inMat.b1, inMat.c1, inMat.d1,
 			inMat.a2, inMat.b2, inMat.c2, inMat.d2,
@@ -30,31 +32,30 @@ namespace Relentless
 			inMat.a4, inMat.b4, inMat.c4, inMat.d4
 		);
 
-		return DirectX::XMLoadFloat4x4(&t);
+		return convertedMatrix;
 	}
 
-	static void ResolveMeshHierarchy(aiNode* pNode, const aiScene* pAssimpScene, const DirectX::XMFLOAT4X4& transform, std::unordered_map<aiMesh*, Transform>& aiMeshToImportedTransformMap) noexcept
+	static void ResolveMeshHierarchy(aiNode* pNode, const aiScene* pAssimpScene, const Matrix& inTransform, std::unordered_map<const aiMesh*, Transform>& aiMeshToImportedTransformMap) noexcept
 	{
 		RLS_ASSERT(pNode && pAssimpScene, "Assimp data is invalid.");
 
-		DirectX::XMMATRIX aiTransform = ConvertMatrix(pNode->mTransformation);
-		DirectX::XMMATRIX transformMatrix = aiTransform;
-		DirectX::XMMATRIX accumulatedTransform = DirectX::XMMatrixMultiply(aiTransform, DirectX::XMLoadFloat4x4(&transform));
-		DirectX::XMFLOAT4X4 currentTransform;
-		DirectX::XMStoreFloat4x4(&currentTransform, accumulatedTransform);
+		const Matrix aiTransform = ConvertMatrix(pNode->mTransformation);
+		const Matrix accumulatedTransform = aiTransform * inTransform;
 
 		for (uint32_t i{ 0u }; i < pNode->mNumMeshes; ++i)
 		{
-			aiMesh* pMesh = pAssimpScene->mMeshes[pNode->mMeshes[i]];
+			const aiMesh* pMesh = pAssimpScene->mMeshes[pNode->mMeshes[i]];
+			
 			Transform transform;
-			transform.Matrix = currentTransform;
-			ImGuizmo::DecomposeMatrixToComponents(*currentTransform.m, &transform.Location.x, &transform.Rotation.x, &transform.Scale.x);
+			transform.Matrix = accumulatedTransform;
+			transform.Matrix.Decompose(transform.Scale, transform.Rotation, transform.Location);
+			
 			aiMeshToImportedTransformMap[pMesh] = transform;
 		}
 	
 		for (uint32_t i{ 0u }; i < pNode->mNumChildren; ++i)
 		{
-			ResolveMeshHierarchy(pNode->mChildren[i], pAssimpScene, currentTransform, aiMeshToImportedTransformMap);
+			ResolveMeshHierarchy(pNode->mChildren[i], pAssimpScene, accumulatedTransform, aiMeshToImportedTransformMap);
 		}
 	}
 
@@ -597,7 +598,7 @@ namespace Relentless
 			RLS_CORE_INFO("Loaded material '{0}' with GUID: '{1}'.", materialName.c_str(), ConvertUUIDToString(handle.Uuid));
 		}
 
-		std::unordered_map<aiMesh*, Transform> aiMeshToImportedTransformMap;
+		std::unordered_map<const aiMesh*, Transform> aiMeshToImportedTransformMap;
 
 		DirectX::XMFLOAT4X4 identity;
 		DirectX::XMStoreFloat4x4(&identity, DirectX::XMMatrixIdentity());

@@ -157,7 +157,7 @@ namespace Relentless
 		return { s_currentMouseCoords.x, s_currentMouseCoords.y };
 	};
 
-	const std::pair<int32_t, int32_t> Mouse::GetDeltaCoordinates() noexcept
+	const Vector2i Mouse::GetDeltaCoordinates() noexcept
 	{
 		return { s_deltaMouseCoords.x, s_deltaMouseCoords.y };
 	}
