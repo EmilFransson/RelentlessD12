@@ -26,8 +26,6 @@ namespace Relentless
 	public:
 		OutlinerEntityTreeItem(entity id) noexcept;
 		virtual ~OutlinerEntityTreeItem() noexcept override = default;
-
-		//virtual void SetAndPropagateVisibleState(bool visibleState) noexcept override;
 		[[nodiscard]] entity GetEntityID() const noexcept;
 	private:
 		entity m_EntityID = NULL_ENTITY;
@@ -36,22 +34,19 @@ namespace Relentless
 	class OutlinerSceneTreeItem : public OutlinerTreeItem
 	{
 	public:
-		OutlinerSceneTreeItem(Scene* pScene) noexcept;
+		OutlinerSceneTreeItem() noexcept;
 		virtual ~OutlinerSceneTreeItem() noexcept override = default;
-		//virtual void SetAndPropagateVisibleState(bool visibleState) noexcept override;
-
-		[[nodiscard]] Scene* GetScene() noexcept;
-	private:
-		Scene* m_pScene = nullptr;
 	};
 
-	class OutlinerFolderTreeItem : public OutlinerTreeItem
+	class OutlinerFilterTreeItem : public OutlinerTreeItem
 	{
 	public:
-		OutlinerFolderTreeItem(const char* name) noexcept;
-		virtual ~OutlinerFolderTreeItem() noexcept override = default;
-		//virtual void SetAndPropagateVisibleState(bool visibleState) noexcept override;
+		OutlinerFilterTreeItem(const std::string& path) noexcept;
+		virtual ~OutlinerFilterTreeItem() noexcept override = default;
+		
+		void SetPath(const std::string& newPath) noexcept;
+		[[nodiscard]] const std::string& GetPath() const noexcept;
 	private:
-		std::string m_Name = nullptr;
+		std::string m_Path;
 	};
 }

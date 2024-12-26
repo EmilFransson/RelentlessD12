@@ -7,6 +7,7 @@
 #include "../Panels/SceneRendererPanel.h"
 #include "../Panels/InspectorPanel.h"
 
+#include "EntityFilters.h"
 #include "Selection.h"
 
 namespace Relentless
@@ -31,7 +32,7 @@ namespace Relentless
 		virtual void OnPostRender() noexcept;
 
 		[[nodiscard]] Selection& GetSelection() noexcept;
-		void SetEntityEditorVisibility(entity e, bool visible) noexcept;
+		[[nodiscard]] EntityFiltersManager& GetEntityFiltersManager() noexcept;
 
 		Broadcaster<void(Scene*)> OnSceneChanged;
 
@@ -95,7 +96,9 @@ namespace Relentless
 		std::shared_ptr<TextureCube> m_SkyBox = nullptr;
 
 		Selection m_Selection;
+		EntityFiltersManager m_EntityFiltersManager;
 
 		bool m_IsPanningMouse = false;
+		bool m_ViewportIsFocused = false;
 	};
 }

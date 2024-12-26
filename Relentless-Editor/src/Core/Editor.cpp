@@ -66,7 +66,10 @@ namespace Relentless
 			const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
 
 			if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
+			{
+				m_pOutlinerPanel->DeselectNonEntityItems();
 				m_Selection.DeselectAllEntities();
+			}
 
 			if (isHoveringEntity)
 			{
@@ -100,14 +103,20 @@ namespace Relentless
 				}
 				case RLS_KEY::A:
 				{
-					if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+					if (m_ViewportIsFocused)
 					{
-						m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
-							{
-								if (!m_Selection.IsEntitySelected(e))
-									m_Selection.SelectEntity(e);
-							});
+						if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+						{
+							m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
+								{
+									if (!m_Selection.IsEntitySelected(e))
+										m_Selection.SelectEntity(e);
+								});
+						}
 					}
+					else if (m_pOutlinerPanel->IsFocused())
+						m_pOutlinerPanel->SelectAll();
+
 					break;
 				}
 				case RLS_KEY::H:
@@ -168,6 +177,7 @@ namespace Relentless
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Scene");
+		m_ViewportIsFocused = ImGui::IsWindowFocused();
 
 		//UI_DrawSceneStateIcons();
 
@@ -297,12 +307,8 @@ namespace Relentless
 				});
 		}
 
-		
-
 		m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
 		m_SceneRendererPanel.SetActiveRenderer(m_pSceneRenderer);
-
-		SetActiveScene(m_pActiveScene);
 	}
 
 	void Editor::OnDestroy() noexcept
@@ -350,6 +356,11 @@ namespace Relentless
 	Selection& Editor::GetSelection() noexcept
 	{
 		return m_Selection;
+	}
+
+	EntityFiltersManager& Editor::GetEntityFiltersManager() noexcept
+	{
+		return m_EntityFiltersManager;
 	}
 
 	void Editor::SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept
@@ -400,12 +411,14 @@ namespace Relentless
 
 	void Editor::CreateStartScene() noexcept
 	{
-		entity parent = m_pActiveScene->CreateShape(Shape::Cube);
-		entity child = m_pActiveScene->CreateShape(Shape::Torus);
-		entity otherCube = m_pActiveScene->CreateShape(Shape::Capsule);
+		const entity parent = m_pActiveScene->CreateShape(Shape::Cube);
+		const entity child = m_pActiveScene->CreateShape(Shape::Torus);
+		const entity otherCube = m_pActiveScene->CreateShape(Shape::Capsule);
 		m_pActiveScene->SetWorldLocation(parent, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
 		m_pActiveScene->SetWorldLocation(child, DirectX::XMFLOAT3(5.0f, 0.0f, 0.0f));
 		m_pActiveScene->SetWorldLocation(otherCube, DirectX::XMFLOAT3(-5.0f, 0.0f, 0.0f));
+
+		m_EntityFiltersManager.CreateFilter("StarterContent/Shapes/Cubes");
 	}
 
 	void Editor::OnSceneViewportChanged() noexcept
@@ -585,6 +598,9 @@ namespace Relentless
 	{
 		if (m_Selection.IsEntitySelected(e))
 			m_Selection.DeselectEntity(e);
+
+		if (m_EntityFiltersManager.IsEntityInAnyFilter(e))
+			m_EntityFiltersManager.RemoveEntityFromCurrentFilter(e);
 	}
 
 }

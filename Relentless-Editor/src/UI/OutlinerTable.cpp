@@ -12,7 +12,7 @@ namespace Relentless
 			column.HeaderTooltip = "Visibility";
 			column.HeaderIcon.IconTextureHandle = NULL_HANDLE;
 			column.HeaderIcon.Tint = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
-			column.HeaderIcon.SizeWeight = { 0.6f, 0.6f };
+			column.HeaderIcon.SizeWeight = 0.6f;
 			column.Flags = ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_NoSort;
 			column.DefaultWeight = 30.0f;
 			column.AllowSelection = false;

@@ -18,7 +18,7 @@ namespace Relentless
 	struct TableIcon
 	{
 		AssetHandle IconTextureHandle = NULL_HANDLE;
-		ImVec2 SizeWeight{ 0.5f, 0.5f };
+		float SizeWeight = 0.6f;
 		ImVec4 Tint{ 1.0f, 1.0f, 1.0f, 1.0f };
 	};
 

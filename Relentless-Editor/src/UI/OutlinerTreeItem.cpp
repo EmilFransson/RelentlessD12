@@ -35,74 +35,31 @@ namespace Relentless
 	{
 	}
 
-	//void OutlinerEntityTableData::SetAndPropagateVisibleState(bool visibleState) noexcept
-	//{
-	//	const bool isVisible = IsVisible();
-	//
-	//	if (visibleState == isVisible)
-	//		return;
-	//
-	//	if (!isVisible)
-	//		m_pOwningScene->GetEntityManager().Remove<HiddenInGameComponent>(m_EntityID);
-	//	else
-	//		m_pOwningScene->GetEntityManager().AddOrReplace<HiddenInGameComponent>(m_EntityID);
-	//
-	//	const auto& pSlice = GetConstSlice();
-	//	const std::vector<std::shared_ptr<TableData>>& children = pSlice->GetData();
-	//
-	//	for (auto& child : children)
-	//		static_cast<OutlinerTableData*>(child.get())->SetAndPropagateVisibleState(visibleState);
-	//}
-
 	entity OutlinerEntityTreeItem::GetEntityID() const noexcept
 	{
 		return m_EntityID;
 	}
 
-	OutlinerSceneTreeItem::OutlinerSceneTreeItem(Scene* pScene) noexcept
+	OutlinerSceneTreeItem::OutlinerSceneTreeItem() noexcept
 		: 
-		OutlinerTreeItem(ETreeItemType::Scene),
-		m_pScene{ pScene }
+		OutlinerTreeItem(ETreeItemType::Scene)
 	{
 	}
 
-	//void OutlinerSceneTableData::SetAndPropagateVisibleState(bool visibleState) noexcept
-	//{
-	//	const bool isVisible = IsVisible();
-	//
-	//	if (isVisible == visibleState)
-	//		return;
-	//
-	//	const auto& pSlice = GetConstSlice();
-	//	const std::vector<std::shared_ptr<TableData>>& children = pSlice->GetData();
-	//	for (auto& child : children)
-	//		static_cast<OutlinerTableData*>(child.get())->SetAndPropagateVisibleState(visibleState);
-	//}
-
-	Scene* OutlinerSceneTreeItem::GetScene() noexcept
-	{
-		return m_pScene;
-	}
-
-	OutlinerFolderTreeItem::OutlinerFolderTreeItem(const char* name) noexcept
+	OutlinerFilterTreeItem::OutlinerFilterTreeItem(const std::string& path) noexcept
 		:
 		OutlinerTreeItem(ETreeItemType::Filter),
-		m_Name{name}
+		m_Path{ path }
 	{
 	}
 
-	//void OutlinerFolderTableData::SetAndPropagateVisibleState(bool visibleState) noexcept
-	//{
-	//	const bool isVisible = IsVisible();
-	//
-	//	if (visibleState == isVisible)
-	//		return;
-	//
-	//	const auto& pSlice = GetConstSlice();
-	//	const std::vector<std::shared_ptr<TableData>>& children = pSlice->GetData();
-	//
-	//	for (auto& child : children)
-	//		static_cast<OutlinerTableData*>(child.get())->SetAndPropagateVisibleState(visibleState);
-	//}
+	void OutlinerFilterTreeItem::SetPath(const std::string& newPath) noexcept
+	{
+		m_Path = newPath;
+	}
 
+	const std::string& OutlinerFilterTreeItem::GetPath() const noexcept
+	{
+		return m_Path;
+	}
 }

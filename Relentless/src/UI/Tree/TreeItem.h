@@ -22,7 +22,10 @@ namespace Relentless
 		void AddChild(const std::shared_ptr<TreeItem>& pTreeItem) noexcept;
 		void RemoveChild(const std::shared_ptr<TreeItem>& pTreeItem) noexcept;
 		[[nodiscard]] bool HasChildren() const noexcept;
+		[[nodiscard]] bool HasChild(const std::shared_ptr<TreeItem>& pTreeItem) const noexcept;
 		[[nodiscard]] const std::vector<std::shared_ptr<TreeItem>>& GetChildren() const noexcept;
+		[[nodiscard]] std::vector<TreeItem*> GetAncestors() const noexcept;
+		[[nodiscard]] std::vector<TreeItem*> GetDescendants() noexcept;
 
 		void SetParent(TreeItem* pParent) noexcept;
 		void RemoveParent() noexcept;

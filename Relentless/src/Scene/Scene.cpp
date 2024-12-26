@@ -437,7 +437,9 @@ namespace Relentless
 			m_EntityManager.Remove<ParentComponent>(parent);
 
 		m_EntityManager.Remove<IsChildComponent>(entityToDetach);
-		m_EntityManager.Add<RootComponent>(entityToDetach);
+
+		if (!m_EntityManager.Has<RootComponent>(entityToDetach))
+			m_EntityManager.Add<RootComponent>(entityToDetach);
 
 		OnEntityDetached(entityToDetach, parent);
 		return true;

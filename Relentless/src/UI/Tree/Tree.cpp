@@ -143,7 +143,7 @@ namespace Relentless
 		ImVec2 iconSize(0.0f, 0.0f);
 		if (hasIcon)
 		{
-			float iconHeight = cellSize.y * tableIcon.SizeWeight.y;
+			float iconHeight = cellSize.y * tableIcon.SizeWeight;
 			iconSize = ImVec2(iconHeight, iconHeight);
 		}
 
@@ -315,7 +315,7 @@ namespace Relentless
 			ImGui::SameLine();
 			if (hasIcon)
 			{
-				const float iconHeight = cellSize.y * 0.6f;
+				const float iconHeight = cellSize.y * tableIcon.SizeWeight;
 				const ImVec2 iconSize = ImVec2(iconHeight, iconHeight);
 				const float iconPosY = cellPos.y + (cellSize.y - iconSize.y) * 0.5f;
 				ImGui::SetCursorScreenPos(ImVec2(ImGui::GetCursorScreenPos().x, iconPosY));

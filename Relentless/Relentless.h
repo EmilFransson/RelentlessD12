@@ -12,6 +12,7 @@
 //Utility:
 #include <src/Utility/FileDialogs.h>
 #include <src/Utility/Common.h>
+#include "src/Utility/StringUtils.h"
 #include <src/Callback/Broadcaster.h>
 #include <src/Callback/Callback.h>
 

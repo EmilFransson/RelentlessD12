@@ -58,9 +58,51 @@ namespace Relentless
 		return !m_Children.empty();
 	}
 
+	bool TreeItem::HasChild(const std::shared_ptr<TreeItem>& pTreeItem) const noexcept
+	{
+		return std::find_if(m_Children.begin(), m_Children.end(), [&](const std::shared_ptr<TreeItem>& pCurrentChild)
+			{
+				return pCurrentChild == pTreeItem;
+			}) != m_Children.end();
+	}
+
 	const std::vector<std::shared_ptr<TreeItem>>& TreeItem::GetChildren() const noexcept
 	{
 		return m_Children;
+	}
+
+	std::vector<TreeItem*> TreeItem::GetAncestors() const noexcept
+	{
+		std::vector<TreeItem*> ancestors;
+
+		TreeItem* pCurrent = m_pParent;
+		while (pCurrent)
+		{
+			ancestors.push_back(pCurrent);
+			pCurrent = pCurrent->GetParent();
+		}
+
+		return ancestors;
+	}
+
+	std::vector<TreeItem*> TreeItem::GetDescendants() noexcept
+	{
+		std::vector<TreeItem*> descendants;
+
+		std::function<void(TreeItem* pTreeItem)> RecursivelyGetDescendants;
+
+		RecursivelyGetDescendants = [&](TreeItem* pCurrentTreeItem)
+		{
+			descendants.push_back(pCurrentTreeItem);
+			const std::vector<std::shared_ptr<TreeItem>>& children = pCurrentTreeItem->GetChildren();
+			for (auto& child : children)
+				RecursivelyGetDescendants(child.get());
+		};
+
+		for (auto& child : m_Children)
+			RecursivelyGetDescendants(child.get());
+
+		return descendants;
 	}
 
 	void TreeItem::SetParent(TreeItem* pParent) noexcept
