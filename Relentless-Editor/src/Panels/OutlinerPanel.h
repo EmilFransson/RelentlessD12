@@ -19,10 +19,14 @@ namespace Relentless
 		~OutlinerPanel() noexcept;
 		void OnImGuiRender(const bool show) noexcept;
 		void SelectAll() noexcept;
+		void SelectAllExpanded() noexcept;
 		void DeselectNonEntityItems() noexcept;
+		void OnDeleteKeyPressed() noexcept;
 
 		[[nodiscard]] bool IsFocused() const noexcept;
 	private:
+		void SetupOutlinerTable() noexcept;
+
 		std::shared_ptr<OutlinerEntityTreeItem> CreateEntityTreeItem(entity e) noexcept;
 		std::shared_ptr<OutlinerSceneTreeItem> CreateSceneTreeItem(Scene* pScene) noexcept;
 		std::shared_ptr<OutlinerFilterTreeItem> CreateFilterTreeItem(EntityFilter* pFilter) noexcept;
@@ -51,7 +55,7 @@ namespace Relentless
 		void OnEntityFilterCreated(const std::string& path) noexcept;
 		void OnEntityFilterDestroyed(const std::string& path) noexcept;
 		void OnEntitySetToFilter(entity e, const std::string& path) noexcept;
-		void OnEntityRemovedFromFilter(entity e, const std::string& path) noexcept;
+		void OnEntityRemovedFromFilter(entity e, const std::string& path, bool filterToBeDestroyed) noexcept;
 		void OnEntityFilterReattached(const std::string& childFilterPathOld, const std::string& childFilterPathNew, const std::string& parentFilterPath) noexcept;
 
 		void SetAndPropagateTreeItemVisibility(OutlinerTreeItem* pOutlinerTreeItem, bool visibilityState) noexcept;
@@ -67,6 +71,8 @@ namespace Relentless
 		[[nodiscard]] std::vector<std::shared_ptr<TreeItem>> GetAllSelectedTreeItems() const noexcept;
 
 		[[nodiscard]] uint32_t GetNumSelected() const noexcept;
+		[[nodiscard]] OutlinerSceneTreeItem* GetSceneTreeItem() const noexcept;
+		[[nodiscard]] OutlinerTreeItem* GetFirstNonEntityTreeItemAncestor(TreeItem* pTreeItem) const noexcept;
 	private:
 		Editor* m_pEditor = nullptr;
 		Scene* m_pScene = nullptr;
@@ -82,7 +88,7 @@ namespace Relentless
 
 		AssetHandle m_DragDropTooltipIcon = NULL_HANDLE;
 
-		std::shared_ptr<Outliner> m_pOutliner = nullptr;
+		std::shared_ptr<Tree> m_pOutliner = nullptr;
 		std::shared_ptr<TreeInteraction> m_pTreeInteraction = nullptr;
 		std::shared_ptr<DragDropBehavior> m_pDragDropBehavior = nullptr;
 
@@ -97,7 +103,6 @@ namespace Relentless
 		std::string m_DragDropTooltip{};
 
 		bool m_SceneTreeItemSelected = false;
-
 		bool m_SuspendNotifications = false;
 	};
 }

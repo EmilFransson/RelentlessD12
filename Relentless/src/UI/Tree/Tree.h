@@ -41,7 +41,7 @@ namespace Relentless
 			uint32_t IndentationLevel = 0u;
 		};
 
-		Tree(const std::shared_ptr<TreeDataView>& dataView) noexcept;
+		Tree(const char* id, const std::shared_ptr<TreeDataView>& dataView) noexcept;
 		virtual ~Tree() noexcept;
 
 		void Draw() noexcept;
@@ -68,11 +68,11 @@ namespace Relentless
 		[[nodiscard]] std::vector<std::shared_ptr<TreeItem>> GetDescendants(const std::shared_ptr<TreeItem>& pTreeItem) const noexcept;
 		
 		[[nodiscard]] std::vector<TreeDataRow> FlattenTree() const noexcept;
+		[[nodiscard]] const char* GetID() const noexcept;
 
 		Broadcaster<void(bool isFocused)> OnFocusChanged;
 
 	protected:
-		virtual [[nodiscard]] const char* GetID() const noexcept = 0;
 		virtual void DrawHeaderCellContent(const TableIcon& tableIcon, const std::string& label, UI::Alignment alignment, int column) noexcept;
 	private:
 		//Drawing:
@@ -89,6 +89,8 @@ namespace Relentless
 
 		[[nodiscard]] float CalculateCellContentStartPosition(ImRect cellRect, UI::Alignment alignment, float contentWidth) const noexcept;
 	private:
+		const char* m_ID;
+
 		std::vector<ColumnProperties> m_Columns;
 		std::vector<std::shared_ptr<TreeItem>> m_Entries;
 		ImGuiTableFlags m_Flags = 0;

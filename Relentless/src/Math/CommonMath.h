@@ -3,12 +3,57 @@
 
 namespace Relentless
 {
+	namespace Colors
+	{
+		constexpr Color Transparent = Color(0.0f, 0.0f, 0.0f, 0.0f);
+		constexpr Color White = Color(1.0f, 1.0f, 1.0f, 1.0f);
+		constexpr Color Black = Color(0.0f, 0.0f, 0.0f, 1.0f);
+		constexpr Color Red = Color(1.0f, 0.0f, 0.0f, 1.0f);
+		constexpr Color Green = Color(0.0f, 1.0f, 0.0f, 1.0f);
+		constexpr Color Blue = Color(0.0f, 0.0f, 1.0f, 1.0f);
+		constexpr Color Yellow = Color(1.0f, 1.0f, 0.0f, 1.0f);
+		constexpr Color Magenta = Color(1.0f, 0.0f, 1.0f, 1.0f);
+		constexpr Color Cyan = Color(0.0f, 1.0f, 1.0f, 1.0f);
+		constexpr Color Gray = Color(0.5f, 0.5f, 0.5f, 1.0f);
+	};
+
 	namespace Math
 	{
 		constexpr float PI = 3.14159265358979323846f;
 		constexpr float PI_DIV_4 = 0.78539816339744830961f;
 		constexpr float TAU = PI * 2.0f;
 		constexpr float EPSILON = 1e-6f;
+
+		constexpr float BytesToKiloBytes = 1.0f / (1 << 10);
+		constexpr float BytesToMegaBytes = 1.0f / (1 << 20);
+		constexpr float BytesToGigaBytes = 1.0f / (1 << 30);
+
+		constexpr uint32_t KilobytesToBytes = 1 << 10;
+		constexpr uint32_t MegaBytesToBytes = 1 << 20;
+		constexpr uint32_t GigaBytesToBytes = 1 << 30;
+
+		template<typename T>
+		T AlignUp(T value, T alignment) noexcept
+		{
+			return (value + ((T)alignment - 1)) & ~(alignment - 1);
+		}
+
+		constexpr inline uint32 DivideAndRoundUp(uint32 nominator, uint32 denominator) noexcept
+		{
+			return (nominator + denominator - 1) / denominator;
+		}
+
+		template<typename T>
+		constexpr T Max(const T& a, const T& b) noexcept
+		{
+			return a < b ? b : a;
+		}
+
+		template<typename T>
+		constexpr T Min(const T& a, const T& b) noexcept
+		{
+			return a < b ? a : b;
+		}
 
 		inline [[nodiscard]] static float RadToDeg(float radians) noexcept
 		{

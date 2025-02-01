@@ -34,6 +34,7 @@ namespace Relentless
 
 		void SetExpanded(bool expandState) noexcept;
 		[[nodiscard]] bool IsExpanded() const noexcept;
+		[[nodiscard]] bool IsVisible() const noexcept;
 
 		void SetData(const TreeItemData& data) noexcept;
 		[[nodiscard]] const TreeItemData& GetData() const noexcept;

@@ -47,8 +47,9 @@ namespace Relentless
 		[[nodiscard]] const std::shared_ptr<PerspectiveCamera>& GetEditorCamera() const noexcept { return m_pEditorCamera; }
 		void SetEntityVisibleInGame(entity e, bool visibilityState) noexcept;
 
+		[[nodiscard]] bool IsParent(entity e) noexcept;
 		[[nodiscard]] bool HasParent(entity e) noexcept;
-		[[nodiscard]] entity GetParent(entity e)noexcept;
+		[[nodiscard]] entity GetParent(entity e) noexcept;
 
 		void SetMousePosition(const ImVec2& newMousePosition) noexcept { m_MousePosition = newMousePosition; }
 		[[nodiscard]] const ImVec2& GetMousePosition() const noexcept { return m_MousePosition; }

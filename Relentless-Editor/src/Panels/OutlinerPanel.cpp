@@ -52,29 +52,6 @@ namespace Relentless
 		entityFiltersManager.OnEntityRemovedFromFilter.Connect(this, &OutlinerPanel::OnEntityRemovedFromFilter);
 		entityFiltersManager.OnFilterReattached.Connect(this, &OutlinerPanel::OnEntityFilterReattached);
 		
-		m_pTreeInteraction = std::make_shared<TreeInteraction>();
-		m_pTreeInteraction->OnItemClicked.Connect(this, &OutlinerPanel::OnTreeItemClicked);
-		m_pTreeInteraction->OnItemHovered.Connect(this, &OutlinerPanel::OnTreeItemHovered);
-		m_pTreeInteraction->OnMouseEnterItemRow.Connect(this, &OutlinerPanel::OnMouseEnterTreeItemRow);
-		m_pTreeInteraction->OnMouseExitItemRow.Connect(this, &OutlinerPanel::OnMouseExitTreeItemRow);
-		m_pTreeInteraction->OnMouseReleasedOnItem.Connect(this, &OutlinerPanel::OnMouseReleasedOnTreeItem);
-
-		std::shared_ptr<TreeStyle> pTreeStyle = std::make_shared<TreeStyle>();
-		pTreeStyle->SetUseAlternatingRowColors(true);
-
-		std::shared_ptr<TreeDataView> pDataView = std::make_shared<TreeDataView>();
-		
-		m_pDragDropBehavior = std::make_shared<DragDropBehavior>("OutlinerTreeDragDrop");
-		m_pDragDropBehavior->OnDragOver.Connect(this, &OutlinerPanel::OnDragOver);
-		m_pDragDropBehavior->OnDrop.Connect(this, &OutlinerPanel::OnDrop);
-
-		pDataView->pTreeInteraction = m_pTreeInteraction;
-		pDataView->pTreeStyle = pTreeStyle;
-		pDataView->pDragDropBehavior = m_pDragDropBehavior;
-
-		m_pOutliner = std::make_shared<Outliner>(pDataView);
-		m_pOutliner->OnFocusChanged.Connect(this, &OutlinerPanel::OnOutlinerTreeFocusChanged);
-
 		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\showicon.rasset"), m_ShowEntityTextureIconHandle), "Core engine icon missing.");
 		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\hideicon.rasset"), m_HideEntityTextureIconHandle), "Core engine icon missing.");
 		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\outlinerentityicon.rasset"), m_EntityTextureIconHandle), "Core engine icon missing.");
@@ -83,6 +60,8 @@ namespace Relentless
 		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\not_allowed.rasset"), m_NotAllowedTextureIconHandle), "Core engine icon missing.");
 		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilteropen.rasset"), m_EntityFilterOpenTextureIconHandle), "Core engine icon missing.");
 		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilterclosed.rasset"), m_EntityFilterClosedTextureIconHandle), "Core engine icon missing.");
+		
+		SetupOutlinerTable();
 	}
 
 	OutlinerPanel::~OutlinerPanel() noexcept
@@ -222,6 +201,22 @@ namespace Relentless
 		}
 	}
 
+	void OutlinerPanel::SelectAllExpanded() noexcept
+	{
+		const std::shared_ptr<TreeItem>& pSceneTreeItem = m_pOutliner->GetRootEntries().front();
+		std::vector<TreeItem*> allTreeItems = pSceneTreeItem->GetDescendants();
+		allTreeItems.push_back(pSceneTreeItem.get());
+
+		for (TreeItem* pTreeItem : allTreeItems)
+		{
+			if (!pTreeItem->IsVisible())
+				continue;
+
+			if (!IsTreeItemSelected(pTreeItem))
+				SelectTreeItem(static_cast<OutlinerTreeItem*>(pTreeItem));
+		}
+	}
+
 	void OutlinerPanel::DeselectNonEntityItems() noexcept
 	{
 		std::vector<OutlinerTreeItem*> toDeselect;
@@ -235,6 +230,66 @@ namespace Relentless
 
 		for (OutlinerTreeItem* pFilterItemToDeselect : toDeselect)
 			DeselectTreeItem(pFilterItemToDeselect);
+	}
+
+	void OutlinerPanel::OnDeleteKeyPressed() noexcept
+	{
+		const std::vector<std::shared_ptr<TreeItem>> selectedTreeItems = GetAllSelectedTreeItems();
+		
+		//Delete entities first and filters last:
+		std::vector<OutlinerEntityTreeItem*> selectedEntityTreeItems;
+		std::vector<OutlinerFilterTreeItem*> selectedFilterTreeItems;
+
+		for (auto& pTreeItem : selectedTreeItems)
+		{
+			OutlinerTreeItem* outlinerTreeItem = OutlinerPanel_private::AsOutlinerTreeItem(pTreeItem);
+			switch (outlinerTreeItem->GetType())
+			{
+			case ETreeItemType::Entity:
+				selectedEntityTreeItems.push_back(OutlinerPanel_private::AsOutlinerEntityTreeItem(outlinerTreeItem));
+				break;
+			case ETreeItemType::Filter:
+				selectedFilterTreeItems.push_back(OutlinerPanel_private::AsOutlinerFilterTreeItem(outlinerTreeItem));
+				break;
+			}
+		
+		}
+
+		EntityFiltersManager& filterManager = m_pEditor->GetEntityFiltersManager();
+		
+		for (OutlinerEntityTreeItem* pEntityTreeItem : selectedEntityTreeItems)
+		{
+			std::vector<std::shared_ptr<TreeItem>> children = pEntityTreeItem->GetChildren();
+
+			TreeItem* pNonEntityAncestor = GetFirstNonEntityTreeItemAncestor(pEntityTreeItem);
+
+			m_pScene->DestroyEntity(pEntityTreeItem->GetEntityID());
+		
+			if (children.empty())
+				return;
+
+			if (!pNonEntityAncestor)
+				return;
+
+			OutlinerTreeItem* pNonEntityOutlinerTreeItem = static_cast<OutlinerTreeItem*>(pNonEntityAncestor);
+			if (pNonEntityOutlinerTreeItem->GetType() == ETreeItemType::Filter)
+			{
+				OutlinerFilterTreeItem* pFilterTreeItem = OutlinerPanel_private::AsOutlinerFilterTreeItem(pNonEntityOutlinerTreeItem);
+
+				for (auto& child : children)
+				{
+					OutlinerTreeItem* pChildOutlinerTreeItem = OutlinerPanel_private::AsOutlinerTreeItem(child);
+					if (pChildOutlinerTreeItem->GetType() != ETreeItemType::Entity)
+						continue;
+
+					OutlinerEntityTreeItem* pEntityOutlinerTreeItem = OutlinerPanel_private::AsOutlinerEntityTreeItem(pChildOutlinerTreeItem);
+					filterManager.SetEntityToFilter(pEntityOutlinerTreeItem->GetEntityID(), pFilterTreeItem->GetPath());
+				}
+			}
+		}
+
+		for (OutlinerFilterTreeItem* pFilterTreeItem : selectedFilterTreeItems)
+			filterManager.DestroyFilter(pFilterTreeItem->GetPath());
 	}
 
 	bool OutlinerPanel::IsFocused() const noexcept
@@ -330,13 +385,11 @@ namespace Relentless
 		if (pChildTreeItem->GetParent() == pParentTreeItem.get())
 			return;
 
-		if (pChildTreeItem->GetParent() == m_pOutliner->GetRootEntries().front().get())
-			m_pOutliner->GetRootEntries().front()->RemoveChild(pChildTreeItem);
+		OutlinerSceneTreeItem* pSceneTreeItem = GetSceneTreeItem();
+		if (pChildTreeItem->GetParent() == pSceneTreeItem)
+			pSceneTreeItem->RemoveChild(pChildTreeItem);
 		
 		pParentTreeItem->AddChild(pChildTreeItem);
-
-		if (m_pEditor->GetEntityFiltersManager().IsEntityInAnyFilter(child))
-			m_pEditor->GetEntityFiltersManager().RemoveEntityFromCurrentFilter(child);
 	}
 
 	void OutlinerPanel::OnEntityDetached(entity child, entity parent) noexcept
@@ -348,41 +401,14 @@ namespace Relentless
 		std::shared_ptr<OutlinerTreeItem> pParentTreeItem = m_EntityToTreeItemMap[parent];
 
 		pParentTreeItem->RemoveChild(pChildTreeItem);
-		pChildTreeItem->RemoveParent();
-		
-		TreeItem* pParentToParent = pParentTreeItem->GetParent();
-		if (pParentToParent)
-		{
-			OutlinerTreeItem* pOutlinerTreeItem = static_cast<OutlinerTreeItem*>(pParentToParent);
-			const ETreeItemType parentToParentType = pOutlinerTreeItem->GetType();
-			switch (parentToParentType)
-			{
-			case ETreeItemType::Scene:
-			{
-				pParentToParent->AddChild(pChildTreeItem);
-				break;
-			}
-			case ETreeItemType::Entity:
-			{
-				m_pScene->AttachEntity(child, OutlinerPanel_private::AsOutlinerEntityTreeItem(pOutlinerTreeItem)->GetEntityID());
-				break;
-			}
-			case ETreeItemType::Filter:
-			{
-				m_pEditor->GetEntityFiltersManager().SetEntityToFilter(child, OutlinerPanel_private::AsOutlinerFilterTreeItem(pOutlinerTreeItem)->GetPath());
-				break;
-			}
-			}
-		}
-		else
-		{
-			m_pOutliner->AddEntry(pChildTreeItem);
-			pChildTreeItem->RemoveParent();
-		}
+		GetSceneTreeItem()->AddChild(pChildTreeItem);
 	}
 
 	void OutlinerPanel::OnEntitySelectionChangedFromEditor(entity e, ESelectionState selectionState) noexcept
 	{
+		if (!m_EntityToTreeItemMap.contains(e))
+			return;
+
 		std::shared_ptr<OutlinerTreeItem> pEntityTreeItem = m_EntityToTreeItemMap[e];
 
 		switch (selectionState)
@@ -446,10 +472,70 @@ namespace Relentless
 			m_EntityToTreeItemMap[selectedEntity]->SetBackgroundColor(isFocused ? TreeDefaultColors::RowSelectedFocusedColor : TreeDefaultColors::RowSelectedColor);
 
 		if (m_SceneTreeItemSelected)
-			m_pOutliner->GetRootEntries().front()->SetBackgroundColor(isFocused ? TreeDefaultColors::RowSelectedFocusedColor : TreeDefaultColors::RowSelectedColor);
+			GetSceneTreeItem()->SetBackgroundColor(isFocused ? TreeDefaultColors::RowSelectedFocusedColor : TreeDefaultColors::RowSelectedColor);
 
 		for (OutlinerTreeItem* pFilterTreeItem : m_SelectedEntityFilters)
 			pFilterTreeItem->SetBackgroundColor(isFocused ? TreeDefaultColors::RowSelectedFocusedColor : TreeDefaultColors::RowSelectedColor);
+	}
+
+	void OutlinerPanel::SetupOutlinerTable() noexcept
+	{
+		m_pTreeInteraction = std::make_shared<TreeInteraction>();
+		m_pTreeInteraction->OnItemClicked.Connect(this, &OutlinerPanel::OnTreeItemClicked);
+		m_pTreeInteraction->OnItemHovered.Connect(this, &OutlinerPanel::OnTreeItemHovered);
+		m_pTreeInteraction->OnMouseEnterItemRow.Connect(this, &OutlinerPanel::OnMouseEnterTreeItemRow);
+		m_pTreeInteraction->OnMouseExitItemRow.Connect(this, &OutlinerPanel::OnMouseExitTreeItemRow);
+		m_pTreeInteraction->OnMouseReleasedOnItem.Connect(this, &OutlinerPanel::OnMouseReleasedOnTreeItem);
+
+		std::shared_ptr<TreeStyle> pTreeStyle = std::make_shared<TreeStyle>();
+		pTreeStyle->SetUseAlternatingRowColors(true);
+
+		std::shared_ptr<TreeDataView> pDataView = std::make_shared<TreeDataView>();
+
+		m_pDragDropBehavior = std::make_shared<DragDropBehavior>("OutlinerTreeDragDrop");
+		m_pDragDropBehavior->OnDragOver.Connect(this, &OutlinerPanel::OnDragOver);
+		m_pDragDropBehavior->OnDrop.Connect(this, &OutlinerPanel::OnDrop);
+
+		pDataView->pTreeInteraction = m_pTreeInteraction;
+		pDataView->pTreeStyle = pTreeStyle;
+		pDataView->pDragDropBehavior = m_pDragDropBehavior;
+
+		m_pOutliner = std::make_shared<Tree>("Outliner", pDataView);
+		m_pOutliner->OnFocusChanged.Connect(this, &OutlinerPanel::OnOutlinerTreeFocusChanged);
+
+		{
+			Tree::ColumnProperties column;
+			column.Label = "";
+			column.HeaderTooltip = "Visibility";
+			column.HeaderIcon.IconTextureHandle = m_ShowEntityTextureIconHandle;
+			column.HeaderIcon.Tint = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
+			column.HeaderIcon.SizeWeight = 0.6f;
+			column.Flags = ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_NoSort;
+			column.DefaultWeight = 30.0f;
+			column.AllowSelection = false;
+			column.Alignment = UI::Alignment::Center;
+			m_pOutliner->AddColumn(column);
+		}
+
+		{
+			Tree::ColumnProperties column;
+			column.Label = "Item Label";
+			column.HeaderTooltip = "Item Label";
+			column.Flags = ImGuiTableColumnFlags_WidthStretch | ImGuiTableColumnFlags_DefaultSort;
+			column.IsTreeNode = true;
+			column.Alignment = UI::Alignment::Left;
+			m_pOutliner->AddColumn(column);
+		}
+
+		{
+			Tree::ColumnProperties column;
+			column.Label = "Type";
+			column.HeaderTooltip = "Displays the name of each entity's type";
+			column.Flags = ImGuiTableColumnFlags_WidthStretch;
+			m_pOutliner->AddColumn(column);
+		}
+
+		m_pOutliner->SetFlags(ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_Sortable);
 	}
 
 	std::shared_ptr<OutlinerEntityTreeItem> OutlinerPanel::CreateEntityTreeItem(entity e) noexcept
@@ -544,7 +630,7 @@ namespace Relentless
 
 	void OutlinerPanel::AddToRoot(const std::shared_ptr<TreeItem>& pTreeItem) noexcept
 	{
-		m_pOutliner->GetRootEntries().front()->AddChild(pTreeItem);
+		GetSceneTreeItem()->AddChild(pTreeItem);
 	}
 
 	void OutlinerPanel::OnTreeItemClicked(std::shared_ptr<TreeItem> pTreeItem, uint32_t column, bool doubleClicked) noexcept
@@ -858,8 +944,35 @@ namespace Relentless
 					return m_pScene->EntityIsParent(currentEntity, targetEntity);
 				}))
 			{
+				TreeItem* pGrandParentTreeItem = pTargetEntityTreeItem->GetParent();
+
 				for (OutlinerEntityTreeItem* pEntityTreeItem : entityTreeItems)
 					m_pScene->DetachEntity(pEntityTreeItem->GetEntityID());
+
+				if (pGrandParentTreeItem)
+				{
+					OutlinerTreeItem* pGrandParentOutlinerTreeItem = static_cast<OutlinerTreeItem*>(pGrandParentTreeItem);
+					switch (pGrandParentOutlinerTreeItem->GetType())
+					{
+					case ETreeItemType::Entity:
+					{
+						OutlinerEntityTreeItem* pGrandParentEntityTreeItem = OutlinerPanel_private::AsOutlinerEntityTreeItem(pGrandParentOutlinerTreeItem);
+
+						for (OutlinerEntityTreeItem* pEntityTreeItem : entityTreeItems)
+							m_pScene->AttachEntity(pEntityTreeItem->GetEntityID(), pGrandParentEntityTreeItem->GetEntityID());
+						
+						break;
+					}
+					case ETreeItemType::Filter:
+					{
+						OutlinerFilterTreeItem* pGrandParentFilterTreeItem = OutlinerPanel_private::AsOutlinerFilterTreeItem(pGrandParentOutlinerTreeItem);
+						for (OutlinerEntityTreeItem* pEntityTreeItem : entityTreeItems)
+							m_pEditor->GetEntityFiltersManager().SetEntityToFilter(pEntityTreeItem->GetEntityID(), pGrandParentFilterTreeItem->GetPath());
+
+						break;
+					}
+					}
+				}
 			}
 			else
 			{
@@ -936,7 +1049,15 @@ namespace Relentless
 
 	void OutlinerPanel::OnEntityFilterDestroyed(const std::string& path) noexcept
 	{
+		std::shared_ptr<OutlinerFilterTreeItem> pFilter = m_FilterPathToTreeItemMap[path];
 
+		if (m_SelectedEntityFilters.contains(pFilter.get()))
+			m_SelectedEntityFilters.erase(pFilter.get());
+
+		if (pFilter->HasParent())
+			pFilter->GetParent()->RemoveChild(pFilter);
+
+		m_FilterPathToTreeItemMap.erase(path);
 	}
 
 	void OutlinerPanel::OnEntitySetToFilter(entity e, const std::string& filterPath) noexcept
@@ -957,12 +1078,18 @@ namespace Relentless
 		m_SuspendNotifications = false;
 	}
 
-	void OutlinerPanel::OnEntityRemovedFromFilter(entity e, const std::string& filterPath) noexcept
+	void OutlinerPanel::OnEntityRemovedFromFilter(entity e, const std::string& filterPath, bool filterToBeDestroyed) noexcept
 	{
 		const std::shared_ptr<OutlinerTreeItem>& pEntityTreeItem = m_EntityToTreeItemMap[e];
 		const std::shared_ptr<OutlinerFilterTreeItem>& pFilterTreeItem = m_FilterPathToTreeItemMap[filterPath];
 
 		pFilterTreeItem->RemoveChild(pEntityTreeItem);
+
+		if (filterToBeDestroyed && m_pEditor->GetEntityFiltersManager().IsRootFilter(filterPath))
+		{
+			//We need to manually set the entity to the scene tree item in this case.
+			m_pOutliner->GetRootEntries().front()->AddChild(pEntityTreeItem);
+		}
 	}
 
 	void OutlinerPanel::OnEntityFilterReattached(const std::string& childFilterPathOld, const std::string& childFilterPathNew, const std::string& parentFilterPath) noexcept
@@ -970,14 +1097,48 @@ namespace Relentless
 		const std::string currentChildFilterPath = childFilterPathOld;
 
 		std::shared_ptr<OutlinerFilterTreeItem> pChildFilter = m_FilterPathToTreeItemMap[currentChildFilterPath];
-		const std::shared_ptr<OutlinerFilterTreeItem>& pParentFilter = m_FilterPathToTreeItemMap[parentFilterPath];
 
 		if (pChildFilter->HasParent())
 			pChildFilter->GetParent()->RemoveChild(pChildFilter);
 
 		pChildFilter->SetPath(childFilterPathNew);
 		
-		pParentFilter->AddChild(pChildFilter);
+		std::function<void(OutlinerFilterTreeItem* pCurrentFilter, const std::string& path)> PropagatePathChanges 
+			= [&](OutlinerFilterTreeItem* pCurrentFilter, const std::string& path)
+		{
+			const std::string fullPath = path.empty() ? pCurrentFilter->GetPath() : path + "/" + pCurrentFilter->GetColumnLabel(1);
+
+			if (!path.empty())
+			{
+				m_FilterPathToTreeItemMap[fullPath] = m_FilterPathToTreeItemMap[pCurrentFilter->GetPath()];
+				m_FilterPathToTreeItemMap.erase(pCurrentFilter->GetPath());
+				
+				pCurrentFilter->SetPath(fullPath);
+			}
+			
+			const std::vector<std::shared_ptr<TreeItem>>& children = pCurrentFilter->GetChildren();
+			for (auto& child : children)
+			{
+				OutlinerTreeItem* pOutlinerTreeItem = OutlinerPanel_private::AsOutlinerTreeItem(child);
+				const ETreeItemType type = pOutlinerTreeItem->GetType();
+
+				if (type != ETreeItemType::Filter)
+					continue;
+
+				OutlinerFilterTreeItem* pFilterTreeItem = OutlinerPanel_private::AsOutlinerFilterTreeItem(pOutlinerTreeItem);
+				PropagatePathChanges(pFilterTreeItem, fullPath);
+			}
+		};
+
+		PropagatePathChanges(pChildFilter.get(), "");
+
+		if (parentFilterPath.empty())
+			m_pOutliner->GetRootEntries().front()->AddChild(pChildFilter);
+		else
+		{
+			const std::shared_ptr<OutlinerFilterTreeItem>& pParentFilter = m_FilterPathToTreeItemMap[parentFilterPath];
+			pParentFilter->AddChild(pChildFilter);
+		}
 
 		m_FilterPathToTreeItemMap.erase(currentChildFilterPath);
 		m_FilterPathToTreeItemMap[childFilterPathNew] = pChildFilter;
@@ -1280,4 +1441,23 @@ namespace Relentless
 
 		return selectedTreeItemCount;
 	}
+
+	OutlinerSceneTreeItem* OutlinerPanel::GetSceneTreeItem() const noexcept
+	{
+		return static_cast<OutlinerSceneTreeItem*>(m_pOutliner->GetRootEntries().front().get());
+	}
+
+	OutlinerTreeItem* OutlinerPanel::GetFirstNonEntityTreeItemAncestor(TreeItem* pTreeItem) const noexcept
+	{
+		RLS_ASSERT(pTreeItem, "[OutlinerPanel]: Tree item is invalid!");
+
+		TreeItem* pCurrentTreeItem = pTreeItem->GetParent();
+		while (static_cast<OutlinerTreeItem*>(pCurrentTreeItem)->GetType() == ETreeItemType::Entity)
+		{
+			pCurrentTreeItem = pCurrentTreeItem->GetParent();
+		}
+
+		return static_cast<OutlinerTreeItem*>(pCurrentTreeItem);
+	}
+
 }

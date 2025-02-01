@@ -1146,7 +1146,7 @@ namespace Relentless
 				areaToCopy.bottom = static_cast<uint32_t>(mousePos.y) + 1;
 				areaToCopy.front = 0;
 				areaToCopy.back = 1;
-				
+
 				DXCall_STD(pCommandList->CopyTextureRegion(&dstLocation, 0u, 0u, 0u, &srcLocation, &areaToCopy));
 
 				Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList, [this]()

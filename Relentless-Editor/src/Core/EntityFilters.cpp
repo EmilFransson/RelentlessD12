@@ -22,17 +22,46 @@ namespace Relentless
 
 	void EntityFiltersManager::DestroyFilter(const std::string& path) noexcept
 	{
-		DestroyHierarchy(path);
-
-		//At this point it only remains to remove the actual filter, as the hierarchy depending on the filter will have been destroyed
-		//at previous call.
+		if (!FilterExists(path))
+			return;
 
 		std::shared_ptr<EntityFilter> pToDestroy = GetFilter(path);
 		EntityFilter* pParent = pToDestroy->GetParent();
+
 		if (pParent)
+		{
+			const std::string parentPath = pParent->GetPath();
+
+			const std::unordered_set<entity> entities = pToDestroy->GetEntities();
+			for (auto e : entities)
+				SetEntityToFilter(e, parentPath);
+
+			const std::unordered_map<std::string, std::shared_ptr<EntityFilter>> childFilters = pToDestroy->GetChildren();
+			for (auto& [_, filter] : childFilters)
+				SetFilterToFilter(filter->GetPath(), parentPath);
+
 			pParent->RemoveChild(pToDestroy->GetName());
+		}
 		else
+		{
+			const std::unordered_set<entity> entities = pToDestroy->GetEntities();
+			for (auto e : entities)
+				RemoveEntityFromCurrentFilterInternal(e, true);
+
+			//As it is a root filter all children must now become root filters
+			const std::unordered_map<std::string, std::shared_ptr<EntityFilter>> childFilters = pToDestroy->GetChildren();
+			const std::string parentPath = pToDestroy->GetPath();
+			for (auto& [name, filter] : childFilters)
+			{
+				RLS_ASSERT(!m_RootFilters.contains(name) && pToDestroy->GetName() != name, "Filter with name already exists at root!");
+
+				const std::string path = filter->GetPath();
+				filter->SetParent(nullptr);
+				m_RootFilters[name] = filter;
+				OnFilterReattached(path, name, "");
+			}
 			m_RootFilters.erase(pToDestroy->GetName());
+		}
 
 		OnFilterDestroyed(path);
 	}
@@ -49,7 +78,7 @@ namespace Relentless
 		for (auto entity : entities)
 		{
 			m_EntityToFilterMap.erase(entity);
-			OnEntityRemovedFromFilter(entity, pFilter->GetPath());
+			OnEntityRemovedFromFilter(entity, pFilter->GetPath(), false);
 		}
 
 		const std::unordered_map<std::string, std::shared_ptr<EntityFilter>>& children = pFilter->GetChildren();
@@ -69,6 +98,16 @@ namespace Relentless
 			pFilter->RemoveChild(name);
 			OnFilterDestroyed(fullPath);
 		}
+	}
+
+	void EntityFiltersManager::RemoveEntityFromCurrentFilterInternal(entity e, bool partOfFilterDestroyAction) noexcept
+	{
+		std::shared_ptr<EntityFilter> pEntityFilter = m_EntityToFilterMap[e].lock();
+
+		pEntityFilter->RemoveEntity(e);
+
+		m_EntityToFilterMap.erase(e);
+		OnEntityRemovedFromFilter(e, pEntityFilter->GetPath(), partOfFilterDestroyAction);
 	}
 
 	std::shared_ptr<EntityFilter> EntityFiltersManager::GetFilter(const std::string& path) const noexcept
@@ -115,6 +154,11 @@ namespace Relentless
 	bool EntityFiltersManager::IsEntityInAnyFilter(entity e) const noexcept
 	{
 		return m_EntityToFilterMap.contains(e);
+	}
+
+	bool EntityFiltersManager::IsRootFilter(const std::string& path) const noexcept
+	{
+		return m_RootFilters.contains(path);
 	}
 
 	void EntityFiltersManager::SetEntityToFilter(entity e, const std::string& path) noexcept
@@ -170,7 +214,7 @@ namespace Relentless
 		pEntityFilter->RemoveEntity(e);
 
 		m_EntityToFilterMap.erase(e);
-		OnEntityRemovedFromFilter(e, pEntityFilter->GetPath());
+		OnEntityRemovedFromFilter(e, pEntityFilter->GetPath(), false);
 	}
 
 	std::shared_ptr<EntityFilter> EntityFiltersManager::GetOrCreateRootFilter(const std::string& path) noexcept

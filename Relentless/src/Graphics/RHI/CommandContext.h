@@ -1,0 +1,145 @@
+#pragma once
+#include "DeviceResource.h"
+#include "Fence.h"
+
+namespace Relentless
+{
+	enum class CommandListContext : uint8_t
+	{
+		Graphics,
+		Compute,
+		Invalid
+	};
+
+	enum class RenderTargetAccessFlags : uint8
+	{
+		None		= 0,
+		Preserve	= 1 << 0,
+		Clear		= 1 << 1,
+		Discard		= 1 << 2,
+		Resolve		= 1 << 3
+	};
+	DEFINE_ENUM_FLAG_OPERATORS(RenderTargetAccessFlags)
+
+	enum class DepthTargetAccessFlags : uint8
+	{
+		None			= 0,
+		ClearDepth		= 1 << 0,
+		ClearStencil	= 1 << 1,
+		
+		ReadOnlyDepth	= 1 << 2,
+		ReadOnlyStencil = 1 << 3,
+
+		ReadOnly		= ReadOnlyDepth | ReadOnlyStencil,
+		Clear			= ClearDepth | ClearStencil
+	};
+	DEFINE_ENUM_FLAG_OPERATORS(DepthTargetAccessFlags)
+
+	struct RenderPassInfo
+	{
+		struct RenderTargetInfo
+		{
+			TextureEx* pTarget = nullptr;
+			TextureEx* pResolveTarget = nullptr;
+
+			RenderTargetAccessFlags BeginAccessFlags = RenderTargetAccessFlags::None;
+			RenderTargetAccessFlags EndAccessFlags = RenderTargetAccessFlags::None;
+		};
+
+		struct DepthTargetInfo
+		{
+			TextureEx* pTarget = nullptr;
+			DepthTargetAccessFlags BeginAccessFlags = DepthTargetAccessFlags::None;
+			DepthTargetAccessFlags EndAccessFlags = DepthTargetAccessFlags::None;
+		};
+
+		RenderPassInfo() = default;
+
+		RenderPassInfo(TextureEx* pRenderTarget, RenderTargetAccessFlags beginAccessFlags, RenderTargetAccessFlags endAccessFlags, TextureEx* pDepthTarget, DepthTargetAccessFlags beginDepthTargetFlags, DepthTargetAccessFlags endDepthTargetFlags) noexcept
+			: RenderTargetCount{ 1u }
+		{
+			RenderTargets[0].pTarget = pRenderTarget;
+			RenderTargets[0].BeginAccessFlags = beginAccessFlags;
+			RenderTargets[0].EndAccessFlags = endAccessFlags;
+
+			DepthStencilTarget.pTarget = pDepthTarget;
+			DepthStencilTarget.BeginAccessFlags = beginDepthTargetFlags;
+			DepthStencilTarget.EndAccessFlags = endDepthTargetFlags;
+		}
+
+		static [[nodiscard]] RenderPassInfo DepthOnly(TextureEx* pTarget, DepthTargetAccessFlags beginAccessFlags, DepthTargetAccessFlags endAccessFlags) noexcept
+		{
+			RenderPassInfo renderPassInfo;
+			renderPassInfo.DepthStencilTarget.pTarget = pTarget;
+			renderPassInfo.DepthStencilTarget.BeginAccessFlags = beginAccessFlags;
+			renderPassInfo.DepthStencilTarget.EndAccessFlags = endAccessFlags;
+			return renderPassInfo;
+		}
+
+		uint32 RenderTargetCount = 0;
+		std::array<RenderTargetInfo, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> RenderTargets{};
+		DepthTargetInfo DepthStencilTarget{};
+	};
+
+	class CommandContext : public DeviceObject
+	{
+	public:
+		CommandContext(GraphicsDevice* pParent, Ref<ID3D12CommandList> pCommandList, D3D12_COMMAND_LIST_TYPE type) noexcept;
+		virtual ~CommandContext() noexcept = default;
+
+		void AddBarrier(const D3D12_RESOURCE_BARRIER& barrier) noexcept;
+		void CopyBuffer(const Buffer* pSource, const Buffer* pTarget, uint64_t srcOffset, uint64_t dstOffset, uint64_t nrOfBytes) noexcept;
+		void BeginRenderPass(const RenderPassInfo& renderPassInfo) noexcept;
+		void ClearState() noexcept;
+		void CopyResource(const DeviceResource* pSource, const DeviceResource* pTarget) noexcept;
+		void CopyTexture(const TextureEx* pSource, const Buffer* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource /*= 0*/, uint32 destinationOffset /*= 0*/) noexcept;
+		void CopyTexture(const TextureEx* pSource, const TextureEx* pDestination, const D3D12_BOX& sourceRegion, const D3D12_BOX& destinationRegion, uint32 sourceSubresource = 0, uint32 destinationSubresource = 0) noexcept;
+		void InsertResourceBarrier(DeviceResource* pResource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState, uint32 subResource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) noexcept;
+		void Draw(uint32_t vertexStart, uint32_t vertexCount, uint32_t instances, uint32_t instanceCount) noexcept;
+		void DrawIndexedInstanced(uint32_t indexCount, uint32_t indexStart, uint32_t instances, uint32_t instanceStart, int vertexBaseLocation) noexcept;
+		void EndRenderPass() noexcept;
+		SyncPoint Execute() noexcept;
+		static SyncPoint Execute(std::span<CommandContext* const> pCommandContexts) noexcept;
+		void Free(const SyncPoint& syncPoint);
+		[[nodiscard]] ID3D12GraphicsCommandList7* GetCommandList() const noexcept;
+		[[nodiscard]] D3D12_COMMAND_LIST_TYPE GetType() const noexcept;
+		void Reset() noexcept;
+		void ResolvePendingBarriers(CommandContext& resolveContext);
+		void ResolveResource(TextureEx* pSource, uint32 sourceSubResource, TextureEx* pTarget, uint32 targetSubResource, ResourceFormat format) noexcept;
+		void SetGraphicsRootSignature(RootSignature* pRootSignature) noexcept;
+		void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY topology) noexcept;
+		void SetPipelineState(PipelineState* pPipeline) noexcept;
+		void SetScissorRect(const FloatRect& rect) noexcept;
+		void SetViewport(const FloatRect& rect, float minDepth, float maxDepth) noexcept;
+	private:
+		void FlushResourceBarriers() noexcept;
+		[[nodiscard]] D3D12_RESOURCE_STATES GetLocalResourceState(const DeviceResource* pResource, uint32 subResource) const;
+		void PrepareDraw() noexcept;
+	private:
+
+		struct PendingBarrier
+		{
+			DeviceResource* pResource = nullptr;
+			D3D12_RESOURCE_STATES State{};
+			uint32 Subresource = 0u;
+		};
+
+		Ref<ID3D12GraphicsCommandList7> m_pCommandList = nullptr;
+		Ref<ID3D12CommandAllocator> m_pCommandAllocator = nullptr;
+		CommandListContext m_CommandListContext = CommandListContext::Invalid;
+		D3D12_COMMAND_LIST_TYPE m_Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+		std::vector<PendingBarrier> m_PendingBarriers;
+		std::unordered_map<const DeviceResource*, ResourceState> m_ResourceStates;
+
+		uint32_t m_NrOfBatchedBarriers = 0u;
+		static constexpr uint32_t MAX_BATCHED_BARRIER_COUNT = 64u;
+		std::array<D3D12_RESOURCE_BARRIER, MAX_BATCHED_BARRIER_COUNT> m_BatchedBarriers{};
+
+		const PipelineState* m_pCurrentPSO = nullptr;
+		const RootSignature* m_pCurrentRS = nullptr;
+
+		RenderPassInfo m_CurrentRenderPassInfo;
+		bool m_InRenderPass = false;
+	};
+}

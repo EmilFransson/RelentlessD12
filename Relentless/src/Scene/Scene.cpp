@@ -524,6 +524,12 @@ namespace Relentless
 			SetEntityVisibleInGame(descendant, visibilityState);
 	}
 
+
+	bool Scene::IsParent(entity e) noexcept
+	{
+		return m_EntityManager.Has<ParentComponent>(e);
+	}
+
 	bool Scene::HasParent(entity e) noexcept
 	{
 		return m_EntityManager.Has<IsChildComponent>(e);

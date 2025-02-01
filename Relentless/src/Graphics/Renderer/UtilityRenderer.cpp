@@ -194,7 +194,7 @@ namespace Relentless
 		rtvDescriptor.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
 		rtvDescriptor.Texture2DArray.MipSlice = 0;
 		rtvDescriptor.Texture2DArray.ArraySize = 1;
-		
+
 		for (uint32_t i = 0u; i < 6u; ++i)
 		{
 			rtvDescriptor.Texture2DArray.FirstArraySlice = i;

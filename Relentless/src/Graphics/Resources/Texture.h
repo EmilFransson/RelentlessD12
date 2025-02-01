@@ -1,5 +1,6 @@
 #pragma once
 #include "IResource.h"
+#include "Texture.h"
 namespace Relentless
 {
 	struct TextureSpecification

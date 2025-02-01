@@ -13,6 +13,8 @@
 #include "Utility/SystemPaths.h"
 #include "Callback/Callback.h"
 
+#include "Graphics/RHI/Device.h"
+
 namespace Relentless
 {
 	Application* Application::s_Instance = nullptr;
@@ -160,6 +162,13 @@ namespace Relentless
 	{
 		EventBus::Get().SetMainApplication(this);
 		Log::Initialize();
+
+		GraphicsDeviceOptions options;
+		options.UseDebugDevice = true;
+		options.UseGPUValidation = true;
+
+		Ref<GraphicsDevice> pDevice = new GraphicsDevice(options);
+
 		SystemPaths::Initialize();
 		D3D12Core::Initialize();
 		m_GPUTaskManager.Initialize();

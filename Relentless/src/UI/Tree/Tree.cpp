@@ -10,20 +10,8 @@
 
 namespace Relentless 
 {
-	namespace Table_private
-	{
-		//[[nodiscard]] SelectionMode GetSelectionMode() noexcept
-		//{
-		//	if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
-		//		return TableDataSelection::SelectionMode::Toggle;
-		//	else if (Keyboard::IsKeyPressed(RLS_KEY::LShift))
-		//		return TableDataSelection::SelectionMode::Range;
-		//	else
-		//		return TableDataSelection::SelectionMode::Single;
-		//}
-	}
-
-	Tree::Tree(const std::shared_ptr<TreeDataView>& dataView) noexcept
+	Tree::Tree(const char* id, const std::shared_ptr<TreeDataView>& dataView) noexcept
+		: m_ID{id}
 	{
 		m_pDataView = dataView;
 
@@ -385,16 +373,6 @@ namespace Relentless
 
 		const ImU32 targetColor = ImGui::GetColorU32(pTreeItem->GetData().BackgroundColor);
 
-		//const TableGeneralStyle& style = m_pTableStyling->GetGeneralStyle();
-		//if (m_pSelectionContext->IsSelected(pTableData))
-		//	targetColor = m_IsFocused ? ImGui::GetColorU32(style.RowSelectedFocusedColor) : ImGui::GetColorU32(style.RowSelectedColor);
-		//else if (m_pSelectionContext->IsHovered(pTableData))
-		//	targetColor = ImGui::GetColorU32(style.RowHoverColor);
-		//else if (m_pSelectionContext->IsAncestorToAnySelected(pTableData))
-		//	targetColor = ImGui::GetColorU32(style.RowAncestorToSelectedColor);
-		//else
-		//	return; // Use default color!
-
 		for (uint32_t columnIndex = 0u; columnIndex < m_Columns.size(); ++columnIndex)
 		{
 			ImGui::TableSetColumnIndex(columnIndex);
@@ -604,4 +582,10 @@ namespace Relentless
 
 		return toReturn;
 	}
+
+	const char* Tree::GetID() const noexcept
+	{
+		return m_ID;
+	}
+
 }

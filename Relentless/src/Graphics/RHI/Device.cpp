@@ -1,0 +1,668 @@
+#include "Device.h"
+
+#include "Core/Application.h"
+#include "CommandContext.h"
+#include "Buffer.h"
+#include "PipelineState.h"
+#include "RingBufferAllocator.h"
+#include "ResourceViews.h"
+#include "ScratchAllocator.h"
+#include "TextureEx.h"
+
+namespace Relentless
+{
+	DeviceObject::DeviceObject(GraphicsDevice* pParent) noexcept
+		: m_pParent{pParent}
+	{}
+
+	GraphicsDevice* DeviceObject::GetParent() const noexcept
+	{
+		return m_pParent;
+	}
+
+	GraphicsDevice::GraphicsDevice(const GraphicsDeviceOptions& options) noexcept
+		:
+		DeviceObject{this}, 
+		m_DeferredDeleteQueue{this}
+	{
+		uint32_t flags = 0u;
+		if (options.UseDebugDevice)
+			flags = DXGI_CREATE_FACTORY_DEBUG;
+
+		VERIFY_HR(::CreateDXGIFactory2(flags, IID_PPV_ARGS(m_pFactory.GetAddressOf())));
+
+		if (options.UseDebugDevice)
+		{
+			Ref<ID3D12Debug> pDebugController = nullptr;
+			if (SUCCEEDED(::D3D12GetDebugInterface(IID_PPV_ARGS(pDebugController.GetAddressOf()))))
+			{
+				pDebugController->EnableDebugLayer();
+				RLS_CORE_WARN("D3D12 Debug Layer Enabled.");
+			}
+		}
+
+		if (options.UseGPUValidation)
+		{
+			Ref<ID3D12Debug1> pDebugController = nullptr;
+			if (SUCCEEDED(::D3D12GetDebugInterface(IID_PPV_ARGS(pDebugController.GetAddressOf()))))
+			{
+				pDebugController->SetEnableGPUBasedValidation(true);
+				RLS_CORE_WARN("D3D12 GPU Based Validation Enabled.");
+			}
+		}
+
+		Ref<ID3D12Device> pDevice = nullptr;
+		Ref<IDXGIAdapter4> pAdapter = nullptr;
+		if (!options.UseWarp)
+		{
+			RLS_CORE_INFO("Detected Adapters:");
+
+			uint32_t adapterIndex = 0u;
+			DXGI_GPU_PREFERENCE gpuPreference = DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE;
+			while (m_pFactory->EnumAdapterByGpuPreference(adapterIndex++, gpuPreference, IID_PPV_ARGS(pAdapter.ReleaseAndGetAddressOf())) == S_OK)
+			{
+				DXGI_ADAPTER_DESC3 adapterDesc{};
+				pAdapter->GetDesc3(&adapterDesc);
+				RLS_CORE_INFO("\t{0} - {1} GB", UNICODE_TO_MULTIBYTE(adapterDesc.Description), (float)adapterDesc.DedicatedVideoMemory * Math::BytesToGigaBytes);
+			
+				uint32_t outputIndex = 0u;
+				Ref<IDXGIOutput> pOutput = nullptr;
+				while (pAdapter->EnumOutputs(outputIndex++, pOutput.ReleaseAndGetAddressOf()) == S_OK)
+				{
+					Ref<IDXGIOutput6> pOutput6 = nullptr;
+					if (pOutput.As<IDXGIOutput6>(&pOutput6))
+					{
+						DXGI_OUTPUT_DESC1 outputDesc{};
+						VERIFY_HR(pOutput6->GetDesc1(&outputDesc));
+
+						RLS_CORE_INFO("\t\tMonitor {0} - {1}x{2} - HDR: {3} - {4} BPP - Min Lum {5} - Max Lum {6} - MaxFFL {7}",
+							outputIndex,
+							outputDesc.DesktopCoordinates.right - outputDesc.DesktopCoordinates.left,
+							outputDesc.DesktopCoordinates.bottom - outputDesc.DesktopCoordinates.top,
+							outputDesc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ? "Yes" : "No",
+							outputDesc.BitsPerColor,
+							outputDesc.MinLuminance,
+							outputDesc.MaxLuminance,
+							outputDesc.MaxFullFrameLuminance);
+					}
+				}
+			}
+
+			VERIFY_HR(m_pFactory->EnumAdapterByGpuPreference(0, gpuPreference, IID_PPV_ARGS(pAdapter.GetAddressOf())));
+			DXGI_ADAPTER_DESC3 adapterDesc{};
+			VERIFY_HR(pAdapter->GetDesc3(&adapterDesc));
+			RLS_CORE_INFO("Using {0}", UNICODE_TO_MULTIBYTE(adapterDesc.Description));
+
+			constexpr D3D_FEATURE_LEVEL featureLevels[] =
+			{
+				D3D_FEATURE_LEVEL_12_2,
+				D3D_FEATURE_LEVEL_12_1,
+				D3D_FEATURE_LEVEL_12_0,
+				D3D_FEATURE_LEVEL_11_1,
+				D3D_FEATURE_LEVEL_11_0
+			};
+
+			VERIFY_HR(::D3D12CreateDevice(pAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(pDevice.GetAddressOf())));
+			D3D12_FEATURE_DATA_FEATURE_LEVELS caps{};
+			caps.pFeatureLevelsRequested = featureLevels;
+			caps.NumFeatureLevels = ARRAYSIZE(featureLevels);
+			VERIFY_HR(pDevice->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &caps, sizeof(D3D12_FEATURE_DATA_FEATURE_LEVELS)));
+			VERIFY_HR(::D3D12CreateDevice(pAdapter.Get(), caps.MaxSupportedFeatureLevel, IID_PPV_ARGS(pDevice.ReleaseAndGetAddressOf())));
+		}
+
+		if (!pDevice)
+		{
+			RLS_CORE_WARN("No D3D12 Adapter Found; Falling Back To WARP.");
+			VERIFY_HR(m_pFactory->EnumWarpAdapter(IID_PPV_ARGS(pAdapter.GetAddressOf())));
+		}
+
+		VERIFY_HR(D3D12CreateDevice(pAdapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(m_pDevice.ReleaseAndGetAddressOf())));
+
+		D3D::SetObjectName(m_pDevice.Get(), "Main Device");
+
+		Ref<ID3D12InfoQueue> pInfoQueue = nullptr;
+		if (SUCCEEDED(::D3D12GetDebugInterface(IID_PPV_ARGS(pInfoQueue.GetAddressOf()))))
+		{
+			VERIFY_HR_EX(pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE), GetDevice());
+			VERIFY_HR_EX(pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_ERROR, TRUE), GetDevice());
+			VERIFY_HR_EX(pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_WARNING, TRUE), GetDevice());
+			RLS_CORE_WARN("D3D Validation Break On Severity Enabled.");
+
+			Ref<ID3D12InfoQueue1> pInfoQueue1 = nullptr;
+			if (pInfoQueue.As<ID3D12InfoQueue1>(&pInfoQueue1))
+			{
+				auto&& MessageCallback = [](
+					D3D12_MESSAGE_CATEGORY /*category*/,
+					D3D12_MESSAGE_SEVERITY severity,
+					D3D12_MESSAGE_ID /*id*/,
+					LPCSTR pDescription,
+					void* /*pContext*/)
+				{
+					switch (severity)
+					{
+					case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_CORRUPTION:
+						RLS_CORE_CRITICAL("D3D Validation Layer: {0}", pDescription);
+						break;
+					case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_ERROR:
+						RLS_CORE_ERROR("D3D Validation Layer: {0}", pDescription);
+						break;
+					case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_WARNING:
+						RLS_CORE_WARN("D3D Validation Layer: {0}", pDescription);
+						break;
+					case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_INFO:
+					case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_MESSAGE:
+						RLS_CORE_INFO("D3D Validation Layer: {0}", pDescription);
+						break;
+					}
+				};
+
+				DWORD cookie = 0;
+				VERIFY_HR(pInfoQueue1->RegisterMessageCallback(MessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &cookie));
+			}
+		}
+
+		if (options.UseStablePowerState)
+		{
+			VERIFY_HR(m_pDevice->SetStablePowerState(TRUE));
+			RLS_CORE_INFO("D3D12 Enabled Stable Power State.");
+		}
+
+		m_pFrameFence = new Fence(this, "Frame Fence");
+
+		const uint64 scratchAllocatorPageSize = 256 * Math::KilobytesToBytes;
+		m_pScratchAllocationManager = new ScratchAllocationManager(this, scratchAllocatorPageSize);
+
+		const uint32 ringBufferSize = 128 * Math::MegaBytesToBytes;
+		m_pRingBufferAllocator = new RingBufferAllocator(this, ringBufferSize);
+
+		m_CommandQueues[D3D12_COMMAND_LIST_TYPE_DIRECT] = new CommandQueue(this, D3D12_COMMAND_LIST_TYPE_DIRECT);
+		m_CommandQueues[D3D12_COMMAND_LIST_TYPE_COMPUTE] = new CommandQueue(this, D3D12_COMMAND_LIST_TYPE_COMPUTE);
+		m_CommandQueues[D3D12_COMMAND_LIST_TYPE_COPY] = new CommandQueue(this, D3D12_COMMAND_LIST_TYPE_COPY);
+
+		//Change!
+		m_MemoryManager.Initialize();
+		m_pShaderLibrary = std::make_unique<ShaderLibrary>();
+		m_pShaderLibrary->Initialize();
+	}
+
+	GraphicsDevice::~GraphicsDevice() noexcept
+	{
+		IdleGPU();
+	}
+
+	CommandContext* GraphicsDevice::AllocateCommandContext(D3D12_COMMAND_LIST_TYPE type) noexcept
+	{
+		const int typeIndex = (int)type;
+		CommandContext* pCommandContext = nullptr;
+		{
+			std::lock_guard guard(m_CommandContextAllocationMutex);
+			if (!m_FreeCommandContexts[typeIndex].empty())
+			{
+				pCommandContext = m_FreeCommandContexts[typeIndex].front();
+				m_FreeCommandContexts[typeIndex].pop();
+			}
+			else
+			{
+				Ref<ID3D12CommandList> pCommandList = nullptr;
+				VERIFY_HR_EX(GetDevice()->CreateCommandList1(0u, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(pCommandList.ReleaseAndGetAddressOf())), GetDevice());
+				D3D::SetObjectName(pCommandList, std::format("Pooled {} Command List {}", D3D::CommandListTypeToString(type), m_CommandContextPool[typeIndex].size()).c_str());
+				pCommandContext = m_CommandContextPool[typeIndex].emplace_back(new CommandContext(this, pCommandList, type));
+			}
+		}
+		pCommandContext->Reset();
+		return pCommandContext;
+	}
+
+	DescriptorHandle GraphicsDevice::RegisterGlobalDescriptor(DescriptorHandleType descriptorHandleType) noexcept
+	{
+		return m_MemoryManager.CreateDescriptorHandle(descriptorHandleType);
+	}
+
+	Ref<Buffer> GraphicsDevice::CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData /*= (const void*)nullptr*/) noexcept
+	{
+		auto&& GetResourceDesc = [](const BufferDesc& desc) -> D3D12_RESOURCE_DESC
+		{
+			D3D12_RESOURCE_DESC d3d12Desc = CD3DX12_RESOURCE_DESC::Buffer(desc.Size);
+			if (EnumHasAnyFlags(desc.Flags, BufferFlag::UnorderedAccess))
+				d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+			return d3d12Desc;
+		};
+
+		const D3D12_RESOURCE_DESC resourceDesc = GetResourceDesc(desc);
+		D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_UNKNOWN;
+		D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
+
+		if (EnumHasAnyFlags(desc.Flags, BufferFlag::Upload))
+		{
+			RLS_ASSERT(resourceState == D3D12_RESOURCE_STATE_UNKNOWN, "Current Resource State Is Invalid.");
+			heapType = D3D12_HEAP_TYPE_UPLOAD;
+			resourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
+		}
+		if (EnumHasAnyFlags(desc.Flags, BufferFlag::ReadBack))
+		{
+			RLS_ASSERT(resourceState == D3D12_RESOURCE_STATE_UNKNOWN, "Current Resource State Is Invalid.");
+			heapType = D3D12_HEAP_TYPE_READBACK;
+			resourceState = D3D12_RESOURCE_STATE_COPY_DEST;
+		}
+
+		if (resourceState == D3D12_RESOURCE_STATE_UNKNOWN)
+			resourceState = D3D12_RESOURCE_STATE_COMMON;
+
+		const D3D12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES(heapType);
+
+		ID3D12Resource* pResource = nullptr;
+		VERIFY_HR_EX(GetDevice()->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_CREATE_NOT_ZEROED, &resourceDesc, resourceState, nullptr, IID_PPV_ARGS(&pResource)), m_pDevice);
+		D3D::SetObjectName(pResource, pName);
+
+		Ref<Buffer> pBuffer = new Buffer(this, desc, pResource);
+		pBuffer->SetName(pName);
+		pBuffer->SetResourceState(resourceState);
+
+		if (EnumHasAnyFlags(desc.Flags, BufferFlag::Upload | BufferFlag::ReadBack))
+		{
+			pBuffer->Map(0u, nullptr);
+			pBuffer->SetStateTracking(true);
+		}
+
+		if (EnumHasAnyFlags(desc.Flags, BufferFlag::ShaderResource))
+		{
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			srvDesc.Buffer.FirstElement = 0;
+			srvDesc.Buffer.NumElements = desc.NumElements();
+			srvDesc.Buffer.StructureByteStride = desc.ElementSize;
+			srvDesc.Format = D3D::ConvertFormat(desc.Format);
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+			DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::SRV);
+			GetDevice()->CreateShaderResourceView(pResource, &srvDesc, descriptorHandle.CPUHandle);
+			Ref<ShaderResourceView> pSRV = new ShaderResourceView(this, descriptorHandle);
+			pBuffer->SetSRV(std::move(pSRV));
+		}
+
+		if (pInitData)
+		{
+			if (EnumHasAllFlags(desc.Flags, BufferFlag::Upload))
+			{
+				memcpy((char*)pBuffer->GetMappedData(), pInitData, desc.Size);
+			}
+			else
+			{
+				RingBufferAllocation allocation;
+				m_pRingBufferAllocator->Allocate((uint32)desc.Size, allocation);
+				memcpy((char*)allocation.pMappedMemory, pInitData, desc.Size);
+				allocation.pContext->CopyBuffer(allocation.pBackingResource, pBuffer, desc.Size, allocation.Offset, 0);
+				m_pRingBufferAllocator->Free(allocation);
+			}
+		}
+
+		return pBuffer;
+	}
+
+	Ref<TextureEx> GraphicsDevice::CreateTexture(const TextureDesc& desc, const char* pName, std::span<D3D12_SUBRESOURCE_DATA> initData) noexcept
+	{
+		auto&& GetResourceDesc = [](const TextureDesc& textureDesc) -> D3D12_RESOURCE_DESC
+		{
+			const uint32 width = textureDesc.Width;
+			const uint32 height = textureDesc.Height;
+			const DXGI_FORMAT format = D3D::ConvertFormat(textureDesc.Format);
+
+			D3D12_RESOURCE_DESC d3d12Desc;
+			switch (textureDesc.Type)
+			{
+			case TextureType::Texture2D:
+				d3d12Desc = CD3DX12_RESOURCE_DESC::Tex2D(format, width, height, (uint16)textureDesc.DepthOrArraySize, (uint16)textureDesc.Mips, textureDesc.SampleCount, 0u, D3D12_RESOURCE_FLAG_NONE, D3D12_TEXTURE_LAYOUT_UNKNOWN);
+				break;
+			case TextureType::TextureCube:
+				d3d12Desc = CD3DX12_RESOURCE_DESC::Tex2D(format, width, height, (uint16)textureDesc.DepthOrArraySize * 6, (uint16)textureDesc.Mips, textureDesc.SampleCount, 0u, D3D12_RESOURCE_FLAG_NONE, D3D12_TEXTURE_LAYOUT_UNKNOWN);
+				break;
+			default:
+				RLS_ASSERT(false, "[Device] Unreachable.");
+				break;
+			}
+
+			if (EnumHasAnyFlags(textureDesc.Flags, TextureFlag::RenderTarget))
+				d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+			if (EnumHasAnyFlags(textureDesc.Flags, TextureFlag::DepthStencil))
+			{
+				d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+				if (!EnumHasAnyFlags(textureDesc.Flags, TextureFlag::DepthStencil))
+					d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+			}
+
+			if (EnumHasAnyFlags(textureDesc.Flags, TextureFlag::UnorderedAccess))
+				d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+			return d3d12Desc;
+		};
+
+		RLS_ASSERT(EnumHasAllFlags(desc.Flags, TextureFlag::RenderTarget | TextureFlag::DepthStencil) == false, "[Device] Invalid Texture Flags.");
+
+		D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_COMMON;
+
+		D3D12_CLEAR_VALUE* pClearValue = nullptr;
+		D3D12_CLEAR_VALUE clearValue = {};
+		clearValue.Format = D3D::ConvertFormat(desc.Format);
+
+		if (EnumHasAnyFlags(desc.Flags, TextureFlag::RenderTarget))
+		{
+			RLS_ASSERT(desc.ClearBindingValue.BindingValue == ClearBinding::ClearBindingValue::Color, "[Device] Invalid Clear Binding.");
+			resourceState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			memcpy(&clearValue.Color, &desc.ClearBindingValue.Color, sizeof(Color));
+			pClearValue = &clearValue;
+		}
+		if (EnumHasAnyFlags(desc.Flags, TextureFlag::DepthStencil))
+		{
+			RLS_ASSERT(desc.ClearBindingValue.BindingValue == ClearBinding::ClearBindingValue::DepthStencil, "[Device] Invalid Clear Binding.");
+			resourceState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+			clearValue.DepthStencil.Depth = desc.ClearBindingValue.DepthStencil.Depth;
+			clearValue.DepthStencil.Stencil = desc.ClearBindingValue.DepthStencil.Stencil;
+			pClearValue = &clearValue;
+		}
+
+		D3D12_RESOURCE_DESC resourceDesc = GetResourceDesc(desc);
+
+		const D3D12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
+		ID3D12Resource* pResource = nullptr;
+		VERIFY_HR_EX(GetDevice()->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_CREATE_NOT_ZEROED, &resourceDesc, resourceState, nullptr, IID_PPV_ARGS(&pResource)), m_pDevice);
+		D3D::SetObjectName(pResource, pName);
+
+		Ref<TextureEx> pTexture = new TextureEx(this, desc, pResource);
+		pTexture->SetName(pName);
+		pTexture->SetResourceState(resourceState);
+
+		if (initData.size() > 0)
+		{
+			RLS_ASSERT(initData.size() == desc.DepthOrArraySize * desc.Mips, "[GraphicsDevice::CreateTexture] Size Mismatch.");
+
+			uint64 requiredSize = 0;
+			D3D12_PLACED_SUBRESOURCE_FOOTPRINT layouts[16];
+			uint32 numRows[16];
+			uint64 rowSizes[16];
+			m_pDevice->GetCopyableFootprints(&resourceDesc, 0, initData.size(), 0, layouts, numRows, rowSizes, &requiredSize);
+			RingBufferAllocation allocation;
+			m_pRingBufferAllocator->Allocate((uint32)requiredSize, allocation);
+
+			for (uint32 subResource = 0; subResource < initData.size(); ++subResource)
+			{
+				const D3D12_SUBRESOURCE_DATA& srcData = initData[subResource];
+				D3D12_PLACED_SUBRESOURCE_FOOTPRINT& dstLayout = layouts[subResource];
+
+				D3D12_MEMCPY_DEST dest =
+				{
+					.pData = (char*)allocation.pMappedMemory + dstLayout.Offset,
+					.RowPitch = dstLayout.Footprint.RowPitch,
+					.SlicePitch = (uint64)dstLayout.Footprint.RowPitch * numRows[subResource]
+				};
+
+				for (uint32 z = 0; z < dstLayout.Footprint.Depth; ++z)
+				{
+					char* pDest = (char*)dest.pData + dest.SlicePitch * z;
+					const char* pSrc = (char*)srcData.pData + srcData.SlicePitch * z;
+					for (uint32 y = 0; y < numRows[subResource]; ++y)
+					{
+						memcpy(pDest + y * dest.RowPitch, pSrc + y * srcData.RowPitch, rowSizes[subResource]);
+					}
+				}
+
+				dstLayout.Offset += allocation.Offset;
+
+				const CD3DX12_TEXTURE_COPY_LOCATION dst(pTexture->GetResource(), subResource);
+				const CD3DX12_TEXTURE_COPY_LOCATION src(allocation.pBackingResource->GetResource(), dstLayout);
+				allocation.pContext->GetCommandList()->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+			}
+
+			m_pRingBufferAllocator->Free(allocation);
+		}
+
+		if (EnumHasAnyFlags(desc.Flags, TextureFlag::ShaderResource))
+			pTexture->SetSRV(CreateSRV(pTexture, TextureSRVDesc(0u, (uint8)pTexture->GetMipLevels())));
+		if (EnumHasAnyFlags(desc.Flags, TextureFlag::UnorderedAccess))
+		{
+			pTexture->SetStateTracking(true);
+
+			//pTexture->m_UAVs.resize(desc.Mips);
+			//for (uint8 mip = 0; mip < desc.Mips; ++mip)
+			//	pTexture->m_UAVs[mip] = CreateUAV(pTexture, TextureUAVDesc(mip));
+		}
+		if (EnumHasAnyFlags(desc.Flags, TextureFlag::RenderTarget))
+		{
+			pTexture->SetStateTracking(true);
+		}
+		else if (EnumHasAnyFlags(desc.Flags, TextureFlag::DepthStencil))
+		{
+			pTexture->SetStateTracking(true);
+		}
+
+		return pTexture;
+	}
+
+	Ref<DepthStencilView> GraphicsDevice::CreateDSV(TextureEx* pTexture, const TextureDSVDesc& textureDSVDesc) noexcept
+	{
+		RLS_ASSERT(pTexture, "[GraphicsDevice] Texture Is Invalid.");
+		const TextureDesc& desc = pTexture->GetDesc();
+
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+		dsvDesc.Format = D3D::ConvertFormat(desc.Format);
+		dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+		if (EnumHasAnyFlags(textureDSVDesc.Flags, DepthTargetAccessFlags::ReadOnlyDepth))
+			dsvDesc.Flags |= D3D12_DSV_FLAG_READ_ONLY_DEPTH;
+
+		if (EnumHasAnyFlags(textureDSVDesc.Flags, DepthTargetAccessFlags::ReadOnlyStencil))
+			dsvDesc.Flags |= D3D12_DSV_FLAG_READ_ONLY_STENCIL;
+
+		switch (desc.Type)
+		{
+		case TextureType::Texture2D:
+			dsvDesc.ViewDimension = desc.SampleCount > 1 ? D3D12_DSV_DIMENSION_TEXTURE2DMS : D3D12_DSV_DIMENSION_TEXTURE2D;
+			break;
+		case TextureType::TextureCube:
+			dsvDesc.Texture2DArray.ArraySize = textureDSVDesc.ArraySize;
+			dsvDesc.Texture2DArray.FirstArraySlice = textureDSVDesc.FirstArraySlice;
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+			break;
+		default:
+			RLS_ASSERT(false, "Unreachable.");
+			break;
+		}
+		
+		dsvDesc.Texture2D.MipSlice = textureDSVDesc.MipSlice;
+		dsvDesc.Texture2DArray.MipSlice = textureDSVDesc.MipSlice;
+
+		DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::DSV);
+		GetDevice()->CreateDepthStencilView(pTexture->GetResource(), &dsvDesc, descriptorHandle.CPUHandle);
+
+		return new DepthStencilView(this, descriptorHandle);
+	}
+
+	Ref<PipelineState> GraphicsDevice::CreatePipelineState(const PipelineStateInitializer& pipelineStateInitializer) noexcept
+	{
+		Ref<PipelineState> pPipelineState = new PipelineState(this, pipelineStateInitializer);
+		pPipelineState->CreateInternal();
+		return pPipelineState;
+	}
+
+	Ref<ShaderResourceView> GraphicsDevice::CreateSRV(TextureEx* pTexture, const TextureSRVDesc& textureSRVDesc) noexcept
+	{
+		const TextureDesc& desc = pTexture->GetDesc();
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = D3D::ConvertFormat(desc.Format);
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+		switch (desc.Type)
+		{
+		case TextureType::Texture2D:
+		{
+			srvDesc.ViewDimension = desc.SampleCount > 1 ? D3D12_SRV_DIMENSION_TEXTURE2DMS : D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Texture2D.MipLevels = textureSRVDesc.NumMipLevels;
+			srvDesc.Texture2D.MostDetailedMip = textureSRVDesc.MipLevel;
+			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+			srvDesc.Texture2D.PlaneSlice = 0u;
+			break;
+		}
+		case TextureType::TextureCube:
+		{
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+			srvDesc.TextureCube.MostDetailedMip = 0;
+			srvDesc.TextureCube.MipLevels = 1;
+			srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+			break;
+		}
+		default:
+			RLS_ASSERT(false, "Unreachable.");
+			break;
+		}
+
+		DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::SRV);
+		GetDevice()->CreateShaderResourceView(pTexture->GetResource(), &srvDesc, descriptorHandle.CPUHandle);
+		
+		return new ShaderResourceView(this, descriptorHandle);
+	}
+
+	Ref<RenderTargetView> GraphicsDevice::CreateRTV(TextureEx* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept
+	{
+		RLS_ASSERT(pTexture, "[GraphicsDevice] Texture Is Invalid.");
+		const TextureDesc& textureDesc = pTexture->GetDesc();
+
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+		switch (textureDesc.Type)
+		{
+		case TextureType::Texture2D:
+			rtvDesc.Texture2D.PlaneSlice = textureRTVDesc.PlaneSlice;
+			rtvDesc.ViewDimension = textureDesc.SampleCount > 1 ? D3D12_RTV_DIMENSION_TEXTURE2DMS : D3D12_RTV_DIMENSION_TEXTURE2D;
+			break;
+		case TextureType::TextureCube:
+			rtvDesc.Texture2DArray.ArraySize = textureRTVDesc.ArraySize;
+			rtvDesc.Texture2DArray.FirstArraySlice = textureRTVDesc.FirstArraySlice;
+			rtvDesc.Texture2DArray.PlaneSlice = textureRTVDesc.PlaneSlice;
+			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+			break;
+		default:
+			RLS_ASSERT(false, "Unreachable.");
+			break;
+		}
+		rtvDesc.Texture1D.MipSlice = textureRTVDesc.MipSlice;
+		rtvDesc.Texture1DArray.MipSlice = textureRTVDesc.MipSlice;
+		rtvDesc.Texture2D.MipSlice = textureRTVDesc.MipSlice;
+		rtvDesc.Texture2DArray.MipSlice = textureRTVDesc.MipSlice;
+		rtvDesc.Texture3D.MipSlice = textureRTVDesc.MipSlice;
+		rtvDesc.Format = D3D::ConvertFormat(pTexture->GetFormat());
+		
+		DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::RTV);
+		GetDevice()->CreateRenderTargetView(pTexture->GetResource(), &rtvDesc, descriptorHandle.CPUHandle);
+
+		return new RenderTargetView(this, descriptorHandle);
+	}
+
+	void GraphicsDevice::DeferReleaseObject(ID3D12Object* pResource) noexcept
+	{
+		RLS_ASSERT(pResource, "[GraphicsDevice] Resource is invalid.");
+
+		m_DeferredDeleteQueue.EnqueueResource(pResource, SyncPoint(m_pFrameFence.Get(), m_pFrameFence->GetCurrentValue()));
+	}
+
+	void GraphicsDevice::FreeCommandContext(CommandContext* pCommandContext) noexcept
+	{
+		std::lock_guard guard(m_CommandContextAllocationMutex);
+		m_FreeCommandContexts[(int)pCommandContext->GetType()].push(pCommandContext);
+	}
+
+	CommandQueue* GraphicsDevice::GetCommandQueue(D3D12_COMMAND_LIST_TYPE type) const noexcept
+	{
+		return m_CommandQueues[type];
+	}
+
+	ID3D12Device5* GraphicsDevice::GetDevice() const noexcept
+	{
+		return m_pDevice.Get();
+	}
+
+	Fence* GraphicsDevice::GetFrameFence() const noexcept
+	{
+		return m_pFrameFence;
+	}
+
+	DescriptorHeap* GraphicsDevice::GetGlobalShaderBindableHeap() const noexcept
+	{
+		return m_MemoryManager.GetShaderBindableDescriptorHeap().get();
+	}
+
+	ShaderLibrary* GraphicsDevice::GetShaderLibrary() const noexcept
+	{
+		return m_pShaderLibrary.get();
+	}
+
+	void GraphicsDevice::IdleGPU() noexcept
+	{
+		TickFrame();
+		m_pFrameFence->CPUWait(m_pFrameFence->GetLastSignaledValue());
+
+		for (auto& pCommandQueue : m_CommandQueues)
+		{
+			if (pCommandQueue)
+				pCommandQueue->WaitForIdle();
+		}
+	}
+
+	void GraphicsDevice::TickFrame() noexcept
+	{
+		m_DeferredDeleteQueue.Clean();
+
+		const uint64_t fenceValue = m_pFrameFence->Signal(GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
+		
+		m_FrameFenceValues[fenceValue % NUM_BUFFERS] = fenceValue;
+		++m_FrameIndex;
+		m_pFrameFence->CPUWait(m_FrameFenceValues[m_FrameIndex % NUM_BUFFERS]);
+	}
+
+	void GraphicsDevice::UnregisterGlobalDescriptor(const DescriptorHandle& descriptorHandle) noexcept
+	{
+		m_MemoryManager.DestroyDescriptorHandle(descriptorHandle);
+	}
+
+	GraphicsDevice::DeferredDeleteQueue::DeferredDeleteQueue(GraphicsDevice* pParent) noexcept
+		: DeviceObject(pParent)
+	{
+	}
+
+	GraphicsDevice::DeferredDeleteQueue::~DeferredDeleteQueue() noexcept
+	{
+		GetParent()->IdleGPU();
+		Clean();
+		RLS_ASSERT(m_DeletionQueue.empty(), "[DeferredDeleteQueue] Queue was not emptied.");
+	}
+
+	void GraphicsDevice::DeferredDeleteQueue::Clean() noexcept
+	{
+		std::lock_guard guard(m_QueueMutex);
+
+		while (!m_DeletionQueue.empty())
+		{
+			FencedObject& fencedObject = m_DeletionQueue.front();
+			if (!fencedObject.Sync.IsComplete())
+				break;
+
+			fencedObject.pResource->Release();
+			m_DeletionQueue.pop();
+		}
+	}
+
+	void GraphicsDevice::DeferredDeleteQueue::EnqueueResource(ID3D12Object* pResource, const SyncPoint& syncPoint) noexcept
+	{
+		std::lock_guard guard(m_QueueMutex);
+
+		FencedObject fencedObject
+		{
+			.pResource = pResource,
+			.Sync = syncPoint
+		};
+
+		m_DeletionQueue.push(fencedObject);
+	}
+
+}

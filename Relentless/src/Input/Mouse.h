@@ -3,12 +3,12 @@
 #include "Math/MathTypes.h"	
 namespace Relentless
 {
-	enum class RLS_BUTTON : uint8_t {Left = 0u, Right, Wheel};
+	enum class RLS_BUTTON : uint8 {Left = 0u, Right, Wheel};
 	constexpr const uint16_t BUTTON_COUNT{ 3 };
 	class Mouse : public EventPublisher
 	{
 	public:
-		static void OnWindowsEvent(const uint32_t message, const LPARAM lParam, const WPARAM wParam) noexcept;
+		static void OnWindowsEvent(const uint32 message, const LPARAM lParam, const WPARAM wParam) noexcept;
 		static void OnButtonPressed(const RLS_BUTTON button) noexcept;
 		static void OnButtonReleased(const RLS_BUTTON button) noexcept;
 		static void OnMove(Vector2u newCoords) noexcept;
@@ -19,7 +19,7 @@ namespace Relentless
 		static void ShowCursor() noexcept;
 		static void HideCursor() noexcept;
 		static [[nodiscard]] const bool IsButtonPressed(const RLS_BUTTON button) noexcept;
-		static [[nodiscard]] const std::pair<uint32_t, uint32_t> GetCoordinates() noexcept;
+		static [[nodiscard]] const std::pair<uint32, uint32> GetCoordinates() noexcept;
 		static [[nodiscard]] const Vector2i GetDeltaCoordinates() noexcept;
 	private:
 		static std::bitset<BUTTON_COUNT> s_buttons;

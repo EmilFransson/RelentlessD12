@@ -44,11 +44,12 @@ namespace Relentless
 		[[nodiscard]] std::shared_ptr<EntityFilter> GetFilter(const std::string& path) const noexcept;
 		[[nodiscard]] bool FilterExists(const std::string& path) const noexcept;
 		[[nodiscard]] bool IsEntityInAnyFilter(entity e) const noexcept;
+		[[nodiscard]] bool IsRootFilter(const std::string& path) const noexcept;
 		void SetEntityToFilter(entity e, const std::string& path) noexcept;
 		void SetFilterToFilter(const std::string& filterPathChild, const std::string& filterPathParent) noexcept;
 		void RemoveEntityFromCurrentFilter(entity e) noexcept;
 
-		Broadcaster<void(entity e, const std::string& path)> OnEntityRemovedFromFilter;
+		Broadcaster<void(entity e, const std::string& path, bool filterToBeDestroyed)> OnEntityRemovedFromFilter;
 		Broadcaster<void(entity e, const std::string& path)> OnEntitySetToFilter;
 		Broadcaster<void(const std::string& path)> OnFilterCreated;
 		Broadcaster<void(const std::string& path)> OnFilterDestroyed;
@@ -56,6 +57,7 @@ namespace Relentless
 		Broadcaster<void(const std::string& originalChildPath, const std::string& newChildPath, const std::string& parentPath)> OnFilterReattached;
 	private:
 		void DestroyHierarchy(const std::string& path) noexcept;
+		void RemoveEntityFromCurrentFilterInternal(entity e, bool partOfFilterDestroyAction) noexcept;
 		[[nodiscard]] std::shared_ptr<EntityFilter> GetOrCreateRootFilter(const std::string& path) noexcept;
 	private:
 		std::unordered_map<std::string, std::shared_ptr<EntityFilter>> m_RootFilters;

@@ -3,18 +3,6 @@ namespace Relentless
 {
 #define RLS Relentless
 
-	struct Vector2u
-	{
-		uint32_t x;
-		uint32_t y;
-	};
-
-	struct Vector2i
-	{
-		int32_t x;
-		int32_t y;
-	};
-
 #ifndef DELETE_COPY_CONSTRUCTOR
 #define DELETE_COPY_CONSTRUCTOR(T)	\
 			T(const T&) = delete;	\

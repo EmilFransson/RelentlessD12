@@ -135,6 +135,21 @@ namespace Relentless
 		return m_IsExpanded;
 	}
 
+
+	bool TreeItem::IsVisible() const noexcept
+	{
+		TreeItem* pCurrentAncestor = m_pParent;
+		while (pCurrentAncestor)
+		{
+			if (!pCurrentAncestor->IsExpanded())
+				return false;
+
+			pCurrentAncestor = pCurrentAncestor->GetParent();
+		}
+
+		return true;
+	}
+
 	void TreeItem::SetData(const TreeItemData& data) noexcept
 	{
 		m_Data = data;
