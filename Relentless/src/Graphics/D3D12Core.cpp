@@ -1,4 +1,5 @@
 #include "D3D12Core.h"
+#include "D3D12Debug.h"
 namespace Relentless
 {
 	Microsoft::WRL::ComPtr<ID3D12Device9> D3D12Core::m_pDevice{ nullptr };

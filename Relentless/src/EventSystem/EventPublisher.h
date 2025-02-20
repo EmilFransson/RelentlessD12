@@ -11,7 +11,6 @@ namespace Relentless
 		template<typename EventType>
 		static void PublishEvent() noexcept;
 		static void PublishEvent(IEvent&& event) noexcept;
-		STATIC_CLASS(EventPublisher);
 	};
 
 	template<typename EventType, typename ...Args>

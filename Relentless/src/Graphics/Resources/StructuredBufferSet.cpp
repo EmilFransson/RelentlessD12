@@ -3,6 +3,7 @@
 #include "Graphics/GPUTaskManager.h"
 #include "Graphics/MemoryManager.h"
 #include "Core/Application.h"
+#include "Graphics/D3D12Debug.h"
 
 namespace Relentless
 {
@@ -43,7 +44,7 @@ namespace Relentless
 		shaderResourceViewDescriptor.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 		shaderResourceViewDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		m_SRVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::SRV);
+		//m_SRVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::SRV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_SRVDescriptorHandle.CPUHandle));
 		
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(name).c_str());

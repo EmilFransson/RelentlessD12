@@ -4,16 +4,14 @@ namespace Relentless
 	void Camera::Update() noexcept
 	{
 		m_Transform.LocationPrev = m_Transform.Location;
-		m_Transform.ViewProjectionPrev = m_Transform.ViewProjection;
 		
-		m_Transform.ViewInverse = Matrix::CreateFromQuaternion(m_Rotation) * Matrix::CreateTranslation(m_Location);
-		m_Transform.ViewInverse.Invert(m_Transform.View);
+		m_Transform.ViewToWorld = Matrix::CreateFromQuaternion(m_Rotation) * Matrix::CreateTranslation(m_Location);
+		m_Transform.ViewToWorld.Invert(m_Transform.WorldToView);
 
-		m_Transform.Projection = Math::CreatePerspectiveMatrix(m_Transform.FoV, m_Transform.Viewport.GetAspect(), m_Transform.NearPlane, m_Transform.FarPlane);
-		m_Transform.Projection.Invert(m_Transform.ProjectionInverse);
-		m_Transform.ViewProjection = m_Transform.View * m_Transform.Projection;
+		m_Transform.ViewToClip = Math::CreatePerspectiveMatrix(m_Transform.FoV, m_Transform.Viewport.GetAspect(), m_Transform.NearPlane, m_Transform.FarPlane);
+		m_Transform.ViewToClip.Invert(m_Transform.ClipToView);
 
-		m_Transform.PerspectiveFrustum = Math::CreateBoundingFrustum(m_Transform.Projection, m_Transform.View);
+		m_Transform.PerspectiveFrustum = Math::CreateBoundingFrustum(m_Transform.ViewToClip, m_Transform.WorldToView);
 		m_Transform.Location = m_Location;
 	}
 

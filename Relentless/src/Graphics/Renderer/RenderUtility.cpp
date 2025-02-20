@@ -1,6 +1,7 @@
 #include "RenderUtility.h"
 #include "../D3D12Core.h"
 #include "../Resources/Texture.h"
+#include "Graphics/D3D12Debug.h"
 
 namespace Relentless
 {

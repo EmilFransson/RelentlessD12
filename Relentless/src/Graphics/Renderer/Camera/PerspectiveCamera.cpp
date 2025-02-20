@@ -2,6 +2,7 @@
 #include "Core/Time.h"
 #include "Input/Keyboard.h"
 #include "Input/Mouse.h"
+#include "../../vendor/includes/ImGUI/imgui.h"
 namespace Relentless
 {
 	using namespace DirectX;
@@ -16,7 +17,7 @@ namespace Relentless
 		Vector3 movement = Vector3::Zero;
 		bool ease = false;
 
-		if (Mouse::IsButtonPressed(RLS_BUTTON::Right))
+		if (Mouse::IsButtonDown(RLS_Button::Right))
 		{
 			if (!ImGui::IsAnyItemActive())
 			{
@@ -27,18 +28,18 @@ namespace Relentless
 				m_Rotation.Normalize();
 			}
 
-			movement.x -= static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::A));
-			movement.x += static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::D));
-			movement.z -= static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::S));
-			movement.z += static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::W));
-			movement.y -= static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::Q));
-			movement.y += static_cast<float>(Keyboard::IsKeyPressed(RLS_KEY::E));
+			movement.x -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::A));
+			movement.x += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::D));
+			movement.z -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::S));
+			movement.z += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::W));
+			movement.y -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::Q));
+			movement.y += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::E));
 			movement.Normalize();
 
 			movement = Vector3::Transform(movement, m_Rotation);
 			ease = true;
 		}
-		else if (Mouse::IsButtonPressed(RLS_BUTTON::Left))
+		else if (Mouse::IsButtonDown(RLS_Button::Left))
 		{
 			const Vector2i mouseDelta = Mouse::GetDeltaCoordinates();
 			if (!ImGui::IsAnyItemActive())
@@ -52,7 +53,7 @@ namespace Relentless
 				movement.y = 0.0f;
 			}
 		}
-		else if (Mouse::IsButtonPressed(RLS_BUTTON::Wheel))
+		else if (Mouse::IsButtonDown(RLS_Button::Wheel))
 		{
 			const Vector2i mouseDelta = Mouse::GetDeltaCoordinates();
 
@@ -62,7 +63,7 @@ namespace Relentless
 			movement.Normalize();
 		}
 		
-		float speedMultiplier = Keyboard::IsKeyPressed(RLS_KEY::LShift) ? 2.0f : 1.0f;
+		float speedMultiplier = Keyboard::IsKeyDown(RLS_Key::LShift) ? 2.0f : 1.0f;
 		speedMultiplier *= 5.0f;
 
 		if (ease)

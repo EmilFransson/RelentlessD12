@@ -1,6 +1,8 @@
 #include "RenderPass.h"
 #include "../D3D12Core.h"
 #include "Properties.h"
+#include "Graphics/D3D12Debug.h"
+
 namespace Relentless
 {
 	[[nodiscard]] static D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE RLSOperatorToD3D12Operator(OperatorOnLoad op) noexcept

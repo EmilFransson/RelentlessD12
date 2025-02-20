@@ -2,6 +2,7 @@
 #include "../Resources/Texture.h"
 #include "../Resources/DepthStencil.h"
 #include "../D3D12Core.h"
+#include "Graphics/D3D12Debug.h"
 #include "RenderCommand.h"
 #include "../../Core/Window.h"
 #include "../../ImGui/ImguiLayer.h"

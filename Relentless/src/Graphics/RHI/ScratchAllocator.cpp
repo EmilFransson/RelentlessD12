@@ -10,11 +10,11 @@ namespace Relentless
 	{
 	}
 
-	Ref<Buffer> ScratchAllocationManager::AllocatePage() noexcept
+	Ref<BufferEx> ScratchAllocationManager::AllocatePage() noexcept
 	{
 		std::lock_guard guard(m_AllocationMutex);
 		
-		Ref<Buffer> pPage = nullptr;
+		Ref<BufferEx> pPage = nullptr;
 		if (!m_PagePool.empty() && m_PagePool.front().SyncPoint.IsComplete())
 		{
 			pPage = m_PagePool.front().pPage;
@@ -29,7 +29,7 @@ namespace Relentless
 		return pPage;
 	}
 
-	void ScratchAllocationManager::FreePages(const SyncPoint& syncPoint, const std::vector<Ref<Buffer>>& pPages) noexcept
+	void ScratchAllocationManager::FreePages(const SyncPoint& syncPoint, const std::vector<Ref<BufferEx>>& pPages) noexcept
 	{
 		std::lock_guard guard(m_AllocationMutex);
 		for (auto pPage : pPages)
@@ -49,7 +49,7 @@ namespace Relentless
 
 		if (bufferSize > m_pPageManager->GetPageSize())
 		{
-			Ref<Buffer> pPage = m_pPageManager->GetParent()->CreateBuffer(BufferDesc{ .Size = size, .Flags = BufferFlag::Upload }, "Large Page");
+			Ref<BufferEx> pPage = m_pPageManager->GetParent()->CreateBuffer(BufferDesc{ .Size = size, .Flags = BufferFlag::Upload }, "Large Page");
 			allocation.Offset = 0;
 			allocation.GpuHandle = pPage->GetGpuHandle();
 			allocation.pBackingResource = pPage;

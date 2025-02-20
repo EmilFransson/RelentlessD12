@@ -4,6 +4,7 @@
 #include "Graphics/Resources/Texture.h"
 #include "Graphics/Shaders/ShaderLibrary.h"
 #include "MasterRenderer.h"
+#include "Graphics/D3D12Debug.h"
 
 
 namespace Relentless
@@ -187,7 +188,7 @@ namespace Relentless
 			&textureCubeDescriptor, 
 			D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(&textureCubeSpecification.pResource));
 
-		MemoryManager& memoryManager = Application::Get().GetMemorymanager();
+		//MemoryManager& memoryManager = Application::Get().GetMemorymanager();
 
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDescriptor{};
 		rtvDescriptor.Format = textureCubeDescriptor.Format;
@@ -198,7 +199,7 @@ namespace Relentless
 		for (uint32_t i = 0u; i < 6u; ++i)
 		{
 			rtvDescriptor.Texture2DArray.FirstArraySlice = i;
-			textureCubeSpecification.DescriptorHandleRTV[i] = memoryManager.CreateDescriptorHandle(DescriptorHandleType::RTV);
+			//textureCubeSpecification.DescriptorHandleRTV[i] = memoryManager.CreateDescriptorHandle(DescriptorHandleType::RTV);
 			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(textureCubeSpecification.pResource.Get(), &rtvDescriptor, textureCubeSpecification.DescriptorHandleRTV[i].CPUHandle));
 		}
 
@@ -210,18 +211,18 @@ namespace Relentless
 		srvDescriptor.TextureCube.ResourceMinLODClamp = 0.0f;
 		srvDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		textureCubeSpecification.DescriptorHandleSRV = memoryManager.CreateDescriptorHandle(DescriptorHandleType::SRV);
+		//textureCubeSpecification.DescriptorHandleSRV = memoryManager.CreateDescriptorHandle(DescriptorHandleType::SRV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(textureCubeSpecification.pResource.Get(), &srvDescriptor, textureCubeSpecification.DescriptorHandleSRV.CPUHandle));
 		
 		auto& pPipeline = m_pEquirectangularToCubeMapPass->GetPipeline();
 
-		GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
+		//GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
+		//Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
-		DXCall_STD(pCommandList->SetGraphicsRootSignature(pPipeline->GetRootSig().Get()));
-		DXCall_STD(pCommandList->SetPipelineState(pPipeline->GetInterface2().Get()));
-		DXCall_STD(pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST));
+		//DXCall_STD(pCommandList->SetDescriptorHeaps(1u, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		//DXCall_STD(pCommandList->SetGraphicsRootSignature(pPipeline->GetRootSig().Get()));
+		//DXCall_STD(pCommandList->SetPipelineState(pPipeline->GetInterface2().Get()));
+		//DXCall_STD(pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST));
 
 		D3D12_VIEWPORT viewport;
 		viewport.Width = textureCubeSpecification.Width;
@@ -230,28 +231,28 @@ namespace Relentless
 		viewport.MaxDepth = 1.0f;
 		viewport.TopLeftX = 0.0f;
 		viewport.TopLeftY = 0.0f;
-		DXCall_STD(pCommandList->RSSetViewports(1u, &viewport));
+		//DXCall_STD(pCommandList->RSSetViewports(1u, &viewport));
 		
 		D3D12_RECT scissorRect;
 		scissorRect.left = 0u;
 		scissorRect.top = 0u;
 		scissorRect.right = static_cast<LONG>(textureCubeSpecification.Width);
 		scissorRect.bottom = static_cast<LONG>(textureCubeSpecification.Height);
-		DXCall_STD(pCommandList->RSSetScissorRects(1u, &scissorRect));
+		//DXCall_STD(pCommandList->RSSetScissorRects(1u, &scissorRect));
 
 		m_EquirectangularToCubeMapPassData.TextureIndex = pEquirectangularTexture->GetSRVDescriptorHandle().Index;
 		for (uint32_t i = 0u; i < 6; ++i)
 		{
 			m_EquirectangularToCubeMapPassData.ViewProjectionIndex = m_pTextureCubeCreationVPCBs[i]->GetCBVDescriptorIndex(0);
-			m_pEquirectangularToCubeMapPass->Upload("createTextureCubePassData", &m_EquirectangularToCubeMapPassData, pCommandList);
-			DXCall_STD(pCommandList->OMSetRenderTargets(1u, &textureCubeSpecification.DescriptorHandleRTV[i].CPUHandle, false, nullptr));
-			DXCall_STD(pCommandList->DrawInstanced(36, 1, 0u, 0u));
+			//m_pEquirectangularToCubeMapPass->Upload("createTextureCubePassData", &m_EquirectangularToCubeMapPassData, pCommandList);
+			//DXCall_STD(pCommandList->OMSetRenderTargets(1u, &textureCubeSpecification.DescriptorHandleRTV[i].CPUHandle, false, nullptr));
+			//DXCall_STD(pCommandList->DrawInstanced(36, 1, 0u, 0u));
 		}
 
-		gpuTaskManager.ScheduleCommandList(pCommandList, [Callback = std::move(callback), textureCubeSpecification]()
-			{
-				Callback(std::make_shared<TextureCube>(textureCubeSpecification));
-			});
+		//gpuTaskManager.ScheduleCommandList(pCommandList, [Callback = std::move(callback), textureCubeSpecification]()
+		//	{
+		//		Callback(std::make_shared<TextureCube>(textureCubeSpecification));
+		//	});
 	}
 
 	void UtilityRenderer::CreateIrradianceMap(const std::shared_ptr<TextureCube> pEnvironmentTextureCube, CreateIrradianceMapCompleteCallback&& callback)
@@ -291,7 +292,7 @@ namespace Relentless
 			&textureCubeDescriptor,
 			D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(&textureCubeSpecification.pResource));
 
-		MemoryManager& memoryManager = Application::Get().GetMemorymanager();
+		//MemoryManager& memoryManager = Application::Get().GetMemorymanager();
 
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDescriptor{};
 		rtvDescriptor.Format = textureCubeDescriptor.Format;
@@ -302,7 +303,7 @@ namespace Relentless
 		for (uint32_t i = 0u; i < 6u; ++i)
 		{
 			rtvDescriptor.Texture2DArray.FirstArraySlice = i;
-			textureCubeSpecification.DescriptorHandleRTV[i] = memoryManager.CreateDescriptorHandle(DescriptorHandleType::RTV);
+			//textureCubeSpecification.DescriptorHandleRTV[i] = memoryManager.CreateDescriptorHandle(DescriptorHandleType::RTV);
 			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(textureCubeSpecification.pResource.Get(), &rtvDescriptor, textureCubeSpecification.DescriptorHandleRTV[i].CPUHandle));
 		}
 
@@ -314,18 +315,18 @@ namespace Relentless
 		srvDescriptor.TextureCube.ResourceMinLODClamp = 0.0f;
 		srvDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		textureCubeSpecification.DescriptorHandleSRV = memoryManager.CreateDescriptorHandle(DescriptorHandleType::SRV);
+		//textureCubeSpecification.DescriptorHandleSRV = memoryManager.CreateDescriptorHandle(DescriptorHandleType::SRV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(textureCubeSpecification.pResource.Get(), &srvDescriptor, textureCubeSpecification.DescriptorHandleSRV.CPUHandle));
 
 		auto& pPipeline = m_pTextureCubeIrradianceConvolutionPass->GetPipeline();
 
-		GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
+		//GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
+		//Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
-		DXCall_STD(pCommandList->SetGraphicsRootSignature(pPipeline->GetRootSig().Get()));
-		DXCall_STD(pCommandList->SetPipelineState(pPipeline->GetInterface2().Get()));
-		DXCall_STD(pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST));
+		//DXCall_STD(pCommandList->SetDescriptorHeaps(1u, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		//DXCall_STD(pCommandList->SetGraphicsRootSignature(pPipeline->GetRootSig().Get()));
+		//DXCall_STD(pCommandList->SetPipelineState(pPipeline->GetInterface2().Get()));
+		//DXCall_STD(pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST));
 
 		D3D12_VIEWPORT viewport;
 		viewport.Width = textureCubeSpecification.Width;
@@ -334,28 +335,28 @@ namespace Relentless
 		viewport.MaxDepth = 1.0f;
 		viewport.TopLeftX = 0.0f;
 		viewport.TopLeftY = 0.0f;
-		DXCall_STD(pCommandList->RSSetViewports(1u, &viewport));
+		//DXCall_STD(pCommandList->RSSetViewports(1u, &viewport));
 
 		D3D12_RECT scissorRect;
 		scissorRect.left = 0u;
 		scissorRect.top = 0u;
 		scissorRect.right = static_cast<LONG>(textureCubeSpecification.Width);
 		scissorRect.bottom = static_cast<LONG>(textureCubeSpecification.Height);
-		DXCall_STD(pCommandList->RSSetScissorRects(1u, &scissorRect));
+		//DXCall_STD(pCommandList->RSSetScissorRects(1u, &scissorRect));
 
 		m_EquirectangularToCubeMapPassData.TextureIndex = pEnvironmentTextureCube->GetSRVDescriptorHandle().Index;
 		for (uint32_t i = 0u; i < 6; ++i)
 		{
 			m_EquirectangularToCubeMapPassData.ViewProjectionIndex = m_pTextureCubeCreationVPCBs[i]->GetCBVDescriptorIndex(0);
-			m_pTextureCubeIrradianceConvolutionPass->Upload("createTextureCubePassData", &m_EquirectangularToCubeMapPassData, pCommandList);
-			DXCall_STD(pCommandList->OMSetRenderTargets(1u, &textureCubeSpecification.DescriptorHandleRTV[i].CPUHandle, false, nullptr));
-			DXCall_STD(pCommandList->DrawInstanced(36, 1, 0u, 0u));
+			//m_pTextureCubeIrradianceConvolutionPass->Upload("createTextureCubePassData", &m_EquirectangularToCubeMapPassData, pCommandList);
+			//DXCall_STD(pCommandList->OMSetRenderTargets(1u, &textureCubeSpecification.DescriptorHandleRTV[i].CPUHandle, false, nullptr));
+			//DXCall_STD(pCommandList->DrawInstanced(36, 1, 0u, 0u));
 		}
 
-		gpuTaskManager.ScheduleCommandList(pCommandList, [Callback = std::move(callback), textureCubeSpecification]()
-			{
-				Callback(std::make_shared<TextureCube>(textureCubeSpecification));
-			});
+		//gpuTaskManager.ScheduleCommandList(pCommandList, [Callback = std::move(callback), textureCubeSpecification]()
+		//	{
+		//		Callback(std::make_shared<TextureCube>(textureCubeSpecification));
+		//	});
 	}
 
 	void UtilityRenderer::CreateRadianceMap(const std::shared_ptr<TextureCube> pEnvironmentTextureCube, CreateRadianceMapCompleteCallback&& callback)
@@ -395,7 +396,7 @@ namespace Relentless
 			&textureCubeDescriptor,
 			D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(&textureCubeSpecification.pResource));
 
-		MemoryManager& memoryManager = Application::Get().GetMemorymanager();
+		//MemoryManager& memoryManager = Application::Get().GetMemorymanager();
 
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDescriptor{};
 		rtvDescriptor.Format = textureCubeDescriptor.Format;
@@ -408,7 +409,7 @@ namespace Relentless
 			{
 				rtvDescriptor.Texture2DArray.MipSlice = mip;
 				rtvDescriptor.Texture2DArray.FirstArraySlice = i;
-				textureCubeSpecification.DescriptorHandleRTVs.push_back(memoryManager.CreateDescriptorHandle(DescriptorHandleType::RTV));
+				//textureCubeSpecification.DescriptorHandleRTVs.push_back(memoryManager.CreateDescriptorHandle(DescriptorHandleType::RTV));
 				//textureCubeSpecification.DescriptorHandleRTV[i] = memoryManager.CreateDescriptorHandle(DescriptorHandleType::RTV);
 				DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(textureCubeSpecification.pResource.Get(), &rtvDescriptor, textureCubeSpecification.DescriptorHandleRTVs[(mip * 6) + i].CPUHandle));
 			}
@@ -422,18 +423,18 @@ namespace Relentless
 		srvDescriptor.TextureCube.ResourceMinLODClamp = 0.0f;
 		srvDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		textureCubeSpecification.DescriptorHandleSRV = memoryManager.CreateDescriptorHandle(DescriptorHandleType::SRV);
+		//textureCubeSpecification.DescriptorHandleSRV = memoryManager.CreateDescriptorHandle(DescriptorHandleType::SRV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(textureCubeSpecification.pResource.Get(), &srvDescriptor, textureCubeSpecification.DescriptorHandleSRV.CPUHandle));
 
 		auto& pPipeline = m_pTextureCubeRadianceConvolutionPass->GetPipeline();
 
-		GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
+		//GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
+		//Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
-		DXCall_STD(pCommandList->SetGraphicsRootSignature(pPipeline->GetRootSig().Get()));
-		DXCall_STD(pCommandList->SetPipelineState(pPipeline->GetInterface2().Get()));
-		DXCall_STD(pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST));
+		//DXCall_STD(pCommandList->SetDescriptorHeaps(1u, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		//DXCall_STD(pCommandList->SetGraphicsRootSignature(pPipeline->GetRootSig().Get()));
+		//DXCall_STD(pCommandList->SetPipelineState(pPipeline->GetInterface2().Get()));
+		//DXCall_STD(pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST));
 
 		for (uint32_t mip = 0u; mip < textureCubeSpecification.MipCount; ++mip)
 		{
@@ -447,14 +448,14 @@ namespace Relentless
 			viewport.MaxDepth = 1.0f;
 			viewport.TopLeftX = 0.0f;
 			viewport.TopLeftY = 0.0f;
-			DXCall_STD(pCommandList->RSSetViewports(1u, &viewport));
+			//DXCall_STD(pCommandList->RSSetViewports(1u, &viewport));
 
 			D3D12_RECT scissorRect;
 			scissorRect.left = 0u;
 			scissorRect.top = 0u;
 			scissorRect.right = static_cast<LONG>(mipWidth);
 			scissorRect.bottom = static_cast<LONG>(mipHeight);
-			DXCall_STD(pCommandList->RSSetScissorRects(1u, &scissorRect));
+			//DXCall_STD(pCommandList->RSSetScissorRects(1u, &scissorRect));
 
 			m_RadianceRoughnessData.Roughness = (float)mip / (float)(textureCubeSpecification.MipCount - 1);
 			void* pData = nullptr;
@@ -467,21 +468,21 @@ namespace Relentless
 			m_EquirectangularToCubeMapPassData.TextureIndex = pEnvironmentTextureCube->GetSRVDescriptorHandle().Index;
 			m_RadianceRoughnessIndexData.RoughnessIndex = m_pRadianceMapRougnessCBSets[mip]->GetCBVDescriptorIndex(0);
 			
-			m_pTextureCubeRadianceConvolutionPass->Upload("mipRoughnessPassData", &m_RadianceRoughnessIndexData, pCommandList);
+			//m_pTextureCubeRadianceConvolutionPass->Upload("mipRoughnessPassData", &m_RadianceRoughnessIndexData, pCommandList);
 			for (uint32_t i = 0u; i < 6; ++i)
 			{
 				m_EquirectangularToCubeMapPassData.ViewProjectionIndex = m_pTextureCubeCreationVPCBs[i]->GetCBVDescriptorIndex(0);
-				m_pTextureCubeRadianceConvolutionPass->Upload("createTextureCubePassData", &m_EquirectangularToCubeMapPassData, pCommandList);
+				//m_pTextureCubeRadianceConvolutionPass->Upload("createTextureCubePassData", &m_EquirectangularToCubeMapPassData, pCommandList);
 
 				//DXCall_STD(pCommandList->OMSetRenderTargets(1u, &textureCubeSpecification.DescriptorHandleRTV[i].CPUHandle, false, nullptr));
-				DXCall_STD(pCommandList->OMSetRenderTargets(1u, &textureCubeSpecification.DescriptorHandleRTVs[(mip * 6) + i].CPUHandle, false, nullptr));
-				DXCall_STD(pCommandList->DrawInstanced(36, 1, 0u, 0u));
+				//DXCall_STD(pCommandList->OMSetRenderTargets(1u, &textureCubeSpecification.DescriptorHandleRTVs[(mip * 6) + i].CPUHandle, false, nullptr));
+				//DXCall_STD(pCommandList->DrawInstanced(36, 1, 0u, 0u));
 			}
 		}
 
-		gpuTaskManager.ScheduleCommandList(pCommandList, [Callback = std::move(callback), textureCubeSpecification]()
-			{
-				Callback(std::make_shared<TextureCube>(textureCubeSpecification));
-			});
+		//gpuTaskManager.ScheduleCommandList(pCommandList, [Callback = std::move(callback), textureCubeSpecification]()
+		//	{
+		//		Callback(std::make_shared<TextureCube>(textureCubeSpecification));
+		//	});
 	}
 }

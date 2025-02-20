@@ -14,7 +14,7 @@ namespace Relentless
 	{
 		TransformComponent() noexcept
 		{
-			ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet("", sizeof(Transform));
+			//ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet("", sizeof(Transform));
 		}
 
 		Transform WorldTransform;

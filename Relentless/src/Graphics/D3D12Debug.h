@@ -1,6 +1,4 @@
 #pragma once
-#include "../../vendor/includes/DirectXShaderCompiler/dxcapi.h"
-#include "../../vendor/includes/DirectXShaderCompiler/d3d12shader.h"
 namespace Relentless
 {
 	class D3D12Debug

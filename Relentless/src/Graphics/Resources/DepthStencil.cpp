@@ -3,6 +3,8 @@
 #include "../MemoryManager.h"
 #include "Core/Application.h"
 #include "Core/Utility.h"
+#include "Graphics/D3D12Debug.h"
+
 
 namespace Relentless
 {
@@ -60,9 +62,9 @@ namespace Relentless
 		depthStencilViewDescriptor.Format = DXGI_FORMAT_D32_FLOAT;
 		depthStencilViewDescriptor.ViewDimension = m_Specification.Samples > 1 ? D3D12_DSV_DIMENSION_TEXTURE2DMS : D3D12_DSV_DIMENSION_TEXTURE2D;
 
-		MemoryManager& memorymanager = Application::Get().GetMemorymanager();
+		//MemoryManager& memorymanager = Application::Get().GetMemorymanager();
 
-		m_DSVDescriptorHandle = memorymanager.CreateDescriptorHandle(DescriptorHandleType::DSV);
+		//m_DSVDescriptorHandle = memorymanager.CreateDescriptorHandle(DescriptorHandleType::DSV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateDepthStencilView(m_pResource.Get(), &depthStencilViewDescriptor, m_DSVDescriptorHandle.CPUHandle));
 
 		if (m_Specification.CreateSRV)
@@ -75,7 +77,7 @@ namespace Relentless
 			srvDesc.Texture2D.MipLevels = 1;
 			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 			
-			m_SRVDescriptorHandle = memorymanager.CreateDescriptorHandle(DescriptorHandleType::SRV);
+			//m_SRVDescriptorHandle = memorymanager.CreateDescriptorHandle(DescriptorHandleType::SRV);
 			DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &srvDesc, m_SRVDescriptorHandle.CPUHandle));
 		}
 

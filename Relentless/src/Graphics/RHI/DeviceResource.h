@@ -41,20 +41,22 @@ namespace Relentless
 			}
 		}
 
-		[[nodiscard]] D3D12_RESOURCE_STATES Get(uint32_t subResourceIndex = 0u) const noexcept
+		[[nodiscard]] D3D12_RESOURCE_STATES Get(uint32 subResourceIndex = 0u) const noexcept
 		{
-			RLS_ASSERT(subResourceIndex < m_ResourceStates.size(), "Index Out Of Bounds Error");
+			RLS_ASSERT(m_AllUseSameResourceState || subResourceIndex < (uint32)m_ResourceStates.size(), "[ResourceState::Get] Invalid Call."); 
+			if (m_AllUseSameResourceState)
+				return m_ResourceStates[0];
 			return m_ResourceStates[subResourceIndex];
 		}
 	private:
-		std::array<D3D12_RESOURCE_STATES, D3D12_REQ_MIP_LEVELS> m_ResourceStates{};
+		std::array<D3D12_RESOURCE_STATES, D3D12_REQ_MIP_LEVELS> m_ResourceStates{ D3D12_RESOURCE_STATE_UNKNOWN };
 		bool m_AllUseSameResourceState = true;
 	};
 
 	class DeviceResource : public DeviceObject
 	{
 	public:
-		DeviceResource(GraphicsDevice* pParent, ID3D12Resource* pResource) noexcept;
+		DeviceResource(GraphicsDevice* pParent, ID3D12ResourceX* pResource) noexcept;
 		virtual ~DeviceResource() noexcept override;
 
 		[[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS GetGpuHandle() const noexcept;
@@ -66,9 +68,9 @@ namespace Relentless
 		void SetResourceState(D3D12_RESOURCE_STATES resourceState, uint32_t subResourceIndex = 0u) noexcept;
 		void SetStateTracking(bool enabled) noexcept;
 		[[nodiscard]] bool UsesStateTracking() const noexcept;
-	private:
+	protected:
 		std::string m_Name;
-		ID3D12Resource* m_pResource = nullptr;
+		ID3D12ResourceX* m_pResource = nullptr;
 		ResourceState m_ResourceState;
 		bool m_UsesStateTracking = true;
 		bool m_ShouldImmediateDelete = false;

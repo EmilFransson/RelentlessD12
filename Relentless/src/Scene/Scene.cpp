@@ -51,25 +51,25 @@ namespace Relentless
 	void Scene::OnUpdate([[maybe_unused]] const float deltaTime) noexcept
 	{
 		PROFILE_FUNC;
-		ResourceManager& resourceManager = Application::Get().GetResourceManager();
-		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		//ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		//const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
 		/*TRANSFORMS*/
 		m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)
 		{
 			const ResourceHandle handle = m_EntityManager.Get<TransformComponent>(entityHandle).ConstantBufferHandle;
 			DirectX::XMFLOAT4X4 transform = GetWorldTransform(entityHandle);
-			resourceManager.UploadConstantBufferData(handle, &transform, sizeof(transform), frameIndex);
+			//resourceManager.UploadConstantBufferData(handle, &transform, sizeof(transform), frameIndex);
 		});
 
 		/*MATERIALS*/
 		m_EntityManager.Collect<MeshRendererComponent, DirtyMeshRendererComponent>().Do([this](entity e, MeshRendererComponent& mrc)
 			{
-				Application::Get().GetMemorymanager().SetDirtyMaterial(mrc.AssetHandle);
+				//Application::Get().GetMemorymanager().SetDirtyMaterial(mrc.AssetHandle);
 				m_EntityManager.Remove<DirtyMeshRendererComponent>(e);
 			});
 
-		Application::Get().GetMemorymanager().UpdateDirtyMaterials();
+		//Application::Get().GetMemorymanager().UpdateDirtyMaterials();
 
 		/****LIGHTS****/
 		m_EntityManager.Collect<DirectionalLightComponent, DirtyTransformComponent>().Do([&](entity entityID, DirectionalLightComponent& lc)

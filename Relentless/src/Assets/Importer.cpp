@@ -225,8 +225,8 @@ namespace Relentless
 		}
 
 		uploadBatch.Transition(pTexture->GetInterface().Get(), pTexture->GetCurrentState(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		auto finish = uploadBatch.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
-		finish.wait();
+		//auto finish = uploadBatch.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
+		//finish.wait();
 		pTexture->SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		AssetMetaData assetMetaData;
@@ -332,12 +332,12 @@ namespace Relentless
 
 		const std::string sanitizedName = FilepathUtils::SanitizeFileName(pMesh->mName.C_Str());
 
-		ResourceManager& resourceManager = Application::Get().GetResourceManager();
-		ResourceHandle vbHandle = resourceManager.CreateVertexBuffer(sanitizedName + std::string(" Vertex Buffer"), vertexBufferSizeInBytes, (uint32_t)optimizedVertices.size());
-		ResourceHandle ibHandle = resourceManager.CreateIndexBuffer(sanitizedName + std::string(" Index buffer"), indexBufferSizeInBytes, (uint32_t)optimizedIndices.size());
+		//ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		//ResourceHandle vbHandle = resourceManager.CreateVertexBuffer(sanitizedName + std::string(" Vertex Buffer"), vertexBufferSizeInBytes, (uint32_t)optimizedVertices.size());
+		//ResourceHandle ibHandle = resourceManager.CreateIndexBuffer(sanitizedName + std::string(" Index buffer"), indexBufferSizeInBytes, (uint32_t)optimizedIndices.size());
 
-		std::shared_ptr<VertexBuffer> pVB = resourceManager.GetVertexBuffer(vbHandle);
-		std::shared_ptr<IndexBuffer> pIB = resourceManager.GetIndexBuffer(ibHandle);
+		//std::shared_ptr<VertexBuffer> pVB = resourceManager.GetVertexBuffer(vbHandle);
+		//std::shared_ptr<IndexBuffer> pIB = resourceManager.GetIndexBuffer(ibHandle);
 
 		DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
 		uploadBatch.Begin();
@@ -347,9 +347,9 @@ namespace Relentless
 			subresourceData.pData = optimizedVertices.data();
 			subresourceData.RowPitch = vertexBufferSizeInBytes;
 			subresourceData.SlicePitch = subresourceData.RowPitch;
-			uploadBatch.Upload(pVB->GetInterface().Get(), 0, &subresourceData, 1);
-			uploadBatch.Transition(pVB->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-			pVB->SetCurrentState(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			//uploadBatch.Upload(pVB->GetInterface().Get(), 0, &subresourceData, 1);
+			//uploadBatch.Transition(pVB->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			//pVB->SetCurrentState(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		}
 
 		{
@@ -357,18 +357,18 @@ namespace Relentless
 			subresourceData.pData = optimizedIndices.data();
 			subresourceData.RowPitch = indexBufferSizeInBytes;
 			subresourceData.SlicePitch = subresourceData.RowPitch;
-			uploadBatch.Upload(pIB->GetInterface().Get(), 0, &subresourceData, 1);
-			uploadBatch.Transition(pIB->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-			pIB->SetCurrentState(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			//uploadBatch.Upload(pIB->GetInterface().Get(), 0, &subresourceData, 1);
+			//uploadBatch.Transition(pIB->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			//pIB->SetCurrentState(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		}
 
-		auto finish = uploadBatch.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
-		finish.wait();
+		//auto finish = uploadBatch.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
+		//finish.wait();
 
 		std::shared_ptr<Mesh> pNewMesh = std::make_shared<Mesh>();
 		pNewMesh->SetName(sanitizedName);
-		pNewMesh->SetVertexBufferHandle(vbHandle);
-		pNewMesh->SetIndexBufferHandle(ibHandle);
+		//pNewMesh->SetVertexBufferHandle(vbHandle);
+		//pNewMesh->SetIndexBufferHandle(ibHandle);
 
 		const uint32_t index = AssetManager::GetStorage<Mesh>().Add(pNewMesh);
 		const auto& [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Mesh);
@@ -594,7 +594,7 @@ namespace Relentless
 			if (!Serializer::Serialize(fullDestinationPath, handle, isABlockingOperation))
 				RLS_CORE_ERROR("[Importer]: Failed to serialize imported material with name '{0}'.", materialName.c_str());
 
-			Application::Get().GetMemorymanager().SetDirtyMaterial(handle);
+			//Application::Get().GetMemorymanager().SetDirtyMaterial(handle);
 			RLS_CORE_INFO("Loaded material '{0}' with GUID: '{1}'.", materialName.c_str(), ConvertUUIDToString(handle.Uuid));
 		}
 
@@ -672,12 +672,12 @@ namespace Relentless
 		
 		std::unique_lock<std::mutex> lock(mtx);
 
-		Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList, [&proceed, &mtx, &conditionVariable]()
-			{
-				std::lock_guard<std::mutex> callbackLock(mtx);
-				proceed = true;
-				conditionVariable.notify_one();
-			});
+		//Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList, [&proceed, &mtx, &conditionVariable]()
+		//	{
+		//		std::lock_guard<std::mutex> callbackLock(mtx);
+		//		proceed = true;
+		//		conditionVariable.notify_one();
+		//	});
 
 		conditionVariable.wait(lock, [&proceed]() { return proceed == true; });
 	}

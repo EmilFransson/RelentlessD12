@@ -10,7 +10,7 @@ namespace Relentless
 	struct RingBufferAllocation
 	{
 		CommandContext* pContext = nullptr;
-		Ref<Buffer> pBackingResource = nullptr;
+		Ref<BufferEx> pBackingResource = nullptr;
 		D3D12_GPU_VIRTUAL_ADDRESS GpuHandle{ 0 };
 		uint32 Offset = 0;
 		uint32 Size = 0;
@@ -43,6 +43,6 @@ namespace Relentless
 		uint32 m_ProduceOffset = 0u;
 
 		SyncPoint m_LastSync;
-		Ref<Buffer> m_pBuffer = nullptr;
+		Ref<BufferEx> m_pBuffer = nullptr;
 	};
 }

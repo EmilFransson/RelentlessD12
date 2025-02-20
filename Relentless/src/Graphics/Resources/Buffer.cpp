@@ -1,5 +1,7 @@
 #include "Buffer.h"
 #include "../D3D12Core.h"
+#include "Graphics/D3D12Debug.h"
+
 namespace Relentless
 {
 	Buffer::Buffer(const uint32_t size, const std::string& name) noexcept

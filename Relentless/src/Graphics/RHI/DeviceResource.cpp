@@ -3,7 +3,7 @@
 
 namespace Relentless
 {
-	DeviceResource::DeviceResource(GraphicsDevice* pParent, ID3D12Resource* pResource) noexcept
+	DeviceResource::DeviceResource(GraphicsDevice* pParent, ID3D12ResourceX* pResource) noexcept
 		:
 		DeviceObject(pParent),
 		m_pResource(pResource)

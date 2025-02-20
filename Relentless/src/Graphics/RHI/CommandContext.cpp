@@ -9,9 +9,10 @@
 
 namespace Relentless
 {
-	CommandContext::CommandContext(GraphicsDevice* pParent, Ref<ID3D12CommandList> pCommandList, D3D12_COMMAND_LIST_TYPE type) noexcept
+	CommandContext::CommandContext(GraphicsDevice* pParent, Ref<ID3D12CommandList> pCommandList, Ref<ScratchAllocationManager> pScratchAllocationManager, D3D12_COMMAND_LIST_TYPE type) noexcept
 		: 
 		DeviceObject{pParent},
+		m_ScratchAllocator{pScratchAllocationManager},
 		m_Type{type}
 	{
 		RLS_VERIFY(pCommandList.As(&m_pCommandList), "Unable to promote command list.");
@@ -24,7 +25,31 @@ namespace Relentless
 			FlushResourceBarriers();
 	}
 
-	void CommandContext::CopyBuffer(const Buffer* pSource, const Buffer* pTarget, uint64 srcOffset, uint64 dstOffset, uint64 nrOfBytes) noexcept
+	ScratchAllocation CommandContext::AllocateScratch(uint64 size, uint32 alignment /*= 16*/) noexcept
+	{
+		return m_ScratchAllocator.Allocate(size, alignment);
+	}
+
+	void CommandContext::BindRootCBV(uint32 rootIndex, const void* pData, uint32 dataSize) noexcept
+	{
+		ScratchAllocation allocation = AllocateScratch(dataSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+		memcpy(allocation.pMappedMemory, pData, dataSize);
+
+		if (m_CurrentCommandContext == CommandListContext::Graphics)
+			m_pCommandList->SetGraphicsRootConstantBufferView(rootIndex, allocation.GpuHandle);
+		else
+			m_pCommandList->SetComputeRootConstantBufferView(rootIndex, allocation.GpuHandle);
+	}
+
+	void CommandContext::BindRootCBV(uint32 rootIndex, const BufferEx* pBuffer) noexcept
+	{
+		if (m_CurrentCommandContext == CommandListContext::Graphics)
+			m_pCommandList->SetGraphicsRootConstantBufferView(rootIndex, pBuffer->GetGpuHandle());
+		else
+			m_pCommandList->SetComputeRootConstantBufferView(rootIndex, pBuffer->GetGpuHandle());
+	}
+
+	void CommandContext::CopyBuffer(const BufferEx* pSource, const BufferEx* pTarget, uint64 srcOffset, uint64 dstOffset, uint64 nrOfBytes) noexcept
 	{
 		RLS_ASSERT(pSource && pSource->GetResource(), "[CommandContext::CopyBuffer] Source is invalid.");
 		RLS_ASSERT(pTarget && pTarget->GetResource(), "[CommandContext::CopyBuffer] Target is invalid.");
@@ -36,7 +61,6 @@ namespace Relentless
 	void CommandContext::BeginRenderPass(const RenderPassInfo& renderPassInfo) noexcept
 	{
 		RLS_ASSERT(!m_InRenderPass, "[CommandContext::BeginRenderPass] Already In Render Pass.");
-		RLS_ASSERT(m_CommandListContext != CommandListContext::Invalid, "[CommandContext::BeginRenderPass] Command List Context Is Invalid.");
 
 		FlushResourceBarriers();
 		
@@ -176,10 +200,17 @@ namespace Relentless
 				depthStencilDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
 
 			depthStencilDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
-			depthStencilDesc.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+			depthStencilDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS;
+			depthStencilDesc.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS;
 
 			pDepthStencilDesc = &depthStencilDesc;
 		}
+
+		//m_pCommandList->ClearRenderTargetView(renderPassInfo.RenderTargets[0].pTarget->GetRTV()->GetDescriptorHandle().CPUHandle,
+		//	renderPassInfo.RenderTargets[0].pTarget->GetClearBinding().Color, 0, nullptr);
+		//
+		//m_pCommandList->ClearDepthStencilView(renderPassInfo.DepthStencilTarget.pTarget->GetDSV()->GetDescriptorHandle().CPUHandle,
+		//	D3D12_CLEAR_FLAGS::D3D12_CLEAR_FLAG_DEPTH, renderPassInfo.DepthStencilTarget.pTarget->GetClearBinding().DepthStencil.Depth, renderPassInfo.DepthStencilTarget.pTarget->GetClearBinding().DepthStencil.Stencil, 0,nullptr);
 
 		m_pCommandList->BeginRenderPass(renderPassInfo.RenderTargetCount, renderTargets.data(), pDepthStencilDesc, D3D12_RENDER_PASS_FLAG_NONE);
 
@@ -196,13 +227,22 @@ namespace Relentless
 		{
 			FlushResourceBarriers();
 
-			m_CommandListContext = CommandListContext::Invalid;
+			m_CurrentCommandContext = CommandListContext::Invalid;
 
 			m_pCurrentPSO = nullptr;
-			m_pCurrentRS = nullptr;
+			m_pCurrentGraphicsRS = nullptr;
+			m_pCurrentComputeRS = nullptr;
 
 			m_pCommandList->ClearState(nullptr);
-			m_pCommandList->SetDescriptorHeaps(1u, GetParent()->GetGlobalShaderBindableHeap()->GetDescriptorHeapInterface().GetAddressOf());
+
+
+			ID3D12DescriptorHeap* pHeaps[] =
+			{
+				GetParent()->GetGlobalShaderBindableHeap()->GetDescriptorHeapInterface(),
+				GetParent()->GetGlobalSamplerHeap()->GetDescriptorHeapInterface()
+			};
+
+			m_pCommandList->SetDescriptorHeaps(2u, pHeaps);
 		}
 	}
 
@@ -215,7 +255,7 @@ namespace Relentless
 		m_pCommandList->CopyResource(pTarget->GetResource(), pSource->GetResource());
 	}
 
-	void CommandContext::CopyTexture(const TextureEx* pSource, const Buffer* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource /*= 0*/, uint32 destinationOffset /*= 0*/) noexcept
+	void CommandContext::CopyTexture(const TextureEx* pSource, const BufferEx* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource /*= 0*/, uint32 destinationOffset /*= 0*/) noexcept
 	{
 		RLS_ASSERT(pSource && pSource->GetResource(), "[CommandContext::CopyTexture] Source is invalid.");
 		RLS_ASSERT(pTarget && pTarget->GetResource(), "[CommandContext::CopyTexture] Target is invalid.");
@@ -244,6 +284,26 @@ namespace Relentless
 		CD3DX12_TEXTURE_COPY_LOCATION dstLocation(pTarget->GetResource(), destinationSubresource);
 		FlushResourceBarriers();
 		m_pCommandList->CopyTextureRegion(&dstLocation, destinationRegion.left, destinationRegion.top, destinationRegion.front, &srcLocation, &sourceRegion);
+	}
+
+	void CommandContext::Dispatch(uint32 groupCountX, uint32 groupCountY /*= 1*/, uint32 groupCountZ /*= 1*/) noexcept
+	{
+		RLS_ASSERT(m_CurrentCommandContext == CommandListContext::Compute, "[CommandContext::Dispatch] Invalid Command List Context");
+		RLS_ASSERT(m_pCurrentPSO, "[CommandContext::Dispatch] No/Invalid Pipeline State Object");
+		RLS_ASSERT(
+			groupCountX <= D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION &&
+			groupCountY <= D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION &&
+			groupCountZ <= D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION,
+			"Dispatch Group Size ({0} x {1} x {2}) Can Not Exceed {3}", groupCountX, groupCountY, groupCountZ, D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION);
+
+		PrepareDraw();
+		if (groupCountX > 0 && groupCountY > 0 && groupCountZ > 0)
+			m_pCommandList->Dispatch(groupCountX, groupCountY, groupCountZ);
+	}
+
+	void CommandContext::Dispatch(const Vector3i groupCount) noexcept
+	{
+		Dispatch(groupCount.x, groupCount.y, groupCount.z);
 	}
 
 	void CommandContext::InsertResourceBarrier(DeviceResource* pResource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState, uint32 subResource /*= D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES*/) noexcept
@@ -300,18 +360,23 @@ namespace Relentless
 		}
 	}
 
-	void CommandContext::Draw(uint32_t vertexStart, uint32_t vertexCount, uint32_t instances, uint32_t instanceStart) noexcept
+	void CommandContext::InsertUAVBarrier(const DeviceResource* pResource /*= nullptr*/) noexcept
 	{
-		RLS_ASSERT(m_CommandListContext == CommandListContext::Graphics, "[CommandContext] Invalid Command List Context");
+		AddBarrier(CD3DX12_RESOURCE_BARRIER::UAV(pResource ? pResource->GetResource() : nullptr));
+	}
+
+	void CommandContext::Draw(uint32_t vertexStart, uint32_t vertexCount, uint32_t instanceStart, uint32_t instanceCount) noexcept
+	{
+		RLS_ASSERT(m_CurrentCommandContext == CommandListContext::Graphics, "[CommandContext] Invalid Command List Context");
 		RLS_ASSERT(m_pCurrentPSO, "[CommandContext] No/Invalid Pipeline State Object");
 
 		PrepareDraw();
-		m_pCommandList->DrawInstanced(vertexCount, instances, vertexStart, instanceStart);
+		m_pCommandList->DrawInstanced(vertexCount, instanceCount, vertexStart, instanceStart);
 	}
 
 	void CommandContext::DrawIndexedInstanced(uint32_t indexCount, uint32_t indexStart, uint32_t instances, uint32_t instanceStart, int vertexBaseLocation) noexcept
 	{
-		RLS_ASSERT(m_CommandListContext == CommandListContext::Graphics, "[CommandContext] Invalid Command List Context");
+		RLS_ASSERT(m_CurrentCommandContext == CommandListContext::Graphics, "[CommandContext] Invalid Command List Context");
 		RLS_ASSERT(m_pCurrentPSO, "[CommandContext] No/Invalid Pipeline State Object");
 
 		PrepareDraw();
@@ -328,13 +393,12 @@ namespace Relentless
 
 	SyncPoint CommandContext::Execute() noexcept
 	{
-		CommandContext* contexts[] = { this };
-		return CommandContext::Execute(std::span<CommandContext* const>{ contexts });
+		return CommandContext::Execute({ this });
 	}
 
-	SyncPoint CommandContext::Execute(std::span<CommandContext* const> commandContexts) noexcept
+	SyncPoint CommandContext::Execute(Span<CommandContext* const> commandContexts) noexcept
 	{
-		RLS_ASSERT(!commandContexts.empty(), "[CommandContext::Execute] No Command Contexts Available For Execution.");
+		RLS_ASSERT(commandContexts.GetSize() > 0, "[CommandContext::Execute] No Command Contexts Available For Execution.");
 		CommandQueue* pQueue = commandContexts[0]->GetParent()->GetCommandQueue(commandContexts[0]->GetType());
 
 		for (CommandContext* pCommandContext : commandContexts)
@@ -353,12 +417,14 @@ namespace Relentless
 
 	void CommandContext::Free(const SyncPoint& syncPoint)
 	{
+		m_ScratchAllocator.Free(syncPoint);
+
 		GetParent()->GetCommandQueue(m_Type)->FreeAllocator(syncPoint, m_pCommandAllocator);
 		m_pCommandAllocator = nullptr;
 		GetParent()->FreeCommandContext(this);
 	}
 
-	ID3D12GraphicsCommandList7* CommandContext::GetCommandList() const noexcept
+	ID3D12GraphicsCommandListX* CommandContext::GetCommandList() const noexcept
 	{
 		return m_pCommandList;
 	}
@@ -372,7 +438,7 @@ namespace Relentless
 	{
 		RLS_ASSERT(m_pCommandList, "[CommandContext::Reset] Command List Is Invalid.");
 
-		if (!m_pCommandAllocator)
+		if (m_pCommandAllocator == nullptr)
 		{
 			m_pCommandAllocator = GetParent()->GetCommandQueue(m_Type)->RequestAllocator();
 			VERIFY_HR_EX(m_pCommandList->Reset(m_pCommandAllocator, nullptr), GetParent()->GetDevice());
@@ -424,8 +490,18 @@ namespace Relentless
 	void CommandContext::SetGraphicsRootSignature(RootSignature* pRootSignature) noexcept
 	{
 		m_pCommandList->SetGraphicsRootSignature(pRootSignature->GetRootSignature());
-		m_CommandListContext = CommandListContext::Graphics;
-		m_pCurrentRS = pRootSignature;
+		m_CurrentCommandContext = CommandListContext::Graphics;
+		m_pCurrentGraphicsRS = pRootSignature;
+	}
+
+	void CommandContext::SetComputeRootSignature(RootSignature* pRootSignature) noexcept
+	{
+		m_CurrentCommandContext = CommandListContext::Compute;
+		if (pRootSignature != m_pCurrentComputeRS)
+		{
+			m_pCommandList->SetComputeRootSignature(pRootSignature->GetRootSignature());
+			m_pCurrentComputeRS = pRootSignature;
+		}
 	}
 
 	void CommandContext::SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY topology) noexcept
@@ -437,6 +513,8 @@ namespace Relentless
 	{
 		RLS_ASSERT(pPipeline, "[CommandContext] Pipeline is invalid.");
 		pPipeline->ConditionallyReload();
+
+		m_pCommandList->SetPipelineState(pPipeline->GetPipelineState());
 		m_pCurrentPSO = pPipeline;
 	}
 
@@ -487,7 +565,7 @@ namespace Relentless
 
 	void CommandContext::PrepareDraw() noexcept
 	{
-		RLS_ASSERT(m_CommandListContext != CommandListContext::Invalid, "[CommandContext] Commandlist Context Is Invalid");
+		RLS_ASSERT(m_CurrentCommandContext != CommandListContext::Invalid, "[CommandContext] Commandlist Context Is Invalid");
 		FlushResourceBarriers();
 	}
 

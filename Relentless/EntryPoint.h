@@ -16,5 +16,6 @@ int main(int, char**)
 	auto app = Relentless::CreateApplication();
 	app->Run();
 
+	_CrtDumpMemoryLeaks();
 	return 0;
 }

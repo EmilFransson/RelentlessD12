@@ -82,7 +82,7 @@ namespace Relentless
 		m_Specification.Width = width;
 		m_Specification.Height = height;
 
-		auto& memoryManager = Application::Get().GetMemorymanager();
+		//auto& memoryManager = Application::Get().GetMemorymanager();
 		for (uint32_t i{ 0u }; i < m_Specification.Attachments.ColorAttachments.size(); ++i)
 		{
 			if (m_Specification.Attachments.ColorAttachments[i].ShouldResize)
@@ -91,13 +91,13 @@ namespace Relentless
 				{
 					if ((m_Specification.Attachments.ColorAttachments[i].Flags & D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) != 0)
 					{
-						memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.ColorAttachments[i].Output->GetRTVDescriptorHandle());
+						//memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.ColorAttachments[i].Output->GetRTVDescriptorHandle());
 					}
 					if (m_Specification.Attachments.ColorAttachments[i].Transfer)
 					{
-						memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.ColorAttachments[i].Output->GetSRVDescriptorHandle());
+						//memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.ColorAttachments[i].Output->GetSRVDescriptorHandle());
 					}
-					memoryManager.DestroyResource(std::move(m_Specification.Attachments.ColorAttachments[i].Output));
+					//memoryManager.DestroyResource(std::move(m_Specification.Attachments.ColorAttachments[i].Output));
 
 					RenderTextureSpecification rtSpec{};
 					rtSpec.ClearColor = m_Specification.Attachments.ColorAttachments[i].ClearColor;
@@ -118,13 +118,13 @@ namespace Relentless
 		{
 			if (m_Specification.Attachments.DepthAttachment.ShouldResize)
 			{
-				memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.DepthAttachment.Output->GetDSVDescriptorHandle());
+				//memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.DepthAttachment.Output->GetDSVDescriptorHandle());
 				if (m_Specification.Attachments.DepthAttachment.Transfer)
 				{
-					memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.DepthAttachment.Output->GetSRVDescriptorHandle());
+					//memoryManager.DestroyDescriptorHandle(m_Specification.Attachments.DepthAttachment.Output->GetSRVDescriptorHandle());
 				}
 				
-				memoryManager.DestroyResource(std::move(m_Specification.Attachments.DepthAttachment.Output));
+				//memoryManager.DestroyResource(std::move(m_Specification.Attachments.DepthAttachment.Output));
 
 				DepthStencilSpecification depthStencilSpecification;
 				depthStencilSpecification.Width = width;

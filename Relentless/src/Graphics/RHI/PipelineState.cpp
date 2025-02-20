@@ -27,6 +27,12 @@ namespace Relentless
 		return m_pPipelineState;
 	}
 
+	uint32 PipelineState::GetSampleCount() noexcept
+	{
+		const DXGI_SAMPLE_DESC& desc = m_Desc.m_Stream.SampleDesc;
+		return desc.Count;
+	}
+
 	void PipelineState::CreateInternal() noexcept
 	{
 		std::lock_guard guard(m_BuildMutex);
@@ -38,7 +44,7 @@ namespace Relentless
 
 		/*
 			Shaders
-		*/
+		*///TODO! ADJUST SHADER LIBRARY TO NEW VERSION!!!
 		ShaderLibrary* pShaderLibrary = GetParent()->GetShaderLibrary();
 		for (int i = 0; i < m_Desc.m_ShaderInfo.size(); ++i)
 		{
@@ -147,7 +153,7 @@ namespace Relentless
 		SetRenderTargetFormats({}, dsvFormat, msaa);
 	}
 
-	void PipelineStateInitializer::SetRenderTargetFormats(std::span<ResourceFormat> rtvFormats, ResourceFormat dsvFormat, uint32 msaa) noexcept
+	void PipelineStateInitializer::SetRenderTargetFormats(Span<ResourceFormat> rtvFormats, ResourceFormat dsvFormat, uint32 msaa) noexcept
 	{
 		D3D12_RT_FORMAT_ARRAY& formatArray = m_Stream.RTFormats;
 		// Validation layer bug - Throws error about RT Format even if NumRenderTargets == 0.

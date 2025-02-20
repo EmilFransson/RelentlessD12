@@ -6,6 +6,7 @@
 #include "../Panels/MetricsPanel.h" 
 #include "../Panels/SceneRendererPanel.h"
 #include "../Panels/InspectorPanel.h"
+#include "../Panels/ViewportPanel.h"
 
 #include "EntityFilters.h"
 #include "Selection.h"
@@ -33,6 +34,9 @@ namespace Relentless
 
 		[[nodiscard]] Selection& GetSelection() noexcept;
 		[[nodiscard]] EntityFiltersManager& GetEntityFiltersManager() noexcept;
+		[[nodiscard]] ViewportRenderView& GetRenderView(uint32 renderViewIndex) noexcept;
+		[[nodiscard]] std::vector<ViewportRenderView>& GetRenderViews() noexcept;
+
 
 		Broadcaster<void(Scene*)> OnSceneChanged;
 
@@ -53,6 +57,8 @@ namespace Relentless
 		void OnEntityPreDestroyed(entity e) noexcept;
 		void OnEntityAttached(entity child, entity parent) noexcept;
 	private:
+		std::vector<ViewportRenderView> m_RenderViews;
+		std::vector<UniquePtr<ViewportPanel>> m_EditorViewports;
 		bool m_SceneViewportChanged = false;
 		bool m_HoveringSceneViewport = false;
 		ImVec2 m_ViewportPanelSize = ImVec2(800.0f, 600.0f);
@@ -64,11 +70,11 @@ namespace Relentless
 		EGizmoMode m_CurrentGizmoMode = EGizmoMode::World;
 
 		std::unique_ptr<OutlinerPanel> m_pOutlinerPanel = nullptr;
-		PropertiesPanel m_PropertiesPanel;
-		ContentBrowserPanel m_ContentBrowserPanel;
-		MetricsPanel m_MetricsPanel;
-		SceneRendererPanel m_SceneRendererPanel;
-		InspectorPanel m_InspectorPanel;
+		//PropertiesPanel m_PropertiesPanel;
+		//ContentBrowserPanel m_ContentBrowserPanel;
+		//MetricsPanel m_MetricsPanel;
+		//SceneRendererPanel m_SceneRendererPanel;
+		//InspectorPanel m_InspectorPanel;
 
 		std::shared_ptr<Scene> m_pActiveScene = nullptr;
 		std::shared_ptr<Scene> m_pEditorScene = nullptr;

@@ -1,5 +1,6 @@
 #include "Texture.h"
 #include "../D3D12Core.h"
+#include "Graphics\D3D12Debug.h"
 #include "..\MemoryManager.h"
 #include "../../Core/Utility.h"
 
@@ -100,7 +101,7 @@ namespace Relentless
 			IID_PPV_ARGS(&m_pResource)
 		));
 
-		MemoryManager& memoryManager = Application::Get().GetMemorymanager();
+		//MemoryManager& memoryManager = Application::Get().GetMemorymanager();
 
 		if ((textureSpecification.Flags & D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) != 0)
 		{
@@ -108,7 +109,7 @@ namespace Relentless
 			renderTargetViewDescriptor.Format = textureSpecification.Format;
 			renderTargetViewDescriptor.ViewDimension = textureSpecification.MultiSampleCount > 1u ? D3D12_RTV_DIMENSION_TEXTURE2DMS : D3D12_RTV_DIMENSION_TEXTURE2D;
 
-			m_RTVDescriptorHandle = memoryManager.CreateDescriptorHandle(DescriptorHandleType::RTV);
+			//m_RTVDescriptorHandle = memoryManager.CreateDescriptorHandle(DescriptorHandleType::RTV);
 			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(m_pResource.Get(), &renderTargetViewDescriptor, m_RTVDescriptorHandle.CPUHandle));
 		}
 	
@@ -119,7 +120,7 @@ namespace Relentless
 			shaderResourceViewDescriptor.ViewDimension = textureSpecification.MultiSampleCount > 1u ? D3D12_SRV_DIMENSION_TEXTURE2DMS : D3D12_SRV_DIMENSION_TEXTURE2D, shaderResourceViewDescriptor.Texture2D.MostDetailedMip = 0u, shaderResourceViewDescriptor.Texture2D.MipLevels = static_cast<UINT>(- 1);
 			shaderResourceViewDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-			m_SRVDescriptorHandle = memoryManager.CreateDescriptorHandle(DescriptorHandleType::SRV);
+			//m_SRVDescriptorHandle = memoryManager.CreateDescriptorHandle(DescriptorHandleType::SRV);
 			DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_SRVDescriptorHandle.CPUHandle));
 		}
 
@@ -171,10 +172,10 @@ namespace Relentless
 		);
 		
 		// Upload the resources to the GPU.
-		 auto uploadResourcesFinished = resourceUpload.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
+		 //auto uploadResourcesFinished = resourceUpload.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
 
 		// Wait for the upload thread to terminate
-		uploadResourcesFinished.wait();
+		//uploadResourcesFinished.wait();
 
 		auto textureDescriptor = m_pResource->GetDesc();
 
@@ -187,7 +188,7 @@ namespace Relentless
 		shaderResourceViewDescriptor.Texture2D.PlaneSlice = 0u;
 		shaderResourceViewDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		m_SRVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::SRV);
+		//m_SRVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::SRV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_SRVDescriptorHandle.CPUHandle));
 		
 		m_Width = static_cast<uint32_t>(textureDescriptor.Width);
@@ -254,7 +255,7 @@ namespace Relentless
 		shaderResourceViewDescriptor.Texture2D.PlaneSlice = 0u;
 		shaderResourceViewDescriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		m_SRVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::SRV);
+		//m_SRVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::SRV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &shaderResourceViewDescriptor, m_SRVDescriptorHandle.CPUHandle));
 
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring("[Texture2D] - " + m_Name).c_str());

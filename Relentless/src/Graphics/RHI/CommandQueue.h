@@ -14,6 +14,8 @@ namespace Relentless
 		[[nodiscard]] D3D12_COMMAND_LIST_TYPE GetType() const noexcept;
 		[[nodiscard]] SyncPoint ExecuteCommandLists(std::span<CommandContext* const> commandContexts) noexcept;
 		void FreeAllocator(const SyncPoint& syncPoint, Ref<ID3D12CommandAllocator> pAllocator) noexcept;
+		void InsertWait(const SyncPoint& syncPoint);
+		void InsertWait(CommandQueue* pQueue);
 		[[nodiscard]] Ref<ID3D12CommandAllocator> RequestAllocator() noexcept;
 		void WaitForIdle() noexcept;
 	private:

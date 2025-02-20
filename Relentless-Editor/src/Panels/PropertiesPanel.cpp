@@ -87,7 +87,7 @@ namespace Relentless
 			if (ImGui::IsItemDeactivated())
 				m_FormattingName = false;
 
-			if (Mouse::IsButtonPressed(RLS_BUTTON::Left))
+			if (Mouse::IsButtonPressed(RLS_Button::Left))
 			{
 				if (!ImGui::IsItemHovered())
 					m_FormattingName = false;

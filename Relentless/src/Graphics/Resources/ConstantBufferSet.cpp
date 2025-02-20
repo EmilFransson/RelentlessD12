@@ -3,6 +3,8 @@
 #include "Graphics/GPUTaskManager.h"
 #include "Graphics/MemoryManager.h"
 #include "Core/Application.h"
+#include "Graphics/D3D12Debug.h"
+
 
 namespace Relentless
 {
@@ -40,7 +42,7 @@ namespace Relentless
 		constantBufferDescriptor.BufferLocation = m_pResource->GetGPUVirtualAddress();
 		constantBufferDescriptor.SizeInBytes = static_cast<UINT>(sizeInBytes);
 
-		m_CBVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::CBV);
+		//m_CBVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::CBV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateConstantBufferView(&constantBufferDescriptor, m_CBVDescriptorHandle.CPUHandle));
 
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(name).c_str());

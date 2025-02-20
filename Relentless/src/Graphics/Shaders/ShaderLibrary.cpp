@@ -5,6 +5,11 @@ namespace Relentless
 	/*Initialize sets up all basic shaders that ship with Relentless*/
 	void ShaderLibrary::Initialize() noexcept
 	{
+		Add(Shader::Create(ShaderType::VERTEX, "NewVertexShader.hlsl"));
+		Add(Shader::Create(ShaderType::PIXEL, "NewPixelShader.hlsl"));
+		Add(Shader::Create(ShaderType::Compute, "ToyComputeShader.hlsl"));
+
+
 		Add(Shader::Create(ShaderType::VERTEX, "VertexShader.hlsl"));
 		Add(Shader::Create(ShaderType::VERTEX, "FullScreenTriVertexShader.hlsl"));
 		Add(Shader::Create(ShaderType::PIXEL, "PixelShader.hlsl"));

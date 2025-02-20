@@ -40,6 +40,10 @@
 #include <src/Graphics/Renderer/SceneRenderer.h>
 #include <src/Graphics/Renderer/UtilityRenderer.h>
 #include <src/Graphics/MemoryManager.h>
+#include <src/Graphics/RHI/Device.h>
+#include <src/Graphics/RHI/ResourceViews.h>
+#include <src/Graphics/RHI/CommandContext.h>
+#include <src/Graphics/Renderer/RenderTypes.h>
 
 //Resources
 #include <src/Graphics/Resources/Texture.h>

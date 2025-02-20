@@ -49,7 +49,7 @@ namespace Relentless
 		RenderChildWindowsDraggableSplitter(splitterThickness);
 		RenderRightChildWindow(rightChildWidth);
 
-		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered() && !Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered() && !Keyboard::IsKeyDown(RLS_Key::LCtrl))
 		{
 			DeselectAllContentBrowserEntries();
 			m_OnAssetSelectedCallback(NULL_HANDLE, InspectedAssetType::NONE);
@@ -64,11 +64,11 @@ namespace Relentless
 		{
 		case EventType::KeyPressedEvent:
 		{
-			const RLS_KEY key = EVENT(KeyPressedEvent).key;
+			const RLS_Key key = EVENT(KeyPressedEvent).key;
 			switch (key)
 			{
-			case RLS_KEY::A:
-				if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl) && m_AssetHierarchyFocused)
+			case RLS_Key::A:
+				if (Keyboard::IsKeyDown(RLS_Key::LCtrl) && m_AssetHierarchyFocused)
 				{
 					SelectAllEntriesInDirectories(m_SelectedHierarchyDirectories);
 				}
@@ -126,7 +126,7 @@ namespace Relentless
 		if (ImGui::IsItemClicked())
 		{
 			currentDirectory = editorAssetDirectory;
-			const bool lCtrlPressed = Keyboard::IsKeyPressed(RLS_KEY::LCtrl);
+			const bool lCtrlPressed = Keyboard::IsKeyDown(RLS_Key::LCtrl);
 			if (!lCtrlPressed)
 			{
 				if (!isSelected)
@@ -228,7 +228,7 @@ namespace Relentless
 		if (ImGui::IsItemClicked())
 		{
 			currentDirectory = directoryEntry;
-			const bool lCtrlPressed = Keyboard::IsKeyPressed(RLS_KEY::LCtrl);
+			const bool lCtrlPressed = Keyboard::IsKeyDown(RLS_Key::LCtrl);
 			if (!lCtrlPressed)
 			{
 				if (!isSelected)
@@ -698,7 +698,7 @@ namespace Relentless
 			return;
 		}
 
-		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered() && ! Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered() && ! Keyboard::IsKeyDown(RLS_Key::LCtrl))
 			DeselectAllContentBrowserEntries();
 
 		static const ImVec2 padding = ImVec2(20.0f, 10.0f);
@@ -820,7 +820,7 @@ namespace Relentless
 				const bool isHovered = ImGui::IsItemHovered();
 				if (ImGui::IsItemClicked())
 				{
-					const bool lCtrlPressed = Keyboard::IsKeyPressed(RLS_KEY::LCtrl);
+					const bool lCtrlPressed = Keyboard::IsKeyDown(RLS_Key::LCtrl);
 					if (lCtrlPressed && isSelected)
 					{
 						DeselectEntry(entryPath);
@@ -840,7 +840,7 @@ namespace Relentless
 				}
 				else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !ImGui::IsMouseDragging(ImGuiMouseButton_Left) && isHovered && isSelected)
 				{
-					const bool lCtrlPressed = Keyboard::IsKeyPressed(RLS_KEY::LCtrl);
+					const bool lCtrlPressed = Keyboard::IsKeyDown(RLS_Key::LCtrl);
 					if (!lCtrlPressed)
 					{
 						DeselectAllContentBrowserEntries();
@@ -1221,7 +1221,7 @@ namespace Relentless
 		}
 		else if (isClicked)
 		{
-			const bool lCtrlDown = Keyboard::IsKeyPressed(RLS_KEY::LCtrl);
+			const bool lCtrlDown = Keyboard::IsKeyDown(RLS_Key::LCtrl);
 			if (isSelected && lCtrlDown)
 			{
 

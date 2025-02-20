@@ -11,6 +11,10 @@ namespace Relentless
 		{
 			return std::chrono::duration<float>(m_CurrentTimePoint - m_PreviousTimePoint).count();
 		}
+		[[nodiscard]] static constexpr float GetElapsedTime() noexcept
+		{
+			return m_ElapsedApplicationTime;
+		}
 		[[nodiscard]] static constexpr uint32_t GetFramesPerSecond() noexcept
 		{
 			return m_FramesPerSecond;

@@ -1,8 +1,8 @@
 #pragma once
-#include "EventSystem/EventPublisher.h"
+//#include "EventSystem/EventPublisher.h"
 namespace Relentless
 {
-	enum class RLS_KEY : uint8_t 
+	enum class RLS_Key : uint16
 	{
 		BackSpace = 8, Tab,
 		Enter = 13,
@@ -21,22 +21,26 @@ namespace Relentless
 		Å = 221, Ä
 	};
 
-	constexpr const uint16_t KEY_COUNT{ 256 };
-	class Keyboard : public EventPublisher
+	constexpr const uint16 KEY_COUNT{ 256 };
+	class Keyboard /*: public EventPublisher*/
 	{
 	public:
-		static void OnWindowsEvent(const uint32_t message, const LPARAM lParam, const WPARAM wParam) noexcept;
-		static void OnKeyDown(const RLS_KEY key) noexcept;
-		static void OnKeyUp(const RLS_KEY key) noexcept;
-		static void Reset() noexcept;
-		static [[nodiscard]] const bool IsKeyPressed(const RLS_KEY key) noexcept;
+		//static void OnWindowsEvent(const uint32_t message, const LPARAM lParam, const WPARAM wParam) noexcept;
+		static void UpdateKeyState(uint32 keyCode, bool isPressed) noexcept;
+		//static void OnKeyDown(const RLS_KEY key) noexcept;
+		//static void OnKeyUp(const RLS_KEY key) noexcept;
+		//static void Reset() noexcept;
+		static void Update() noexcept;
+		static [[nodiscard]] bool IsKeyDown(const RLS_Key key) noexcept;
+		static [[nodiscard]] bool IsKeyPressed(const RLS_Key key) noexcept;
 		static void constexpr EnableRepeat() noexcept { m_sRepeatEnabled = true; }
 		static void constexpr DisableRepeat() noexcept { m_sRepeatEnabled = false; }
 		static constexpr bool IsRepeatEnabled() noexcept { return m_sRepeatEnabled; }
 	private:
 		STATIC_CLASS(Keyboard);
 	private:
-		static std::bitset<KEY_COUNT> s_keys;
+		static std::bitset<KEY_COUNT> s_PersistentKeyStates;
+		static std::bitset<KEY_COUNT> s_CurrentKeyStates;
 		static bool m_sRepeatEnabled;
 	};
 }

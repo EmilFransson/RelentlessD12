@@ -4,7 +4,7 @@
 
 namespace Relentless
 {
-	ResourceView::ResourceView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept
+	ResourceView::ResourceView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept
 		:
 		DeviceObject(pParent),
 		m_DescriptorHandle(descriptorHandle)
@@ -25,7 +25,7 @@ namespace Relentless
 		return m_DescriptorHandle.GPUHandle;
 	}
 
-	const DescriptorHandle& ResourceView::GetDescriptorHandle() const noexcept
+	const DescriptorHandleEx& ResourceView::GetDescriptorHandle() const noexcept
 	{
 		return m_DescriptorHandle;
 	}
@@ -35,15 +35,20 @@ namespace Relentless
 		return m_DescriptorHandle.Index;
 	}
 
-	ShaderResourceView::ShaderResourceView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept
+	ShaderResourceView::ShaderResourceView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept
 		: ResourceView(pParent, descriptorHandle)
 	{}
 
-	RenderTargetView::RenderTargetView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept
+	UnorderedAccessView::UnorderedAccessView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept
 		: ResourceView(pParent, descriptorHandle)
 	{}
 
-	DepthStencilView::DepthStencilView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept
+	RenderTargetView::RenderTargetView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept
 		: ResourceView(pParent, descriptorHandle)
 	{}
+
+	DepthStencilView::DepthStencilView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept
+		: ResourceView(pParent, descriptorHandle)
+	{}
+
 }

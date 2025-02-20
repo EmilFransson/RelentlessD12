@@ -13,6 +13,7 @@ namespace Relentless
 		void CPUWait() noexcept;
 
 		[[nodiscard]] uint64_t GetCurrentValue() const noexcept;
+		[[nodiscard]] ID3D12Fence1* GetFence() const noexcept;
 		[[nodiscard]] uint64_t GetLastSignaledValue() const noexcept;
 		[[nodiscard]] bool IsComplete(uint64_t fenceValue) noexcept;
 		uint64_t Signal(uint64_t fenceValue) noexcept;

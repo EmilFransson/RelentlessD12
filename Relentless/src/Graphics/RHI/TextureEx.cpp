@@ -1,9 +1,10 @@
 #include "TextureEx.h"
+#include "Device.h"
 #include "ResourceViews.h"
 
 namespace Relentless
 {
-	TextureEx::TextureEx(GraphicsDevice* pParent, const TextureDesc& desc, ID3D12Resource* pResource) noexcept
+	TextureEx::TextureEx(GraphicsDevice* pParent, const TextureDesc& desc, ID3D12Resource2* pResource) noexcept
 		: 
 		 DeviceResource{ pParent, pResource }
 		,m_Desc{ desc }
@@ -69,13 +70,25 @@ namespace Relentless
 
 	ShaderResourceView* TextureEx::GetSRV() const noexcept
 	{
-		return m_SRV;
+		return m_pSRV;
 	}
 
 	uint32 TextureEx::GetSRVIndex() const noexcept
 	{
-		RLS_ASSERT(m_SRV, "[Texture] Shader Resource View Is Invalid");
-		return m_SRV->GetDescriptorIndex();
+		RLS_ASSERT(m_pSRV, "[Texture] Shader Resource View Is Invalid");
+		return m_pSRV->GetDescriptorIndex();
+	}
+
+	UnorderedAccessView* TextureEx::GetUAV(uint32 subResourceIndex) const noexcept
+	{
+		RLS_ASSERT(m_UAVs.size() > subResourceIndex, "[Texture::GetUAV] Index Out Of Bounds Error.");
+		return m_UAVs[subResourceIndex];
+	}
+
+	uint32 TextureEx::GetUAVIndex(uint32 subResourceIndex/* = 0*/) const noexcept
+	{
+		RLS_ASSERT(m_UAVs.size() > subResourceIndex, "[Texture::GetUAVIndex] Index Out Of Bounds Error.");
+		return m_UAVs[subResourceIndex]->GetDescriptorIndex();
 	}
 
 	RenderTargetView* TextureEx::GetRTV(uint32 subResourceIndex /*= 0*/) const noexcept
@@ -100,7 +113,7 @@ namespace Relentless
 
 	void TextureEx::SetSRV(Ref<ShaderResourceView> pSRV) noexcept
 	{
-		m_SRV = pSRV;
+		m_pSRV = pSRV;
 	}
 	
 	void TextureEx::SetRTV(Ref<RenderTargetView> pRTV, uint32 subResourceIndex) noexcept
@@ -110,4 +123,13 @@ namespace Relentless
 
 		m_RTVs[subResourceIndex] = pRTV;
 	}
+
+	void TextureEx::SetUAV(Ref<UnorderedAccessView> pUAV, uint32 subResourceIndex) noexcept
+	{
+		if (subResourceIndex >= m_UAVs.size())
+			m_UAVs.resize(subResourceIndex + 1);
+
+		m_UAVs[subResourceIndex] = pUAV;
+	}
+
 }

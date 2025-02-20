@@ -7,6 +7,9 @@
 #include "../Resources/Buffer.h"
 #include "FrameBuffer.h"
 #include "Graphics/MemoryManager.h"
+#include "Core/Application.h"
+#include "Graphics/D3D12Debug.h"
+
 namespace Relentless
 {
 	struct MasterRendererData
@@ -50,7 +53,7 @@ namespace Relentless
 
 		DXCall(D3D12Core::GetDevice()->CreateQueryHeap(&HeapDesc,  IID_PPV_ARGS(&s_Data.m_pQueryHeap)));
 
-		DXCall(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct)->GetTimestampFrequency(&s_Data.GPUFrequency));
+		//DXCall(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct)->GetTimestampFrequency(&s_Data.GPUFrequency));
 
 		s_Data.m_pQueryResultBuffer = ReadBackBuffer::Create(s_Data.NrOfQueries * sizeof(UINT64), "QueryResult Readback Buffer");
 	
@@ -119,7 +122,7 @@ namespace Relentless
 
 		bool hasDepthAttachment = false;
 
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
+		//Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
 
 		for (uint32_t i{ 0u }; i < outputs.size(); ++i)
 		{
@@ -133,7 +136,7 @@ namespace Relentless
 				resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 				resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-				DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+				//DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
 				outputs[i].Output->SetCurrentState(D3D12_RESOURCE_STATE_RENDER_TARGET);
 			}
 		}
@@ -150,26 +153,26 @@ namespace Relentless
 				resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 				resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-				DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+				//DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
 				depthOutput.Output->SetCurrentState(D3D12_RESOURCE_STATE_DEPTH_WRITE);
 			}
 		}
 		
-		pCommandList->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), hasDepthAttachment ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE);
+		//pCommandList->BeginRenderPass(static_cast<UINT>(pRenderPass->GetAllOutputs().size()), pRenderPass->GetAllOutputs().data(), hasDepthAttachment ? &pRenderPass->GetDepthOutput2() : nullptr, D3D12_RENDER_PASS_FLAG_NONE);
 
-		DXCall_STD(pCommandList->SetDescriptorHeaps(1u, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
-		DXCall_STD(pCommandList->SetGraphicsRootSignature(pPipeline->GetRootSig().Get()));
-		DXCall_STD(pCommandList->SetPipelineState(pPipeline->GetInterface2().Get()));
-		DXCall_STD(pCommandList->IASetPrimitiveTopology(RLSTopologyToD3D12Topology(pipelineSpecification.Topology)));
+		//DXCall_STD(pCommandList->SetDescriptorHeaps(1u, Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetDescriptorHeapInterface().GetAddressOf()));
+		//DXCall_STD(pCommandList->SetGraphicsRootSignature(pPipeline->GetRootSig().Get()));
+		//DXCall_STD(pCommandList->SetPipelineState(pPipeline->GetInterface2().Get()));
+		//DXCall_STD(pCommandList->IASetPrimitiveTopology(RLSTopologyToD3D12Topology(pipelineSpecification.Topology)));
 
-		return pCommandList;
+		return nullptr;
 	}
 
 	void MasterRenderer::EndRenderPass(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept
 	{
 		DXCall_STD(pCommandList->EndRenderPass());
 
-		Application::Get().GetGPUTaskManager().ScheduleCommandList(std::move(pCommandList));
+		//Application::Get().GetGPUTaskManager().ScheduleCommandList(std::move(pCommandList));
 	}
 
 	void MasterRenderer::PrepareBackBuffer() noexcept
@@ -177,19 +180,19 @@ namespace Relentless
 		PROFILE_FUNC;
 
 		//Transition the back buffer back to present state now that is is finished:
-		BackBuffer& backBuffer{ Window::GetBackBuffers()[Application::Get().GetGPUTaskManager().GetCurrentFrameIndex()] };
+		//BackBuffer& backBuffer{ Window::GetBackBuffers()[Application::Get().GetGPUTaskManager().GetCurrentFrameIndex()] };
 
 		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
 		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		resourceTransitionBarrier.Transition.pResource = backBuffer.pBackBuffer.Get();
+		//resourceTransitionBarrier.Transition.pResource = backBuffer.pBackBuffer.Get();
 		resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
-		DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
-		Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
+		//Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
+		//DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+		//Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
 	}
 
 	const std::shared_ptr<FrameBuffer> MasterRenderer::GetFrameBuffer() noexcept

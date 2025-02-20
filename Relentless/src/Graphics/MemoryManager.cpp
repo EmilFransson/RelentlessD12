@@ -76,60 +76,60 @@ namespace Relentless
 
 	void MemoryManager::DestroyDescriptorHandle(const DescriptorHandle& descriptorHandle) noexcept
 	{
-		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		//const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 
-		m_pDeferredFreeLists[frameIndex].emplace_back(descriptorHandle);
+		//m_pDeferredFreeLists[frameIndex].emplace_back(descriptorHandle);
 	}
 
 	void MemoryManager::DestroyResource(std::shared_ptr<IResource> pResource) noexcept
 	{
-		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		//const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		
-		m_pDeferredFreeListsResources[frameIndex].emplace_back(std::move(pResource));
+		//m_pDeferredFreeListsResources[frameIndex].emplace_back(std::move(pResource));
 	}
 
 	void MemoryManager::PerformDeferredDeletion() noexcept
 	{
 		PROFILE_FUNC;
 
-		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		//const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		
-		if (!m_pDeferredFreeLists[frameIndex].empty())
-		{
-			for (uint32_t i{ 0u }; i < m_pDeferredFreeLists[frameIndex].size(); ++i)
-			{
-				switch (m_pDeferredFreeLists[frameIndex][i].Type)
-				{
-				case DescriptorHandleType::RTV:
-					m_pRTVDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
-					break;
-				case DescriptorHandleType::DSV:
-					m_pDSVDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
-					break;
-				case DescriptorHandleType::CBV:
-					m_pShaderBindablesDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
-					break;
-				case DescriptorHandleType::SRV:
-					m_pShaderBindablesDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
-					break;
-				case DescriptorHandleType::UAV:
-					m_pShaderBindablesDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
-					break;
-				case DescriptorHandleType::CBV_NV:
-				case DescriptorHandleType::SRV_NV:
-				case DescriptorHandleType::UAV_NV:
-					m_pShaderBindablesDescriptorHeapNV->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
-					break;
-				}
-			}
-			m_pDeferredFreeLists[frameIndex].clear();
-		}
+		//if (!m_pDeferredFreeLists[frameIndex].empty())
+		//{
+		//	for (uint32_t i{ 0u }; i < m_pDeferredFreeLists[frameIndex].size(); ++i)
+		//	{
+		//		switch (m_pDeferredFreeLists[frameIndex][i].Type)
+		//		{
+		//		case DescriptorHandleType::RTV:
+		//			m_pRTVDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
+		//			break;
+		//		case DescriptorHandleType::DSV:
+		//			m_pDSVDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
+		//			break;
+		//		case DescriptorHandleType::CBV:
+		//			m_pShaderBindablesDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
+		//			break;
+		//		case DescriptorHandleType::SRV:
+		//			m_pShaderBindablesDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
+		//			break;
+		//		case DescriptorHandleType::UAV:
+		//			m_pShaderBindablesDescriptorHeap->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
+		//			break;
+		//		case DescriptorHandleType::CBV_NV:
+		//		case DescriptorHandleType::SRV_NV:
+		//		case DescriptorHandleType::UAV_NV:
+		//			m_pShaderBindablesDescriptorHeapNV->FreeDescriptor(m_pDeferredFreeLists[frameIndex][i]);
+		//			break;
+		//		}
+		//	}
+		//	m_pDeferredFreeLists[frameIndex].clear();
+		//}
 #if defined (RLS_DEBUG)
-		for (uint32_t i{ 0u }; i < m_pDeferredFreeListsResources[frameIndex].size(); i++)
-			RLS_CORE_WARN("Destroyed resource '{0}'", m_pDeferredFreeListsResources[frameIndex][i]->GetName());
+		//for (uint32_t i{ 0u }; i < m_pDeferredFreeListsResources[frameIndex].size(); i++)
+		//	RLS_CORE_WARN("Destroyed resource '{0}'", m_pDeferredFreeListsResources[frameIndex][i]->GetName());
 #endif
-		if (!m_pDeferredFreeListsResources[frameIndex].empty())
-			m_pDeferredFreeListsResources[frameIndex].clear();
+		//if (!m_pDeferredFreeListsResources[frameIndex].empty())
+		//	m_pDeferredFreeListsResources[frameIndex].clear();
 	}
 
 	void MemoryManager::SetDirtyMaterial(const AssetHandle& handle) noexcept
@@ -149,14 +149,14 @@ namespace Relentless
 		if (m_DirtyMaterials.empty())
 			return;
 
-		ResourceManager& resourceManager = Application::Get().GetResourceManager();
-		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		//ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		//const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		for (auto& [UUID, handleUpdatesPair] : m_DirtyMaterials)
 		{
 			std::shared_ptr<Material> material = AssetManager::Get<Material>(handleUpdatesPair.first);
 
 			const ResourceHandle constantBufferHandle = material->m_ConstantBufferHandle;
-			resourceManager.UploadConstantBufferData(constantBufferHandle, &(*material), 112u, frameIndex);
+			//resourceManager.UploadConstantBufferData(constantBufferHandle, &(*material), 112u, frameIndex);
 
 			handleUpdatesPair.second--;
 		}

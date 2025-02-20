@@ -1,6 +1,26 @@
 #pragma once
 
 #pragma warning(push, 0)
+
+#include "Core/MinWindows.h"
+#include <Windowsx.h>
+#include <dxgi1_6.h>
+
+#include "../vendor/includes/D3D12/d3d12.h"
+#include "../vendor/includes/D3D12/d3d12sdklayers.h"
+#define D3DX12_NO_STATE_OBJECT_HELPERS
+#include "../vendor/includes/D3D12/d3dx12.h"
+
+#include "../vendor/includes/DirectXShaderCompiler/dxcapi.h"
+#include "../vendor/includes/DirectXShaderCompiler/d3d12shader.h"
+
+using ID3D12DeviceX = ID3D12Device14;
+using ID3D12GraphicsCommandListX = ID3D12GraphicsCommandList10;
+using ID3D12ResourceX = ID3D12Resource2;
+
+using IDXGIFactoryX = IDXGIFactory7;
+using IDXGISwapChainX = IDXGISwapChain4;
+
 #include <algorithm>
 #include <any>
 #include <array>
@@ -34,21 +54,13 @@
 #include <vector>
 #include <queue>
 
-//Windows and D3D12:
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
 #include <comdef.h>
 #include <commdlg.h>
 #include <DirectXColors.h>
 #include <DirectXMath.h>
-#include <dxgi1_6.h>
-#include <d3d12.h>
 #include <d3dcompiler.h>
-#include <d3d12sdklayers.h>
 #include <rpc.h>
 #include <shlobj.h>
-#include <Windows.h>
-#include <Windowsx.h>
 #include <wincodec.h>
 #include <wrl/client.h>
 #pragma warning(pop)
@@ -60,8 +72,6 @@
 #include "Core/CoreTypes.h"
 #include "Core/Utility.h"
 #include "Core/Ref.h"
-#include "Graphics/D3D12Debug.h"
+#include "Core/Span.h"
 #include "Math/CommonMath.h"
 #include "Math/MathTypes.h"
-
-#include "../vendor/includes/directxtex/d3dx12.h"

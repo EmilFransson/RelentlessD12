@@ -1,6 +1,8 @@
 #include "ShaderReflector.h"
 #include "../D3D12Core.h"
 #include "../Renderer/Properties.h"
+#include "Graphics/D3D12Debug.h"
+
 namespace Relentless
 {
 

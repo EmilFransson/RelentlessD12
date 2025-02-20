@@ -26,7 +26,7 @@ namespace Relentless
 
 		void SetName(const char* pName) noexcept;
 		void SetDepthOnlyTarget(ResourceFormat dsvFormat, uint32 msaa) noexcept;
-		void SetRenderTargetFormats(std::span<ResourceFormat> rtvFormats, ResourceFormat dsvFormat, uint32 msaa) noexcept;
+		void SetRenderTargetFormats(Span<ResourceFormat> rtvFormats, ResourceFormat dsvFormat, uint32 msaa) noexcept;
 
 		//Blend:
 		void SetBlendMode(BlendMode blendMode, uint8 renderTargetIndex = 0u) noexcept;
@@ -102,11 +102,13 @@ namespace Relentless
 	{
 	public:
 		PipelineState(GraphicsDevice* pDevice, const PipelineStateInitializer& pipelineStateInitializer) noexcept;
-		virtual ~PipelineState() noexcept;
+		virtual ~PipelineState() noexcept override;
 
 		void ConditionallyReload() noexcept;
 
 		[[nodiscard]] ID3D12PipelineState* GetPipelineState() const noexcept;
+
+		[[nodiscard]] uint32 GetSampleCount() noexcept;
 	private:
 		friend class GraphicsDevice;
 		void CreateInternal() noexcept;

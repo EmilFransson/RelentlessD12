@@ -1,5 +1,7 @@
 #include "Pipeline.h"
 #include "..\D3D12Core.h"
+#include "Graphics/D3D12Debug.h"
+
 namespace Relentless
 {
 	[[nodiscard]] static D3D12_COMPARISON_FUNC RLSComparisonFuncToD3D12ComparisonFunc(DepthComparisonFunction depthComparisonFunction) noexcept

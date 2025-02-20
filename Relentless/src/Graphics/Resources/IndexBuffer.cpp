@@ -2,6 +2,8 @@
 #include "../../Mesh/Vertex.h"
 #include "../D3D12Core.h"
 #include "Core/Application.h"
+#include "Graphics/D3D12Debug.h"
+
 namespace Relentless
 {
 	IndexBuffer::IndexBuffer(const std::string& name, uint32_t sizeInBytes, uint32_t indexCount) noexcept
@@ -56,7 +58,7 @@ namespace Relentless
 		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		m_SRVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::SRV);
+		//m_SRVDescriptorHandle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::SRV);
 		DXCall_STD(D3D12Core::GetDevice()->CreateShaderResourceView(m_pResource.Get(), &srvDesc, m_SRVDescriptorHandle.CPUHandle));
 
 		NAME_D12_OBJECT(m_pResource, ConvertStringToWstring(name).c_str());

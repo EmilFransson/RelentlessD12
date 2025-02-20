@@ -10,7 +10,7 @@ namespace Relentless
 		{
 			if (m_HoveringSceneViewport)
 			{
-				if (Mouse::IsButtonPressed(RLS_BUTTON::Left) && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver())
+				if (Mouse::IsButtonDown(RLS_Button::Left) && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver())
 				{
 					m_IsPanningMouse = true;
 
@@ -61,8 +61,8 @@ namespace Relentless
 				return;
 			}
 
-			const bool lCtrlDown = Keyboard::IsKeyPressed(RLS_KEY::LCtrl);
-			const bool lShiftDown = Keyboard::IsKeyPressed(RLS_KEY::LShift);
+			const bool lCtrlDown = Keyboard::IsKeyDown(RLS_Key::LCtrl);
+			const bool lShiftDown = Keyboard::IsKeyDown(RLS_Key::LShift);
 			const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
 
 			if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
@@ -83,29 +83,29 @@ namespace Relentless
 		}
 		case EventType::KeyPressedEvent:
 		{
-			const bool isNavigatingScene = m_HoveringSceneViewport && Mouse::IsButtonPressed(RLS_BUTTON::Right);
+			const bool isNavigatingScene = m_HoveringSceneViewport && Mouse::IsButtonDown(RLS_Button::Right);
 			if (!isNavigatingScene)
 			{
-				const RLS_KEY key = EVENT(KeyPressedEvent).key;
+				const RLS_Key key = EVENT(KeyPressedEvent).key;
 				switch (key)
 				{
-				case RLS_KEY::Q: m_CurrentGizmoType = EGizmoType::None; break;
-				case RLS_KEY::W: m_CurrentGizmoType = (EGizmoType)ImGuizmo::TRANSLATE; break;
-				case RLS_KEY::E: m_CurrentGizmoType = (EGizmoType)ImGuizmo::ROTATE; break;
-				case RLS_KEY::R: m_CurrentGizmoType = (EGizmoType)ImGuizmo::SCALE; break;
-				case RLS_KEY::T: m_CurrentGizmoMode = (EGizmoMode)!(bool)m_CurrentGizmoMode; break;
-				case RLS_KEY::I:
+				case RLS_Key::Q: m_CurrentGizmoType = EGizmoType::None; break;
+				case RLS_Key::W: m_CurrentGizmoType = (EGizmoType)ImGuizmo::TRANSLATE; break;
+				case RLS_Key::E: m_CurrentGizmoType = (EGizmoType)ImGuizmo::ROTATE; break;
+				case RLS_Key::R: m_CurrentGizmoType = (EGizmoType)ImGuizmo::SCALE; break;
+				case RLS_Key::T: m_CurrentGizmoMode = (EGizmoMode)!(bool)m_CurrentGizmoMode; break;
+				case RLS_Key::I:
 				{
-					if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+					if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
 						m_ImmersiveModeEnabled = !m_ImmersiveModeEnabled;
 
 					break;
 				}
-				case RLS_KEY::A:
+				case RLS_Key::A:
 				{
 					if (m_ViewportIsFocused)
 					{
-						if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+						if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
 						{
 							m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
 								{
@@ -119,9 +119,9 @@ namespace Relentless
 
 					break;
 				}
-				case RLS_KEY::H:
+				case RLS_Key::H:
 				{
-					if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+					if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
 					{
 						m_pActiveScene->GetEntityManager().Collect<HiddenInGameComponent>().Do([this](entity e)
 							{
@@ -143,7 +143,7 @@ namespace Relentless
 					}
 					break;
 				}
-				case RLS_KEY::Delete:
+				case RLS_Key::Delete:
 				{
 					if (m_ViewportIsFocused)
 					{
@@ -168,178 +168,194 @@ namespace Relentless
 		}
 		}
 
-		m_ContentBrowserPanel.OnEvent(event);
+		//m_ContentBrowserPanel.OnEvent(event);
 	}
 
 	void Editor::OnImGuiRender() noexcept
 	{
 		PROFILE_FUNC;
 
-		UI_DrawMainMenuBar();
+		for (auto& viewport : m_EditorViewports)
+			viewport->Render();
 
-		ImGuiWindowClass viewportWindowClass;
-		viewportWindowClass.DockNodeFlagsOverrideSet = m_ImmersiveModeEnabled ? ImGuiDockNodeFlags_NoTabBar : 0;
-		ImGui::SetNextWindowClass(&viewportWindowClass);
-
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("Scene");
-		m_ViewportIsFocused = ImGui::IsWindowFocused();
-
-		//UI_DrawSceneStateIcons();
-
-		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
-		{
-			m_DisplayInspectorPanel = false;
-		}
-
-		vMin = ImGui::GetWindowContentRegionMin();
-		vMax = ImGui::GetWindowContentRegionMax();
-		vMin.x += ImGui::GetWindowPos().x;
-		vMin.y += ImGui::GetWindowPos().y;
-		vMax.x += ImGui::GetWindowPos().x;
-		vMax.y += ImGui::GetWindowPos().y;
-
-		m_HoveringSceneViewport = ImGui::IsWindowHovered();
-
-		const float toolBarPadding = m_ImmersiveModeEnabled ? 0 : 24.0f;
-		ImVec2 mousePosition = ImGui::GetMousePos();
-		ImVec2 windowPosition = ImGui::GetWindowPos();
-		ImVec2 mousePositionInSceneClientArea = ImVec2(mousePosition.x - windowPosition.x, mousePosition.y - windowPosition.y - toolBarPadding);
-		m_pActiveScene->SetMousePosition(mousePositionInSceneClientArea);
-		auto xx = ImGui::GetContentRegionAvail().x;
-		auto yy = ImGui::GetContentRegionAvail().y;
-
-		if (m_ViewportPanelSize.x != xx || m_ViewportPanelSize.y != yy)
-		{
-			//Verify values are valid (as is not the case when shutting down the program!)
-			if (!(ImGui::GetContentRegionAvail().x < 0.0f) && !(ImGui::GetContentRegionAvail().y < 0.0f))
-			{
-				m_ViewportPanelSize.x = ImGui::GetContentRegionAvail().x;
-				m_ViewportPanelSize.y = ImGui::GetContentRegionAvail().y;
-				m_SceneViewportChanged = true;
-			}
-		}
-
-		m_pSceneRenderer->OnImGuiRender(ImVec2(m_ViewportPanelSize.x, m_ViewportPanelSize.y));
-
-		if (ImGui::BeginDragDropTarget())
-		{
-			if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("MULTIPLE_ENTRIES_DRAG_DROP"))
-			{
-				const std::vector<std::string>& selectedEntries = m_ContentBrowserPanel.GetSelectedEntries();
-				std::for_each(selectedEntries.begin(), selectedEntries.end(), [this](const std::string& path)
-					{
-						if (!AssetRegistry::IsFilepathMapped(path))
-						return;
-
-				const AssetHandle handle = AssetManager::GetHandleByPath(path);
-				if (handle.Type != AssetType::Mesh)
-					return;
-
-				CreateEntityFromDroppedMesh(handle);
-					});
-			}
-			ImGui::EndDragDropTarget();
-		}
-
-		if (m_CurrentGizmoType != EGizmoType::None)
-			ManipulateTransformGizmo();
-
-		ImGui::End();
-		ImGui::PopStyleVar();
-
-		UI_DrawStatisticsPanel();
-
-		m_pOutlinerPanel->OnImGuiRender(m_DisplayOutlinerPanel && !m_ImmersiveModeEnabled);
-		m_InspectorPanel.OnImGuiRender(m_DisplayInspectorPanel && !m_ImmersiveModeEnabled);
-		m_SceneRendererPanel.OnImGuiRender(m_DisplaySceneRendererPanel && !m_ImmersiveModeEnabled);
-		m_PropertiesPanel.OnImGuiRender(m_DisplayPropertiesPanel && !m_ImmersiveModeEnabled);
-		m_ContentBrowserPanel.OnImGuiRender(m_DisplayContentBrowserPanel && !m_ImmersiveModeEnabled);
-		m_MetricsPanel.OnImGuiRender(m_DisplayMetricsPanel && !m_ImmersiveModeEnabled);
+		//UI_DrawMainMenuBar();
+		//
+		//ImGuiWindowClass viewportWindowClass;
+		//viewportWindowClass.DockNodeFlagsOverrideSet = m_ImmersiveModeEnabled ? ImGuiDockNodeFlags_NoTabBar : 0;
+		//ImGui::SetNextWindowClass(&viewportWindowClass);
+		//
+		//ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		//ImGui::Begin("Scene");
+		//m_ViewportIsFocused = ImGui::IsWindowFocused();
+		//
+		////UI_DrawSceneStateIcons();
+		//
+		//if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
+		//{
+		//	m_DisplayInspectorPanel = false;
+		//}
+		//
+		//vMin = ImGui::GetWindowContentRegionMin();
+		//vMax = ImGui::GetWindowContentRegionMax();
+		//vMin.x += ImGui::GetWindowPos().x;
+		//vMin.y += ImGui::GetWindowPos().y;
+		//vMax.x += ImGui::GetWindowPos().x;
+		//vMax.y += ImGui::GetWindowPos().y;
+		//
+		//m_HoveringSceneViewport = ImGui::IsWindowHovered();
+		//
+		//const float toolBarPadding = m_ImmersiveModeEnabled ? 0 : 24.0f;
+		//ImVec2 mousePosition = ImGui::GetMousePos();
+		//ImVec2 windowPosition = ImGui::GetWindowPos();
+		//ImVec2 mousePositionInSceneClientArea = ImVec2(mousePosition.x - windowPosition.x, mousePosition.y - windowPosition.y - toolBarPadding);
+		//m_pActiveScene->SetMousePosition(mousePositionInSceneClientArea);
+		//auto xx = ImGui::GetContentRegionAvail().x;
+		//auto yy = ImGui::GetContentRegionAvail().y;
+		//
+		//if (m_ViewportPanelSize.x != xx || m_ViewportPanelSize.y != yy)
+		//{
+		//	//Verify values are valid (as is not the case when shutting down the program!)
+		//	if (!(ImGui::GetContentRegionAvail().x < 0.0f) && !(ImGui::GetContentRegionAvail().y < 0.0f))
+		//	{
+		//		m_ViewportPanelSize.x = ImGui::GetContentRegionAvail().x;
+		//		m_ViewportPanelSize.y = ImGui::GetContentRegionAvail().y;
+		//		m_SceneViewportChanged = true;
+		//	}
+		//}
+		//
+		//m_pSceneRenderer->OnImGuiRender(ImVec2(m_ViewportPanelSize.x, m_ViewportPanelSize.y));
+		//
+		//if (ImGui::BeginDragDropTarget())
+		//{
+		//	if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("MULTIPLE_ENTRIES_DRAG_DROP"))
+		//	{
+		//		const std::vector<std::string>& selectedEntries = m_ContentBrowserPanel.GetSelectedEntries();
+		//		std::for_each(selectedEntries.begin(), selectedEntries.end(), [this](const std::string& path)
+		//			{
+		//				if (!AssetRegistry::IsFilepathMapped(path))
+		//					return;
+		//
+		//		const AssetHandle handle = AssetManager::GetHandleByPath(path);
+		//		if (handle.Type != AssetType::Mesh)
+		//			return;
+		//
+		//		CreateEntityFromDroppedMesh(handle);
+		//			});
+		//	}
+		//	ImGui::EndDragDropTarget();
+		//}
+		//
+		//if (m_CurrentGizmoType != EGizmoType::None)
+		//	ManipulateTransformGizmo();
+		//
+		//ImGui::End();
+		//ImGui::PopStyleVar();
+		//
+		//UI_DrawStatisticsPanel();
+		//
+		//m_pOutlinerPanel->OnImGuiRender(m_DisplayOutlinerPanel && !m_ImmersiveModeEnabled);
+		//m_InspectorPanel.OnImGuiRender(m_DisplayInspectorPanel && !m_ImmersiveModeEnabled);
+		//m_SceneRendererPanel.OnImGuiRender(m_DisplaySceneRendererPanel && !m_ImmersiveModeEnabled);
+		//m_PropertiesPanel.OnImGuiRender(m_DisplayPropertiesPanel && !m_ImmersiveModeEnabled);
+		//m_ContentBrowserPanel.OnImGuiRender(m_DisplayContentBrowserPanel && !m_ImmersiveModeEnabled);
+		//m_MetricsPanel.OnImGuiRender(m_DisplayMetricsPanel && !m_ImmersiveModeEnabled);
 	}
 
 	void Editor::OnCreate() noexcept
 	{
-		m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
+		m_RenderViews.push_back(ViewportRenderView());
+		m_EditorViewports.push_back(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size()+1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size()));
 
-		m_Selection.OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
+		m_RenderViews.push_back(ViewportRenderView());
+		m_EditorViewports.push_back(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size()));
 
-		SetActiveScene(std::make_shared<Scene>());
-		
-		LoadStarterMeshes();
-		CreateStartScene();
-
-		m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pActiveScene);
-		m_pUtilityRenderer = std::make_shared<UtilityRenderer>();
-
-		m_PropertiesPanel.SetOnMaterialSelectedCallback([this](const AssetHandle& materialHandle)
-			{
-				m_InspectorPanel.SetContext(materialHandle, InspectedAssetType::MATERIAL);
-				m_DisplayInspectorPanel = true;
-			});
-
-		m_ContentBrowserPanel.SetOnAssetSelectedCallback([this](const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)
-			{
-				m_InspectorPanel.SetContext(AssetHandle, inspectedAssetType);
-				if (inspectedAssetType == InspectedAssetType::NONE)
-					m_DisplayInspectorPanel = false;
-				else
-					m_DisplayInspectorPanel = true;
-			});
-
-		//m_PlayButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PlayButton.png"), "");
+		//m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
+		//
+		//m_Selection.OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
+		//
+		//SetActiveScene(std::make_shared<Scene>());
+		//
+		//LoadStarterMeshes();
+		//CreateStartScene();
+		//
+		//m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pActiveScene);
+		//m_pUtilityRenderer = std::make_shared<UtilityRenderer>();
+		//
+		//m_PropertiesPanel.SetOnMaterialSelectedCallback([this](const AssetHandle& materialHandle)
+		//	{
+		//		m_InspectorPanel.SetContext(materialHandle, InspectedAssetType::MATERIAL);
+		//		m_DisplayInspectorPanel = true;
+		//	});
+		//
+		//m_ContentBrowserPanel.SetOnAssetSelectedCallback([this](const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)
+		//	{
+		//		m_InspectorPanel.SetContext(AssetHandle, inspectedAssetType);
+		//		if (inspectedAssetType == InspectedAssetType::NONE)
+		//			m_DisplayInspectorPanel = false;
+		//		else
+		//			m_DisplayInspectorPanel = true;
+		//	});
+		//
+		////m_PlayButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PlayButton.png"), "");
 		//m_StopButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StopButton.png"), "");
 		//m_PauseButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PauseButton.png"), "");
 		//m_SimulateButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\SimulateButton.png"), "");
 		//m_StepButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StepButton.png"), "");
-
-		const std::filesystem::path srcPath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures/puresky.rasset");
-
-		AssetHandle handle;
-		if (AssetManager::RequestLoadAsset(srcPath, handle))
-		{
-			std::shared_ptr<Texture2D> pTexture = AssetManager::Get<Texture2D>(handle);
-			m_pUtilityRenderer->ConvertEquirectangularToCubeMap(pTexture, [this](std::shared_ptr<TextureCube> pTextureCube)
-				{
-					m_pActiveScene->m_pSkyBox = pTextureCube;
-			m_pUtilityRenderer->CreateIrradianceMap(pTextureCube, [this, pTextureCube](std::shared_ptr<TextureCube> pIrradianceMap)
-				{
-					m_pActiveScene->m_pIrradianceMap = pIrradianceMap;
-				});
-			m_pUtilityRenderer->CreateRadianceMap(pTextureCube, [this, pTextureCube](std::shared_ptr<TextureCube> pRadianceMap)
-				{
-					m_pActiveScene->m_pRadianceMap = pRadianceMap;
-				});
-				});
-		}
-
-		m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
-		m_SceneRendererPanel.SetActiveRenderer(m_pSceneRenderer);
+		//
+		//const std::filesystem::path srcPath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures/puresky.rasset");
+		//
+		//AssetHandle handle;
+		//if (AssetManager::RequestLoadAsset(srcPath, handle))
+		//{
+		//	std::shared_ptr<Texture2D> pTexture = AssetManager::Get<Texture2D>(handle);
+		//	m_pUtilityRenderer->ConvertEquirectangularToCubeMap(pTexture, [this](std::shared_ptr<TextureCube> pTextureCube)
+		//		{
+		//			m_pActiveScene->m_pSkyBox = pTextureCube;
+		//	m_pUtilityRenderer->CreateIrradianceMap(pTextureCube, [this, pTextureCube](std::shared_ptr<TextureCube> pIrradianceMap)
+		//		{
+		//			m_pActiveScene->m_pIrradianceMap = pIrradianceMap;
+		//		});
+		//	m_pUtilityRenderer->CreateRadianceMap(pTextureCube, [this, pTextureCube](std::shared_ptr<TextureCube> pRadianceMap)
+		//		{
+		//			m_pActiveScene->m_pRadianceMap = pRadianceMap;
+		//		});
+		//		});
+		//}
+		//
+		//m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
+		//m_SceneRendererPanel.SetActiveRenderer(m_pSceneRenderer);
 	}
 
 	void Editor::OnDestroy() noexcept
 	{
-		m_Selection.OnSelectionChanged.Detach(this);
+		//m_Selection.OnSelectionChanged.Detach(this);
 	}
 
 	void Editor::OnUpdate(const float deltaTime) noexcept
 	{
-		PROFILE_FUNC;
+		for (int i = 0; i < m_EditorViewports.size(); ++i)
+		{
+			const Vector2u& region = m_EditorViewports[i]->GetContentRegionAvail();
+			m_RenderViews[i].Viewport = FloatRect(0.0f, 0.0f, std::max(1.0f, (float)region.x), std::max(1.0f, (float)region.y));
+		}
 
-		if (m_SceneViewportChanged)
-			OnSceneViewportChanged();
 
-		m_pActiveScene->GetEditorCamera()->Update();
-		m_pActiveScene->OnUpdate(deltaTime);
+		//PROFILE_FUNC;
+		//
+		//if (m_SceneViewportChanged)
+		//	OnSceneViewportChanged();
+		//
+		//m_pActiveScene->GetEditorCamera()->Update();
+		//m_pActiveScene->OnUpdate(deltaTime);
 	}
 
 	void Editor::OnRender() noexcept
 	{
-		PROFILE_FUNC;
-
-		m_pSceneRenderer->Begin();
-		m_pSceneRenderer->IssueRenderPasses();
-		m_pSceneRenderer->End();
+		//PROFILE_FUNC;
+		//
+		//m_pSceneRenderer->Begin();
+		//m_pSceneRenderer->IssueRenderPasses();
+		//m_pSceneRenderer->End();
 	}
 
 	//This is post issuing the render commands.
@@ -356,7 +372,7 @@ namespace Relentless
 		else
 			m_HoveredEntity = NULL_ENTITY;
 
-		m_SceneRendererPanel.OnPostRender();
+		//m_SceneRendererPanel.OnPostRender();
 	}
 
 	Selection& Editor::GetSelection() noexcept
@@ -367,6 +383,17 @@ namespace Relentless
 	EntityFiltersManager& Editor::GetEntityFiltersManager() noexcept
 	{
 		return m_EntityFiltersManager;
+	}
+
+	ViewportRenderView& Editor::GetRenderView(uint32 renderViewIndex) noexcept
+	{
+		RLS_ASSERT(m_RenderViews.size() > renderViewIndex, "[Editor::GetRenderView] Index Out Of Bounds Error.");
+		return m_RenderViews[renderViewIndex];
+	}
+
+	std::vector<ViewportRenderView>& Editor::GetRenderViews() noexcept
+	{
+		return m_RenderViews;
 	}
 
 	void Editor::SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept
@@ -485,7 +512,7 @@ namespace Relentless
 
 		const ImGuizmo::MODE mode = (m_CurrentGizmoType == EGizmoType::Scale) ? ImGuizmo::LOCAL : (ImGuizmo::MODE)m_CurrentGizmoMode;
 
-		const bool manipulated = ImGuizmo::Manipulate(*m_pActiveScene->GetEditorCamera()->GetViewTransform().View.m, *m_pActiveScene->GetEditorCamera()->GetViewTransform().Projection.m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, pivot.m[0]);
+		const bool manipulated = ImGuizmo::Manipulate(*m_pActiveScene->GetEditorCamera()->GetViewTransform().WorldToView.m, *m_pActiveScene->GetEditorCamera()->GetViewTransform().ViewToClip.m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, pivot.m[0]);
 		if (manipulated)
 		{
 			m_pActiveScene->SetWorldTransform(pivotEntity, pivot);
@@ -511,7 +538,7 @@ namespace Relentless
 
 		m_pSceneRenderer->SetContext(pScene);
 
-		m_PropertiesPanel.SetActiveScene(pScene.get());
+		//m_PropertiesPanel.SetActiveScene(pScene.get());
 
 		pScene->GetEditorCamera()->SetViewport(FloatRect(0, 0, m_ViewportPanelSize.x, m_ViewportPanelSize.y));
 	}
@@ -532,19 +559,19 @@ namespace Relentless
 
 		ImGui::Text("#Shader bindable descriptors: ");
 		ImGui::SameLine();
-		ImGui::Text("%d", Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetNrOfDescriptorsInUse());
+		//ImGui::Text("%d", Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetNrOfDescriptorsInUse());
 
 		ImGui::Text("#CBV/SRV/UAV descriptors: ");
 		ImGui::SameLine();
-		ImGui::Text("%d", Application::Get().GetMemorymanager().GetCBVSRVUAVDescriptorHeap()->GetNrOfDescriptorsInUse());
+		//ImGui::Text("%d", Application::Get().GetMemorymanager().GetCBVSRVUAVDescriptorHeap()->GetNrOfDescriptorsInUse());
 
 		ImGui::Text("#RTV descriptors: ");
 		ImGui::SameLine();
-		ImGui::Text("%d", Application::Get().GetMemorymanager().GetRTVDescriptorHeap()->GetNrOfDescriptorsInUse());
+		//ImGui::Text("%d", Application::Get().GetMemorymanager().GetRTVDescriptorHeap()->GetNrOfDescriptorsInUse());
 
 		ImGui::Text("#DSV descriptors: ");
 		ImGui::SameLine();
-		ImGui::Text("%d", Application::Get().GetMemorymanager().GetDSVDescriptorHeap()->GetNrOfDescriptorsInUse());
+		//ImGui::Text("%d", Application::Get().GetMemorymanager().GetDSVDescriptorHeap()->GetNrOfDescriptorsInUse());
 
 		ImGui::Text("#Constant buffer sets: TODO!!");
 

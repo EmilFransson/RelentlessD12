@@ -6,7 +6,7 @@ namespace Relentless
 {
 	struct ScratchAllocation
 	{
-		Ref<Buffer> pBackingResource = nullptr;
+		Ref<BufferEx> pBackingResource = nullptr;
 		D3D12_GPU_VIRTUAL_ADDRESS GpuHandle{ 0 };
 		uint64 Offset = 0;
 		uint64 Size = 0;
@@ -14,6 +14,13 @@ namespace Relentless
 		void Clear(uint32 value = 0)
 		{
 			memset(pMappedMemory, value, Size);
+		}
+
+		template<typename T>
+		T& As()
+		{
+			RLS_ASSERT(sizeof(T) <= Size, "Cast Type Size Exceeds Allocation Size.");
+			return *static_cast<T*>(pMappedMemory);
 		}
 	};
 
@@ -23,17 +30,17 @@ namespace Relentless
 		ScratchAllocationManager(GraphicsDevice* pParent, uint64 pageSize) noexcept;
 		virtual ~ScratchAllocationManager() noexcept override = default;
 
-		[[nodiscard]] Ref<Buffer> AllocatePage() noexcept;
-		void FreePages(const SyncPoint& syncPoint, const std::vector<Ref<Buffer>>& pPages) noexcept;
+		[[nodiscard]] Ref<BufferEx> AllocatePage() noexcept;
+		void FreePages(const SyncPoint& syncPoint, const std::vector<Ref<BufferEx>>& pPages) noexcept;
 		[[nodiscard]] uint64 GetPageSize() const noexcept { return m_PageSize; }
 
 	private:
 		struct FencedPage
 		{
-			FencedPage(Ref<Buffer> pBuffer, const SyncPoint& syncPoint) noexcept
+			FencedPage(Ref<BufferEx> pBuffer, const SyncPoint& syncPoint) noexcept
 				: pPage{ pBuffer }, SyncPoint{ syncPoint } {}
 
-			Ref<Buffer> pPage = nullptr;
+			Ref<BufferEx> pPage = nullptr;
 			SyncPoint SyncPoint;
 		};
 
@@ -52,8 +59,8 @@ namespace Relentless
 	private:
 		ScratchAllocationManager* m_pPageManager = nullptr;
 
-		Ref<Buffer> m_pCurrentPage = nullptr;
+		Ref<BufferEx> m_pCurrentPage = nullptr;
 		uint64 m_CurrentOffset = 0;
-		std::vector<Ref<Buffer>> m_UsedPages;
+		std::vector<Ref<BufferEx>> m_UsedPages;
 	};
 }

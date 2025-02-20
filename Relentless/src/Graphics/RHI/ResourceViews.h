@@ -1,6 +1,6 @@
 #pragma once
 #include "DeviceResource.h"
-#include "Graphics/MemoryManager.h"
+#include "DescriptorHeap.h"
 #include "CommandContext.h"
 
 namespace Relentless
@@ -8,35 +8,42 @@ namespace Relentless
 	class ResourceView : public DeviceObject
 	{
 	public:
-		ResourceView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
+		ResourceView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept;
 		virtual ~ResourceView() noexcept override;
 
 		[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle() const noexcept;
 		[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle() const noexcept;
-		[[nodiscard]] const DescriptorHandle& GetDescriptorHandle() const noexcept;
+		[[nodiscard]] const DescriptorHandleEx& GetDescriptorHandle() const noexcept;
 		[[nodiscard]] uint32_t GetDescriptorIndex() const noexcept;
 	private:
-		DescriptorHandle m_DescriptorHandle;
+		DescriptorHandleEx m_DescriptorHandle;
 	};
 
 	class ShaderResourceView : public ResourceView
 	{
 	public:
-		ShaderResourceView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
+		ShaderResourceView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept;
 		virtual ~ShaderResourceView() noexcept override = default;
+	};
+
+	class UnorderedAccessView : public ResourceView
+	{
+	public:
+		UnorderedAccessView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept;
+		virtual ~UnorderedAccessView() noexcept override = default;
 	};
 
 	class RenderTargetView : public ResourceView
 	{
 	public:
-		RenderTargetView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
+		RenderTargetView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept;
 		virtual ~RenderTargetView() noexcept override = default;
 	};
 
 	class DepthStencilView : public ResourceView
 	{
 	public:
-		DepthStencilView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
+		DepthStencilView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept;
 		virtual ~DepthStencilView() noexcept override = default;
 	};
 
@@ -88,6 +95,20 @@ namespace Relentless
 		{
 			return MipSlice == otherDesc.MipSlice && FirstArraySlice == otherDesc.FirstArraySlice 
 				&& ArraySize == otherDesc.ArraySize && PlaneSlice == otherDesc.PlaneSlice;
+		}
+	};
+
+	struct TextureUAVDesc
+	{
+		explicit TextureUAVDesc(uint8 mipLevel) noexcept
+			: MipLevel(mipLevel)
+		{}
+
+		uint8 MipLevel;
+
+		bool operator==(const TextureUAVDesc& other) const
+		{
+			return MipLevel == other.MipLevel;
 		}
 	};
 }

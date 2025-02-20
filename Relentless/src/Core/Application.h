@@ -5,6 +5,13 @@
 #include "Graphics/GPUTaskManager.h"
 #include "Graphics/MemoryManager.h"
 #include "Graphics/Resources/ResourceManager.h"
+#include "Graphics/RHI/Device.h"
+#include "Graphics/RHI/RHI.h"
+#include "Graphics/RHI/Swapchain.h"
+#include "Graphics/RHI/Window.h"
+#include "Graphics/Renderer/Renderer.h"
+
+#include "EventSystem/EventPublisher.h"
 
 namespace Relentless
 {
@@ -14,43 +21,56 @@ namespace Relentless
 	};
 	
 	class Layer;
-	class IEvent;
-	class Application
+
+	class Application : public EventPublisher
 	{
 	public:
 		[[nodiscard]] static Application& Get() noexcept;
 		Application(const ApplicationSpecification& applicationSpecification) noexcept;
 		virtual ~Application() noexcept = default;
+
+		[[nodiscard]] GraphicsDevice* GetGraphicsDevice() const noexcept;
+
 		void Run() noexcept;
 		void PushLayer(Layer* pLayer) const noexcept;
 		void PushOverlay(Layer* pLayer) const noexcept;
 		void OnEvent(IEvent& event) noexcept;
 
-		void SubmitToMainThread(const std::function<void()>& func);
-		[[nodiscard]] MemoryManager& GetMemorymanager() noexcept;
+		virtual void Initialize() noexcept {}
+		virtual void Update() noexcept {}
+		virtual void ShutDown() noexcept {}
+
+		void SubmitToMainThread(const std::function<void()>& func); //Determine usage?
 		[[nodiscard]] ThreadPool& GetThreadPool() noexcept;
-		[[nodiscard]] GPUTaskManager& GetGPUTaskManager() noexcept;
-		[[nodiscard]] ResourceManager& GetResourceManager() noexcept;
 	private:
-		void OnStartUp() noexcept;
-		virtual void ShutDown() noexcept;
+		void Initialize_Internal() noexcept;
+		void Update_Internal() noexcept;
+		void ShutDown_Internal() noexcept;
+
 		void ExecuteMainThreadQueue() noexcept;
-		[[nodiscard]] constexpr const bool IsInitialized() const noexcept { return m_IsRunning == true; }
+
+		void OnWindowClosedOrDestroyed() noexcept;
+		void OnMouseInput(uint32 keyCode, bool isPressed) noexcept;
+		void OnMouseMoved(uint32 x, uint32 y) noexcept;
+		void OnMouseRaw(long x, long y) noexcept;
+		void OnMouseScrolled(float scrollAmount) noexcept;
+		void OnKeyInput(uint32 keyCode, bool pressed) noexcept;
+		void OnWindowResizedOrMoved(uint32 width, uint32 height) noexcept;
+	protected:
+		Ref<GraphicsDevice> m_pGraphicsDevice = nullptr;
+		Ref<Swapchain> m_pSwapchain = nullptr;
+		UniquePtr<WindowEx> m_pWindow = nullptr;
 	private:
 		static Application* s_Instance;
-		MemoryManager m_MemoryManager;
-		GPUTaskManager m_GPUTaskManager;
-		ResourceManager m_ResourceManager;
 		ThreadPool m_ThreadPool;
 
 		ApplicationSpecification m_ApplicationSpecification;
-		ImguiLayer m_ImGuiLayer;
+		UniquePtr<ImguiLayer> m_pImGuiLayer = nullptr;
 		bool m_IsRunning;
 
 		std::queue<std::function<void()>> m_MainThreadFunctionQueue;
 		std::mutex m_MainThreadFunctionQueueMutex;
 
-		bool m_ShouldResizeWindow = false;
 	};
 
 	//To be defined in client (runtime-project):

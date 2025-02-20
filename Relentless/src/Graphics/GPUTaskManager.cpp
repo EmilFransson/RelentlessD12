@@ -2,6 +2,8 @@
 #include "D3D12Core.h"
 #include "Core/Application.h"
 #include "Core/Window.h"
+#include "Graphics/D3D12Debug.h"
+
 
 namespace Relentless
 {

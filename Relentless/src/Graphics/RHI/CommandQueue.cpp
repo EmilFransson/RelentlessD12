@@ -52,8 +52,9 @@ namespace Relentless
 
 			pNextCommandContext->ResolvePendingBarriers(*pCurrentContext);
 
-			VERIFY_HR_EX(pNextCommandContext->GetCommandList()->Close(), GetParent()->GetDevice());
-			commandLists.push_back(pNextCommandContext->GetCommandList());
+			VERIFY_HR_EX(pCurrentContext->GetCommandList()->Close(), GetParent()->GetDevice());
+			commandLists.push_back(pCurrentContext->GetCommandList());
+
 			pCurrentContext = pNextCommandContext;
 		}
 		VERIFY_HR_EX(pCurrentContext->GetCommandList()->Close(), GetParent()->GetDevice());
@@ -63,6 +64,9 @@ namespace Relentless
 
 		const uint64 fenceValue = m_pFence->Signal(this);
 		m_SyncPoint = SyncPoint(m_pFence, fenceValue);
+
+		pBarrierCommandlist->Free(m_SyncPoint);
+
 		return m_SyncPoint;
 	}
 
@@ -70,6 +74,17 @@ namespace Relentless
 	{
 		std::lock_guard guard(m_AllocationMutex);
 		m_AllocatorPool.push(FencedAllocator(std::move(pAllocator), syncPoint));
+	}
+
+	void CommandQueue::InsertWait(CommandQueue* pQueue)
+	{
+		InsertWait(pQueue->m_SyncPoint);
+	}
+
+	void CommandQueue::InsertWait(const SyncPoint& syncPoint)
+	{
+		if (syncPoint.IsValid())
+			m_pCommandQueue->Wait(syncPoint.GetFence()->GetFence(), syncPoint.GetFenceValue());
 	}
 
 	Ref<ID3D12CommandAllocator> CommandQueue::RequestAllocator() noexcept

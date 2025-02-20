@@ -622,7 +622,8 @@ namespace Relentless
 			
 			if (changedMaterial)
 			{
-				Application::Get().GetMemorymanager().SetDirtyMaterial(m_InspectedAssetHandle);
+				RLS_ASSERT(false, "!!");
+				//Application::Get().GetMemorymanager().SetDirtyMaterial(m_InspectedAssetHandle);
 			}
 
 			if (material->GetName() == "Default-Material")

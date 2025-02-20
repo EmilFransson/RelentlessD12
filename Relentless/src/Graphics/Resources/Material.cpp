@@ -40,7 +40,7 @@ namespace Relentless
 	 	  m_UseEmissionTexture{ true },
 		  m_RenderMode{ RenderMode::Opaque }
 	{
-		m_ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet(m_Name + " Constant Buffer Set", 112u);
+		//m_ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet(m_Name + " Constant Buffer Set", 112u);
 		//m_ConstantBufferID = Application::Get().GetMemorymanager().CreateConstantBuffer(112u);
 	}
 
@@ -80,7 +80,7 @@ namespace Relentless
 		m_UseEmissionTexture = otherMaterial.m_UseEmissionTexture;
 		m_RenderMode = otherMaterial.m_RenderMode;
 
-		m_ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet(m_Name + " Constant Buffer Set", 112u);
+		//m_ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet(m_Name + " Constant Buffer Set", 112u);
 
 		//m_ConstantBufferID = Application::Get().GetMemorymanager().CreateConstantBuffer(112u);
 	}
@@ -123,7 +123,7 @@ namespace Relentless
 			m_UseEmissionTexture = otherMaterial.m_UseEmissionTexture;
 			m_RenderMode = otherMaterial.m_RenderMode;
 
-			m_ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet(m_Name + " Constant Buffer Set", 112u);
+			//m_ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet(m_Name + " Constant Buffer Set", 112u);
 
 			//m_ConstantBufferID = Application::Get().GetMemorymanager().CreateConstantBuffer(112u);
 		}
@@ -443,15 +443,16 @@ namespace Relentless
 
 	uint32_t Material::GetConstantBufferIndex() const noexcept
 	{
-		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
-		return Application::Get().GetResourceManager().GetConstantBufferViewDescriptorIndex(m_ConstantBufferHandle, frameIndex);
+		//const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		//return Application::Get().GetResourceManager().GetConstantBufferViewDescriptorIndex(m_ConstantBufferHandle, frameIndex);
 		//return Application::Get().GetMemorymanager().GetCBDescriptorIndex(m_ConstantBufferID);
+		return 0u;
 	}
 
 	void Material::UploadToGPU(const AssetHandle& materialHandle) noexcept
 	{
 		RLS_ASSERT(materialHandle != NULL_HANDLE, "Material handle is invalid.");
-		Application::Get().GetMemorymanager().SetDirtyMaterial(materialHandle);
+		//Application::Get().GetMemorymanager().SetDirtyMaterial(materialHandle);
 	}
 
 	void Material::ToggleAlbedoTextureUsage() noexcept

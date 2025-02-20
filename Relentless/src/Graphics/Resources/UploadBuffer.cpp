@@ -3,6 +3,8 @@
 #include "../Renderer/MasterRenderer.h"
 #include "../Renderer/RenderCommand.h"
 #include "Core/Application.h"
+#include "Graphics/D3D12Debug.h"
+
 namespace Relentless
 {
 	UploadBuffer::UploadBuffer(const uint64_t initialSizeInBytes, const std::string& name) noexcept
@@ -70,13 +72,13 @@ namespace Relentless
 		if(m_UploadQueue.empty())
 			return;
 
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
+		//Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
 		uint64_t offset = 0u;
 		for (uint32_t i{ 0u }; i < m_UploadQueue.size(); i++)
 		{
 			auto data = m_UploadQueue.front();
 			RLS_ASSERT(data.pResource, "Destination resource to upload to is nullptr.");
-			DXCall_STD(pCommandList->CopyBufferRegion(data.pResource->GetInterface().Get(), 0u, m_pResource.Get(), offset, data.Size));
+			//DXCall_STD(pCommandList->CopyBufferRegion(data.pResource->GetInterface().Get(), 0u, m_pResource.Get(), offset, data.Size));
 
 			D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
 			resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -85,7 +87,7 @@ namespace Relentless
 			resourceTransitionBarrier.Transition.StateBefore = data.pResource->GetCurrentState();
 			resourceTransitionBarrier.Transition.StateAfter = data.StateAfterCopy;
 			resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-			DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+			//DXCall_STD(pCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
 			data.pResource->SetCurrentState(data.StateAfterCopy);
 
 			offset += data.Size;
@@ -94,7 +96,7 @@ namespace Relentless
 		}
 		m_MappedPtr -= offset;
 		m_CurrentSize = 0u;
-		Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
+		//Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList);
 	}
 
 	void UploadBuffer::Copy(const uint64_t size, void* pSrc, IResource* pDst, const D3D12_RESOURCE_STATES stateAfterCopy) noexcept

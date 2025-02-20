@@ -1,8 +1,8 @@
 #pragma once
 #include "CommandQueue.h"
+#include "DescriptorManager.h"
 #include "DeviceResource.h"
 #include "Fence.h"
-#include "Graphics/MemoryManager.h"
 #include "Graphics/Shaders/ShaderLibrary.h"
 #include "RHI.h"
 
@@ -24,29 +24,37 @@ namespace Relentless
 		GraphicsDevice(const GraphicsDeviceOptions& options) noexcept;
 		virtual ~GraphicsDevice() noexcept override;
 
-		[[nodiscard]] CommandContext* AllocateCommandContext(D3D12_COMMAND_LIST_TYPE type) noexcept;
-		[[nodiscard]] Ref<Buffer> CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData = (const void*)nullptr) noexcept;
-		[[nodiscard]] Ref<TextureEx> CreateTexture(const TextureDesc& desc, const char* pName, std::span<D3D12_SUBRESOURCE_DATA> initData) noexcept;
-		[[nodiscard]] Ref<DepthStencilView> CreateDSV(TextureEx* pTexture, const TextureDSVDesc& textureDSVDesc) noexcept;
-		[[nodiscard]] Ref<PipelineState> CreatePipelineState(const PipelineStateInitializer& pipelineStateInitializer) noexcept;
-		[[nodiscard]] Ref<ShaderResourceView> CreateSRV(TextureEx* pTexture, const TextureSRVDesc& srvDesc) noexcept;
+		[[nodiscard]] CommandContext* AllocateCommandContext(D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT) noexcept;
+		[[nodiscard]] Ref<BufferEx> CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData = (const void*)nullptr) noexcept;
+		[[nodiscard]] Ref<DepthStencilView> CreateDSV(TextureEx* pTexture, const TextureDSVDesc& textureDSVDesc) noexcept;            
+		[[nodiscard]] Ref<TextureEx> CreateTexture(const TextureDesc& desc, const char* pName, Span<D3D12_SUBRESOURCE_DATA> initData = {}) noexcept;
+		[[nodiscard]] Ref<TextureEx> CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept;
+		[[nodiscard]] Ref<PipelineState> CreatePipeline(const PipelineStateInitializer& pipelineStateInitializer) noexcept;
+		[[nodiscard]] Ref<PipelineState> CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName) noexcept;
 		[[nodiscard]] Ref<RenderTargetView> CreateRTV(TextureEx* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept;
+		[[nodiscard]] Ref<ShaderResourceView> CreateSRV(TextureEx* pTexture, const TextureSRVDesc& srvDesc) noexcept;
+		[[nodiscard]] Ref<UnorderedAccessView> CreateUAV(TextureEx* pTexture, const TextureUAVDesc& desc) noexcept;
 
 		void DeferReleaseObject(ID3D12Object* pResource) noexcept;
 		void FreeCommandContext(CommandContext* pCommandContext) noexcept;
 		[[nodiscard]] CommandQueue* GetCommandQueue(D3D12_COMMAND_LIST_TYPE type) const noexcept;
-		[[nodiscard]] ID3D12Device5* GetDevice() const noexcept;
+		[[nodiscard]] ID3D12DeviceX* GetDevice() const noexcept;
+		[[nodiscard]] IDXGIFactoryX* GetFactory() const noexcept;
 		[[nodiscard]] Fence* GetFrameFence() const noexcept;
-		[[nodiscard]] DescriptorHeap* GetGlobalShaderBindableHeap() const noexcept;
+		[[nodiscard]] DescriptorHeapEx* GetGlobalShaderBindableHeap() const noexcept;
+		[[nodiscard]] DescriptorHeapEx* GetGlobalSamplerHeap() const noexcept;
+		[[nodiscard]] RootSignature* GetGlobalRootSignature() const noexcept;
+		[[nodiscard]] RingBufferAllocator* GetRingBuffer() const noexcept;
 		[[nodiscard]] ShaderLibrary* GetShaderLibrary() const noexcept;
 
 		void IdleGPU() noexcept;
-		[[nodiscard]] DescriptorHandle RegisterGlobalDescriptor(DescriptorHandleType descriptorHandleType) noexcept;
+		[[nodiscard]] DescriptorHandleEx RegisterGlobalDescriptor(DescriptorHandleTypeEx descriptorHandleType) noexcept;
 		void TickFrame() noexcept;
-		void UnregisterGlobalDescriptor(const DescriptorHandle& descriptorHandle) noexcept;
+		void UnregisterGlobalDescriptor(const DescriptorHandleEx& descriptorHandle) noexcept;
 	private:
-		Ref<IDXGIFactory6> m_pFactory = nullptr;
-		Ref<ID3D12Device5> m_pDevice = nullptr;
+		Ref<IDXGIFactoryX> m_pFactory = nullptr;
+		Ref<ID3D12DeviceX> m_pDevice = nullptr;
+		Ref<IDXGIAdapter4> m_pAdapter = nullptr;
 
 		uint64 m_FrameIndex = 0u;
 
@@ -79,12 +87,14 @@ namespace Relentless
 
 		DeferredDeleteQueue m_DeferredDeleteQueue;
 
-		MemoryManager m_MemoryManager;
+		std::unique_ptr<DescriptorManager> m_pDescriptorManager = nullptr;
 		std::unique_ptr<ShaderLibrary> m_pShaderLibrary = nullptr;
 
 		Ref<ScratchAllocationManager> m_pScratchAllocationManager = nullptr;
 		Ref<RingBufferAllocator> m_pRingBufferAllocator = nullptr;
 
 		std::mutex m_CommandContextAllocationMutex;
+
+		Ref<RootSignature> m_pGlobalRootSignature = nullptr;
 	};
 }

@@ -40,6 +40,11 @@ namespace Relentless
 		return m_CurrentValue;
 	}
 
+	ID3D12Fence1* Fence::GetFence() const noexcept
+	{
+		return m_pFence;
+	}
+
 	uint64_t Fence::GetLastSignaledValue() const noexcept
 	{
 		return m_LastSignaled;

@@ -16,12 +16,12 @@ namespace Relentless
 		}
 	
 		//The main application get to respond to the event last:
-		m_mainApplication->OnEvent(event);
+		//m_mainApplication->OnEvent(event);
 	}
 
-	void EventBus::SetMainApplication(Application* application) noexcept
-	{
-		RLS_ASSERT(application, "Application pointer is invalid.");
-		m_mainApplication = application;
-	}
+	//void EventBus::SetMainApplication(Application* application) noexcept
+	//{
+	//	RLS_ASSERT(application, "Application pointer is invalid.");
+	//	m_mainApplication = application;
+	//}
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "Math/MathTypes.h"
+#include "Graphics/Renderer/RenderTypes.h"
 
 namespace Relentless
 {

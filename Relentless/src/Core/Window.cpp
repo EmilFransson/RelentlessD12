@@ -2,6 +2,7 @@
 #include "EventSystem/KeyboardEvents.h"
 #include "EventSystem/WindowEvents.h"
 #include "Graphics/D3D12Core.h"
+#include "Graphics/D3D12Debug.h"
 #include "Graphics/MemoryManager.h"
 #include "Input/Mouse.h"
 #include "Input/Keyboard.h"
@@ -264,13 +265,13 @@ namespace Relentless
 		case WM_MBUTTONDOWN:
 		case WM_MBUTTONUP:
 		{
-			Mouse::OnWindowsEvent(msg, lParam, wParam);
+			//Mouse::OnWindowsEvent(msg, lParam, wParam);
 			break;
 		}
 		case WM_KEYDOWN:
 		case WM_KEYUP:
 		{
-			Keyboard::OnWindowsEvent(msg, lParam, wParam);
+			//Keyboard::OnWindowsEvent(msg, lParam, wParam);
 			break;
 		}
 		case WM_SYSKEYDOWN:
@@ -281,7 +282,7 @@ namespace Relentless
 				ToggleFullScreen();
 				return 0;
 			}
-			Keyboard::OnWindowsEvent(msg, lParam, wParam);
+			//Keyboard::OnWindowsEvent(msg, lParam, wParam);
 			break;
 		}
 		}
@@ -311,15 +312,15 @@ namespace Relentless
 		swapChainDescriptor.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
 		Microsoft::WRL::ComPtr<IDXGISwapChain1> pTempSwapChain{ nullptr };
-		DXCall(pFactory->CreateSwapChainForHwnd
-		(
-			Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get(),
-			m_WindowHandle,
-			&swapChainDescriptor,
-			nullptr,
-			nullptr,
-			&pTempSwapChain
-		));
+		//DXCall(pFactory->CreateSwapChainForHwnd
+		//(
+		//	Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get(),
+		//	m_WindowHandle,
+		//	&swapChainDescriptor,
+		//	nullptr,
+		//	nullptr,
+		//	&pTempSwapChain
+		//));
 		DXCall(pTempSwapChain->QueryInterface(IID_PPV_ARGS(&m_pSwapChain)));
 	
 		m_BackBuffers.reserve(m_NrOfBackBuffers);
@@ -330,7 +331,7 @@ namespace Relentless
 	{
 		for (uint8_t i{ 0u }; i < m_BackBuffers.size(); ++i)
 		{
-			Application::Get().GetMemorymanager().DestroyDescriptorHandle(m_BackBuffers[i].Handle);
+			//Application::Get().GetMemorymanager().DestroyDescriptorHandle(m_BackBuffers[i].Handle);
 		}
 		m_BackBuffers.clear();
 		DXCall(m_pSwapChain->ResizeBuffers(m_NrOfBackBuffers, m_Width, m_Height, DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING));
@@ -357,7 +358,7 @@ namespace Relentless
 			BackBuffer backBuffer{};
 
 			DXCall(m_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer.pBackBuffer)));
-			backBuffer.Handle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::RTV);
+			//backBuffer.Handle = Application::Get().GetMemorymanager().CreateDescriptorHandle(DescriptorHandleType::RTV);
 
 			DXCall_STD(D3D12Core::GetDevice()->CreateRenderTargetView(backBuffer.pBackBuffer.Get(), &rtvDesc, backBuffer.Handle.CPUHandle));
 

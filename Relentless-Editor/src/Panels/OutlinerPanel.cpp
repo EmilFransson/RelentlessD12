@@ -29,9 +29,9 @@ namespace Relentless
 
 		[[nodiscard]] SelectionMode GetSelectionMode() noexcept
 		{
-			if (Keyboard::IsKeyPressed(RLS_KEY::LCtrl))
+			if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
 				return SelectionMode::Toggle;
-			else if (Keyboard::IsKeyPressed(RLS_KEY::LShift))
+			else if (Keyboard::IsKeyDown(RLS_Key::LShift))
 				return SelectionMode::Range;
 			else
 				return SelectionMode::Single;

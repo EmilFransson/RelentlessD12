@@ -114,8 +114,7 @@ namespace Relentless
 	class TextureEx : public DeviceResource
 	{
 	public:
-		TextureEx(GraphicsDevice* pParent, const TextureDesc& desc, ID3D12Resource* pResource) noexcept;
-		virtual ~TextureEx() noexcept override = default;
+		TextureEx(GraphicsDevice* pParent, const TextureDesc& desc, ID3D12Resource2* pResource) noexcept;
 
 		[[nodiscard]] uint32 GetWidth() const noexcept;
 		[[nodiscard]] uint32 GetHeight() const noexcept;
@@ -133,16 +132,22 @@ namespace Relentless
 		[[nodiscard]] ShaderResourceView* GetSRV() const noexcept;
 		[[nodiscard]] uint32 GetSRVIndex() const noexcept;
 
+		[[nodiscard]] UnorderedAccessView* GetUAV(uint32 subResourceIndex = 0) const noexcept;
+		[[nodiscard]] uint32 GetUAVIndex(uint32 subResourceIndex = 0) const noexcept;
+
 		[[nodiscard]] RenderTargetView* GetRTV(uint32 subResourceIndex = 0) const noexcept;
 		[[nodiscard]] uint32 GetRTVIndex(uint32 subResourceIndex = 0) const noexcept;
 
 		void SetDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex = 0u) noexcept;
 		void SetSRV(Ref<ShaderResourceView> pSRV) noexcept;
 		void SetRTV(Ref<RenderTargetView> pRTV, uint32 subResourceIndex = 0u) noexcept;
+		void SetUAV(Ref<UnorderedAccessView> pUAV, uint32 subResourceIndex = 0u) noexcept;
+
 	private:
 		const TextureDesc m_Desc;
 
-		Ref<ShaderResourceView> m_SRV = nullptr;
+		Ref<ShaderResourceView> m_pSRV = nullptr;
+		std::vector<Ref<UnorderedAccessView>> m_UAVs;
 		std::vector<Ref<RenderTargetView>> m_RTVs;
 		std::vector<Ref<DepthStencilView>> m_DSVs;
 	};

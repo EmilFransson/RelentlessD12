@@ -40,11 +40,11 @@ namespace Relentless
 		}
 	};
 
-	class Buffer : public DeviceResource
+	class BufferEx : public DeviceResource
 	{
 	public:
-		Buffer(GraphicsDevice* pParent, const BufferDesc& desc, ID3D12Resource* pResource) noexcept;
-		virtual ~Buffer() noexcept override = default;
+		BufferEx(GraphicsDevice* pParent, const BufferDesc& desc, ID3D12Resource2* pResource) noexcept;
+		virtual ~BufferEx() noexcept override;
 
 		[[nodiscard]] const BufferDesc& GetDesc() const noexcept;
 		[[nodiscard]] void* GetMappedData() const noexcept;

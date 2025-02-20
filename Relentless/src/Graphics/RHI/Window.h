@@ -1,0 +1,42 @@
+#pragma once
+#include "Callback/Broadcaster.h"
+
+namespace Relentless
+{
+	using WindowHandle = HWND;
+
+	constexpr const char* WINDOW_CLASS_NAME = "RelentlessWindowClass";
+
+	class WindowEx
+	{
+	public:
+		WindowEx(uint32 width, uint32 height) noexcept;
+		~WindowEx() noexcept;
+
+		static [[nodiscard]] Vector2i GetDisplaySize() noexcept;
+		[[nodiscard]] WindowHandle GetNativeWindow() const noexcept;
+		void PollMessages() noexcept;
+		void SetTitle(const char* pTitle) noexcept;
+
+		Broadcaster<void(bool maximized)> OnFocusChanged;
+		Broadcaster<void(uint32 width, uint32 height)> OnResizeOrMove;
+		Broadcaster<void(uint32 button, bool pressed)> OnMouseInput;
+		Broadcaster<void(float scrollValue)> OnMouseScroll;
+		Broadcaster<void(uint32 x, uint32 y)> OnMouseMove;
+		Broadcaster<void(long x, long y)> OnMouseRaw;
+		Broadcaster<void(uint32 key, bool pressed)> OnKeyInput;
+		Broadcaster<void(uint32 key)> OnCharInput;
+		Broadcaster<void()> OnCloseOrDestroy;
+
+	private:
+		static LRESULT WndProcStatic(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+		LRESULT HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
+	private:
+		WindowHandle m_WindowHandle = nullptr;
+		uint32 m_DisplayWidth = 0u;
+		uint32 m_DisplayHeight = 0u;
+		bool m_IsResizing = false;
+		bool m_Minimized = false;
+		bool m_Maximized = false;
+	};
+}

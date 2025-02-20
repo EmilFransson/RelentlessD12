@@ -6,8 +6,11 @@
 #include "PipelineState.h"
 #include "RingBufferAllocator.h"
 #include "ResourceViews.h"
+#include "Graphics/Renderer/RenderTypes.h"
+#include "RootSignature.h"
 #include "ScratchAllocator.h"
 #include "TextureEx.h"
+#include "Graphics/Shaders/ShaderCompiler.h"
 
 namespace Relentless
 {
@@ -121,44 +124,44 @@ namespace Relentless
 		D3D::SetObjectName(m_pDevice.Get(), "Main Device");
 
 		Ref<ID3D12InfoQueue> pInfoQueue = nullptr;
-		if (SUCCEEDED(::D3D12GetDebugInterface(IID_PPV_ARGS(pInfoQueue.GetAddressOf()))))
+		if (SUCCEEDED(m_pDevice->QueryInterface(IID_PPV_ARGS(pInfoQueue.GetAddressOf()))))
 		{
-			VERIFY_HR_EX(pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE), GetDevice());
-			VERIFY_HR_EX(pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_ERROR, TRUE), GetDevice());
-			VERIFY_HR_EX(pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_WARNING, TRUE), GetDevice());
-			RLS_CORE_WARN("D3D Validation Break On Severity Enabled.");
+				VERIFY_HR_EX(pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE), GetDevice());
+				VERIFY_HR_EX(pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_ERROR, TRUE), GetDevice());
+				VERIFY_HR_EX(pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_WARNING, TRUE), GetDevice());
+				RLS_CORE_WARN("D3D Validation Break On Severity Enabled.");
 
-			Ref<ID3D12InfoQueue1> pInfoQueue1 = nullptr;
-			if (pInfoQueue.As<ID3D12InfoQueue1>(&pInfoQueue1))
-			{
-				auto&& MessageCallback = [](
-					D3D12_MESSAGE_CATEGORY /*category*/,
-					D3D12_MESSAGE_SEVERITY severity,
-					D3D12_MESSAGE_ID /*id*/,
-					LPCSTR pDescription,
-					void* /*pContext*/)
+				Ref<ID3D12InfoQueue1> pInfoQueue1 = nullptr;
+				if (pInfoQueue.As<ID3D12InfoQueue1>(&pInfoQueue1))
 				{
-					switch (severity)
+					auto&& MessageCallback = [](
+						D3D12_MESSAGE_CATEGORY /*category*/,
+						D3D12_MESSAGE_SEVERITY severity,
+						D3D12_MESSAGE_ID /*id*/,
+						LPCSTR pDescription,
+						void* /*pContext*/)
 					{
-					case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_CORRUPTION:
-						RLS_CORE_CRITICAL("D3D Validation Layer: {0}", pDescription);
-						break;
-					case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_ERROR:
-						RLS_CORE_ERROR("D3D Validation Layer: {0}", pDescription);
-						break;
-					case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_WARNING:
-						RLS_CORE_WARN("D3D Validation Layer: {0}", pDescription);
-						break;
-					case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_INFO:
-					case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_MESSAGE:
-						RLS_CORE_INFO("D3D Validation Layer: {0}", pDescription);
-						break;
-					}
-				};
+						switch (severity)
+						{
+						case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_CORRUPTION:
+							RLS_CORE_CRITICAL("D3D Validation Layer: {0}", pDescription);
+							break;
+						case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_ERROR:
+							RLS_CORE_ERROR("D3D Validation Layer: {0}", pDescription);
+							break;
+						case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_WARNING:
+							RLS_CORE_WARN("D3D Validation Layer: {0}", pDescription);
+							break;
+						case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_INFO:
+						case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_MESSAGE:
+							RLS_CORE_INFO("D3D Validation Layer: {0}", pDescription);
+							break;
+						}
+					};
 
-				DWORD cookie = 0;
-				VERIFY_HR(pInfoQueue1->RegisterMessageCallback(MessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &cookie));
-			}
+					DWORD cookie = 0;
+					VERIFY_HR(pInfoQueue1->RegisterMessageCallback(MessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &cookie));
+				}
 		}
 
 		if (options.UseStablePowerState)
@@ -166,6 +169,8 @@ namespace Relentless
 			VERIFY_HR(m_pDevice->SetStablePowerState(TRUE));
 			RLS_CORE_INFO("D3D12 Enabled Stable Power State.");
 		}
+
+		m_pAdapter = pAdapter;
 
 		m_pFrameFence = new Fence(this, "Frame Fence");
 
@@ -179,10 +184,17 @@ namespace Relentless
 		m_CommandQueues[D3D12_COMMAND_LIST_TYPE_COMPUTE] = new CommandQueue(this, D3D12_COMMAND_LIST_TYPE_COMPUTE);
 		m_CommandQueues[D3D12_COMMAND_LIST_TYPE_COPY] = new CommandQueue(this, D3D12_COMMAND_LIST_TYPE_COPY);
 
-		//Change!
-		m_MemoryManager.Initialize();
+		m_pDescriptorManager = std::make_unique<DescriptorManager>(this);
+		
+		ShaderCompiler::LoadDXC();
 		m_pShaderLibrary = std::make_unique<ShaderLibrary>();
 		m_pShaderLibrary->Initialize();
+
+		m_pGlobalRootSignature = new RootSignature(this);
+		m_pGlobalRootSignature->AddRootCBV(BindingSlot::PerInstance, 0);
+		m_pGlobalRootSignature->AddRootCBV(BindingSlot::PerPass, 0);
+		m_pGlobalRootSignature->AddRootCBV(BindingSlot::PerView, 0);
+		m_pGlobalRootSignature->Finalize("Root Signature - Global");
 	}
 
 	GraphicsDevice::~GraphicsDevice() noexcept
@@ -204,21 +216,21 @@ namespace Relentless
 			else
 			{
 				Ref<ID3D12CommandList> pCommandList = nullptr;
-				VERIFY_HR_EX(GetDevice()->CreateCommandList1(0u, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(pCommandList.ReleaseAndGetAddressOf())), GetDevice());
+				VERIFY_HR_EX(GetDevice()->CreateCommandList1(0u, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(pCommandList.GetAddressOf())), GetDevice());
 				D3D::SetObjectName(pCommandList, std::format("Pooled {} Command List {}", D3D::CommandListTypeToString(type), m_CommandContextPool[typeIndex].size()).c_str());
-				pCommandContext = m_CommandContextPool[typeIndex].emplace_back(new CommandContext(this, pCommandList, type));
+				pCommandContext = m_CommandContextPool[typeIndex].emplace_back(RLS_NEW CommandContext(this, pCommandList, m_pScratchAllocationManager, type));
 			}
 		}
 		pCommandContext->Reset();
 		return pCommandContext;
 	}
 
-	DescriptorHandle GraphicsDevice::RegisterGlobalDescriptor(DescriptorHandleType descriptorHandleType) noexcept
+	DescriptorHandleEx GraphicsDevice::RegisterGlobalDescriptor(DescriptorHandleTypeEx descriptorHandleType) noexcept
 	{
-		return m_MemoryManager.CreateDescriptorHandle(descriptorHandleType);
+		return m_pDescriptorManager->CreateDescriptorHandle(descriptorHandleType);
 	}
 
-	Ref<Buffer> GraphicsDevice::CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData /*= (const void*)nullptr*/) noexcept
+	Ref<BufferEx> GraphicsDevice::CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData /*= (const void*)nullptr*/) noexcept
 	{
 		auto&& GetResourceDesc = [](const BufferDesc& desc) -> D3D12_RESOURCE_DESC
 		{
@@ -251,11 +263,11 @@ namespace Relentless
 
 		const D3D12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES(heapType);
 
-		ID3D12Resource* pResource = nullptr;
+		ID3D12Resource2* pResource = nullptr;
 		VERIFY_HR_EX(GetDevice()->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_CREATE_NOT_ZEROED, &resourceDesc, resourceState, nullptr, IID_PPV_ARGS(&pResource)), m_pDevice);
 		D3D::SetObjectName(pResource, pName);
 
-		Ref<Buffer> pBuffer = new Buffer(this, desc, pResource);
+		Ref<BufferEx> pBuffer = RLS_NEW BufferEx(this, desc, pResource);
 		pBuffer->SetName(pName);
 		pBuffer->SetResourceState(resourceState);
 
@@ -275,9 +287,9 @@ namespace Relentless
 			srvDesc.Format = D3D::ConvertFormat(desc.Format);
 			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-			DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::SRV);
+			DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::SRV);
 			GetDevice()->CreateShaderResourceView(pResource, &srvDesc, descriptorHandle.CPUHandle);
-			Ref<ShaderResourceView> pSRV = new ShaderResourceView(this, descriptorHandle);
+			Ref<ShaderResourceView> pSRV = RLS_NEW ShaderResourceView(this, descriptorHandle);
 			pBuffer->SetSRV(std::move(pSRV));
 		}
 
@@ -300,7 +312,7 @@ namespace Relentless
 		return pBuffer;
 	}
 
-	Ref<TextureEx> GraphicsDevice::CreateTexture(const TextureDesc& desc, const char* pName, std::span<D3D12_SUBRESOURCE_DATA> initData) noexcept
+	Ref<TextureEx> GraphicsDevice::CreateTexture(const TextureDesc& desc, const char* pName, Span<D3D12_SUBRESOURCE_DATA> initData) noexcept
 	{
 		auto&& GetResourceDesc = [](const TextureDesc& textureDesc) -> D3D12_RESOURCE_DESC
 		{
@@ -328,7 +340,7 @@ namespace Relentless
 			if (EnumHasAnyFlags(textureDesc.Flags, TextureFlag::DepthStencil))
 			{
 				d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-				if (!EnumHasAnyFlags(textureDesc.Flags, TextureFlag::DepthStencil))
+				if (!EnumHasAnyFlags(textureDesc.Flags, TextureFlag::ShaderResource))
 					d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 			}
 
@@ -364,29 +376,31 @@ namespace Relentless
 
 		D3D12_RESOURCE_DESC resourceDesc = GetResourceDesc(desc);
 
-		const D3D12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+		DXGI_QUERY_VIDEO_MEMORY_INFO info;
+		m_pAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
 
-		ID3D12Resource* pResource = nullptr;
-		VERIFY_HR_EX(GetDevice()->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_CREATE_NOT_ZEROED, &resourceDesc, resourceState, nullptr, IID_PPV_ARGS(&pResource)), m_pDevice);
+		D3D12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+		ID3D12Resource2* pResource;
+		VERIFY_HR_EX(GetDevice()->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &resourceDesc, resourceState, pClearValue, IID_PPV_ARGS(&pResource)), m_pDevice);
 		D3D::SetObjectName(pResource, pName);
 
 		Ref<TextureEx> pTexture = new TextureEx(this, desc, pResource);
 		pTexture->SetName(pName);
 		pTexture->SetResourceState(resourceState);
 
-		if (initData.size() > 0)
+		if (initData.GetSize() > 0)
 		{
-			RLS_ASSERT(initData.size() == desc.DepthOrArraySize * desc.Mips, "[GraphicsDevice::CreateTexture] Size Mismatch.");
+			RLS_ASSERT(initData.GetSize() == desc.DepthOrArraySize * desc.Mips, "[GraphicsDevice::CreateTexture] Size Mismatch.");
 
 			uint64 requiredSize = 0;
 			D3D12_PLACED_SUBRESOURCE_FOOTPRINT layouts[16];
 			uint32 numRows[16];
 			uint64 rowSizes[16];
-			m_pDevice->GetCopyableFootprints(&resourceDesc, 0, initData.size(), 0, layouts, numRows, rowSizes, &requiredSize);
+			m_pDevice->GetCopyableFootprints(&resourceDesc, 0, initData.GetSize(), 0, layouts, numRows, rowSizes, &requiredSize);
 			RingBufferAllocation allocation;
 			m_pRingBufferAllocator->Allocate((uint32)requiredSize, allocation);
 
-			for (uint32 subResource = 0; subResource < initData.size(); ++subResource)
+			for (uint32 subResource = 0; subResource < initData.GetSize(); ++subResource)
 			{
 				const D3D12_SUBRESOURCE_DATA& srcData = initData[subResource];
 				D3D12_PLACED_SUBRESOURCE_FOOTPRINT& dstLayout = layouts[subResource];
@@ -424,9 +438,8 @@ namespace Relentless
 		{
 			pTexture->SetStateTracking(true);
 
-			//pTexture->m_UAVs.resize(desc.Mips);
-			//for (uint8 mip = 0; mip < desc.Mips; ++mip)
-			//	pTexture->m_UAVs[mip] = CreateUAV(pTexture, TextureUAVDesc(mip));
+			for (uint8 mip = 0; mip < desc.Mips; ++mip)
+				pTexture->SetUAV(CreateUAV(pTexture, TextureUAVDesc(mip)), mip);
 		}
 		if (EnumHasAnyFlags(desc.Flags, TextureFlag::RenderTarget))
 		{
@@ -437,6 +450,32 @@ namespace Relentless
 			pTexture->SetStateTracking(true);
 		}
 
+		return pTexture;
+	}
+
+	Ref<TextureEx> GraphicsDevice::CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept
+	{
+		const D3D12_RESOURCE_DESC resourceDesc = pResource->GetDesc();
+		const TextureDesc desc
+		{
+			.Width = (uint32)resourceDesc.Width,
+			.Height = (uint32)resourceDesc.Height,
+			.Mips = resourceDesc.MipLevels,
+			.SampleCount = resourceDesc.SampleDesc.Count,
+			.Flags = TextureFlag::RenderTarget,
+			.Format = ResourceFormat::Unknown,
+			.ClearBindingValue = ClearBinding(Colors::Magenta),
+		};
+
+		Ref<TextureEx> pTexture = RLS_NEW TextureEx(this, desc, pResource);
+		pTexture->SetImmediateDelete(true);
+		pTexture->SetName(std::format("Backbuffer {}", index).c_str());
+		D3D::SetObjectName(pTexture->GetResource(), std::format("Backbuffer {}", index).c_str());
+		pTexture->SetResourceState(D3D12_RESOURCE_STATE_PRESENT);
+		pTexture->SetStateTracking(true);
+
+		pTexture->SetSRV(CreateSRV(pTexture, TextureSRVDesc(0, 1)));
+		pTexture->SetRTV(CreateRTV(pTexture, TextureRTVDesc()));
 		return pTexture;
 	}
 
@@ -473,17 +512,26 @@ namespace Relentless
 		dsvDesc.Texture2D.MipSlice = textureDSVDesc.MipSlice;
 		dsvDesc.Texture2DArray.MipSlice = textureDSVDesc.MipSlice;
 
-		DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::DSV);
+		DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::DSV);
 		GetDevice()->CreateDepthStencilView(pTexture->GetResource(), &dsvDesc, descriptorHandle.CPUHandle);
 
-		return new DepthStencilView(this, descriptorHandle);
+		return RLS_NEW DepthStencilView(this, descriptorHandle);
 	}
 
-	Ref<PipelineState> GraphicsDevice::CreatePipelineState(const PipelineStateInitializer& pipelineStateInitializer) noexcept
+	Ref<PipelineState> GraphicsDevice::CreatePipeline(const PipelineStateInitializer& pipelineStateInitializer) noexcept
 	{
 		Ref<PipelineState> pPipelineState = new PipelineState(this, pipelineStateInitializer);
 		pPipelineState->CreateInternal();
 		return pPipelineState;
+	}
+
+	Ref<PipelineState> GraphicsDevice::CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName) noexcept
+	{
+		PipelineStateInitializer desc;
+		desc.SetRootSignature(pRootSignature);
+		desc.SetComputeShader(pShaderName);
+		desc.SetName(std::format("Compute PSO: {0}", pShaderName).c_str());
+		return CreatePipeline(desc);
 	}
 
 	Ref<ShaderResourceView> GraphicsDevice::CreateSRV(TextureEx* pTexture, const TextureSRVDesc& textureSRVDesc) noexcept
@@ -518,10 +566,40 @@ namespace Relentless
 			break;
 		}
 
-		DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::SRV);
+		DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::SRV);
 		GetDevice()->CreateShaderResourceView(pTexture->GetResource(), &srvDesc, descriptorHandle.CPUHandle);
 		
-		return new ShaderResourceView(this, descriptorHandle);
+		return RLS_NEW ShaderResourceView(this, descriptorHandle);
+	}
+
+	Ref<UnorderedAccessView> GraphicsDevice::CreateUAV(TextureEx* pTexture, const TextureUAVDesc& desc) noexcept
+	{
+		RLS_ASSERT(pTexture, "[GraphicsDevice::CreateUAV] Texture Is Invalid.");
+		const TextureDesc& textureDesc = pTexture->GetDesc();
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		switch (textureDesc.Type)
+		{
+		case TextureType::Texture2D:
+			uavDesc.Texture2D.MipSlice = desc.MipLevel;
+			uavDesc.Texture2D.PlaneSlice = 0;
+			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+			break;
+		case TextureType::TextureCube:
+			uavDesc.Texture2DArray.ArraySize = textureDesc.DepthOrArraySize * 6;
+			uavDesc.Texture2DArray.FirstArraySlice = 0;
+			uavDesc.Texture2DArray.PlaneSlice = 0;
+			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+			break;
+		default:
+			break;
+		}
+		uavDesc.Format = D3D::ConvertFormat(pTexture->GetFormat());
+
+		DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::UAV);
+		GetDevice()->CreateUnorderedAccessView(pTexture->GetResource(), nullptr, &uavDesc, descriptorHandle.CPUHandle);
+
+		return RLS_NEW UnorderedAccessView(this, descriptorHandle);
 	}
 
 	Ref<RenderTargetView> GraphicsDevice::CreateRTV(TextureEx* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept
@@ -553,10 +631,10 @@ namespace Relentless
 		rtvDesc.Texture3D.MipSlice = textureRTVDesc.MipSlice;
 		rtvDesc.Format = D3D::ConvertFormat(pTexture->GetFormat());
 		
-		DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::RTV);
+		DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::RTV);
 		GetDevice()->CreateRenderTargetView(pTexture->GetResource(), &rtvDesc, descriptorHandle.CPUHandle);
 
-		return new RenderTargetView(this, descriptorHandle);
+		return RLS_NEW RenderTargetView(this, descriptorHandle);
 	}
 
 	void GraphicsDevice::DeferReleaseObject(ID3D12Object* pResource) noexcept
@@ -577,9 +655,14 @@ namespace Relentless
 		return m_CommandQueues[type];
 	}
 
-	ID3D12Device5* GraphicsDevice::GetDevice() const noexcept
+	ID3D12DeviceX* GraphicsDevice::GetDevice() const noexcept
 	{
 		return m_pDevice.Get();
+	}
+
+	IDXGIFactoryX* GraphicsDevice::GetFactory() const noexcept
+	{
+		return m_pFactory;
 	}
 
 	Fence* GraphicsDevice::GetFrameFence() const noexcept
@@ -587,9 +670,24 @@ namespace Relentless
 		return m_pFrameFence;
 	}
 
-	DescriptorHeap* GraphicsDevice::GetGlobalShaderBindableHeap() const noexcept
+	DescriptorHeapEx* GraphicsDevice::GetGlobalShaderBindableHeap() const noexcept
 	{
-		return m_MemoryManager.GetShaderBindableDescriptorHeap().get();
+		return m_pDescriptorManager->GetShaderBindableDescriptorHeap();
+	}
+
+	DescriptorHeapEx* GraphicsDevice::GetGlobalSamplerHeap() const noexcept
+	{
+		return m_pDescriptorManager->GetSamplerDescriptorHeap();
+	}
+
+	RootSignature* GraphicsDevice::GetGlobalRootSignature() const noexcept
+	{
+		return m_pGlobalRootSignature;
+	}
+
+	RingBufferAllocator* GraphicsDevice::GetRingBuffer() const noexcept
+	{
+		return m_pRingBufferAllocator;
 	}
 
 	ShaderLibrary* GraphicsDevice::GetShaderLibrary() const noexcept
@@ -620,9 +718,9 @@ namespace Relentless
 		m_pFrameFence->CPUWait(m_FrameFenceValues[m_FrameIndex % NUM_BUFFERS]);
 	}
 
-	void GraphicsDevice::UnregisterGlobalDescriptor(const DescriptorHandle& descriptorHandle) noexcept
+	void GraphicsDevice::UnregisterGlobalDescriptor(const DescriptorHandleEx& descriptorHandle) noexcept
 	{
-		m_MemoryManager.DestroyDescriptorHandle(descriptorHandle);
+		m_pDescriptorManager->DeferReleaseDescriptorHandle(descriptorHandle, SyncPoint(m_pFrameFence.Get(), m_pFrameFence->GetCurrentValue()));
 	}
 
 	GraphicsDevice::DeferredDeleteQueue::DeferredDeleteQueue(GraphicsDevice* pParent) noexcept
@@ -647,7 +745,8 @@ namespace Relentless
 			if (!fencedObject.Sync.IsComplete())
 				break;
 
-			fencedObject.pResource->Release();
+			RLS_VERIFY(fencedObject.pResource->Release() == 0, "RELEASE FAILED");
+			fencedObject.pResource = nullptr;
 			m_DeletionQueue.pop();
 		}
 	}

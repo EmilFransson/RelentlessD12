@@ -12,6 +12,8 @@
 #include "Utility/FilepathUtils.h"
 #include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
 #include "../../../vendor/includes/DirectXTK/BufferHelpers.h"
+#include "Graphics/D3D12Debug.h"
+
 
 namespace Relentless
 {
@@ -200,9 +202,9 @@ namespace Relentless
 		const ComPtr<ID3D12Resource> gpuInterface = texture->GetInterface();
 		const D3D12_RESOURCE_DESC textureDescriptor = gpuInterface->GetDesc();
 
-		GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
-		ComPtr<ID3D12GraphicsCommandList4> pCopyCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
-		ComPtr<ID3D12GraphicsCommandList4> pDirectCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
+		//GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
+		//ComPtr<ID3D12GraphicsCommandList4> pCopyCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
+		//ComPtr<ID3D12GraphicsCommandList4> pDirectCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
 
 		D3D12_RESOURCE_BARRIER resourceTransitionBarrier{};
 		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -211,12 +213,12 @@ namespace Relentless
 		resourceTransitionBarrier.Transition.StateBefore = texture->GetCurrentState();
 		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
 		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		DXCall_STD(pDirectCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+		//DXCall_STD(pDirectCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
 
-		if (isABlockingOperation)
-			Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pDirectCommandList);
-		else
-			ScheduleCommandListAndWaitForCompletion(pDirectCommandList);
+		//if (isABlockingOperation)
+		//	Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pDirectCommandList);
+		//else
+		//	ScheduleCommandListAndWaitForCompletion(pDirectCommandList);
 
 		const uint32_t mipLevels = textureDescriptor.MipLevels;
 		Texture2DSerializationContext context = {};
@@ -264,15 +266,15 @@ namespace Relentless
 			dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 			dstLocation.PlacedFootprint = footprint;
 		
-			DXCall_STD(pCopyCommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
+			//DXCall_STD(pCopyCommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
 		}
 
-		if (isABlockingOperation)
-			Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pCopyCommandList);
-		else
-			ScheduleCommandListAndWaitForCompletion(pCopyCommandList);
+		//if (isABlockingOperation)
+		//	Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pCopyCommandList);
+		//else
+		//	ScheduleCommandListAndWaitForCompletion(pCopyCommandList);
 
-		ComPtr<ID3D12GraphicsCommandList4> pTransitionCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
+		//ComPtr<ID3D12GraphicsCommandList4> pTransitionCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
 
 		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -280,14 +282,14 @@ namespace Relentless
 		resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
 		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		DXCall_STD(pTransitionCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+		//DXCall_STD(pTransitionCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
 
 		s_Data.UUIDToStagingResources[assetHandle.Uuid] = context;
 
-		if (isABlockingOperation)
-			Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pTransitionCommandList);
-		else
-			ScheduleCommandListAndWaitForCompletion(pTransitionCommandList);
+		//if (isABlockingOperation)
+		//	Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pTransitionCommandList);
+		//else
+		//	ScheduleCommandListAndWaitForCompletion(pTransitionCommandList);
 
 		//.........................................................//
 
@@ -354,28 +356,28 @@ namespace Relentless
 		SerializeRassetHeader(assetHandle, outFile);
 		SerializeAssetTags(assetHandle, outFile);
 
-		ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		//ResourceManager& resourceManager = Application::Get().GetResourceManager();
 
 		const std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(assetHandle);
-		const std::shared_ptr<VertexBuffer> pVertexBuffer = resourceManager.GetVertexBuffer(mesh->m_VertexBufferHandle);
-		const std::shared_ptr<IndexBuffer> pIndexBuffer = resourceManager.GetIndexBuffer(mesh->m_IndexBufferHandle);
+		//const std::shared_ptr<VertexBuffer> pVertexBuffer = resourceManager.GetVertexBuffer(mesh->m_VertexBufferHandle);
+		//const std::shared_ptr<IndexBuffer> pIndexBuffer = resourceManager.GetIndexBuffer(mesh->m_IndexBufferHandle);
 
-		const D3D12_RESOURCE_DESC vertexBufferResourceDescriptor = pVertexBuffer->GetInterface()->GetDesc();
-		const uint64_t vertexBufferSizeInBytes = vertexBufferResourceDescriptor.Width;
+		//const D3D12_RESOURCE_DESC vertexBufferResourceDescriptor = pVertexBuffer->GetInterface()->GetDesc();
+		//const uint64_t vertexBufferSizeInBytes = vertexBufferResourceDescriptor.Width;
 
-		const D3D12_RESOURCE_DESC indexBufferResourceDescriptor = pIndexBuffer->GetInterface()->GetDesc();
-		const uint64_t indexBufferSizeInBytes = indexBufferResourceDescriptor.Width;
+		//const D3D12_RESOURCE_DESC indexBufferResourceDescriptor = pIndexBuffer->GetInterface()->GetDesc();
+		//const uint64_t indexBufferSizeInBytes = indexBufferResourceDescriptor.Width;
 
-		MeshDataHeader meshDataHeader
-		{
-			.VertexBufferSizeInBytes = vertexBufferSizeInBytes,
-			.IndexBufferSizeInBytes = indexBufferSizeInBytes,
-			.VertexCount = pVertexBuffer->GetNrOfVertices(),
-			.IndexCount = pIndexBuffer->GetNrOfIndices()
-		};
+		//MeshDataHeader meshDataHeader
+		//{
+		//	.VertexBufferSizeInBytes = vertexBufferSizeInBytes,
+		//	.IndexBufferSizeInBytes = indexBufferSizeInBytes,
+		//	.VertexCount = pVertexBuffer->GetNrOfVertices(),
+		//	.IndexCount = pIndexBuffer->GetNrOfIndices()
+		//};
 
 		//Write the mesh header:
-		outFile.write(reinterpret_cast<char*>(&meshDataHeader), sizeof(meshDataHeader));
+		//outFile.write(reinterpret_cast<char*>(&meshDataHeader), sizeof(meshDataHeader));
 
 		{
 			Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffer = nullptr;
@@ -383,7 +385,7 @@ namespace Relentless
 			D3D12_RESOURCE_DESC readbackDesc = {};
 			readbackDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 			readbackDesc.Alignment = 0;
-			readbackDesc.Width = vertexBufferSizeInBytes;
+			//readbackDesc.Width = vertexBufferSizeInBytes;
 			readbackDesc.Height = 1;
 			readbackDesc.DepthOrArraySize = 1;
 			readbackDesc.MipLevels = 1;
@@ -407,19 +409,19 @@ namespace Relentless
 				nullptr,
 				IID_PPV_ARGS(&readbackBuffer)));
 
-			ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
+			//ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
 
-			DXCall_STD(copyCommandList->CopyResource(readbackBuffer.Get(), pVertexBuffer->GetInterface().Get()));
+			//DXCall_STD(copyCommandList->CopyResource(readbackBuffer.Get(), pVertexBuffer->GetInterface().Get()));
 
-			if (isABlockingOperation)
-				Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(copyCommandList);
-			else
-				ScheduleCommandListAndWaitForCompletion(copyCommandList);
+			//if (isABlockingOperation)
+			//	Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(copyCommandList);
+			//else
+			//	ScheduleCommandListAndWaitForCompletion(copyCommandList);
 
 			UINT8* pData = nullptr;
 			DXCall(readbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pData)));
 
-			outFile.write(reinterpret_cast<char*>(pData), vertexBufferSizeInBytes);
+			//outFile.write(reinterpret_cast<char*>(pData), vertexBufferSizeInBytes);
 
 			DXCall_STD(readbackBuffer->Unmap(0, nullptr));
 		}
@@ -430,7 +432,7 @@ namespace Relentless
 			D3D12_RESOURCE_DESC readbackDesc = {};
 			readbackDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 			readbackDesc.Alignment = 0;
-			readbackDesc.Width = indexBufferSizeInBytes;
+			//readbackDesc.Width = indexBufferSizeInBytes;
 			readbackDesc.Height = 1;
 			readbackDesc.DepthOrArraySize = 1;
 			readbackDesc.MipLevels = 1;
@@ -454,19 +456,19 @@ namespace Relentless
 				nullptr,
 				IID_PPV_ARGS(&readbackBuffer)));
 
-			ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
+			//ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
 
-			DXCall_STD(copyCommandList->CopyResource(readbackBuffer.Get(), pIndexBuffer->GetInterface().Get()));
+			//DXCall_STD(copyCommandList->CopyResource(readbackBuffer.Get(), pIndexBuffer->GetInterface().Get()));
 
-			if (isABlockingOperation)
-				Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(copyCommandList);
-			else
-				ScheduleCommandListAndWaitForCompletion(copyCommandList);
+			//if (isABlockingOperation)
+			//	Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(copyCommandList);
+			//else
+			//	ScheduleCommandListAndWaitForCompletion(copyCommandList);
 
 			UINT8* pData = nullptr;
 			DXCall(readbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pData)));
 
-			outFile.write(reinterpret_cast<char*>(pData), indexBufferSizeInBytes);
+			//outFile.write(reinterpret_cast<char*>(pData), indexBufferSizeInBytes);
 
 			DXCall_STD(readbackBuffer->Unmap(0, nullptr));
 		}
@@ -523,12 +525,12 @@ namespace Relentless
 		inFile.read(reinterpret_cast<char*>(readVertexData.data()), readMeshHeader.VertexBufferSizeInBytes);
 		inFile.read(reinterpret_cast<char*>(readIndexData.data()), readMeshHeader.IndexBufferSizeInBytes);
 
-		ResourceManager& resourceManager = Application::Get().GetResourceManager();
-		ResourceHandle vbHandle = resourceManager.CreateVertexBuffer(name + std::string(" Vertex buffer"), (uint32_t)readMeshHeader.VertexBufferSizeInBytes, readMeshHeader.VertexCount);
-		ResourceHandle ibHandle = resourceManager.CreateIndexBuffer(name + std::string(" Index buffer"), (uint32_t)readMeshHeader.IndexBufferSizeInBytes, readMeshHeader.IndexCount);
+		//ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		//ResourceHandle vbHandle = resourceManager.CreateVertexBuffer(name + std::string(" Vertex buffer"), (uint32_t)readMeshHeader.VertexBufferSizeInBytes, readMeshHeader.VertexCount);
+		//ResourceHandle ibHandle = resourceManager.CreateIndexBuffer(name + std::string(" Index buffer"), (uint32_t)readMeshHeader.IndexBufferSizeInBytes, readMeshHeader.IndexCount);
 
-		std::shared_ptr<VertexBuffer> pVB = resourceManager.GetVertexBuffer(vbHandle);
-		std::shared_ptr<IndexBuffer> pIB = resourceManager.GetIndexBuffer(ibHandle);
+		//std::shared_ptr<VertexBuffer> pVB = resourceManager.GetVertexBuffer(vbHandle);
+		//std::shared_ptr<IndexBuffer> pIB = resourceManager.GetIndexBuffer(ibHandle);
 
 		DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
 		uploadBatch.Begin();
@@ -538,8 +540,8 @@ namespace Relentless
 			subresourceData.pData = readVertexData.data();
 			subresourceData.RowPitch = readMeshHeader.VertexBufferSizeInBytes;
 			subresourceData.SlicePitch = subresourceData.RowPitch;
-			uploadBatch.Upload(pVB->GetInterface().Get(), 0, &subresourceData, 1);
-			uploadBatch.Transition(pVB->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			//uploadBatch.Upload(pVB->GetInterface().Get(), 0, &subresourceData, 1);
+			//uploadBatch.Transition(pVB->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		}
 		
 		{
@@ -547,18 +549,18 @@ namespace Relentless
 			subresourceData.pData = readIndexData.data();
 			subresourceData.RowPitch = readMeshHeader.IndexBufferSizeInBytes;
 			subresourceData.SlicePitch = subresourceData.RowPitch;
-			uploadBatch.Upload(pIB->GetInterface().Get(), 0, &subresourceData, 1);
-			uploadBatch.Transition(pIB->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			//uploadBatch.Upload(pIB->GetInterface().Get(), 0, &subresourceData, 1);
+			//uploadBatch.Transition(pIB->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		}
 		
-		auto finish = uploadBatch.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
-		finish.wait();
+		//auto finish = uploadBatch.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
+		//finish.wait();
 
 		AssetHandle meshHandle = AssetManager::CreateNew<Mesh>(uuid, filepath.string());
 		std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(meshHandle);
 		mesh->SetName(name);
-		mesh->SetVertexBufferHandle(vbHandle);
-		mesh->SetIndexBufferHandle(ibHandle);
+		//mesh->SetVertexBufferHandle(vbHandle);
+		//mesh->SetIndexBufferHandle(ibHandle);
 
 		RLS_CORE_INFO("[Serializer]: Loaded mesh '{0}' with GUID: {1}", name.c_str(), ConvertUUIDToString(uuid).c_str());
 		
@@ -626,7 +628,7 @@ namespace Relentless
 		DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
 		uploadBatch.Begin();
 
-		GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
+		//GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
 		for (uint32_t mipLevel = 0u; mipLevel < textureHeader.NrOfMips; ++mipLevel)
 		{
 			D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
@@ -655,9 +657,9 @@ namespace Relentless
 			uploadBatch.Upload(pTexture->GetInterface().Get(), mipLevel, &subresourceData, 1);
 		}
 		uploadBatch.Transition(pTexture->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		auto future = uploadBatch.End(gpuTaskManager.GetCommandQueue(CommandType::Direct).Get());
+		//auto future = uploadBatch.End(gpuTaskManager.GetCommandQueue(CommandType::Direct).Get());
 		pTexture->SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		future.wait();
+		//future.wait();
 
 		outHandle = handle;
 		return true;
@@ -799,7 +801,7 @@ namespace Relentless
 			material->SetEmissionTexture(textureHandle);
 		}
 
-		Application::Get().GetMemorymanager().SetDirtyMaterial(materialHandle);
+		//Application::Get().GetMemorymanager().SetDirtyMaterial(materialHandle);
 		RLS_CORE_INFO("Deserialized material \"{0}\" with GUID: {1}", material->GetName(), ConvertUUIDToString(uuid));
 
 		outHandle = materialHandle;
@@ -912,12 +914,12 @@ namespace Relentless
 		{
 			std::unique_lock<std::mutex> lock(mtx);
 
-			Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList, [&proceed, &mtx, &conditionVariable]()
-				{
-					std::lock_guard<std::mutex> callbackLock(mtx);
-					proceed.store(true, std::memory_order_release);
-					conditionVariable.notify_one();
-				});
+			//Application::Get().GetGPUTaskManager().ScheduleCommandList(pCommandList, [&proceed, &mtx, &conditionVariable]()
+			//	{
+			//		std::lock_guard<std::mutex> callbackLock(mtx);
+			//		proceed.store(true, std::memory_order_release);
+			//		conditionVariable.notify_one();
+			//	});
 
 			conditionVariable.wait(lock, [&proceed]() { return proceed.load(std::memory_order_acquire); });
 		}

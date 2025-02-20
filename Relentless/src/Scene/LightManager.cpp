@@ -6,21 +6,21 @@ namespace Relentless
 {
 	LightManager::LightManager() noexcept
 	{
-		ResourceManager& resourceManager = Application::Get().GetResourceManager();
-		m_DirectionalLightsSBHandle = resourceManager.CreateStructuredBufferSet("DirectionalLightsStructuredBuffer", 100u, sizeof(DirectionalLightComponent));
-		m_PointLightsSBHandle = resourceManager.CreateStructuredBufferSet("PointLightsStructuredBuffer", 100u, sizeof(PointLightComponent));
+		//ResourceManager& resourceManager = Application::Get().GetResourceManager();
+		//m_DirectionalLightsSBHandle = resourceManager.CreateStructuredBufferSet("DirectionalLightsStructuredBuffer", 100u, sizeof(DirectionalLightComponent));
+		//m_PointLightsSBHandle = resourceManager.CreateStructuredBufferSet("PointLightsStructuredBuffer", 100u, sizeof(PointLightComponent));
 	}
 
 	void LightManager::UpdateDirectionalLight(DirectionalLightComponent& directionalLight, entity entityID) noexcept
 	{
-		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
-		Application::Get().GetResourceManager().UploadStructuredBufferData(m_DirectionalLightsSBHandle, &directionalLight, sizeof(DirectionalLightComponent), frameIndex, GetLightIndex(entityID));
+		//const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		//Application::Get().GetResourceManager().UploadStructuredBufferData(m_DirectionalLightsSBHandle, &directionalLight, sizeof(DirectionalLightComponent), frameIndex, GetLightIndex(entityID));
 	}
 
 	void LightManager::UpdatePointLight(PointLightComponent& pointLight, entity entityID) noexcept
 	{
-		const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
-		Application::Get().GetResourceManager().UploadStructuredBufferData(m_PointLightsSBHandle, &pointLight, sizeof(PointLightComponent), frameIndex, GetLightIndex(entityID));
+		//const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+		//Application::Get().GetResourceManager().UploadStructuredBufferData(m_PointLightsSBHandle, &pointLight, sizeof(PointLightComponent), frameIndex, GetLightIndex(entityID));
 	}
 
 	void LightManager::AllocateDirectionalLight(entity entityID) noexcept

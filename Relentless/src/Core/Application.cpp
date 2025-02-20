@@ -2,22 +2,98 @@
 #include "Assets/AssetManager.h"
 #include "EventSystem/LayerStack.h"
 #include "EventSystem/EventBus.h"
-#include "Graphics/D3D12Core.h"
-#include "Graphics/Renderer/MasterRenderer.h"
-#include "Graphics/MemoryManager.h"
+#include "EventSystem/MouseEvents.h"
+#include "EventSystem/KeyboardEvents.h"
+#include "Graphics/RHI/CommandContext.h"
 #include "Input/Mouse.h"
+#include "Input/Keyboard.h"
 #include "Time.h"
 #include "UI/UI.h"
-#include "Window.h"
+
+#include "Graphics/RHI/ResourceViews.h"
 
 #include "Utility/SystemPaths.h"
 #include "Callback/Callback.h"
 
-#include "Graphics/RHI/Device.h"
-
 namespace Relentless
 {
 	Application* Application::s_Instance = nullptr;
+
+	void Application::OnWindowClosedOrDestroyed() noexcept
+	{
+		m_IsRunning = false;
+	}
+
+	void Application::OnMouseInput(uint32 keyCode, bool isPressed) noexcept
+	{
+		Mouse::UpdateState(keyCode, isPressed);
+		const RLS_Button button = Mouse::KeyCodeToButton(keyCode);
+		switch (button)
+		{
+		case RLS_Button::Left:
+		{
+			if (isPressed)
+				PublishEvent<LeftMouseButtonPressedEvent>(Mouse::GetCoordinates());
+			else 
+				PublishEvent<LeftMouseButtonReleasedEvent>(Mouse::GetCoordinates());
+			break;
+		}
+		case RLS_Button::Right:
+		{
+			if (isPressed)
+				PublishEvent<RightMouseButtonPressedEvent>(Mouse::GetCoordinates());
+			else
+				PublishEvent<RightMouseButtonReleasedEvent>(Mouse::GetCoordinates());
+			break;
+		}
+		case RLS_Button::Wheel:
+		{
+			if (isPressed)
+				PublishEvent<MiddleMouseButtonPressedEvent>(Mouse::GetCoordinates());
+			else
+				PublishEvent<MiddleMouseButtonPressedEvent>(Mouse::GetCoordinates());
+			break;
+		}
+		}
+	}
+
+	void Application::OnMouseMoved(uint32 x, uint32 y) noexcept
+	{
+		const Vector2u coords(x, y);
+		Mouse::OnMove(coords);
+		PublishEvent<MouseMovedEvent>(coords);
+	}
+
+	void Application::OnMouseRaw(long x, long y) noexcept
+	{
+		const Vector2i delta(x, y);
+		Mouse::OnRawDelta(delta);
+		PublishEvent<RawMouseMoveEvent>(delta);
+	}
+
+	void Application::OnMouseScrolled(float scrollAmount) noexcept
+	{
+		Mouse::UpdateMouseWheel(scrollAmount);
+		//TODO: Scroll Event! :)
+	}
+
+	void Application::OnKeyInput(uint32 keyCode, bool pressed) noexcept
+	{
+		if (keyCode <= 256)
+		{
+			Keyboard::UpdateKeyState(keyCode, pressed);
+			if (pressed)
+				PublishEvent<KeyPressedEvent>((RLS_Key)keyCode);
+			else
+				PublishEvent<KeyReleasedEvent>((RLS_Key)keyCode);
+		}
+	}
+
+	void Application::OnWindowResizedOrMoved(uint32 width, uint32 height) noexcept
+	{
+		RLS_CORE_INFO("Window Resized: {0}x{1}", width, height);
+		m_pSwapchain->OnResizeOrMove(width, height);
+	}
 
 	Application& Application::Get() noexcept
 	{
@@ -29,45 +105,35 @@ namespace Relentless
 	{
 		RLS_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
+	}
 
-		OnStartUp();
+	GraphicsDevice* Application::GetGraphicsDevice() const noexcept
+	{
+		return m_pGraphicsDevice;
 	}
 
 	void Application::Run() noexcept
 	{
-		m_MemoryManager.GetUploadBuffer()->Upload();
-		m_GPUTaskManager.WaitForAllFramesComplete();
-		
-		for (uint32_t i = 0; i < GPUTaskManager::FRAMES_IN_FLIGHT; ++i)
-			m_GPUTaskManager.InvokeAllCallbacks(i);
-
-		while (true)
+		Initialize_Internal();
+		while (m_IsRunning)
 		{
 			PROFILE_FUNC;
 
-			ExecuteMainThreadQueue();
-			Window::OnUpdate();
-			if (!m_IsRunning)
-				break;
+			m_pWindow->PollMessages();
+			Update_Internal();
+		}
+		ShutDown_Internal();
+		return;
 
-			Time::Tick();
-			m_MemoryManager.PerformDeferredDeletion();
-
-			{
-				PROFILE_SCOPE("Application::Run::OnUpdateAndRender");
-
-				for (auto& pLayer : LayerStack::Get())
-				{
-					pLayer->OnUpdate(Time::GetDeltaTime());
-					pLayer->OnRender();
-				}
-			}
+		while (true)
+		{
+			
 
 			{
 				PROFILE_SCOPE("Application::Run::OnImGuiRender");
-			
-				Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList = m_GPUTaskManager.RequestCommandList(CommandType::Direct);
-				
+
+				Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList;
+
 				ImguiLayer::BeginFrame(pCommandList);
 				for (auto& pLayer : LayerStack::Get())
 					pLayer->OnImGuiRender();
@@ -82,26 +148,9 @@ namespace Relentless
 					pLayer->OnPostRender();
 				}
 			}
-			 
-			m_MemoryManager.GetUploadBuffer()->Upload();
-			Mouse::Reset();
 
 			MasterRenderer::PrepareBackBuffer();
-
-			m_GPUTaskManager.Flush();
-
-			if (m_ShouldResizeWindow)
-			{
-				m_GPUTaskManager.WaitForAllFramesComplete();
-				Window::Resize();
-				m_ShouldResizeWindow = false;
-			}
-
-			Window::Present();
-
-			m_GPUTaskManager.MoveToNextFrame();
 		}
-		ShutDown();
 	}
 
 	void Application::PushLayer(Layer* pLayer) const noexcept
@@ -114,33 +163,10 @@ namespace Relentless
 		LayerStack::Get().PushOverlay(pLayer);
 	}
 
-	void Application::OnEvent(IEvent& event) noexcept
-	{
-		switch (event.GetEventType())
-		{
-		case EventType::WindowClosedEvent:
-			m_IsRunning = false;
-			break;
-		case EventType::WindowResizedEvent:
-		{
-			if (!IsInitialized())
-				return;
-
-			m_ShouldResizeWindow = true;
-			break;
-		}
-		}
-	}
-
 	void Application::SubmitToMainThread(const std::function<void()>& func)
 	{
 		std::scoped_lock(m_MainThreadFunctionQueueMutex);
 		m_MainThreadFunctionQueue.push(func);
-	}
-
-	MemoryManager& Application::GetMemorymanager() noexcept
-	{
-		return m_MemoryManager;
 	}
 
 	ThreadPool& Application::GetThreadPool() noexcept
@@ -148,87 +174,98 @@ namespace Relentless
 		return m_ThreadPool;
 	}
 
-	GPUTaskManager& Application::GetGPUTaskManager() noexcept
+	void Application::Initialize_Internal() noexcept
 	{
-		return m_GPUTaskManager;
-	}
-
-	ResourceManager& Application::GetResourceManager() noexcept
-	{
-		return m_ResourceManager;
-	}
-
-	void Application::OnStartUp() noexcept
-	{
-		EventBus::Get().SetMainApplication(this);
 		Log::Initialize();
 
 		GraphicsDeviceOptions options;
 		options.UseDebugDevice = true;
-		options.UseGPUValidation = true;
+		options.UseGPUValidation = false;
+		m_pGraphicsDevice = new GraphicsDevice(options);
 
-		Ref<GraphicsDevice> pDevice = new GraphicsDevice(options);
+		const Vector2i displaySize = WindowEx::GetDisplaySize();
+		m_pWindow = std::make_unique<WindowEx>(uint32(displaySize.x * 0.7f), uint32(displaySize.y * 0.7f));
+		m_pWindow->SetTitle(m_ApplicationSpecification.Name.c_str());
+
+		m_pWindow->OnCloseOrDestroy.Connect(this, &Application::OnWindowClosedOrDestroyed);
+		m_pWindow->OnMouseInput.Connect(this, &Application::OnMouseInput);
+		m_pWindow->OnMouseMove.Connect(this, &Application::OnMouseMoved);
+		m_pWindow->OnMouseRaw.Connect(this, &Application::OnMouseRaw);
+		m_pWindow->OnMouseScroll.Connect(this, &Application::OnMouseScrolled);
+		m_pWindow->OnKeyInput.Connect(this, &Application::OnKeyInput);
+		m_pWindow->OnResizeOrMove.Connect(this, &Application::OnWindowResizedOrMoved);
+
+		m_pSwapchain = new Swapchain(m_pGraphicsDevice, 3, m_pWindow->GetNativeWindow());
 
 		SystemPaths::Initialize();
-		D3D12Core::Initialize();
-		m_GPUTaskManager.Initialize();
-		m_MemoryManager.Initialize();
-		MasterRenderer::Initialize();
 		AssetRegistry::RecursiveScanDirectoryForAssets(ENGINE_ASSET_DIRECTORY);
 		AssetRegistry::RecursiveScanDirectoryForAssets(EDITOR_ASSET_DIRECTORY);
-		AssetManager::Initialize();
-		
-		UI::Initialize();
+		//AssetManager::Initialize();
 
-		const std::filesystem::path engineIni = FilepathUtils::Combine(SystemPaths::GetUserDocumentsDirectory(), "engine.ini");
+		//UI::Initialize();
 
-		uint32_t windowWidth{ 1280u };
-		uint32_t windowHeight{ 720u };
-		if (std::filesystem::exists(engineIni))
-		{
-			std::ifstream inFile(engineIni);
-			std::string s;
-			while (inFile >> s)
-			{
-				if (s == "[RenderWindow][Dimensions]")
-				{
-					inFile.ignore(1);
-					inFile >> windowWidth;
-					inFile >> windowHeight;
-					break;
-				}
-			}
-			inFile.close();
-		}
-		else
-		{
-			std::ofstream outFile(engineIni);
-			outFile << "[RenderWindow][Dimensions]\n";
-			outFile << windowWidth << "\n";
-			outFile << windowHeight;
-			outFile.close();
-		}
+		m_pImGuiLayer = std::make_unique<ImguiLayer>(m_pGraphicsDevice);
+		PushOverlay(m_pImGuiLayer.get());
 
-		Window::Initialize(m_ApplicationSpecification.Name, windowWidth, windowHeight);
-		
-		PushOverlay(&m_ImGuiLayer);
-
+		Initialize();
 		m_IsRunning = true;
 	}
 
-	void Application::ShutDown() noexcept
+	void Application::Update_Internal() noexcept
 	{
-		std::string engineDirectory = std::string(MAIN_ENGINE_DIRECTORY) + std::string("engine.ini");
+		if (!m_IsRunning)
+			return;
 
-		std::ofstream outFile(engineDirectory);
-		outFile << "[RenderWindow][Dimensions]\n";
-		outFile << Window::GetWidth() << "\n";
-		outFile << Window::GetHeight();
-		outFile.close();
+		Time::Tick();
 
+		ExecuteMainThreadQueue();
+
+		{
+			PROFILE_SCOPE("Application::Update_Internal::OnLayersUpdate");
+
+			for (auto& pLayer : LayerStack::Get())
+				pLayer->OnUpdate(Time::GetDeltaTime());
+		}
+
+		Update();
+
+		{
+			PROFILE_SCOPE("Application::Update_Internal::OnImGuiRender");
+
+			CommandContext* pContext = m_pGraphicsDevice->AllocateCommandContext();
+			pContext->InsertResourceBarrier(m_pSwapchain->GetBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			pContext->Execute();
+
+			CommandContext* pCommandContext = m_pGraphicsDevice->AllocateCommandContext();
+			m_pImGuiLayer->BeginFrameEx(m_pSwapchain->GetBackBuffer(), pCommandContext);
+			
+			for (auto& pLayer : LayerStack::Get())
+				pLayer->OnImGuiRender();
+			
+			m_pImGuiLayer->EndFrameEx(m_pSwapchain->GetBackBuffer(), pCommandContext);
+			pCommandContext->Execute();
+		}
+
+		{
+			CommandContext* pCommandContext = m_pGraphicsDevice->AllocateCommandContext();
+			pCommandContext->InsertResourceBarrier(m_pSwapchain->GetBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			pCommandContext->Execute();
+		}
+
+		Mouse::Update();
+		Keyboard::Update();
+
+		m_pSwapchain->Present();
+		m_pGraphicsDevice->TickFrame();
+	}
+
+
+	void Application::ShutDown_Internal() noexcept
+	{
+		ShutDown();
+		
 		LayerStack::Get().PopAllLayers();
-		m_GPUTaskManager.WaitForAllFramesComplete();
-		D3D12Core::ReportLiveObjects();
+		m_pGraphicsDevice->IdleGPU();
 	}
 
 	void Application::ExecuteMainThreadQueue() noexcept
@@ -243,5 +280,4 @@ namespace Relentless
 			m_MainThreadFunctionQueue.pop();
 		}
 	}
-
 }
