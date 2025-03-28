@@ -48,11 +48,11 @@ namespace Relentless
 		ShaderLibrary* pShaderLibrary = GetParent()->GetShaderLibrary();
 		for (int i = 0; i < m_Desc.m_ShaderInfo.size(); ++i)
 		{
-			const std::string& shaderName = m_Desc.m_ShaderInfo[i];
-			if (shaderName.empty())
+			const PipelineStateInitializer::ShaderDesc& shaderDesc = m_Desc.m_ShaderInfo[i];
+			if (shaderDesc.Name.empty())
 				continue;
 
-			const std::shared_ptr<Shader> pShader = pShaderLibrary->Get(shaderName);
+			const std::shared_ptr<Shader> pShader = pShaderLibrary->Get(shaderDesc.Name, shaderDesc.EntryPoint);
 			const ShaderType shaderType = (ShaderType)i;
 			switch (shaderType)
 			{
@@ -336,19 +336,19 @@ namespace Relentless
 		depthStencilDesc.BackFace = depthStencilDesc.FrontFace;
 	}
 
-	void PipelineStateInitializer::SetVertexShader(const char* pShaderName) noexcept
+	void PipelineStateInitializer::SetVertexShader(const char* pShaderName, const char* pEntryPoint) noexcept
 	{
-		m_ShaderInfo[(int)ShaderType::VERTEX] = pShaderName;
+		m_ShaderInfo[(int)ShaderType::VERTEX] = ShaderDesc{ .Name = pShaderName, .EntryPoint = pEntryPoint };
 	}
 
-	void PipelineStateInitializer::SetPixelShader(const char* pShaderName) noexcept
+	void PipelineStateInitializer::SetPixelShader(const char* pShaderName, const char* pEntryPoint) noexcept
 	{
-		m_ShaderInfo[(int)ShaderType::PIXEL] = pShaderName;
+		m_ShaderInfo[(int)ShaderType::PIXEL] = ShaderDesc{ .Name = pShaderName, .EntryPoint = pEntryPoint };
 	}
 
-	void PipelineStateInitializer::SetComputeShader(const char* pShaderName) noexcept
+	void PipelineStateInitializer::SetComputeShader(const char* pShaderName, const char* pEntryPoint) noexcept
 	{
-		m_ShaderInfo[(int)ShaderType::Compute] = pShaderName;
+		m_ShaderInfo[(int)ShaderType::Compute] = ShaderDesc{ .Name = pShaderName, .EntryPoint = pEntryPoint };
 	}
 
 	void PipelineStateInitializer::SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE topology) noexcept

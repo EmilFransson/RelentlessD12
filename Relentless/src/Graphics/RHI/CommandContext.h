@@ -93,7 +93,7 @@ namespace Relentless
 		void BindRootCBV(uint32 rootIndex, const void* pData, uint32 dataSize) noexcept;
 		void BindRootCBV(uint32 rootIndex, const BufferEx* allocation) noexcept;
 		void BeginRenderPass(const RenderPassInfo& renderPassInfo) noexcept;
-		void CopyBuffer(const BufferEx* pSource, const BufferEx* pTarget, uint64_t srcOffset, uint64_t dstOffset, uint64_t nrOfBytes) noexcept;
+		void CopyBuffer(const BufferEx* pSource, const BufferEx* pTarget, uint64 size, uint64 sourceOffset, uint64 destinationOffset) noexcept;
 		void ClearState() noexcept;
 		void CopyResource(const DeviceResource* pSource, const DeviceResource* pTarget) noexcept;
 		void CopyTexture(const TextureEx* pSource, const BufferEx* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource /*= 0*/, uint32 destinationOffset /*= 0*/) noexcept;

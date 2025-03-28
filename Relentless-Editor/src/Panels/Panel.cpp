@@ -15,14 +15,17 @@ namespace Relentless
 		ImGui::Begin(m_Name.c_str(), &open, m_Flags);
 
 		m_ContentRegionAvail = Vector2u(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+		m_ContentRegionMin = Vector2u(ImGui::GetWindowContentRegionMin().x, ImGui::GetWindowContentRegionMin().y);
+		m_ContentRegionMax = Vector2u(ImGui::GetWindowContentRegionMax().x, ImGui::GetWindowContentRegionMax().y);
+
 		m_Position = Vector2u(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y);
 		m_Size = Vector2u(ImGui::GetWindowSize().x, ImGui::GetWindowSize().y);
 
-		m_IsDocked = ImGui::IsWindowDocked();
-		m_IsFocused = ImGui::IsWindowFocused();
-		m_IsHovered = ImGui::IsWindowHovered();
-
 		OnRender();
+
+		m_IsDocked = ImGui::IsWindowDocked();
+		m_IsFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+		m_IsHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
 
 		ImGui::End();
 
@@ -32,6 +35,27 @@ namespace Relentless
 	const Vector2u& PanelBase::GetContentRegionAvail() const noexcept
 	{
 		return m_ContentRegionAvail;
+	}
+
+	const Vector2u& PanelBase::GetContentRegionMin() const noexcept
+	{
+		return m_ContentRegionMin;
+	}
+
+	const Vector2u& PanelBase::GetContentRegionMax() const noexcept
+	{
+		return m_ContentRegionMax;
+	}
+
+	FloatRect PanelBase::GetContentRegionInScreenSpace() const noexcept
+	{
+		FloatRect region;
+		region.Top		= m_Position.y + m_ContentRegionMin.y;
+		region.Left		= m_Position.x + m_ContentRegionMin.x;
+		region.Right	= m_Position.x + m_ContentRegionMax.x;
+		region.Bottom	= m_Position.y + m_ContentRegionMax.y;
+
+		return region;
 	}
 
 	const Vector2u& PanelBase::GetPosition() const noexcept

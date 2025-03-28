@@ -11,12 +11,11 @@ namespace Relentless
 	public:
 		ForwardRenderer(GraphicsDevice* pDevice) noexcept;
 		~ForwardRenderer() noexcept = default;
-		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept;
-	private:
-		void Initialize(uint32 samples) noexcept;
+		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, RenderModeEx renderMode) noexcept;
 	private:
 		GraphicsDevice* m_pDevice = nullptr;
 
-		Ref<PipelineState> m_pForwardPSO = nullptr;
+		Ref<PipelineState> m_pForwardSolidPSO = nullptr;
+		Ref<PipelineState> m_pForwardWireframePSO = nullptr;
 	};
 }

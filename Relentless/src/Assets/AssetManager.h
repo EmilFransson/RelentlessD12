@@ -23,9 +23,9 @@ namespace Relentless
 	};
 
 	template<>
-	struct AssetTypeTrait<Texture2D>
+	struct AssetTypeTrait<TextureEx>
 	{
-		static constexpr AssetType value = AssetType::Texture2D;
+		static constexpr AssetType value = AssetType::TextureEx;
 	};
 
 	template<>
@@ -43,25 +43,36 @@ namespace Relentless
 	template<typename AssetType>
 	struct AssetStorage
 	{
-		__forceinline [[nodiscard]] std::shared_ptr<AssetType> GetAsset(const AssetHandle& assetHandle) noexcept
+		__forceinline [[nodiscard]] Ref<AssetType> GetAsset(const AssetHandle& assetHandle) noexcept
 		{
 			RLS_ASSERT(assetHandle.Type == AssetTypeTrait<AssetType>::value, "Asset type mismatch detected.");
 
 			std::lock_guard<std::mutex> guard(Mutex);
 
-			const uint32_t physicalIndex = SparseArray[assetHandle.Index];
+			const uint32 physicalIndex = SparseArray[assetHandle.Index];
 			RLS_ASSERT(!(physicalIndex > Assets.size()), "Index out of bounds - No asset corresponds to asset handle.");
 
 			return Assets[physicalIndex];
 		}
 
-		__forceinline [[nodiscard]] uint32_t Add(std::shared_ptr<AssetType> pAssetType) noexcept 
+		__forceinline [[nodiscard]] uint32 GetPhysicalIndex(const AssetHandle& assetHandle) noexcept
 		{
-			uint32_t sparseIndex = NULL_INDEX;
+			RLS_ASSERT(assetHandle.Type == AssetTypeTrait<AssetType>::value, "Asset type mismatch detected.");
 
 			std::lock_guard<std::mutex> guard(Mutex);
 
-			const uint32_t physicalIndex = static_cast<uint32_t>(Assets.size());
+			const uint32 physicalIndex = SparseArray[assetHandle.Index];
+			RLS_ASSERT(!(physicalIndex > Assets.size()), "Index out of bounds - No asset corresponds to asset handle.");
+			return physicalIndex;
+		}
+
+		__forceinline [[nodiscard]] uint32 Add(Ref<AssetType> pAssetType) noexcept 
+		{
+			uint32 sparseIndex = NULL_INDEX;
+
+			std::lock_guard<std::mutex> guard(Mutex);
+
+			const uint32 physicalIndex = static_cast<uint32>(Assets.size());
 
 			if (!FreeList.empty())
 			{
@@ -72,7 +83,7 @@ namespace Relentless
 			}
 			else
 			{
-				sparseIndex = static_cast<uint32_t>(Assets.size());
+				sparseIndex = static_cast<uint32>(Assets.size());
 				SparseArray.push_back(sparseIndex);
 			}
 
@@ -95,22 +106,22 @@ namespace Relentless
 		{
 			RLS_ASSERT(handle.Type == AssetTypeTrait<AssetType>::value, "Asset type mismatch detected.");
 
-			const uint32_t sparseIndex = handle.Index;
+			const uint32 sparseIndex = handle.Index;
 
 			std::lock_guard<std::mutex> guard(Mutex);
 
-			const uint32_t assetIndex = SparseArray[sparseIndex];
+			const uint32 assetIndex = SparseArray[sparseIndex];
 
 			RLS_ASSERT(assetIndex < Assets.size(), "Asset index is invalid.");
 			if (assetIndex >= Assets.size())
 				return;
 
-			const uint32_t assetsBackIndex = static_cast<uint32_t>(Assets.size() - 1);
+			const uint32 assetsBackIndex = static_cast<uint32>(Assets.size() - 1);
 			if (assetIndex != assetsBackIndex)
 			{
 				std::swap(Assets[assetIndex], Assets[assetsBackIndex]);
 
-				const uint32_t swappedSparseIndex = ReverseLookup[assetsBackIndex];
+				const uint32 swappedSparseIndex = ReverseLookup[assetsBackIndex];
 				SparseArray[swappedSparseIndex] = assetIndex;
 				ReverseLookup[assetIndex] = swappedSparseIndex;
 			}
@@ -118,7 +129,7 @@ namespace Relentless
 			Assets.pop_back();
 			ReverseLookup.pop_back();
 
-			SparseArray[sparseIndex] = std::numeric_limits<uint32_t>::max();
+			SparseArray[sparseIndex] = std::numeric_limits<uint32>::max();
 			FreeList.push(sparseIndex);
 		}
 
@@ -128,7 +139,7 @@ namespace Relentless
 			
 			std::lock_guard<std::mutex> guard(Mutex);
 
-			const uint32_t physicalIndex = SparseArray[assetHandle.Index];
+			const uint32 physicalIndex = SparseArray[assetHandle.Index];
 			RLS_ASSERT(physicalIndex < RefCounts.size(), "Index out of bounds - No asset corresponds to asset handle.");
 
 			RefCounts[physicalIndex]++;
@@ -140,7 +151,7 @@ namespace Relentless
 
 			std::lock_guard<std::mutex> guard(Mutex);
 
-			const uint32_t physicalIndex = SparseArray[assetHandle.Index];
+			const uint32 physicalIndex = SparseArray[assetHandle.Index];
 
 			if (physicalIndex < RefCounts.size())
 			{
@@ -150,16 +161,16 @@ namespace Relentless
 		}
 
 	public:
-		std::vector<uint32_t> SparseArray;
-		std::vector<uint32_t> ReverseLookup;
-		std::vector<std::shared_ptr<AssetType>> Assets;
+		std::vector<uint32> SparseArray;
+		std::vector<uint32> ReverseLookup;
+		std::vector<Ref<AssetType>> Assets;
 		std::vector<ReferenceCount> RefCounts;
-		std::queue<uint32_t> FreeList;
+		std::queue<uint32> FreeList;
 
 		std::mutex Mutex;
 	};
 
-	enum class EAssetStatus: uint8_t
+	enum class EAssetStatus: uint8
 	{
 		None = 0,
 		Loaded,
@@ -179,14 +190,14 @@ namespace Relentless
 		static void Initialize() noexcept;
 
 		template<typename AssetType>
-		static [[nodiscard]] std::shared_ptr<AssetType> Get(const AssetHandle& assetHandle) noexcept
+		static [[nodiscard]] Ref<AssetType> Get(const AssetHandle& assetHandle) noexcept
 		{
 			RLS_ASSERT(assetHandle != NULL_HANDLE, "Asset handle is not valid.");
 			return GetStorage<AssetType>().GetAsset(assetHandle);
 		}
 
 		template<typename AssetType>
-		static [[nodiscard]] std::shared_ptr<AssetType> GetFromPath(const std::filesystem::path& fullPath) noexcept
+		static [[nodiscard]] Ref<AssetType> GetFromPath(const std::filesystem::path& fullPath) noexcept
 		{
 			RLS_ASSERT(s_LoadedAssets.contains(fullPath.string()), "Path to asset is invalid.");
 			return GetStorage<AssetType>().GetAsset(s_LoadedAssets[fullPath.string()]);
@@ -223,34 +234,34 @@ namespace Relentless
 		static std::future<void> RequestAsyncLoadAsset(const std::filesystem::path& filepathToAsset, DelegateToCall&& delegateToCall) noexcept;
 		static bool RequestLoadAsset(const std::filesystem::path& filepathToAsset, AssetHandle& outHandle) noexcept;
 
-		template<typename AssetType>
-		[[nodiscard]] static typename std::enable_if<std::disjunction<
-		std::is_same<AssetType, Material>,
-		std::is_same<AssetType, Mesh>
-		>::value, AssetHandle>::type
-		CreateNew(const UUID& uuid = CreateUUID(), const std::string& pathToFile = "") noexcept
-		{
-			const uint32_t index = GetStorage<AssetType>().Add(std::make_shared<AssetType>());
-			auto [it, _] = InsertMetaData(uuid, index, AssetTypeTrait<AssetType>::value);
+		//template<typename AssetType>
+		//[[nodiscard]] static typename std::enable_if<std::disjunction<
+		//std::is_same<AssetType, Material>,
+		//std::is_same<AssetType, Mesh>
+		//>::value, AssetHandle>::type
+		//CreateNew(const UUID& uuid = CreateUUID(), const std::string& pathToFile = "") noexcept
+		//{
+		//	const uint32_t index = GetStorage<AssetType>().Add(new AssetType());
+		//	auto [it, _] = InsertMetaData(uuid, index, AssetTypeTrait<AssetType>::value);
+		//
+		//	if (!pathToFile.empty())
+		//		Link(pathToFile, uuid);
+		//
+		//	return it->second;
+		//}
 
-			if (!pathToFile.empty())
-				Link(pathToFile, uuid);
-
-			return it->second;
-		}
-
-		template<typename AssetType>
-		[[nodiscard]] static typename std::enable_if<std::is_same<AssetType, Texture2D>::value, AssetHandle>::type
-			CreateNew(const Texture2DSpecification& specification, const UUID& uuid = CreateUUID(), const std::string& pathToFile = "") noexcept
-		{
-			const uint32_t index = GetStorage<AssetType>().Add(std::make_shared<AssetType>(specification));
-			auto [it, _] = InsertMetaData(uuid, index, AssetTypeTrait<AssetType>::value);
-
-			if (!pathToFile.empty())
-				Link(pathToFile, uuid);
-
-			return it->second;
-		}
+		//template<typename AssetType>
+		//[[nodiscard]] static typename std::enable_if<std::is_same<AssetType, Texture2D>::value, AssetHandle>::type
+		//	CreateNew(const Texture2DSpecification& specification, const UUID& uuid = CreateUUID(), const std::string& pathToFile = "") noexcept
+		//{
+		//	const uint32_t index = GetStorage<AssetType>().Add(new AssetType(specification));
+		//	auto [it, _] = InsertMetaData(uuid, index, AssetTypeTrait<AssetType>::value);
+		//
+		//	if (!pathToFile.empty())
+		//		Link(pathToFile, uuid);
+		//
+		//	return it->second;
+		//}
 
 		template<typename AssetType>
 		static void Destroy(const AssetHandle& handle) noexcept
@@ -271,6 +282,7 @@ namespace Relentless
 		{
 			static_assert(always_false<AssetType>::value, "This operation is not supported by the type, or the type does not exist.");
 		}
+
 	private:
 		static void IncreaseReferenceCount(const AssetHandle& assetHandle) noexcept;
 		static void DecreaseReferenceCount(const AssetHandle& assetHandle) noexcept;
@@ -279,7 +291,7 @@ namespace Relentless
 		struct AssetStorages
 		{
 			AssetStorage<Mesh> MeshStorage;
-			AssetStorage<Texture2D> Texture2DStorage;
+			AssetStorage<TextureEx> TextureStorage;
 			AssetStorage<Material> MaterialStorage;
 		};
 
@@ -302,7 +314,7 @@ namespace Relentless
 	};
 
 	template<>
-	inline AssetStorage<Texture2D>& AssetManager::GetStorage<Texture2D>() noexcept { return s_AssetStorages.Texture2DStorage; }
+	inline AssetStorage<TextureEx>& AssetManager::GetStorage<TextureEx>() noexcept { return s_AssetStorages.TextureStorage; }
 
 	template<>
 	inline AssetStorage<Mesh>& AssetManager::GetStorage<Mesh>() noexcept { return s_AssetStorages.MeshStorage; }

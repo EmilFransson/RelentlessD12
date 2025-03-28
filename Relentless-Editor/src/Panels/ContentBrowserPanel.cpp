@@ -156,13 +156,13 @@ namespace Relentless
 		ImGui::SetCursorPos(ImVec2(positionBeforeNode.x + 30.0f, positionBeforeNode.y + 6.0f));
 		if (opened)
 		{
-			const std::shared_ptr<Texture> openDirectoryTexture = AssetManager::Get<Texture2D>(m_OpenDirectoryTextureHandle);
-			ImGui::Image((ImTextureID)openDirectoryTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(22.0f, 22.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0.58f, 0.78f, 0.38f, 1.0f));
+			const Ref<TextureEx> openDirectoryTexture = AssetManager::Get<TextureEx>(m_OpenDirectoryTextureHandle);
+			ImGui::Image((ImTextureID)openDirectoryTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(22.0f, 22.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0.58f, 0.78f, 0.38f, 1.0f));
 		}
 		else
 		{
-			const std::shared_ptr<Texture> closedDirectoryTexture = AssetManager::Get<Texture2D>(m_DirectoryTextureHandle);
-			ImGui::Image((ImTextureID)closedDirectoryTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(22.0f, 22.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0.58f, 0.78f, 0.38f, 1.0f));
+			const Ref<TextureEx> closedDirectoryTexture = AssetManager::Get<TextureEx>(m_DirectoryTextureHandle);
+			ImGui::Image((ImTextureID)closedDirectoryTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(22.0f, 22.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0.58f, 0.78f, 0.38f, 1.0f));
 		}
 		
 		ImGui::SetCursorPos(positionAfterNode);
@@ -254,13 +254,13 @@ namespace Relentless
 
 		if (opened)
 		{
-			const std::shared_ptr<Texture> openDirectoryTexture = AssetManager::Get<Texture2D>(m_OpenDirectoryTextureHandle);
-			ImGui::Image((ImTextureID)openDirectoryTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(22.0f, 22.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0.58f, 0.78f, 0.38f, 1.0f));
+			const Ref<TextureEx> openDirectoryTexture = AssetManager::Get<TextureEx>(m_OpenDirectoryTextureHandle);
+			ImGui::Image((ImTextureID)openDirectoryTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(22.0f, 22.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0.58f, 0.78f, 0.38f, 1.0f));
 		}
 		else
 		{
-			const std::shared_ptr<Texture> closedDirectoryTexture = AssetManager::Get<Texture2D>(m_DirectoryTextureHandle);
-			ImGui::Image((ImTextureID)closedDirectoryTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(22.0f, 22.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0.58f, 0.58f, 0.58f, 1.0f));
+			const Ref<TextureEx> closedDirectoryTexture = AssetManager::Get<TextureEx>(m_DirectoryTextureHandle);
+			ImGui::Image((ImTextureID)closedDirectoryTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(22.0f, 22.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0.58f, 0.58f, 0.58f, 1.0f));
 		}
 		ImGui::SetCursorPos(positionAfterNode);
 
@@ -308,8 +308,8 @@ namespace Relentless
 		const ImVec2 currentPosition = ImGui::GetCursorScreenPos();
 		const ImVec2 plusIconPosition = ImVec2(addButtonMin.x + 16, (addButtonMin.y + addButtonMax.y) / 2.0f - 8.0f);
 		ImGui::SetCursorScreenPos(plusIconPosition);
-		const std::shared_ptr<Texture> plusIconTexture = AssetManager::Get<Texture2D>(m_PlusIconTextureHandle);
-		ImGui::Image((ImTextureID)plusIconTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(16.0f, 16.0f));
+		const Ref<TextureEx> plusIconTexture = AssetManager::Get<TextureEx>(m_PlusIconTextureHandle);
+		ImGui::Image((ImTextureID)plusIconTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(16.0f, 16.0f));
 		ImGui::SetCursorScreenPos(currentPosition);
 
 		ImGui::PopStyleColor();
@@ -335,8 +335,8 @@ namespace Relentless
 		const ImVec2 importIconPosition = ImVec2(importButtonMin.x + 1, importButtonMin.y + 2.0f);
 		ImGui::SetCursorScreenPos(importIconPosition);
 		
-		const std::shared_ptr<Texture> importIconTexture = AssetManager::Get<Texture2D>(m_ImportIconTextureHandle);
-		ImGui::Image((ImTextureID)importIconTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(28.0f, 32.0f), ImVec2(0,0), ImVec2(1,1), ImVec4(192.0f / 255, 192.0f / 255, 192.0f / 255, 1.0f));
+		const Ref<TextureEx> importIconTexture = AssetManager::Get<TextureEx>(m_ImportIconTextureHandle);
+		ImGui::Image((ImTextureID)importIconTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(28.0f, 32.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(192.0f / 255, 192.0f / 255, 192.0f / 255, 1.0f));
 
 		if (m_SelectedHierarchyDirectories.size() > 1)
 			ImGui::EndDisabled();
@@ -469,14 +469,14 @@ namespace Relentless
 		const ImVec2 buttonRectMin = ImGui::GetItemRectMin();
 		ImGui::SetCursorScreenPos(ImVec2(buttonRectMin.x, buttonRectMin.y + 0.0f));
 
-		std::shared_ptr<Texture> filterIconTexture = AssetManager::Get<Texture2D>(m_FilterIconTextureHandle);
-		ImGui::Image((ImTextureID)filterIconTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(30.0f, 34.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(192.0f / 255, 192.0f / 255, 192.0f / 255, 1.0f));
+		Ref<TextureEx> filterIconTexture = AssetManager::Get<TextureEx>(m_FilterIconTextureHandle);
+		ImGui::Image((ImTextureID)filterIconTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(30.0f, 34.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(192.0f / 255, 192.0f / 255, 192.0f / 255, 1.0f));
 		
 		ImGui::SameLine(32.0f);
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);
 
-		std::shared_ptr<Texture> arrowDownIconTexture = AssetManager::Get<Texture2D>(m_DownArrowIconTextureHandle);
-		ImGui::Image((ImTextureID)arrowDownIconTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(16.0f, 16.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(192.0f / 255, 192.0f / 255, 192.0f / 255, 1.0f));
+		Ref<TextureEx> arrowDownIconTexture = AssetManager::Get<TextureEx>(m_DownArrowIconTextureHandle);
+		ImGui::Image((ImTextureID)arrowDownIconTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(16.0f, 16.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(192.0f / 255, 192.0f / 255, 192.0f / 255, 1.0f));
 
 		if (isHovered)
 			UI::Utility::DrawTooltip("Open the Add Filter Menu to add or manage filters.");
@@ -541,8 +541,8 @@ namespace Relentless
 			}
 			
 
-			const std::shared_ptr<Texture2D> pUndoIcon = AssetManager::Get<Texture2D>(m_UndoArrowIconTextureHandle);
-			ImGui::Image((ImTextureID)pUndoIcon->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(12, 12), ImVec2(0,0), ImVec2(1, 1), tintColor);
+			const Ref<TextureEx> pUndoIcon = AssetManager::Get<TextureEx>(m_UndoArrowIconTextureHandle);
+			ImGui::Image((ImTextureID)pUndoIcon->GetSRV()->GetGPUHandle().ptr, ImVec2(12, 12), ImVec2(0, 0), ImVec2(1, 1), tintColor);
 			ImGui::SameLine();
 
 			ImGui::SetCursorPosX(imagePosition + 20.0f);
@@ -637,7 +637,7 @@ namespace Relentless
 		}
 		
 		{
-			bool textureBoxIsChecked = m_ActiveAssetTypeFilters.contains(AssetType::Texture2D);
+			bool textureBoxIsChecked = m_ActiveAssetTypeFilters.contains(AssetType::TextureEx);
 			static bool textureFilterHovered = false;
 			static ImVec2 min = {};
 			static ImVec2 max = {};
@@ -660,9 +660,9 @@ namespace Relentless
 			{
 				textureBoxIsChecked = !textureBoxIsChecked;
 				if (textureBoxIsChecked)
-					m_ActiveAssetTypeFilters.insert(AssetType::Texture2D);
+					m_ActiveAssetTypeFilters.insert(AssetType::TextureEx);
 				else
-					m_ActiveAssetTypeFilters.erase(AssetType::Texture2D);
+					m_ActiveAssetTypeFilters.erase(AssetType::TextureEx);
 			}
 		}
 
@@ -877,7 +877,7 @@ namespace Relentless
 				const ImVec2 vMaxLine(vMinLine.x + m_ThumbnailWidth - 1.6f, thumbnailMinPoint.y + m_ThumbnailWidth);
 
 				ImU32 lineColor;
-				if (assetType == AssetType::Texture2D)
+				if (assetType == AssetType::TextureEx)
 					lineColor = IM_COL32(180, 0, 0, 255);
 				else if (assetType == AssetType::Mesh)
 					lineColor = IM_COL32(54, 214, 198, 255);
@@ -894,13 +894,13 @@ namespace Relentless
 				ImGui::GetStyle().FrameBorderSize = 0.0f;
 				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-				if (assetType == AssetType::Texture2D)
+				if (assetType == AssetType::TextureEx)
 				{
 					const AssetHandle textureHandle = AssetManager::GetHandleByPath(entryPath);
-					const std::shared_ptr<Texture2D> texture = AssetManager::Get<Texture2D>(textureHandle);
+					const Ref<TextureEx> texture = AssetManager::Get<TextureEx>(textureHandle);
 					const std::string name = texture->GetName();
 
-					ImGui::ImageButton((ImTextureID)texture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth - 5.0f, m_ThumbnailWidth));
+					ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_ThumbnailWidth - 5.0f, m_ThumbnailWidth));
 					ImGui::SetItemAllowOverlap();
 					
 					ImGui::PopStyleVar();
@@ -916,10 +916,10 @@ namespace Relentless
 				}
 				else if (assetType == AssetType::Material)
 				{
-					const std::shared_ptr<Texture2D> texture = AssetManager::Get<Texture2D>(m_MaterialTextureHandle);
+					const Ref<TextureEx> texture = AssetManager::Get<TextureEx>(m_MaterialTextureHandle);
 					const std::string displayName = std::filesystem::path(entry).filename().string();
 
-					ImGui::ImageButton((ImTextureID)texture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth - 5.0f, m_ThumbnailWidth));
+					ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_ThumbnailWidth - 5.0f, m_ThumbnailWidth));
 					ImGui::SetItemAllowOverlap();
 
 					ImGui::PopStyleVar();
@@ -931,10 +931,10 @@ namespace Relentless
 				}
 				else if (assetType == AssetType::Mesh)
 				{
-					const std::shared_ptr<Texture2D> texture = AssetManager::Get<Texture2D>(m_MeshTextureHandle);
+					const Ref<TextureEx> texture = AssetManager::Get<TextureEx>(m_MeshTextureHandle);
 					const std::string displayName = std::filesystem::path(entry).filename().string();
 
-					ImGui::ImageButton((ImTextureID)texture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth - 5.0f, m_ThumbnailWidth));
+					ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_ThumbnailWidth - 5.0f, m_ThumbnailWidth));
 					ImGui::SetItemAllowOverlap();
 					
 					ImGui::PopStyleVar();
@@ -1278,7 +1278,7 @@ namespace Relentless
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 		ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 
-		ImGui::ImageButton((void*)AssetManager::Get<Texture2D>(m_DirectoryTextureHandle)->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), ImVec4(0.58f, 0.58f, 0.58f, 1.0f));
+		ImGui::ImageButton((void*)AssetManager::Get<TextureEx>(m_DirectoryTextureHandle)->GetSRV()->GetGPUHandle().ptr, ImVec2(m_ThumbnailWidth, m_ThumbnailWidth), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), ImVec4(0.58f, 0.58f, 0.58f, 1.0f));
 
 		ImGui::PopStyleColor(4);
 		ImGui::PopStyleVar();
@@ -1436,33 +1436,33 @@ namespace Relentless
 			{
 			case AssetType::Material:
 			{
-				std::shared_ptr<Texture2D> pTexture = AssetManager::Get<Texture2D>(m_MaterialTextureHandle);
+				Ref<TextureEx> pTexture = AssetManager::Get<TextureEx>(m_MaterialTextureHandle);
 				if (ImGui::BeginDragDropSource())
 				{
 					ImGui::SetDragDropPayload("MATERIAL_DRAG_DROP", &handle, sizeof(AssetHandle));
-					ImGui::Image((ImTextureID)pTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(64,64));
+					ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(64,64));
 					ImGui::EndDragDropSource();
 				}
 				break;
 			}
 			case AssetType::Mesh:
 			{
-				std::shared_ptr<Texture2D> pTexture = AssetManager::Get<Texture2D>(m_MeshTextureHandle);
+				Ref<TextureEx> pTexture = AssetManager::Get<TextureEx>(m_MeshTextureHandle);
 				if (ImGui::BeginDragDropSource())
 				{
 					ImGui::SetDragDropPayload("MESH_DRAG_DROP", &handle, sizeof(AssetHandle));
-					ImGui::Image((ImTextureID)pTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(64, 64));
+					ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(64, 64));
 					ImGui::EndDragDropSource();
 				}
 				break;
 			}
-			case AssetType::Texture2D:
+			case AssetType::TextureEx:
 			{
-				std::shared_ptr<Texture2D> pTexture = AssetManager::Get<Texture2D>(handle);
+				Ref<TextureEx> pTexture = AssetManager::Get<TextureEx>(handle);
 				if (ImGui::BeginDragDropSource())
 				{
 					ImGui::SetDragDropPayload("TEXTURE2D_DRAG_DROP", &handle, sizeof(AssetHandle));
-					ImGui::Image((ImTextureID)pTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(64, 64));
+					ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(64, 64));
 					ImGui::EndDragDropSource();
 				}
 				break;
@@ -1542,10 +1542,10 @@ namespace Relentless
 
 			ImGui::SameLine();
 
-			const std::shared_ptr<Texture2D> pRightArrowTexture = AssetManager::Get<Texture2D>(m_RightArrowIconTextureHandle);
+			const Ref<TextureEx> pRightArrowTexture = AssetManager::Get<TextureEx>(m_RightArrowIconTextureHandle);
 			ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX(), arrowImageY));
 			
-			ImGui::Image((ImTextureID)pRightArrowTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(20.0f, 20.0f), ImVec2(0,0), ImVec2(1,1), ImVec4(192.0f / 255, 192.0f / 255, 192.0f / 255, 1.0f));
+			ImGui::Image((ImTextureID)pRightArrowTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(20.0f, 20.0f), ImVec2(0, 0), ImVec2(1, 1), ImVec4(192.0f / 255, 192.0f / 255, 192.0f / 255, 1.0f));
 			ImGui::SameLine();
 		}
 	}

@@ -1,5 +1,6 @@
 #include "UI.h"
 #include "Assets/AssetManager.h"
+#include "Graphics/RHI/ResourceViews.h"
 
 namespace Relentless
 {
@@ -138,9 +139,9 @@ namespace Relentless
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-		const std::shared_ptr<Texture> texture = AssetManager::Get<Texture2D>(s_GlobalData.SearchIconTextureHandle);
+		const Ref<TextureEx> texture = AssetManager::Get<TextureEx>(s_GlobalData.SearchIconTextureHandle);
 		const ImVec4 tintCol = m_IsActive ? ImVec4(0.9f, 0.9f, 0.9f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		ImGui::ImageButton((ImTextureID)texture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(24.0f, 24.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
+		ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(24.0f, 24.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
 		
 		m_SearchIconHovered = ImGui::IsItemHovered();
 		if (m_SearchIconHovered)
@@ -153,9 +154,9 @@ namespace Relentless
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-		const std::shared_ptr<Texture> texture = AssetManager::Get<Texture2D>(s_GlobalData.CancelIconTextureHandle);
+		const Ref<TextureEx> texture = AssetManager::Get<TextureEx>(s_GlobalData.CancelIconTextureHandle);
 		const ImVec4 tintCol = m_CancelIconHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		ImGui::ImageButton((ImTextureID)texture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(15.0f, 15.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
+		ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(15.0f, 15.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
 
 		m_CancelIconHovered = ImGui::IsItemHovered();
 		if (m_CancelIconHovered)
@@ -174,11 +175,11 @@ namespace Relentless
 	void SearchBar::DrawSearchHistoryPopupIcon() noexcept
 	{
 		const ImVec4 tintCol = m_ArrowDownIconHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		const std::shared_ptr<Texture2D> texture = AssetManager::Get<Texture2D>(s_GlobalData.ArrowDownIconTextureHandle);
+		const Ref<TextureEx> texture = AssetManager::Get<TextureEx>(s_GlobalData.ArrowDownIconTextureHandle);
 
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-		ImGui::ImageButton((ImTextureID)texture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(17.0f, 17.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
+		ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(17.0f, 17.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
 
 		bool shouldOpenNew = false;
 		if (ImGui::IsItemClicked())

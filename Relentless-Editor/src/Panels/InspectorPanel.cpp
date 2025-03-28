@@ -49,7 +49,7 @@ namespace Relentless
 
 		if (m_InspectedAssetHandle != NULL_HANDLE)
 		{
-			std::shared_ptr<Material> material = AssetManager::Get<Material>(m_InspectedAssetHandle);
+			Ref<Material> material = AssetManager::Get<Material>(m_InspectedAssetHandle);
 
 			bool isDefaultMaterial = material->GetName() == "Default-Material";
 			if (isDefaultMaterial)
@@ -123,8 +123,8 @@ namespace Relentless
 
 			if (material->HasAlbedoTexture())
 			{
-				std::shared_ptr<Texture2D> albedoTexture = material->GetAlbedoTexture();
-				ImGui::ImageButton((ImTextureID)albedoTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Ref<TextureEx> albedoTexture = material->GetAlbedoTexture();
+				ImGui::ImageButton((ImTextureID)albedoTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
@@ -206,8 +206,8 @@ namespace Relentless
 			
 			if (material->HasMetallicTexture())
 			{
-				std::shared_ptr<Texture2D> metallicTexture = material->GetMetallicTexture();
-				ImGui::ImageButton((ImTextureID)metallicTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Ref<TextureEx> metallicTexture = material->GetMetallicTexture();
+				ImGui::ImageButton((ImTextureID)metallicTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
@@ -269,8 +269,8 @@ namespace Relentless
 			
 			if (material->HasRoughnessTexture())
 			{
-				std::shared_ptr<Texture2D> roughnessTexture = material->GetRoughnessTexture();
-				ImGui::ImageButton((ImTextureID)roughnessTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Ref<TextureEx> roughnessTexture = material->GetRoughnessTexture();
+				ImGui::ImageButton((ImTextureID)roughnessTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
@@ -333,8 +333,8 @@ namespace Relentless
 
 			if (material->HasNormalMap())
 			{
-				std::shared_ptr<Texture2D> normalMap = material->GetNormalMap();
-				ImGui::ImageButton((ImTextureID)normalMap->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Ref<TextureEx> normalMap = material->GetNormalMap();
+				ImGui::ImageButton((ImTextureID)normalMap->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
@@ -395,8 +395,8 @@ namespace Relentless
 
 			if (material->HasHeightMap())
 			{
-				std::shared_ptr<Texture2D> heightMap = material->GetHeightMap();
-				ImGui::ImageButton((ImTextureID)heightMap->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Ref<TextureEx> heightMap = material->GetHeightMap();
+				ImGui::ImageButton((ImTextureID)heightMap->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
@@ -462,8 +462,8 @@ namespace Relentless
 			
 			if (material->HasAmbientOcclusionTexture())
 			{
-				std::shared_ptr<Texture2D> ambientOcclusionTexture = material->GetAmbientOcclusionTexture();
-				ImGui::ImageButton((ImTextureID)ambientOcclusionTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Ref<TextureEx> ambientOcclusionTexture = material->GetAmbientOcclusionTexture();
+				ImGui::ImageButton((ImTextureID)ambientOcclusionTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
@@ -527,8 +527,8 @@ namespace Relentless
 			
 			if (material->HasEmissionTexture())
 			{
-				std::shared_ptr<Texture2D> emissionTexture = material->GetEmissionTexture();
-				ImGui::ImageButton((ImTextureID)emissionTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+				Ref<TextureEx> emissionTexture = material->GetEmissionTexture();
+				ImGui::ImageButton((ImTextureID)emissionTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))

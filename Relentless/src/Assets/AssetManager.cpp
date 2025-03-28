@@ -26,8 +26,8 @@ namespace Relentless
 		case AssetType::Material:
 			s_AssetStorages.MaterialStorage.IncreaseReferenceCount(assetHandle);
 			break;
-		case AssetType::Texture2D:
-			s_AssetStorages.Texture2DStorage.IncreaseReferenceCount(assetHandle);
+		case AssetType::TextureEx:
+			s_AssetStorages.TextureStorage.IncreaseReferenceCount(assetHandle);
 			break;
 		case AssetType::Mesh:
 			s_AssetStorages.MeshStorage.IncreaseReferenceCount(assetHandle);
@@ -53,8 +53,8 @@ namespace Relentless
 		case AssetType::Material:
 			s_AssetStorages.MaterialStorage.DecreaseReferenceCount(assetHandle);
 			break;
-		case AssetType::Texture2D:
-			s_AssetStorages.Texture2DStorage.DecreaseReferenceCount(assetHandle);
+		case AssetType::TextureEx:
+			s_AssetStorages.TextureStorage.DecreaseReferenceCount(assetHandle);
 			break;
 		case AssetType::Mesh:
 			s_AssetStorages.MeshStorage.DecreaseReferenceCount(assetHandle);
@@ -74,15 +74,15 @@ namespace Relentless
 		const bool loaded = RequestLoadAsset(invalidTexturePath, m_InvalidTextureHandle);
 		RLS_VERIFY(loaded, "Core engine asset 'invalidtextrue.rasset' missing.");
 
-		m_DefaultMaterialHandle = CreateNew<Material>();
-		std::shared_ptr<Material> defaultMaterial = Get<Material>(m_DefaultMaterialHandle);
-		defaultMaterial->m_AlbedoColor = DirectX::XMFLOAT4(DirectX::Colors::White);
-		defaultMaterial->SetName("M_DefaultMaterial");
-
-		m_InvalidMaterialHandle = CreateNew<Material>();
-		std::shared_ptr<Material> invalidMaterial = Get<Material>(m_InvalidMaterialHandle);
-		invalidMaterial->m_AlbedoColor = DirectX::XMFLOAT4(DirectX::Colors::Magenta);
-		invalidMaterial->SetName("M_InvalidMaterial");
+		//m_DefaultMaterialHandle = CreateNew<Material>();
+		//Ref<Material> defaultMaterial = Get<Material>(m_DefaultMaterialHandle);
+		//defaultMaterial->m_AlbedoColor = DirectX::XMFLOAT4(DirectX::Colors::White);
+		//defaultMaterial->SetName("M_DefaultMaterial");
+		//
+		//m_InvalidMaterialHandle = CreateNew<Material>();
+		//Ref<Material> invalidMaterial = Get<Material>(m_InvalidMaterialHandle);
+		//invalidMaterial->m_AlbedoColor = DirectX::XMFLOAT4(DirectX::Colors::Magenta);
+		//invalidMaterial->SetName("M_InvalidMaterial");
 	}
 
 	std::future<void> AssetManager::RequestAsyncLoadAsset(const std::filesystem::path& filepathToAsset, DelegateToCall&& delegateToCall) noexcept

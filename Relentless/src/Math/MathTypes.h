@@ -57,6 +57,8 @@ struct TVector2
 
 	bool operator==(const TVector2& rhs) const { return x == rhs.x && y == rhs.y; }
 	bool operator!=(const TVector2& rhs) const { return !operator==(rhs); }
+	TVector2 operator-(const TVector2& rhs) const { return TVector2(x - rhs.x, y - rhs.y); }
+	TVector2 operator+(const TVector2& rhs) const { return TVector2(x + rhs.x, y + rhs.y); }
 };
 
 template<typename T>
@@ -101,6 +103,7 @@ struct TVector3
 
 	bool operator==(const TVector3& rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z; }
 	bool operator!=(const TVector3& rhs) const { return !operator==(rhs); }
+	TVector3 operator-(const TVector3& rhs) { return TVector3(x - rhs.x, y - rhs.y, z - rhs.z); }
 };
 
 template<typename T>

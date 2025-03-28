@@ -153,9 +153,9 @@ namespace Relentless
 		//const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
 		for (auto& [UUID, handleUpdatesPair] : m_DirtyMaterials)
 		{
-			std::shared_ptr<Material> material = AssetManager::Get<Material>(handleUpdatesPair.first);
-
-			const ResourceHandle constantBufferHandle = material->m_ConstantBufferHandle;
+			//std::shared_ptr<Material> material = AssetManager::Get<Material>(handleUpdatesPair.first);
+			//
+			//const ResourceHandle constantBufferHandle = material->m_ConstantBufferHandle;
 			//resourceManager.UploadConstantBufferData(constantBufferHandle, &(*material), 112u, frameIndex);
 
 			handleUpdatesPair.second--;

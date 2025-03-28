@@ -48,7 +48,7 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Pre-Z Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = true;
 			pipelineSpecification.DepthWrite = true;
@@ -76,8 +76,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Skybox Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShaderSkybox");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderSkybox");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShaderSkybox");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderSkybox");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = true;
 			pipelineSpecification.DepthWrite = false;
@@ -115,8 +115,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Opaque Geometry Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PBRPixelShader");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PBRPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = true;
 			pipelineSpecification.DepthWrite = false;
@@ -154,8 +154,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "CutOut Geometry Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("CutOutPBRPixelShader");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("CutOutPBRPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = true;
 			pipelineSpecification.DepthWrite = true;
@@ -194,8 +194,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Transparent Geometry Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("TransparentPBRPixelShader");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("TransparentPBRPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = true;
 			pipelineSpecification.DepthWrite = true;
@@ -238,8 +238,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "GeometryAndPicking Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("GeometryAndPickingPixelShader");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("GeometryAndPickingPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = false;
 			pipelineSpecification.DepthWrite = false;
@@ -276,8 +276,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Wireframe Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderOrangeOutput");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShader");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderOrangeOutput");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.FillMode = FillMode::Wireframe;
 			pipelineSpecification.BackfaceCulling = false;
@@ -310,8 +310,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Picking Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("PickingVertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PickingPixelShader");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("PickingVertexShader");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PickingPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = false;
 
@@ -349,8 +349,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Editor Grid Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShaderEditorGrid");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderEditorGrid");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("VertexShaderEditorGrid");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderEditorGrid");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.Topology = Topology::Line;
 			pipelineSpecification.MSAAEligible = true;
@@ -380,8 +380,8 @@ namespace Relentless
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Composite Pipeline";
 			pipelineSpecification.DepthWrite = false;
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("FullScreenTriVertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PostProcessPixelShader");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("FullScreenTriVertexShader");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PostProcessPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = false;
 			pipelineSpecification.DepthWrite = false;
@@ -459,19 +459,19 @@ namespace Relentless
 				if (m_pScene->GetEntityManager().Has<HiddenInGameComponent>(e))
 					return;
 
-				const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
-				switch (material->GetRenderMode())
-				{
-				case RenderMode::Opaque:
-					m_OpaqueRenderModeEntities.emplace_back(e);
-					break;
-				case RenderMode::CutOut:
-					m_CutOutRenderModeEntities.emplace_back(e);
-					break;
-				case RenderMode::Transparent:
-					m_TransparentRenderModeEntities.emplace_back(e);
-					break;
-				}
+				//const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+				//switch (material->GetRenderMode())
+				//{
+				//case RenderMode::Opaque:
+				//	m_OpaqueRenderModeEntities.emplace_back(e);
+				//	break;
+				//case RenderMode::CutOut:
+				//	m_CutOutRenderModeEntities.emplace_back(e);
+				//	break;
+				//case RenderMode::Transparent:
+				//	m_TransparentRenderModeEntities.emplace_back(e);
+				//	break;
+				//}
 			});
 
 		{
@@ -713,12 +713,12 @@ namespace Relentless
 			if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
 				continue;
 
-			std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+			//std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 			//const uint32_t vertexBufferDescriptorIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
 			//const uint32_t indexBufferSRVDescriptorIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
-			const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+			//const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
 			//m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
 			//m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(tc.ConstantBufferHandle, frameIndex);
 			//m_PerDrawData.vertexBufferIndex = vertexBufferDescriptorIndex;
@@ -853,13 +853,13 @@ namespace Relentless
 				if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
 					continue;
 
-				std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+				//std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 				//const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
 				//const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
-				const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
-				m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+				//const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+				//m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
 				//m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(tc.ConstantBufferHandle, frameIndex);
 				//m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
 				//m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
@@ -901,13 +901,13 @@ namespace Relentless
 			if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
 				continue;
 
-			std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+			//std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 			//const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
 			//const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
-			const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
-			m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+			//const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+			//m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
 			//m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(tc.ConstantBufferHandle, frameIndex);
 			//m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
 			//m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
@@ -949,13 +949,13 @@ namespace Relentless
 			if (mfc.AssetHandle == NULL_HANDLE || mrc.AssetHandle == NULL_HANDLE)
 				continue;
 
-			std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+			//std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 			//const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
 			//const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
-			const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
-			m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+			//const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+			//m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
 			//m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(tc.ConstantBufferHandle, frameIndex);
 			//m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
 			//m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
@@ -992,14 +992,14 @@ namespace Relentless
 			{
 				if (mfc.AssetHandle.IsValid())
 				{
-					const std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+					//const std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 					//const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
 					//const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
-					m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+					//const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+					//m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
 					//m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferHandle, frameIndex);
 					//m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
 					//m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
@@ -1067,7 +1067,7 @@ namespace Relentless
 			{
 				if (mfc.AssetHandle.IsValid())
 				{
-					std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+					//std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 					//const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
 					//const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
@@ -1076,9 +1076,9 @@ namespace Relentless
 					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+					//const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
 					
-					m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+					//m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
 					//m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferHandle, frameIndex);
 					//m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
 					//m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;
@@ -1234,7 +1234,7 @@ namespace Relentless
 			{
 				if (mfc.AssetHandle.IsValid())
 				{
-					std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+					//std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 
 					//const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
 					//const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
@@ -1243,9 +1243,9 @@ namespace Relentless
 					DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
 					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
-					const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
+					//const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
 					
-					m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
+					//m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
 					//m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferHandle, frameIndex);
 					//m_PerDrawData.vertexBufferIndex = vertexBufferSRVDescriptorHeapIndex;
 					//m_PerDrawData.indexBufferIndex = indexBufferSRVDescriptorHeapIndex;

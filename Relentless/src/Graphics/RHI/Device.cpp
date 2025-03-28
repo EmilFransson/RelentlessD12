@@ -277,20 +277,11 @@ namespace Relentless
 			pBuffer->SetStateTracking(true);
 		}
 
+		const bool isRaw = EnumHasAnyFlags(desc.Flags, BufferFlag::ByteAddress);
+
 		if (EnumHasAnyFlags(desc.Flags, BufferFlag::ShaderResource))
 		{
-			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-			srvDesc.Buffer.FirstElement = 0;
-			srvDesc.Buffer.NumElements = desc.NumElements();
-			srvDesc.Buffer.StructureByteStride = desc.ElementSize;
-			srvDesc.Format = D3D::ConvertFormat(desc.Format);
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-			DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::SRV);
-			GetDevice()->CreateShaderResourceView(pResource, &srvDesc, descriptorHandle.CPUHandle);
-			Ref<ShaderResourceView> pSRV = RLS_NEW ShaderResourceView(this, descriptorHandle);
-			pBuffer->SetSRV(std::move(pSRV));
+			pBuffer->SetSRV(CreateSRV(pBuffer, BufferSRVDesc(desc.Format, isRaw)));
 		}
 
 		if (pInitData)
@@ -525,13 +516,45 @@ namespace Relentless
 		return pPipelineState;
 	}
 
-	Ref<PipelineState> GraphicsDevice::CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName) noexcept
+	Ref<PipelineState> GraphicsDevice::CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName, const char* pEntryPoint) noexcept
 	{
 		PipelineStateInitializer desc;
 		desc.SetRootSignature(pRootSignature);
-		desc.SetComputeShader(pShaderName);
+		desc.SetComputeShader(pShaderName, pEntryPoint);
 		desc.SetName(std::format("Compute PSO: {0}", pShaderName).c_str());
 		return CreatePipeline(desc);
+	}
+
+	Ref<ShaderResourceView> GraphicsDevice::CreateSRV(BufferEx* pBuffer, const BufferSRVDesc& desc) noexcept
+	{
+		RLS_ASSERT(pBuffer, "[GraphicsDevice::CreateSRV] Buffer Is Invalid.");
+		const BufferDesc& bufferDesc = pBuffer->GetDesc();
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+
+		if (desc.Raw)
+		{
+			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			srvDesc.Buffer.StructureByteStride = 0;
+			srvDesc.Buffer.FirstElement = desc.ElementOffset / 4;
+			srvDesc.Buffer.NumElements = desc.NumElements > 0 ? desc.NumElements / 4 : (uint32)(bufferDesc.Size / 4);
+			srvDesc.Buffer.Flags |= D3D12_BUFFER_SRV_FLAG_RAW;
+		}
+		else
+		{
+			srvDesc.Format = D3D::ConvertFormat(desc.Format);
+			srvDesc.Buffer.StructureByteStride = desc.Format == ResourceFormat::Unknown ? bufferDesc.ElementSize : 0;
+			srvDesc.Buffer.FirstElement = desc.ElementOffset;
+			srvDesc.Buffer.NumElements = desc.NumElements > 0 ? desc.NumElements : bufferDesc.NumElements();
+		}
+
+		const DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::SRV);
+
+		m_pDevice->CreateShaderResourceView(pBuffer->GetResource(), &srvDesc, descriptorHandle.CPUHandle);
+
+		return RLS_NEW ShaderResourceView(this, descriptorHandle);
 	}
 
 	Ref<ShaderResourceView> GraphicsDevice::CreateSRV(TextureEx* pTexture, const TextureSRVDesc& textureSRVDesc) noexcept

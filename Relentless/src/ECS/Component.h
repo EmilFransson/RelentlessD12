@@ -12,17 +12,8 @@ namespace Relentless
 {
 	struct TransformComponent
 	{
-		TransformComponent() noexcept
-		{
-			//ConstantBufferHandle = Application::Get().GetResourceManager().CreateConstantBufferSet("", sizeof(Transform));
-		}
-
 		Transform WorldTransform;
 		Transform LocalTransform;
-
-		ResourceHandle ConstantBufferHandle = NULL_RESOURCE_HANDLE;
-
-		bool IsDirty = false;
 	};
 
 	struct DirtyTransformComponent

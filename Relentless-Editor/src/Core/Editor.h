@@ -32,6 +32,7 @@ namespace Relentless
 		virtual void OnRender() noexcept;
 		virtual void OnPostRender() noexcept;
 
+		[[nodiscard]] Scene* GetActiveScene() const noexcept;
 		[[nodiscard]] Selection& GetSelection() noexcept;
 		[[nodiscard]] EntityFiltersManager& GetEntityFiltersManager() noexcept;
 		[[nodiscard]] ViewportRenderView& GetRenderView(uint32 renderViewIndex) noexcept;
@@ -41,6 +42,11 @@ namespace Relentless
 		Broadcaster<void(Scene*)> OnSceneChanged;
 
 	private:
+		[[nodiscard]] bool IsHoveringAnyFocusedViewport() const noexcept;
+		[[nodiscard]] bool IsNavigatingAnyViewport() const noexcept;
+
+		[[nodiscard]] ViewportPanel* GetHoveredViewport() const noexcept;
+
 		void SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept;
 		void LoadStarterMeshes() noexcept;
 		void CreateStartScene() noexcept;
@@ -59,6 +65,8 @@ namespace Relentless
 	private:
 		std::vector<ViewportRenderView> m_RenderViews;
 		std::vector<UniquePtr<ViewportPanel>> m_EditorViewports;
+		std::vector<std::shared_ptr<PerspectiveCamera>> m_ViewportCameras;
+
 		bool m_SceneViewportChanged = false;
 		bool m_HoveringSceneViewport = false;
 		ImVec2 m_ViewportPanelSize = ImVec2(800.0f, 600.0f);

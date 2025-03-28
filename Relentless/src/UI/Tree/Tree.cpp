@@ -1,5 +1,6 @@
 #include "Tree.h"
 
+#include "Graphics/RHI/ResourceViews.h"
 #include "UI/DragDropBehavior.h"
 #include "TreeItem.h"
 #include "TreeInteraction.h"
@@ -174,10 +175,10 @@ namespace Relentless
 
 			ImGui::SetCursorScreenPos(ImVec2(currentX, iconPosY));
 
-			const std::shared_ptr<Texture2D> pTexture = AssetManager::Get<Texture2D>(tableIcon.IconTextureHandle);
+			const Ref<TextureEx> pTexture = AssetManager::Get<TextureEx>(tableIcon.IconTextureHandle);
 			const ImVec2 imageSize(iconSize);
 
-			ImGui::Image((ImTextureID)pTexture->GetSRVDescriptorHandle().GPUHandle.ptr, imageSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
+			ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, imageSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
 
 			currentX += iconSize.x + spacing;
 		}
@@ -308,8 +309,8 @@ namespace Relentless
 				const float iconPosY = cellPos.y + (cellSize.y - iconSize.y) * 0.5f;
 				ImGui::SetCursorScreenPos(ImVec2(ImGui::GetCursorScreenPos().x, iconPosY));
 
-				const std::shared_ptr<Texture2D> pIcon = AssetManager::Get<Texture2D>(iconHandle);
-				ImGui::Image((ImTextureID)pIcon->GetSRVDescriptorHandle().GPUHandle.ptr, iconSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
+				const Ref<TextureEx> pIcon = AssetManager::Get<TextureEx>(iconHandle);
+				ImGui::Image((ImTextureID)pIcon->GetSRV()->GetGPUHandle().ptr, iconSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
 				ImGui::SameLine();
 			}
 
@@ -350,8 +351,8 @@ namespace Relentless
 				const float offsetY = cellPos.y + (cellSize.y / 2.0f) - (iconSize.y / 2.0f);
 				ImGui::SetCursorScreenPos(ImVec2(ImGui::GetCursorScreenPos().x, offsetY));
 
-				const std::shared_ptr<Texture2D> pIcon = AssetManager::Get<Texture2D>(iconHandle);
-				ImGui::Image((ImTextureID)pIcon->GetSRVDescriptorHandle().GPUHandle.ptr, iconSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
+				const Ref<TextureEx> pIcon = AssetManager::Get<TextureEx>(iconHandle);
+				ImGui::Image((ImTextureID)pIcon->GetSRV()->GetGPUHandle().ptr, iconSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
 				ImGui::SameLine(0.0f, rowStyle.Spacing);
 			}
 

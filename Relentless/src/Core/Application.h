@@ -30,6 +30,7 @@ namespace Relentless
 		virtual ~Application() noexcept = default;
 
 		[[nodiscard]] GraphicsDevice* GetGraphicsDevice() const noexcept;
+		[[nodiscard]] const UniquePtr<WindowEx>& GetWindow() const noexcept;
 
 		void Run() noexcept;
 		void PushLayer(Layer* pLayer) const noexcept;
@@ -70,7 +71,6 @@ namespace Relentless
 
 		std::queue<std::function<void()>> m_MainThreadFunctionQueue;
 		std::mutex m_MainThreadFunctionQueueMutex;
-
 	};
 
 	//To be defined in client (runtime-project):

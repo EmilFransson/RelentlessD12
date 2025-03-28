@@ -15,6 +15,7 @@ namespace Relentless
 		constexpr Color Magenta = Color(1.0f, 0.0f, 1.0f, 1.0f);
 		constexpr Color Cyan = Color(0.0f, 1.0f, 1.0f, 1.0f);
 		constexpr Color Gray = Color(0.5f, 0.5f, 0.5f, 1.0f);
+		constexpr Color LightSkyBlue = Color(0.529411793f, 0.807843208f, 0.980392218f, 1.0f);
 	};
 
 	namespace Math
@@ -95,6 +96,28 @@ namespace Relentless
 				0, B, 0, 0,
 				0, 0, C, D,
 				0, 0, E, 0
+			);
+		}
+
+		inline [[nodiscard]] Matrix CreateLookToMatrix(const Vector3& position, const Vector3& direction, const Vector3& up)
+		{
+			Vector3 z;
+			direction.Normalize(z);
+			Vector3 x = up.Cross(z);
+			x.Normalize();
+			Vector3 y = z.Cross(x);
+
+			Vector3 p(
+				x.Dot(-position),
+				y.Dot(-position),
+				z.Dot(-position)
+			);
+
+			return Matrix(
+				x.x, y.x, z.x, 0,
+				x.y, y.y, z.y, 0,
+				x.z, y.z, z.z, 0,
+				p.x, p.y, p.z, 1
 			);
 		}
 

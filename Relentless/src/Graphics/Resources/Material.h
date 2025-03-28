@@ -1,13 +1,13 @@
 #pragma once
 #include "Assets/AssetMeta.h"
-#include "ResourceManager.h"
+#include "Core/Ref.h"
 
 namespace Relentless
 {
 	enum class RenderMode : uint8_t {None = 0, Opaque, CutOut, Transparent, Count};
 
-	class Texture2D;
-	class Material
+	class TextureEx;
+	class Material : public RefCounted<Material>
 	{
 	public:
 		explicit Material() noexcept;
@@ -15,7 +15,7 @@ namespace Relentless
 		Material& operator=(const Material& otherMaterial) noexcept;
 		Material(Material&& otherMaterial) noexcept;
 		Material& operator=(Material&& otherMaterial) noexcept;
-		~Material() noexcept;
+		~Material() noexcept = default;
 		void SetAlbedoTexture(const AssetHandle& albedoTextureHandle) noexcept;
 		void SetMetallicTexture(const AssetHandle& metallicTextureHandle) noexcept;
 		void SetRoughnessTexture(const AssetHandle& roughnessTextureHandle) noexcept;
@@ -39,17 +39,15 @@ namespace Relentless
 		[[nodiscard]] bool HasHeightMap() const noexcept;
 		[[nodiscard]] bool HasAmbientOcclusionTexture() const noexcept;
 		[[nodiscard]] bool HasEmissionTexture() const noexcept;
-		[[nodiscard]] std::shared_ptr<Texture2D> GetAlbedoTexture() const noexcept;
-		[[nodiscard]] std::shared_ptr<Texture2D> GetMetallicTexture() const noexcept;
-		[[nodiscard]] std::shared_ptr<Texture2D> GetRoughnessTexture() const noexcept;
-		[[nodiscard]] std::shared_ptr<Texture2D> GetNormalMap() const noexcept;
-		[[nodiscard]] std::shared_ptr<Texture2D> GetHeightMap() const noexcept;
-		[[nodiscard]] std::shared_ptr<Texture2D> GetAmbientOcclusionTexture() const noexcept;
-		[[nodiscard]] std::shared_ptr<Texture2D> GetEmissionTexture() const noexcept;
+		[[nodiscard]] Ref<TextureEx> GetAlbedoTexture() const noexcept;
+		[[nodiscard]] Ref<TextureEx> GetMetallicTexture() const noexcept;
+		[[nodiscard]] Ref<TextureEx> GetRoughnessTexture() const noexcept;
+		[[nodiscard]] Ref<TextureEx> GetNormalMap() const noexcept;
+		[[nodiscard]] Ref<TextureEx> GetHeightMap() const noexcept;
+		[[nodiscard]] Ref<TextureEx> GetAmbientOcclusionTexture() const noexcept;
+		[[nodiscard]] Ref<TextureEx> GetEmissionTexture() const noexcept;
 		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
 		[[nodiscard]] const RenderMode GetRenderMode() const noexcept;
-		[[nodiscard]] uint32_t GetConstantBufferIndex() const noexcept;
-		static void UploadToGPU(const AssetHandle& materialHandle) noexcept;
 		void ToggleAlbedoTextureUsage() noexcept;
 		void ToggleMetallicTextureUsage() noexcept;
 		void ToggleRoughnessTextureUsage() noexcept;
@@ -57,7 +55,6 @@ namespace Relentless
 		void ToggleHeightMapUsage() noexcept;
 		void ToggleAmbientOcclusionTextureUsage() noexcept;
 		void ToggleEmissionTextureUsage() noexcept;
-		void Invalidate() noexcept;
 	public:
 		DirectX::XMFLOAT4 m_AlbedoColor;
 		DirectX::XMFLOAT4 m_EmissionColor;
@@ -68,13 +65,13 @@ namespace Relentless
 		float m_EmissionIntensity;
 		float m_Roughness;
 	private:
-		uint32_t m_AlbedoTextureIndex;
-		uint32_t m_MetallicTextureIndex;
-		uint32_t m_RoughnessTextureIndex;
-		uint32_t m_NormalMapIndex;
-		uint32_t m_HeightMapIndex;
-		uint32_t m_AmbientOcclusionTextureIndex;
-		uint32_t m_EmissionTextureIndex;
+		uint32 m_AlbedoTextureIndex;
+		uint32 m_MetallicTextureIndex;
+		uint32 m_RoughnessTextureIndex;
+		uint32 m_NormalMapIndex;
+		uint32 m_HeightMapIndex;
+		uint32 m_AmbientOcclusionTextureIndex;
+		uint32 m_EmissionTextureIndex;
 	public:
 		float m_HeightScale;
 		float m_AOScale;
@@ -99,8 +96,6 @@ namespace Relentless
 		bool m_UseAmbientOcclusionTexture;
 		bool m_UseEmissionTexture;
 	public:
-		ResourceHandle m_ConstantBufferHandle = NULL_RESOURCE_HANDLE;
-		//size_t m_ConstantBufferID;
 		RenderMode m_RenderMode;
 
 		friend class Serializer;

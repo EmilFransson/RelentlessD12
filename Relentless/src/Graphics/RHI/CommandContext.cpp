@@ -49,13 +49,13 @@ namespace Relentless
 			m_pCommandList->SetComputeRootConstantBufferView(rootIndex, pBuffer->GetGpuHandle());
 	}
 
-	void CommandContext::CopyBuffer(const BufferEx* pSource, const BufferEx* pTarget, uint64 srcOffset, uint64 dstOffset, uint64 nrOfBytes) noexcept
+	void CommandContext::CopyBuffer(const BufferEx* pSource, const BufferEx* pTarget, uint64 size, uint64 sourceOffset, uint64 destinationOffset) noexcept
 	{
 		RLS_ASSERT(pSource && pSource->GetResource(), "[CommandContext::CopyBuffer] Source is invalid.");
 		RLS_ASSERT(pTarget && pTarget->GetResource(), "[CommandContext::CopyBuffer] Target is invalid.");
 
 		FlushResourceBarriers();
-		m_pCommandList->CopyBufferRegion(pTarget->GetResource(), dstOffset, pSource->GetResource(), srcOffset, nrOfBytes);
+		m_pCommandList->CopyBufferRegion(pTarget->GetResource(), destinationOffset, pSource->GetResource(), sourceOffset, size);
 	}
 
 	void CommandContext::BeginRenderPass(const RenderPassInfo& renderPassInfo) noexcept
@@ -147,6 +147,8 @@ namespace Relentless
 			}
 		}
 
+		D3D12_RENDER_PASS_FLAGS flags = D3D12_RENDER_PASS_FLAG_NONE;
+
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* pDepthStencilDesc = nullptr;
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthStencilDesc;
 		if (renderPassInfo.DepthStencilTarget.pTarget)
@@ -187,7 +189,10 @@ namespace Relentless
 				depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth = clearBinding.DepthStencil.Depth;
 			}
 			else if (EnumHasAnyFlags(depthStencilTarget.BeginAccessFlags, DepthTargetAccessFlags::ReadOnlyDepth))
+			{
 				depthStencilDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+				flags = D3D12_RENDER_PASS_FLAG_BIND_READ_ONLY_DEPTH;
+			}
 			
 			if (EnumHasAnyFlags(depthStencilTarget.BeginAccessFlags, DepthTargetAccessFlags::ClearStencil))
 			{ 
@@ -206,13 +211,7 @@ namespace Relentless
 			pDepthStencilDesc = &depthStencilDesc;
 		}
 
-		//m_pCommandList->ClearRenderTargetView(renderPassInfo.RenderTargets[0].pTarget->GetRTV()->GetDescriptorHandle().CPUHandle,
-		//	renderPassInfo.RenderTargets[0].pTarget->GetClearBinding().Color, 0, nullptr);
-		//
-		//m_pCommandList->ClearDepthStencilView(renderPassInfo.DepthStencilTarget.pTarget->GetDSV()->GetDescriptorHandle().CPUHandle,
-		//	D3D12_CLEAR_FLAGS::D3D12_CLEAR_FLAG_DEPTH, renderPassInfo.DepthStencilTarget.pTarget->GetClearBinding().DepthStencil.Depth, renderPassInfo.DepthStencilTarget.pTarget->GetClearBinding().DepthStencil.Stencil, 0,nullptr);
-
-		m_pCommandList->BeginRenderPass(renderPassInfo.RenderTargetCount, renderTargets.data(), pDepthStencilDesc, D3D12_RENDER_PASS_FLAG_NONE);
+		m_pCommandList->BeginRenderPass(renderPassInfo.RenderTargetCount, renderTargets.data(), pDepthStencilDesc, flags);
 
 		TextureEx* pTargetTexture = renderPassInfo.DepthStencilTarget.pTarget ? renderPassInfo.DepthStencilTarget.pTarget : renderPassInfo.RenderTargets[0].pTarget;
 		SetViewport(FloatRect(0, 0, (float)pTargetTexture->GetWidth(), (float)pTargetTexture->GetHeight()), 0, 1);

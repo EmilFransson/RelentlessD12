@@ -109,6 +109,11 @@ namespace Relentless
 			}((examine_invocable_t<F> *) nullptr);
 		}
 
+		[[nodiscard]] uint32 Size() const noexcept
+		{
+			return m_EntityIdentifiers->size();
+		}
+
 	private:
 		template<typename T>
 			requires std::is_same_v<entity, T>
@@ -175,6 +180,11 @@ namespace Relentless
 		void Do(std::invocable<void> auto&& invocable) const noexcept
 		{
 			invocable();
+		}
+
+		[[nodiscard]] uint32 Size() const noexcept
+		{
+			return m_Pool.Components.size();
 		}
 
 	private:

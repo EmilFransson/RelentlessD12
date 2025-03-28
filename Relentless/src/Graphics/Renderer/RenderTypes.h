@@ -1,17 +1,27 @@
 #pragma once
 
-#include "Graphics/RHI/TextureEx.h"
 #include "Graphics/RHI/Buffer.h"
+#include "Graphics/RHI/DescriptorHeap.h"
+#include "Graphics/RHI/TextureEx.h"
 
 #include "Graphics/Shaders/Interop/ShaderInterop.h"
 
 namespace Relentless
 {
+	class Mesh;
 	class Renderer;
 	class Scene;
 
+	enum class RenderModeEx : uint8
+	{
+		Solid,
+		Wireframe
+	};
+
 	struct ViewTransform
 	{
+		virtual ~ViewTransform() = default;
+
 		Matrix ViewToClip		= Matrix::Identity;
 		Matrix WorldToView		= Matrix::Identity;
 		Matrix WorldToClip		= Matrix::Identity;
@@ -38,19 +48,34 @@ namespace Relentless
 		}
 	};
 
-	struct ViewportRenderView : ViewTransform
+	struct ViewportRenderView : public ViewTransform
 	{
+		Vector2i MouseHoverCoordinates = Vector2i(-1, -1);
 		Ref<TextureEx> pTarget = nullptr;
+		bool DrawGrid = true;
+		RenderModeEx RenderMode = RenderModeEx::Solid;
 	};
 
-
-	struct RenderView : ViewTransform
+	struct RenderView : public ViewTransform
 	{
 		Renderer* pRenderer = nullptr;
 		Scene* pScene = nullptr;
 
 		Ref<BufferEx> ViewCB = nullptr;
 	};
+
+	struct Batch
+	{
+		enum class Blending : uint8 { Opaque, AlphaMask, AlphaBlend };
+
+		Vector3 Location = Vector3::Zero;
+		uint32 InstanceID = std::numeric_limits<uint32>::max();
+		Blending BlendMode = Blending::Opaque;
+		Mesh* pMesh = nullptr;
+		uint32 MaterialIndex = DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
+		uint32 MeshIndex = DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
+	};
+	DECLARE_BITMASK_TYPE(Batch::Blending)
 
 	struct SceneTextures
 	{
@@ -60,22 +85,14 @@ namespace Relentless
 
 	struct SceneBuffer
 	{
-		Ref<BufferEx> pTarget = nullptr;
+		Ref<BufferEx> pBuffer = nullptr;
 		uint64 Count = 0u;
-	};
-
-	enum class RenderModeEx : uint8
-	{
-		Default,
-		Wireframe 
 	};
 
 	struct GraphicsOptions
 	{
-		RenderModeEx Mode		= RenderModeEx::Default;
 		uint32 SampleCount		= 1u;
 
-		bool GridEnabled		= true;
 		bool HBAOPlusEnabled	= true;
 	};
 

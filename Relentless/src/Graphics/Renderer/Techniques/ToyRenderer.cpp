@@ -45,7 +45,7 @@ namespace Relentless
 
 	void ToyRenderer::Initialize() noexcept
 	{
-		m_pToyPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "ToyComputeShader");
+		m_pToyPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "ToyComputeShader", "cs_main");
 	}
 
 }

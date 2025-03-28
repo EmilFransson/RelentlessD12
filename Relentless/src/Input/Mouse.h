@@ -1,5 +1,4 @@
 #pragma once
-//#include "EventSystem/EventPublisher.h"
 #include "Math/MathTypes.h"	
 namespace Relentless
 {
@@ -7,9 +6,6 @@ namespace Relentless
 	class Mouse
 	{
 	public:
-		//static void OnWindowsEvent(const uint32 message, const LPARAM lParam, const WPARAM wParam) noexcept;
-		//static void OnButtonPressed(const RLS_Button button) noexcept;
-		//static void OnButtonReleased(const RLS_Button button) noexcept;
 		static void OnMove(const Vector2u& newCoords) noexcept;
 		static void OnRawDelta(const Vector2i& deltaCoords) noexcept;
 		static void Update() noexcept;
@@ -21,7 +17,8 @@ namespace Relentless
 		static void HideCursor() noexcept;
 		static [[nodiscard]] bool IsButtonDown(const RLS_Button button) noexcept;
 		static [[nodiscard]] bool IsButtonPressed(const RLS_Button button) noexcept;
-		static [[nodiscard]] const Vector2u& GetCoordinates() noexcept;
+		static [[nodiscard]] const Vector2u& GetCursorPosition() noexcept;
+		static [[nodiscard]] Vector2u GetCursorScreenPosition() noexcept;
 		static [[nodiscard]] const Vector2i& GetDeltaCoordinates() noexcept;
 		static [[nodiscard]] RLS_Button KeyCodeToButton(uint32 keyCode) noexcept;
 	private:

@@ -22,12 +22,14 @@ namespace Relentless
 
 			break;
 		}
+		case EventType::LeftMouseButtonPressedEvent:
 		case EventType::RightMouseButtonPressedEvent:
 		case EventType::MiddleMouseButtonPressedEvent:
 		{
-			if (m_HoveringSceneViewport)
+			if (ViewportPanel* pViewport = GetHoveredViewport())
 			{
-				Mouse::ConfineCursor(vMin.x, vMax.x, vMax.y, vMin.y);
+				const Vector2u cursorScreenPosition = Mouse::GetCursorScreenPosition();
+				Mouse::ConfineCursor(cursorScreenPosition.x, cursorScreenPosition.x, cursorScreenPosition.y, cursorScreenPosition.y);
 				Mouse::HideCursor();
 				event.StopPropagation();
 			}
@@ -36,48 +38,43 @@ namespace Relentless
 		case EventType::RightMouseButtonReleasedEvent:
 		case EventType::MiddleMouseButtonReleasedEvent:
 		{
-			if (m_HoveringSceneViewport)
+			if (ViewportPanel* pViewport = GetHoveredViewport())
 			{
 				Mouse::FreeCursor();
 				Mouse::ShowCursor();
 				event.StopPropagation();
 			}
+
 			break;
 		}
 		case EventType::LeftMouseButtonReleasedEvent:
 		{
-			if (!m_HoveringSceneViewport)
+			ViewportPanel* pViewport = GetHoveredViewport();
+			if (!pViewport)
 				return;
 
-			if (ImGuizmo::IsUsing())
-				return;
-			
-			if (m_HoveringSceneViewport && m_IsPanningMouse)
-			{
-				Mouse::FreeCursor();
-				Mouse::ShowCursor();
-				event.StopPropagation();
-				m_IsPanningMouse = false;
-				return;
-			}
+			Mouse::FreeCursor();
+			Mouse::ShowCursor();
+			event.StopPropagation();
+			m_IsPanningMouse = false;
 
-			const bool lCtrlDown = Keyboard::IsKeyDown(RLS_Key::LCtrl);
-			const bool lShiftDown = Keyboard::IsKeyDown(RLS_Key::LShift);
-			const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
-
-			if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
-			{
-				m_pOutlinerPanel->DeselectNonEntityItems();
-				m_Selection.DeselectAllEntities();
-			}
-
-			if (isHoveringEntity)
-			{
-				if (lCtrlDown && m_Selection.IsEntitySelected(m_HoveredEntity))
-					m_Selection.DeselectEntity(m_HoveredEntity);
-				else
-					m_Selection.SelectEntity(m_HoveredEntity);
-			}
+			//const bool lCtrlDown = Keyboard::IsKeyDown(RLS_Key::LCtrl);
+			//const bool lShiftDown = Keyboard::IsKeyDown(RLS_Key::LShift);
+			//const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
+			//
+			//if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
+			//{
+			//	m_pOutlinerPanel->DeselectNonEntityItems();
+			//	m_Selection.DeselectAllEntities();
+			//}
+			//
+			//if (isHoveringEntity)
+			//{
+			//	if (lCtrlDown && m_Selection.IsEntitySelected(m_HoveredEntity))
+			//		m_Selection.DeselectEntity(m_HoveredEntity);
+			//	else
+			//		m_Selection.SelectEntity(m_HoveredEntity);
+			//}
 
 			break;
 		}
@@ -175,8 +172,31 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
+		UI_DrawMainMenuBar();
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		ImGui::Begin("Main", nullptr);
+
+		ImGui::BeginChild("Scene", ImVec2(0,60), false);
+
+		ImGui::EndChild();
+
+		ImGuiID dockspaceID = ImGui::GetID("MainDockSpace");
+		ImGui::DockSpace(dockspaceID, ImVec2(0, 0));
+
+		ImGui::End();
+		ImGui::PopStyleVar();
+
 		for (auto& viewport : m_EditorViewports)
 			viewport->Render();
+
+		ImGui::Begin("Content Browser");
+
+		ImGui::End();
+
+		ImGui::Begin("Outliner");
+
+		ImGui::End();
 
 		//UI_DrawMainMenuBar();
 		//
@@ -265,9 +285,54 @@ namespace Relentless
 	{
 		m_RenderViews.push_back(ViewportRenderView());
 		m_EditorViewports.push_back(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size()+1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size()));
+		
+		{
+			std::shared_ptr<PerspectiveCamera> pEditorCamera = PerspectiveCamera::Create();
+			pEditorCamera->SetLocation(Vector3(5.0f, 5.0f, -5.0f));
+			pEditorCamera->SetNearPlane(0.1f);
+			pEditorCamera->SetFarPlane(1'000.0f);
+			pEditorCamera->SetRotation(Quaternion::CreateFromYawPitchRoll(-Math::PI_DIV_4, Math::PI_DIV_4 * 0.5f, 0));
+			m_ViewportCameras.push_back(pEditorCamera);
+		}
 
 		m_RenderViews.push_back(ViewportRenderView());
 		m_EditorViewports.push_back(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size()));
+
+		{
+			std::shared_ptr<PerspectiveCamera> pEditorCamera = PerspectiveCamera::Create();
+			pEditorCamera->SetLocation(Vector3(0.0f, 5.0f, -5.0f));
+			pEditorCamera->SetNearPlane(0.1f);
+			pEditorCamera->SetFarPlane(1'000.0f);
+			pEditorCamera->SetRotation(Quaternion::Identity);
+			m_ViewportCameras.push_back(pEditorCamera);
+		}
+
+		m_pActiveScene = std::make_shared<Scene>();
+
+		Ref<Material> pWhiteMaterial = new Material();
+		pWhiteMaterial->SetRenderMode(RenderMode::Opaque);
+		pWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+
+		const uint32 index = AssetManager::GetStorage<Material>().Add(pWhiteMaterial);
+		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Material);
+		
+		entity e = m_pActiveScene->CreateEntity("Cube");
+		auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(e);
+		mrc.AssetHandle = handle->second;
+
+		std::vector<ImportRequest> requests;
+		ImportRequest& request = requests.emplace_back();
+		request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Cube.obj");
+		Ref<ImporterFeedbackContext> pFeedback = new ImporterFeedbackContext();
+		pFeedback->OnAssetImported.Connect([this, e](const AssetHandle& handle, bool success)
+			{
+				//Change to per request perhaps instead of this overarching PnAssetImported func?
+				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(e);
+				mfc.AssetHandle = handle;
+			});
+
+		std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
+		fut.wait();
 
 		//m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
 		//
@@ -335,10 +400,38 @@ namespace Relentless
 	{
 		for (int i = 0; i < m_EditorViewports.size(); ++i)
 		{
-			const Vector2u& region = m_EditorViewports[i]->GetContentRegionAvail();
-			m_RenderViews[i].Viewport = FloatRect(0.0f, 0.0f, std::max(1.0f, (float)region.x), std::max(1.0f, (float)region.y));
-		}
+			UniquePtr<ViewportPanel>& pViewportPanel = m_EditorViewports[i];
 
+			const Vector2u& region = pViewportPanel->GetContentRegionAvail();
+			m_RenderViews[i].Viewport = FloatRect(0.0f, 0.0f, Math::Max(1.0f, (float)region.x), Math::Max(1.0f, (float)region.y));
+			m_ViewportCameras[i]->SetViewport(m_RenderViews[i].Viewport);
+
+			const bool cameraMovementEnabled = pViewportPanel->IsClientAreaHovered();
+			m_ViewportCameras[i]->Update(cameraMovementEnabled);
+
+			const ViewTransform& cameraViewTransform = m_ViewportCameras[i]->GetViewTransform();
+			ViewportRenderView& renderView = m_RenderViews[i];
+			
+			renderView.Location					= cameraViewTransform.Location;
+			renderView.Viewport					= cameraViewTransform.Viewport;
+			renderView.IsPerspective			= true;
+			renderView.PerspectiveFrustum		= cameraViewTransform.PerspectiveFrustum;
+			renderView.OrthographicFrustum		= cameraViewTransform.OrthographicFrustum;
+
+			renderView.WorldToView				= cameraViewTransform.WorldToView;
+			renderView.WorldToClip				= cameraViewTransform.WorldToClip;
+			renderView.ViewToWorld				= cameraViewTransform.ViewToWorld;
+			renderView.ViewToClip				= cameraViewTransform.ViewToClip;
+			renderView.ClipToView				= cameraViewTransform.ClipToView;
+
+			renderView.FoV						= cameraViewTransform.FoV;
+			renderView.NearPlane				= cameraViewTransform.NearPlane;
+			renderView.FarPlane					= cameraViewTransform.FarPlane;
+
+			renderView.MouseHoverCoordinates = pViewportPanel->IsClientAreaHovered() ? pViewportPanel->GetClientHoverCoordinates() : Vector2i(-1, -1);
+			if (i == 1)
+				RLS_CORE_INFO("[{0}, {1}]", renderView.MouseHoverCoordinates.x, renderView.MouseHoverCoordinates.y);
+		}
 
 		//PROFILE_FUNC;
 		//
@@ -375,6 +468,11 @@ namespace Relentless
 		//m_SceneRendererPanel.OnPostRender();
 	}
 
+	Scene* Editor::GetActiveScene() const noexcept
+	{
+		return m_pActiveScene.get();
+	}
+
 	Selection& Editor::GetSelection() noexcept
 	{
 		return m_Selection;
@@ -394,6 +492,34 @@ namespace Relentless
 	std::vector<ViewportRenderView>& Editor::GetRenderViews() noexcept
 	{
 		return m_RenderViews;
+	}
+
+	bool Editor::IsHoveringAnyFocusedViewport() const noexcept
+	{
+		return std::any_of(m_EditorViewports.begin(), m_EditorViewports.end(), [](const UniquePtr<ViewportPanel>& pViewport)
+			{
+				return pViewport->IsFocused() && pViewport->IsHovered();
+			});
+	}
+
+	bool Editor::IsNavigatingAnyViewport() const noexcept
+	{
+		return std::any_of(m_EditorViewports.begin(), m_EditorViewports.end(), [](const UniquePtr<ViewportPanel>& pViewport)
+			{
+				return pViewport->IsFocused() && pViewport->IsHovered() && 
+					(Mouse::IsButtonDown(RLS_Button::Right) || Mouse::IsButtonDown(RLS_Button::Left) || Mouse::IsButtonDown(RLS_Button::Wheel));
+			});
+	}
+
+	ViewportPanel* Editor::GetHoveredViewport() const noexcept
+	{
+		for (auto& pViewport : m_EditorViewports)
+		{
+			if (pViewport->IsClientAreaHovered())
+				return pViewport.get();
+		}
+
+		return nullptr;
 	}
 
 	void Editor::SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept
@@ -586,6 +712,9 @@ namespace Relentless
 		if (!ImGui::BeginMainMenuBar())
 			return;
 
+		const ImVec2 menuBarPos = ImGui::GetWindowPos();
+		const ImVec2 menuBarSize = ImGui::GetWindowSize();
+
 		if (ImGui::BeginMenu("File"))
 		{
 			ImGui::EndMenu();
@@ -602,20 +731,43 @@ namespace Relentless
 			ImGui::MenuItem("Statistics Panel", nullptr, &m_DisplayStatisticsPanel);
 
 			ImGui::MenuItem("Immersive Mode", "Ctrl + i", &m_ImmersiveModeEnabled);
-			if (ImGui::MenuItem("Full Screen", "Alt + Enter", Window::IsFullScreen()))
-			{
-				Window::PrepareForFullScreenToggling();
-			}
 
 			ImGui::EndMenu();
 		}
 
 		ImGui::EndMainMenuBar();
+
+		static bool isDragging = false;
+		static Vector2u dragStartCursorPos = {};
+		static Vector2u dragStartWindowPos = {};
+
+		const ImVec2 vMax = ImVec2(menuBarPos.x + menuBarSize.x, menuBarPos.y + menuBarSize.y);
+		const bool hovering = ImGui::IsMouseHoveringRect(menuBarPos, vMax, false);
+		
+		if (hovering && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+		{
+			if (!isDragging)
+			{
+				isDragging = true;
+				dragStartCursorPos = Mouse::GetCursorScreenPosition();
+				dragStartWindowPos = Application::Get().GetWindow()->GetTopLeft();
+			}
+			else
+			{
+				const Vector2u currentCursorPos = Mouse::GetCursorScreenPosition();
+				const Vector2u delta = currentCursorPos - dragStartCursorPos;
+				Application::Get().GetWindow()->SetPosition(dragStartWindowPos + delta);
+			}
+		}
+		else
+		{
+			isDragging = false;
+		}
 	}
 
 	void Editor::CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept
 	{
-		std::shared_ptr<Mesh> pMesh = AssetManager::Get<Mesh>(meshHandle);
+		Ref<Mesh> pMesh = AssetManager::Get<Mesh>(meshHandle);
 		const entity newEntity = m_pActiveScene->CreateEntity(pMesh->GetName().c_str());
 
 		EntityManager& entityManager = m_pActiveScene->GetEntityManager();

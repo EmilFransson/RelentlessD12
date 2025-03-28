@@ -1,5 +1,4 @@
 #include "Mouse.h"
-//#include "EventSystem/MouseEvents.h"
 namespace Relentless
 {
 	std::bitset<(uint16)RLS_Button::Count> Mouse::s_PersistentStates;
@@ -13,118 +12,27 @@ namespace Relentless
 	{
 		switch (keyCode)
 		{
-		case WM_LBUTTONDOWN:
-		case WM_LBUTTONUP:
+		case VK_LBUTTON:
 			return RLS_Button::Left;
-		case WM_RBUTTONDOWN:
-		case WM_RBUTTONUP:
+		case VK_RBUTTON:
 			return RLS_Button::Right;
-		case WM_MBUTTONDOWN:
-		case WM_MBUTTONUP:
+		case VK_MBUTTON:
 			return RLS_Button::Wheel;
 		}
 
 		return RLS_Button::Unsupported;
 	}
 
-	//void Mouse::OnWindowsEvent(const uint32 message, const LPARAM lParam, [[maybe_unused]] const WPARAM wParam) noexcept
-	//{
-	//	switch (message)
-	//	{
-	//	case WM_MOUSEMOVE:
-	//	{
-	//		OnMove({ (uint32)GET_X_LPARAM(lParam), (uint32)GET_Y_LPARAM(lParam) });
-	//
-	//		break;
-	//	}
-	//	case WM_INPUT:
-	//	{
-	//		UINT size = 0u;
-	//		if (::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &size, sizeof(RAWINPUTHEADER)) == -1)
-	//			break;
-	//
-	//		std::vector<char> rawBuffer;
-	//		rawBuffer.resize(size);
-	//		if (::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, rawBuffer.data(), &size, sizeof(RAWINPUTHEADER)) != size)
-	//			break;
-	//
-	//		auto& ri = reinterpret_cast<const RAWINPUT&>(*rawBuffer.data());
-	//		if (ri.header.dwType == RIM_TYPEMOUSE && (ri.data.mouse.lLastX != 0 || ri.data.mouse.lLastY != 0))
-	//		{
-	//			OnRawDelta({ ri.data.mouse.lLastX, ri.data.mouse.lLastY });
-	//		}
-	//
-	//		break;
-	//	}
-	//	case WM_LBUTTONDOWN:
-	//	{
-	//		OnButtonPressed(RLS_Button::Left);
-	//		break;
-	//	}
-	//	case WM_LBUTTONUP:
-	//	{
-	//		OnButtonReleased(RLS_Button::Left);
-	//		break;
-	//	}
-	//	case WM_RBUTTONDOWN:
-	//	{
-	//		OnButtonPressed(RLS_Button::Right);
-	//		break;
-	//	}
-	//	case WM_RBUTTONUP:
-	//	{
-	//		OnButtonReleased(RLS_Button::Right);
-	//		break;
-	//	}
-	//	case WM_MBUTTONDOWN:
-	//	{
-	//		OnButtonPressed(RLS_Button::Wheel);
-	//		break;
-	//	}
-	//	case WM_MBUTTONUP:
-	//	{
-	//		OnButtonReleased(RLS_Button::Wheel);
-	//		break;
-	//	}
-	//	}
-	//}
-
-	//void Mouse::OnButtonPressed(const RLS_Button button) noexcept
-	//{
-	//	s_PersistentStates[(uint8_t)button] = true;
-	//	switch (button)
-	//	{
-	//	case RLS_Button::Left: PublishEvent<LeftMouseButtonPressedEvent>(s_CurrentMouseCoords); break;
-	//	case RLS_Button::Right: PublishEvent<RightMouseButtonPressedEvent>(s_CurrentMouseCoords); break;
-	//	case RLS_Button::Wheel: PublishEvent<MiddleMouseButtonPressedEvent>(s_CurrentMouseCoords); break;
-	//	}
-	//}
-	//
-	//void Mouse::OnButtonReleased(const RLS_Button button) noexcept
-	//{
-	//	s_PersistentStates[(uint8_t)button] = false;
-	//	switch (button)
-	//	{
-	//	case RLS_Button::Left: PublishEvent<LeftMouseButtonReleasedEvent>(s_CurrentMouseCoords); break;
-	//	case RLS_Button::Right: PublishEvent<RightMouseButtonReleasedEvent>(s_CurrentMouseCoords); break;
-	//	case RLS_Button::Wheel: PublishEvent<MiddleMouseButtonReleasedEvent>(s_CurrentMouseCoords); break;
-	//	}
-	//}
-
 	void Mouse::OnMove(const Vector2u& newCoords) noexcept
 	{
 		if (s_CursorVisible)
-		{
 			s_CurrentMouseCoords = newCoords;
-			//PublishEvent<MouseMovedEvent>(s_CurrentMouseCoords);
-		}
 	}
 
 	void Mouse::OnRawDelta(const Vector2i& deltaCoords) noexcept
 	{
 		s_DeltaMouseCoords.x += deltaCoords.x;
 		s_DeltaMouseCoords.y += deltaCoords.y;
-		//PublishEvent<RawMouseMoveEvent>(s_DeltaMouseCoords);
 	}
 
 	void Mouse::Update() noexcept
@@ -168,10 +76,8 @@ namespace Relentless
 
 		RECT rect = {};
 		::GetWindowRect(::GetActiveWindow(), &rect);
-		constexpr const float horizontalPadding = 8.0f;
-		constexpr const float verticalPadding = 31.0f;
-		s_CurrentMouseCoords.x += static_cast<uint32_t>(rect.left + horizontalPadding);
-		s_CurrentMouseCoords.y += static_cast<uint32_t>(rect.top + verticalPadding);
+		s_CurrentMouseCoords.x += static_cast<uint32_t>(rect.left);
+		s_CurrentMouseCoords.y += static_cast<uint32_t>(rect.top);
 		::SetCursorPos(s_CurrentMouseCoords.x, s_CurrentMouseCoords.y);
 	}
 
@@ -191,10 +97,17 @@ namespace Relentless
 		return s_PersistentStates[(uint8)button] && s_CurrentStates[(uint8)button];
 	}
 
-	const Vector2u& Mouse::GetCoordinates() noexcept
+	const Vector2u& Mouse::GetCursorPosition() noexcept
 	{
 		return s_CurrentMouseCoords;
 	};
+
+	Vector2u Mouse::GetCursorScreenPosition() noexcept
+	{
+		POINT screenPosition{};
+		::GetCursorPos(&screenPosition);
+		return Vector2u(screenPosition.x, screenPosition.y);
+	}
 
 	const Vector2i& Mouse::GetDeltaCoordinates() noexcept
 	{

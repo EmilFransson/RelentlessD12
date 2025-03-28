@@ -30,8 +30,9 @@ namespace Relentless
 		[[nodiscard]] Ref<TextureEx> CreateTexture(const TextureDesc& desc, const char* pName, Span<D3D12_SUBRESOURCE_DATA> initData = {}) noexcept;
 		[[nodiscard]] Ref<TextureEx> CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept;
 		[[nodiscard]] Ref<PipelineState> CreatePipeline(const PipelineStateInitializer& pipelineStateInitializer) noexcept;
-		[[nodiscard]] Ref<PipelineState> CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName) noexcept;
+		[[nodiscard]] Ref<PipelineState> CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName, const char* pEntryPoint) noexcept;
 		[[nodiscard]] Ref<RenderTargetView> CreateRTV(TextureEx* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept;
+		[[nodiscard]] Ref<ShaderResourceView> CreateSRV(BufferEx* pBuffer, const BufferSRVDesc& desc) noexcept;
 		[[nodiscard]] Ref<ShaderResourceView> CreateSRV(TextureEx* pTexture, const TextureSRVDesc& srvDesc) noexcept;
 		[[nodiscard]] Ref<UnorderedAccessView> CreateUAV(TextureEx* pTexture, const TextureUAVDesc& desc) noexcept;
 

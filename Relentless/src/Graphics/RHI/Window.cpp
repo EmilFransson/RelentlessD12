@@ -24,7 +24,7 @@ namespace Relentless
 		wc.hCursor = ::LoadCursorA(nullptr, IDC_ARROW);
 		RLS_VERIFY(::RegisterClassExA(&wc), "[Window::Window] Window Class Registration Failed.");
 
-		const DWORD windowStyle = WS_OVERLAPPEDWINDOW;
+		const DWORD windowStyle = WS_POPUP;
 		RECT windowRect = { 0, 0, (LONG)width, (LONG)height };
 		::AdjustWindowRect(&windowRect, windowStyle, false);
 	
@@ -75,6 +75,13 @@ namespace Relentless
 	WindowHandle WindowEx::GetNativeWindow() const noexcept
 	{
 		return m_WindowHandle;
+	}
+
+	Vector2u WindowEx::GetTopLeft() const noexcept
+	{
+		RECT rect;
+		::GetWindowRect(::GetActiveWindow(), &rect);
+		return Vector2u(rect.left, rect.top);
 	}
 
 	void WindowEx::PollMessages() noexcept
@@ -253,5 +260,11 @@ namespace Relentless
 	{
 		::SetWindowTextA(m_WindowHandle, pTitle);
 	}
+
+	void WindowEx::SetPosition(const Vector2u& newPosition) noexcept
+	{
+		::SetWindowPos(m_WindowHandle, nullptr, newPosition.x, newPosition.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	}
+
 }
 

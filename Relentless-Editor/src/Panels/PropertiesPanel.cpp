@@ -219,7 +219,7 @@ namespace Relentless
 				char input[60];
 				if (mfc.AssetHandle != NULL_HANDLE)
 				{
-					std::shared_ptr<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
+					Ref<Mesh> mesh = AssetManager::Get<Mesh>(mfc.AssetHandle);
 					std::string name = mesh->GetName();
 					strcpy_s(input, sizeof(input), name.c_str());
 				}

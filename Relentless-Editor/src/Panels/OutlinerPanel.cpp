@@ -178,8 +178,8 @@ namespace Relentless
 			{
 				ImGui::BeginTooltip();
 				
-				const std::shared_ptr<Texture2D> pDragDropTexture = AssetManager::Get<Texture2D>(m_DragDropTooltipIcon);
-				ImGui::Image((ImTextureID)pDragDropTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImVec2(pDragDropTexture->GetWidth(), pDragDropTexture->GetHeight()));
+				const Ref<TextureEx> pDragDropTexture = AssetManager::Get<TextureEx>(m_DragDropTooltipIcon);
+				ImGui::Image((ImTextureID)pDragDropTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(pDragDropTexture->GetWidth(), pDragDropTexture->GetHeight()));
 				ImGui::SameLine();
 				ImGui::Text(m_DragDropTooltip.c_str());
 				

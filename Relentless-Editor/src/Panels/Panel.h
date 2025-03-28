@@ -18,6 +18,9 @@ namespace Relentless
 		virtual void Render() noexcept override final;
 
 		[[nodiscard]] const Vector2u& GetContentRegionAvail() const noexcept;
+		[[nodiscard]] const Vector2u& GetContentRegionMin() const noexcept;
+		[[nodiscard]] const Vector2u& GetContentRegionMax() const noexcept;
+		[[nodiscard]] FloatRect GetContentRegionInScreenSpace() const noexcept;
 		[[nodiscard]] const Vector2u& GetPosition() const noexcept;
 		[[nodiscard]] const Vector2u& GetSize() const noexcept;
 		[[nodiscard]] const std::string& GetName() const noexcept;
@@ -34,6 +37,8 @@ namespace Relentless
 		ImGuiWindowFlags m_Flags = ImGuiWindowFlags_None;
 
 		Vector2u m_ContentRegionAvail;
+		Vector2u m_ContentRegionMin;
+		Vector2u m_ContentRegionMax;
 		Vector2u m_Position;
 		Vector2u m_Size;
 

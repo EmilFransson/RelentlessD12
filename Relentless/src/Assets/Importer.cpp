@@ -60,7 +60,7 @@ namespace Relentless
 	}
 
 	std::unordered_map<AssetType, std::function<bool(const std::filesystem::path&, const std::filesystem::path&, const std::optional<AssetImportSettingsVariant>&, bool)>> Importer::m_LoadFuncs = {
-		{AssetType::Texture2D, [](const std::filesystem::path& path, const std::filesystem::path& dstPath,const std::optional<AssetImportSettingsVariant>& importSettings, bool isABlockingOperation)
+		{AssetType::TextureEx, [](const std::filesystem::path& path, const std::filesystem::path& dstPath,const std::optional<AssetImportSettingsVariant>& importSettings, bool isABlockingOperation)
 			{
 				if (!ImportTexture(path, dstPath, isABlockingOperation, CastToImportSettings<TextureImportSettings>(importSettings)))
 					return false;
@@ -70,6 +70,20 @@ namespace Relentless
 		{AssetType::Mesh, [](const std::filesystem::path& path, const std::filesystem::path& dstPath, const std::optional<AssetImportSettingsVariant>& importSettings, bool isABlockingOperation)
 		{
 			return ImportModel(path, dstPath, isABlockingOperation, CastToImportSettings<MeshImportSettings>(importSettings));
+		}}
+	};
+
+	std::unordered_map<AssetType, std::function<bool(GraphicsDevice* pDevice, const std::filesystem::path&, const std::optional<AssetImportSettingsVariant>&, Ref<ImporterFeedbackContext>)>> Importer::m_LoadFuncsEx = {
+		{AssetType::TextureEx, [](GraphicsDevice* pDevice, const std::filesystem::path& path, const std::optional<AssetImportSettingsVariant>& importSettings, Ref<ImporterFeedbackContext> pImportFeedback = nullptr)
+			{
+				//if (!ImportTexture(path, dstPath, isABlockingOperation, CastToImportSettings<TextureImportSettings>(importSettings)))
+				//	return false;
+
+				return true;
+			}},
+		{AssetType::Mesh, [](GraphicsDevice* pDevice, const std::filesystem::path& path, const std::optional<AssetImportSettingsVariant>& importSettings, Ref<ImporterFeedbackContext> pImportFeedback = nullptr)
+		{
+			return ImportModelEx(pDevice, path, CastToImportSettings<MeshImportSettings>(importSettings), pImportFeedback);
 		}}
 	};
 
@@ -94,7 +108,7 @@ namespace Relentless
 		case ExtensionType::TIFF:
 		case ExtensionType::HDR:
 		case ExtensionType::EXR:
-			return AssetType::Texture2D;
+			return AssetType::TextureEx;
 		case ExtensionType::FBX:
 		case ExtensionType::OBJ:
 		case ExtensionType::GLTF:
@@ -124,6 +138,35 @@ namespace Relentless
 				{
 					RLS_CORE_ERROR("[Importer]: Failed to load asset from file with path: '{0}'.", srcPath.string().c_str());
 				}
+			});
+	}
+
+	std::future<void> Importer::RequestAsyncLoad(GraphicsDevice* pDevice, Span<ImportRequest> importRequests, Ref<ImporterFeedbackContext> pFeedbackContext /*= nullptr*/) noexcept
+	{
+		const float progressPerRequest = 1.0f / importRequests.GetSize();
+		return Application::Get().GetThreadPool().Submit([pDevice, requests = std::move(importRequests), pFeedbackContext, progressPerRequest]()
+			{
+				std::vector<std::future<void>> futures;
+				futures.reserve(requests.GetSize());
+
+				for (auto& request : requests)
+				{
+					futures.push_back(Application::Get().GetThreadPool().Submit([pDevice, request, pFeedbackContext, progressPerRequest]()
+						{
+							const ExtensionType extensionType = GetExtensionTypeFromPath(request.Filepath);
+							const AssetType assetType = GetAssetTypeFromExtensionType(extensionType);
+							if (assetType != AssetType::Undefined)
+							{
+								m_LoadFuncsEx[assetType](pDevice, request.Filepath.string(), request.ImportSettings, pFeedbackContext);
+							}
+
+							if (pFeedbackContext)
+								pFeedbackContext->OnProgressUpdated(progressPerRequest);
+						}));
+				}
+
+				for (auto& future : futures)
+					future.wait();
 			});
 	}
 
@@ -208,8 +251,10 @@ namespace Relentless
 		spec.MipCount = metaData.mipLevels;
 		spec.Format = metaData.format;
 
-		AssetHandle handle = AssetManager::CreateNew<Texture2D>(spec);
-		std::shared_ptr<Texture2D> pTexture = AssetManager::Get<Texture2D>(handle);
+
+		RLS_ASSERT(false, "TODO");
+		//AssetHandle handle = AssetManager::CreateNew<Texture2D>(spec);
+		//Ref<TextureEx> pTexture = AssetManager::Get<TextureEx>(handle);
 
 		DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
 		uploadBatch.Begin();
@@ -221,19 +266,19 @@ namespace Relentless
 			subresourceData.pData = pImg->pixels;
 			subresourceData.RowPitch = pImg->rowPitch;
 			subresourceData.SlicePitch = pImg->slicePitch;
-			uploadBatch.Upload(pTexture->GetInterface().Get(), static_cast<UINT>(i), &subresourceData, 1);
+			//uploadBatch.Upload(pTexture->GetResource(), static_cast<UINT>(i), &subresourceData, 1);
 		}
 
-		uploadBatch.Transition(pTexture->GetInterface().Get(), pTexture->GetCurrentState(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		//uploadBatch.Transition(pTexture->GetResource(), pTexture->GetResourceState(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		//auto finish = uploadBatch.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
 		//finish.wait();
-		pTexture->SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		//pTexture->SetResourceState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		AssetMetaData assetMetaData;
-		assetMetaData.Name = pTexture->GetName();
+		//assetMetaData.Name = pTexture->GetName();
 		assetMetaData.SourcePath = srcPath;
-		assetMetaData.Uuid = handle.Uuid;
-		assetMetaData.AssetType = AssetType::Texture2D;
+		//assetMetaData.Uuid = handle.Uuid;
+		assetMetaData.AssetType = AssetType::TextureEx;
 		
 		auto now = std::chrono::system_clock::now();
 		auto duration = now.time_since_epoch();
@@ -244,10 +289,10 @@ namespace Relentless
 		const std::filesystem::path fullDestinationPath = FilepathUtils::Combine(dstAssetDirectorPath, filename);
 		
 		AssetRegistry::Map(fullDestinationPath, assetMetaData, AssetRegistry::MapOperation::Override);
-		AssetManager::Link(fullDestinationPath.string(), handle.Uuid);
+		//AssetManager::Link(fullDestinationPath.string(), handle.Uuid);
 		
-		if (!Serializer::Serialize(fullDestinationPath, handle, isABlockingOperation))
-			RLS_CORE_ERROR("[Importer]: Failed to serialize imported texture with name '{0}'.", assetMetaData.Name.c_str());
+		//if (!Serializer::Serialize(fullDestinationPath, handle, isABlockingOperation))
+		//	RLS_CORE_ERROR("[Importer]: Failed to serialize imported texture with name '{0}'.", assetMetaData.Name.c_str());
 		
 		return true;
 	}
@@ -370,13 +415,13 @@ namespace Relentless
 		//pNewMesh->SetVertexBufferHandle(vbHandle);
 		//pNewMesh->SetIndexBufferHandle(ibHandle);
 
-		const uint32_t index = AssetManager::GetStorage<Mesh>().Add(pNewMesh);
-		const auto& [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Mesh);
+		//const uint32_t index = AssetManager::GetStorage<Mesh>().Add(pNewMesh);
+		//const auto& [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Mesh);
 
 		AssetMetaData metaData;
 		metaData.Name = sanitizedName;
 		metaData.SourcePath = srcPath;
-		metaData.Uuid = handle->second.Uuid;
+		//metaData.Uuid = handle->second.Uuid;
 		metaData.AssetType = AssetType::Mesh;
 
 		auto now = std::chrono::system_clock::now();
@@ -388,10 +433,103 @@ namespace Relentless
 		const std::filesystem::path fullDestinationPath = FilepathUtils::Combine(destinationDirectory, filename);
 
 		AssetRegistry::Map(fullDestinationPath, metaData, AssetRegistry::MapOperation::Override);
-		AssetManager::Link(fullDestinationPath.string(), handle->second.Uuid);
+		//AssetManager::Link(fullDestinationPath.string(), handle->second.Uuid);
 		
-		if (!Serializer::Serialize(fullDestinationPath, handle->second, isABlockingOperation))
-			RLS_CORE_ERROR("[Importer]: Failed to serialize imported mesh with name '{0}'.", metaData.Name.c_str());
+		//if (!Serializer::Serialize(fullDestinationPath, handle->second, isABlockingOperation))
+		//	RLS_CORE_ERROR("[Importer]: Failed to serialize imported mesh with name '{0}'.", metaData.Name.c_str());
+
+		//RLS_CORE_INFO("Loaded mesh '{0}' with GUID: '{1}'.", pNewMesh->GetName(), ConvertUUIDToString(handle->second.Uuid));
+
+		//outHandle = handle->second;
+	}
+
+	bool Importer::ImportAssimpMeshEx(GraphicsDevice* pDevice, aiMesh* pMesh, AssetHandle& outHandle) noexcept
+	{
+		if (!pMesh)
+		{
+			RLS_CORE_ERROR("[Importer]: Failed to import mesh; assimp mesh is invalid.");
+			outHandle = NULL_HANDLE;
+			return false;
+		}
+
+		if (!pMesh->HasPositions() || !pMesh->HasFaces() || !pMesh->HasNormals() || !pMesh->HasTangentsAndBitangents() || !pMesh->HasTextureCoords(0u))
+		{
+			RLS_CORE_ERROR("[Importer]: Error in importing mesh with name '{0}'; one or more vertex fields does not exist.", pMesh->mName.C_Str());
+			outHandle = NULL_HANDLE;
+			return false;
+		}
+
+		std::vector<SimpleVertex> vertices;
+		std::vector<uint32_t> indices;
+		for (uint32_t i{ 0u }; i < pMesh->mNumVertices; ++i)
+		{
+			SimpleVertex vertex{};
+
+			vertex.Position.x = pMesh->mVertices[i].x;
+			vertex.Position.y = pMesh->mVertices[i].y;
+			vertex.Position.z = pMesh->mVertices[i].z;
+
+			vertex.Normal.x = pMesh->mNormals[i].x;
+			vertex.Normal.y = pMesh->mNormals[i].y;
+			vertex.Normal.z = pMesh->mNormals[i].z;
+
+			vertex.Tangent.x = pMesh->mTangents[i].x;
+			vertex.Tangent.y = pMesh->mTangents[i].y;
+			vertex.Tangent.z = pMesh->mTangents[i].z;
+
+			vertex.BiTangent.x = pMesh->mBitangents[i].x;
+			vertex.BiTangent.y = pMesh->mBitangents[i].y;
+			vertex.BiTangent.z = pMesh->mBitangents[i].z;
+
+			vertex.TextureCoords.x = pMesh->mTextureCoords[0][i].x;
+			vertex.TextureCoords.y = pMesh->mTextureCoords[0][i].y;
+
+			vertices.push_back(vertex);
+		}
+		for (uint32_t i{ 0u }; i < pMesh->mNumFaces; ++i)
+		{
+			aiFace face = pMesh->mFaces[i];
+			for (uint32_t j{ 0u }; j < face.mNumIndices; ++j)
+				indices.push_back(face.mIndices[j]);
+		}
+
+		const size_t nrOfIndices = indices.size();
+		const size_t nrOfVertices = vertices.size();
+
+		//Remap table:
+		std::vector<uint32_t> remap(nrOfIndices);
+		const size_t optimizedVertexCount = meshopt_generateVertexRemap(remap.data(), indices.data(), nrOfIndices, vertices.data(), nrOfVertices, sizeof(SimpleVertex));
+
+		std::vector<uint32_t> optimizedIndices;
+		std::vector<SimpleVertex> optimizedVertices;
+		optimizedIndices.resize(nrOfIndices);
+		optimizedVertices.resize(optimizedVertexCount);
+
+		//Optimization 1: remove duplicate vertices:
+		meshopt_remapIndexBuffer(optimizedIndices.data(), indices.data(), nrOfIndices, remap.data());
+		meshopt_remapVertexBuffer(optimizedVertices.data(), vertices.data(), nrOfVertices, sizeof(SimpleVertex), remap.data());
+
+		//Optimization 2: improve vertex locality:
+		meshopt_optimizeVertexCache(optimizedIndices.data(), optimizedIndices.data(), nrOfIndices, optimizedVertexCount);
+
+		//Optimization 3: Reduce pixel overdraw:
+		meshopt_optimizeOverdraw(optimizedIndices.data(), optimizedIndices.data(), nrOfIndices, &(optimizedVertices[0].Position.x), optimizedVertexCount, sizeof(SimpleVertex), 1.05f);
+
+		//Optimization 4: optimize vertex buffer accesses:
+		meshopt_optimizeVertexFetch(optimizedVertices.data(), optimizedIndices.data(), nrOfIndices, optimizedVertices.data(), optimizedVertexCount, sizeof(SimpleVertex));
+
+		const uint32_t vertexBufferSizeInBytes = (uint32_t)optimizedVertices.size() * sizeof(SimpleVertex);
+		const uint32_t indexBufferSizeInBytes = (uint32_t)optimizedIndices.size() * sizeof(uint32_t);
+
+		const std::string sanitizedName = FilepathUtils::SanitizeFileName(pMesh->mName.C_Str());
+
+		Ref<BufferEx> pVertexBuffer = pDevice->CreateBuffer(BufferDesc::CreateVertexBuffer((uint32_t)optimizedVertices.size(), sizeof(SimpleVertex), BufferFlag::ShaderResource), "Vertex Buffer", optimizedVertices.data());
+		Ref<BufferEx> pIndexBuffer = pDevice->CreateBuffer(BufferDesc::CreateIndexBuffer((uint32_t)optimizedIndices.size(), ResourceFormat::R32_UINT, BufferFlag::ShaderResource), "Index Buffer", optimizedIndices.data());
+
+		Ref<Mesh> pNewMesh = new Mesh(pVertexBuffer, pIndexBuffer, sanitizedName);
+
+		const uint32_t sparseIndex = AssetManager::GetStorage<Mesh>().Add(pNewMesh);
+		const auto& [handle, _] = AssetManager::InsertMetaData(CreateUUID(), sparseIndex, AssetType::Mesh);
 
 		RLS_CORE_INFO("Loaded mesh '{0}' with GUID: '{1}'.", pNewMesh->GetName(), ConvertUUIDToString(handle->second.Uuid));
 
@@ -400,6 +538,8 @@ namespace Relentless
 
 	bool Importer::ImportModel(const std::filesystem::path& srcPath, const std::filesystem::path& destinationDirectory, bool isABlockingOperation, const MeshImportSettings& importSettings) noexcept
 	{
+		RLS_ASSERT(false, "TODO!");
+
 		uint32_t importFlags = (uint32_t)(aiProcess_ConvertToLeftHanded | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals);
 		if (importSettings.OptimizeMesh)
 			importFlags |= (uint32_t)(aiProcess_Triangulate | aiProcess_ImproveCacheLocality | aiProcess_JoinIdenticalVertices);
@@ -533,12 +673,12 @@ namespace Relentless
 
 		for (auto& [materialName, materialMeta] : materialToTextureDependencies)
 		{
-			const AssetHandle handle = AssetManager::CreateNew<Material>();
-			std::shared_ptr<Material> material = AssetManager::Get<Material>(handle);
-			material->SetName(materialName);
+			//const AssetHandle handle = AssetManager::CreateNew<Material>();
+			//Ref<Material> material = AssetManager::Get<Material>(handle);
+			//material->SetName(materialName);
 
-			if (materialMeta.UsesDiffuseColor)
-				material->m_AlbedoColor = { materialMeta.DiffuseColor.r, materialMeta.DiffuseColor.g, materialMeta.DiffuseColor.b, materialMeta.DiffuseColor.a };
+			//if (materialMeta.UsesDiffuseColor)
+			//	material->m_AlbedoColor = { materialMeta.DiffuseColor.r, materialMeta.DiffuseColor.g, materialMeta.DiffuseColor.b, materialMeta.DiffuseColor.a };
 
 			for (auto& materialMeta : materialMeta.MaterialTextures)
 			{
@@ -547,26 +687,26 @@ namespace Relentless
 				{
 				case aiTextureType_BASE_COLOR:
 				case aiTextureType_DIFFUSE:
-					material->SetAlbedoTexture(textureHandle);
+					//material->SetAlbedoTexture(textureHandle);
 					break;
 				case aiTextureType_METALNESS:
-					material->SetMetallicTexture(textureHandle);
+					//material->SetMetallicTexture(textureHandle);
 					break;
 				case aiTextureType_DIFFUSE_ROUGHNESS:
-					material->SetRoughnessTexture(textureHandle);
+					//material->SetRoughnessTexture(textureHandle);
 					break;
 				case aiTextureType_NORMALS:
 				case aiTextureType_NORMAL_CAMERA:
-					material->SetNormalMap(textureHandle);
+					//material->SetNormalMap(textureHandle);
 					break;
 				case aiTextureType_AMBIENT_OCCLUSION:
-					material->SetAmbientOcclusionTexture(textureHandle);
+					//material->SetAmbientOcclusionTexture(textureHandle);
 					break;
 				case aiTextureType_EMISSION_COLOR:
-					material->SetEmissionTexture(textureHandle);
+					//material->SetEmissionTexture(textureHandle);
 					break;
 				case aiTextureType_DISPLACEMENT:
-					material->SetHeightMap(textureHandle);
+					//material->SetHeightMap(textureHandle);
 					break;
 				default:
 					RLS_ASSERT(false, "[Importer]: Unknown texture type encountered.");
@@ -580,7 +720,7 @@ namespace Relentless
 			AssetMetaData metaData;
 			metaData.Name = materialName;
 			metaData.SourcePath = srcPath;
-			metaData.Uuid = handle.Uuid;
+			//metaData.Uuid = handle.Uuid;
 			metaData.AssetType = AssetType::Material;
 
 			auto now = std::chrono::system_clock::now();
@@ -589,13 +729,13 @@ namespace Relentless
 			metaData.ModificationDateAndTime = static_cast<uint64_t>(millis);
 
 			AssetRegistry::Map(fullDestinationPath, metaData, AssetRegistry::MapOperation::Override);
-			AssetManager::Link(fullDestinationPath.string(), handle.Uuid);
+			//AssetManager::Link(fullDestinationPath.string(), handle.Uuid);
 			
-			if (!Serializer::Serialize(fullDestinationPath, handle, isABlockingOperation))
-				RLS_CORE_ERROR("[Importer]: Failed to serialize imported material with name '{0}'.", materialName.c_str());
+			//if (!Serializer::Serialize(fullDestinationPath, handle, isABlockingOperation))
+			//	RLS_CORE_ERROR("[Importer]: Failed to serialize imported material with name '{0}'.", materialName.c_str());
 
 			//Application::Get().GetMemorymanager().SetDirtyMaterial(handle);
-			RLS_CORE_INFO("Loaded material '{0}' with GUID: '{1}'.", materialName.c_str(), ConvertUUIDToString(handle.Uuid));
+			//RLS_CORE_INFO("Loaded material '{0}' with GUID: '{1}'.", materialName.c_str(), ConvertUUIDToString(handle.Uuid));
 		}
 
 		std::unordered_map<const aiMesh*, Transform> aiMeshToImportedTransformMap;
@@ -608,6 +748,221 @@ namespace Relentless
 		{
 			auto& [handle, mesh] = aiMeshAndHandlePair;
 			AssetManager::Get<Mesh>(handle)->SetOffsetTransform(aiMeshToImportedTransformMap[mesh]);
+		}
+
+		return true;
+	}
+
+	bool Importer::ImportModelEx(GraphicsDevice* pDevice, const std::filesystem::path& fullPath, const MeshImportSettings& importSettings /*= {}*/, Ref<ImporterFeedbackContext> pFeedbackContext) noexcept
+	{
+		uint32_t importFlags = (uint32_t)(aiProcess_ConvertToLeftHanded | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals);
+		if (importSettings.OptimizeMesh)
+			importFlags |= (uint32_t)(aiProcess_Triangulate | aiProcess_ImproveCacheLocality | aiProcess_JoinIdenticalVertices);
+		if (importSettings.GenerateColliders)
+			importFlags |= (uint32_t)(aiProcess_GenBoundingBoxes);
+
+		Assimp::Importer importer;
+		const aiScene* pAssimpScene = importer.ReadFile(fullPath.string(), importFlags);
+		const bool incompleteScene = pAssimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE;
+
+		if (!pAssimpScene || incompleteScene || !pAssimpScene->mRootNode)
+		{
+			RLS_CORE_ERROR("[Importer]: Reading file for model with path '{0}' failed with error message: '{1}'.", fullPath.string().c_str(), importer.GetErrorString());
+			return false;
+		}
+
+		std::unordered_map<UUID, std::pair<AssetHandle, aiMesh*>> uuidToAIMeshMap;
+
+		std::set<aiMesh*> uniqueMeshes;
+		for (uint32_t i{ 0u }; i < pAssimpScene->mNumMeshes; ++i)
+			uniqueMeshes.insert(pAssimpScene->mMeshes[i]);
+
+		std::vector<std::future<bool>> meshFutures;
+		meshFutures.reserve(uniqueMeshes.size());
+
+		std::mutex mtx;
+		for (aiMesh* mesh : uniqueMeshes)
+		{
+			meshFutures.push_back(Application::Get().GetThreadPool().Submit([mesh, &mtx, &uuidToAIMeshMap, pDevice]()
+				{
+					AssetHandle assetHandle = NULL_HANDLE;
+					if (!ImportAssimpMeshEx(pDevice, mesh, assetHandle))
+						return false;
+
+					std::lock_guard<std::mutex> guard(mtx);
+					uuidToAIMeshMap[assetHandle.Uuid] = { assetHandle, mesh };
+				}));
+		}
+
+		//const std::filesystem::path workingDirectory = srcPath.parent_path();
+
+		struct MaterialImportTextures
+		{
+			std::filesystem::path Path;
+			aiTextureType AiTextureType;
+		};
+
+		struct MaterialImportMetaData
+		{
+			std::vector<MaterialImportTextures> MaterialTextures;
+			bool UsesDiffuseColor = false;
+			aiColor4D DiffuseColor{};
+		};
+
+		std::unordered_map<std::string, MaterialImportMetaData> materialToTextureDependencies;
+
+		std::vector<std::future<void>> textureFutures;
+		//if (importSettings.ImportMaterialsAndTextures)
+		//{
+		//	std::set<std::filesystem::path> uniqueTextures;
+		//	std::unordered_map<std::filesystem::path, bool> pathToSRGBBoolMap;
+		//
+		//	for (uint32_t i{ 0u }; i < pAssimpScene->mNumMaterials; ++i)
+		//	{
+		//		auto&& TryGetTexture = [&uniqueTextures, &pathToSRGBBoolMap, &workingDirectory, &destinationDirectory, &materialToTextureDependencies](const aiMaterial* pMaterial, const std::string name, aiTextureType textureType, bool asSRGB) -> bool
+		//			{
+		//				aiString path;
+		//				if (pMaterial->GetTexture(textureType, 0, &path) == aiReturn::aiReturn_SUCCESS)
+		//				{
+		//					const std::filesystem::path abolutePath = FilepathUtils::Combine(workingDirectory, path.C_Str());
+		//					auto [_, inserted] = uniqueTextures.insert(abolutePath);
+		//					if (inserted)
+		//						pathToSRGBBoolMap[abolutePath] = asSRGB;
+		//
+		//					std::string filename = FilepathUtils::ExtractFilenameWithoutExtension(path.C_Str()) + ASSET_EXTENSION;
+		//					filename = FilepathUtils::SanitizeFileName(filename);
+		//					const std::filesystem::path fullDestinationPath = FilepathUtils::Combine(destinationDirectory, filename);
+		//					materialToTextureDependencies[pMaterial->GetName().C_Str()].MaterialTextures.push_back({ fullDestinationPath, textureType });
+		//
+		//					return true;
+		//				}
+		//				return false;
+		//			};
+		//		const aiMaterial* pMaterial = pAssimpScene->mMaterials[i];
+		//		std::string name = FilepathUtils::SanitizeFileName(std::string(pMaterial->GetName().C_Str()));
+		//		if (name.empty())
+		//			name = "Unnamed";
+		//
+		//		if (!TryGetTexture(pMaterial, name, aiTextureType_BASE_COLOR, true))
+		//		{
+		//			TryGetTexture(pMaterial, name, aiTextureType_DIFFUSE, true);
+		//		}
+		//		TryGetTexture(pMaterial, name, aiTextureType_METALNESS, false);
+		//		TryGetTexture(pMaterial, name, aiTextureType_DIFFUSE_ROUGHNESS, false);
+		//		if (!TryGetTexture(pMaterial, name, aiTextureType_NORMALS, false))
+		//		{
+		//			TryGetTexture(pMaterial, name, aiTextureType_NORMAL_CAMERA, false);
+		//		}
+		//		TryGetTexture(pMaterial, name, aiTextureType_AMBIENT_OCCLUSION, false);
+		//		TryGetTexture(pMaterial, name, aiTextureType_EMISSION_COLOR, true);
+		//		TryGetTexture(pMaterial, name, aiTextureType_DISPLACEMENT, false);
+		//
+		//		aiColor4D diffuseColor{};
+		//		if (pMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor) == AI_SUCCESS)
+		//		{
+		//			materialToTextureDependencies[name].DiffuseColor = diffuseColor;
+		//			materialToTextureDependencies[name].UsesDiffuseColor = true;
+		//		}
+		//	}
+		//
+		//	for (auto& path : uniqueTextures)
+		//	{
+		//		TextureImportSettings importSettings;
+		//		importSettings.GenerateMipMaps = true;
+		//		importSettings.IsHDR = false;
+		//		importSettings.IsSRGB = pathToSRGBBoolMap[path.string()];
+		//		importSettings.TextureCompressionType = importSettings.TextureCompressionType;
+		//
+		//		textureFutures.push_back(RequestAsyncLoadFromFile(path, destinationDirectory, importSettings));
+		//	}
+		//}
+
+		for (auto& future : meshFutures)
+			future.wait();
+
+		for (auto& future : textureFutures)
+			future.wait();
+
+		for (auto& [materialName, materialMeta] : materialToTextureDependencies)
+		{
+			//const AssetHandle handle = AssetManager::CreateNew<Material>();
+			//Ref<Material> material = AssetManager::Get<Material>(handle);
+			//material->SetName(materialName);
+
+			//if (materialMeta.UsesDiffuseColor)
+			//	material->m_AlbedoColor = { materialMeta.DiffuseColor.r, materialMeta.DiffuseColor.g, materialMeta.DiffuseColor.b, materialMeta.DiffuseColor.a };
+
+			for (auto& materialMeta : materialMeta.MaterialTextures)
+			{
+				const AssetHandle textureHandle = AssetManager::GetHandleByPath(materialMeta.Path);
+				switch (materialMeta.AiTextureType)
+				{
+				case aiTextureType_BASE_COLOR:
+				case aiTextureType_DIFFUSE:
+					//material->SetAlbedoTexture(textureHandle);
+					break;
+				case aiTextureType_METALNESS:
+					//material->SetMetallicTexture(textureHandle);
+					break;
+				case aiTextureType_DIFFUSE_ROUGHNESS:
+					//material->SetRoughnessTexture(textureHandle);
+					break;
+				case aiTextureType_NORMALS:
+				case aiTextureType_NORMAL_CAMERA:
+					//material->SetNormalMap(textureHandle);
+					break;
+				case aiTextureType_AMBIENT_OCCLUSION:
+					//material->SetAmbientOcclusionTexture(textureHandle);
+					break;
+				case aiTextureType_EMISSION_COLOR:
+					//material->SetEmissionTexture(textureHandle);
+					break;
+				case aiTextureType_DISPLACEMENT:
+					//material->SetHeightMap(textureHandle);
+					break;
+				default:
+					RLS_ASSERT(false, "[Importer]: Unknown texture type encountered.");
+					break;
+				}
+			}
+
+			//const std::string filename = FilepathUtils::SanitizeFileName(materialName) + ASSET_EXTENSION;
+			//const std::filesystem::path fullDestinationPath = FilepathUtils::Combine(destinationDirectory, filename);
+			//
+			//AssetMetaData metaData;
+			//metaData.Name = materialName;
+			//metaData.SourcePath = srcPath;
+			////metaData.Uuid = handle.Uuid;
+			//metaData.AssetType = AssetType::Material;
+			//
+			//auto now = std::chrono::system_clock::now();
+			//auto duration = now.time_since_epoch();
+			//auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+			//metaData.ModificationDateAndTime = static_cast<uint64_t>(millis);
+
+			//AssetRegistry::Map(fullDestinationPath, metaData, AssetRegistry::MapOperation::Override);
+			//AssetManager::Link(fullDestinationPath.string(), handle.Uuid);
+
+			//if (!Serializer::Serialize(fullDestinationPath, handle, isABlockingOperation))
+			//	RLS_CORE_ERROR("[Importer]: Failed to serialize imported material with name '{0}'.", materialName.c_str());
+
+			//Application::Get().GetMemorymanager().SetDirtyMaterial(handle);
+			//RLS_CORE_INFO("Loaded material '{0}' with GUID: '{1}'.", materialName.c_str(), ConvertUUIDToString(handle.Uuid));
+		}
+
+		std::unordered_map<const aiMesh*, Transform> aiMeshToImportedTransformMap;
+
+		DirectX::XMFLOAT4X4 identity;
+		DirectX::XMStoreFloat4x4(&identity, DirectX::XMMatrixIdentity());
+		ResolveMeshHierarchy(pAssimpScene->mRootNode, pAssimpScene, identity, aiMeshToImportedTransformMap);
+
+		for (auto& [uuid, aiMeshAndHandlePair] : uuidToAIMeshMap)
+		{
+			auto& [handle, mesh] = aiMeshAndHandlePair;
+			AssetManager::Get<Mesh>(handle)->SetOffsetTransform(aiMeshToImportedTransformMap[mesh]);
+			
+			if (pFeedbackContext)
+				pFeedbackContext->OnAssetImported(handle, true);
 		}
 
 		return true;

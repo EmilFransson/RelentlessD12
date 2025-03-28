@@ -21,6 +21,8 @@ namespace Relentless
 	class DescriptorHeapEx : public DeviceObject
 	{
 	public:
+		static constexpr uint32 INVALID_DESCRIPTOR_INDEX = 0xFFFFFFFF;
+
 		DescriptorHeapEx(GraphicsDevice* pParent, const D3D12_DESCRIPTOR_HEAP_TYPE descriptorHeapType, const uint32_t capacity, const bool isShaderVisible) noexcept;
 		virtual ~DescriptorHeapEx() noexcept override = default;
 		[[nodiscard]] DescriptorHandleEx AllocateDescriptor() noexcept;

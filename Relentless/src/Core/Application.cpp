@@ -33,25 +33,25 @@ namespace Relentless
 		case RLS_Button::Left:
 		{
 			if (isPressed)
-				PublishEvent<LeftMouseButtonPressedEvent>(Mouse::GetCoordinates());
+				PublishEvent<LeftMouseButtonPressedEvent>(Mouse::GetCursorPosition());
 			else 
-				PublishEvent<LeftMouseButtonReleasedEvent>(Mouse::GetCoordinates());
+				PublishEvent<LeftMouseButtonReleasedEvent>(Mouse::GetCursorPosition());
 			break;
 		}
 		case RLS_Button::Right:
 		{
 			if (isPressed)
-				PublishEvent<RightMouseButtonPressedEvent>(Mouse::GetCoordinates());
+				PublishEvent<RightMouseButtonPressedEvent>(Mouse::GetCursorPosition());
 			else
-				PublishEvent<RightMouseButtonReleasedEvent>(Mouse::GetCoordinates());
+				PublishEvent<RightMouseButtonReleasedEvent>(Mouse::GetCursorPosition());
 			break;
 		}
 		case RLS_Button::Wheel:
 		{
 			if (isPressed)
-				PublishEvent<MiddleMouseButtonPressedEvent>(Mouse::GetCoordinates());
+				PublishEvent<MiddleMouseButtonPressedEvent>(Mouse::GetCursorPosition());
 			else
-				PublishEvent<MiddleMouseButtonPressedEvent>(Mouse::GetCoordinates());
+				PublishEvent<MiddleMouseButtonReleasedEvent>(Mouse::GetCursorPosition());
 			break;
 		}
 		}
@@ -110,6 +110,11 @@ namespace Relentless
 	GraphicsDevice* Application::GetGraphicsDevice() const noexcept
 	{
 		return m_pGraphicsDevice;
+	}
+
+	const UniquePtr<WindowEx>& Application::GetWindow() const noexcept
+	{
+		return m_pWindow;
 	}
 
 	void Application::Run() noexcept
@@ -184,7 +189,7 @@ namespace Relentless
 		m_pGraphicsDevice = new GraphicsDevice(options);
 
 		const Vector2i displaySize = WindowEx::GetDisplaySize();
-		m_pWindow = std::make_unique<WindowEx>(uint32(displaySize.x * 0.7f), uint32(displaySize.y * 0.7f));
+		m_pWindow = std::make_unique<WindowEx>(uint32(displaySize.x * 0.85f), uint32(displaySize.y * 0.85f));
 		m_pWindow->SetTitle(m_ApplicationSpecification.Name.c_str());
 
 		m_pWindow->OnCloseOrDestroy.Connect(this, &Application::OnWindowClosedOrDestroyed);

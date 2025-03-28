@@ -15,8 +15,10 @@ namespace Relentless
 
 		static [[nodiscard]] Vector2i GetDisplaySize() noexcept;
 		[[nodiscard]] WindowHandle GetNativeWindow() const noexcept;
+		[[nodiscard]] Vector2u GetTopLeft() const noexcept;
 		void PollMessages() noexcept;
 		void SetTitle(const char* pTitle) noexcept;
+		void SetPosition(const Vector2u& newPosition) noexcept;
 
 		Broadcaster<void(bool maximized)> OnFocusChanged;
 		Broadcaster<void(uint32 width, uint32 height)> OnResizeOrMove;

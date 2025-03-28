@@ -68,8 +68,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "Equirectangular To CubeMap Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("EquirectangularToCubemapVertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("EquirectangularToCubemapPixelShader");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("EquirectangularToCubemapVertexShader");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("EquirectangularToCubemapPixelShader");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = false;
 			pipelineSpecification.DepthWrite = false;
@@ -102,8 +102,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "CubeMap Irradiance Convolution Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("EquirectangularToCubemapVertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderIrradianceConvolution");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("EquirectangularToCubemapVertexShader");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderIrradianceConvolution");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = false;
 			pipelineSpecification.DepthWrite = false;
@@ -136,8 +136,8 @@ namespace Relentless
 
 			PipelineSpecification pipelineSpecification{};
 			pipelineSpecification.DebugName = "CubeMap Radiance Convolution Pipeline";
-			pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("EquirectangularToCubemapVertexShader");
-			pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderRadianceConvolution");
+			//pipelineSpecification.pVertexShader = MasterRenderer::GetShaderLibrary().Get("EquirectangularToCubemapVertexShader");
+			//pipelineSpecification.pPixelShader = MasterRenderer::GetShaderLibrary().Get("PixelShaderRadianceConvolution");
 			pipelineSpecification.pFrameBuffer = FrameBuffer::Create(frameBufferSpecification);
 			pipelineSpecification.MSAAEligible = false;
 			pipelineSpecification.DepthWrite = false;

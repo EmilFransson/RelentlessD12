@@ -4,6 +4,7 @@ namespace Relentless
 {
 	class BufferEx;
 	struct BufferDesc;
+	struct BufferSRVDesc;
 	class CommandContext;
 	class CommandQueue;
 	class DepthStencilView;

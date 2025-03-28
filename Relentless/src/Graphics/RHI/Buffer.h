@@ -11,7 +11,8 @@ namespace Relentless
 		ShaderResource	= 1 << 0,
 		UnorderedAccess = 1 << 1,
 		ReadBack		= 1 << 2,
-		Upload			= 1 << 3
+		Upload			= 1 << 3,
+		ByteAddress		= 1 << 4
 	};
 	DECLARE_BITMASK_TYPE(BufferFlag);
 
@@ -32,6 +33,11 @@ namespace Relentless
 		static [[nodiscard]] BufferDesc CreateVertexBuffer(uint32 elements, uint32 vertexSize, BufferFlag flags = BufferFlag::None) noexcept
 		{
 			return { .Size = elements * vertexSize, .ElementSize = vertexSize, .Flags = flags };
+		}
+
+		static BufferDesc CreateStructured(uint32 elementCount, uint32 elementSize, BufferFlag flags = BufferFlag::None)
+		{
+			return { .Size = (uint64)elementCount * elementSize, .ElementSize = elementSize, .Flags = flags | BufferFlag::ShaderResource };
 		}
 
 		[[nodiscard]] uint32 NumElements() const noexcept

@@ -8,7 +8,7 @@ namespace Relentless
 	static Ref<IDxcIncludeHandler> pDefaultIncludeHandler{ nullptr };
 	static Ref<IDxcValidator> pValidator{ nullptr };
 
-	std::shared_ptr<Shader> ShaderCompiler::CompileFromFile(const ShaderType shaderType, const std::string& fileName) noexcept
+	std::shared_ptr<Shader> ShaderCompiler::CompileFromFile(const ShaderType shaderType, const std::string& fileName, const char* pEntryPoint) noexcept
 	{
 		std::wstring fullShaderName = ConvertStringToWstring(SHADER_DIRECTORY) + ConvertStringToWstring(fileName);
 		RLS_ASSERT(std::filesystem::exists(fullShaderName), "Shader file does not exist.");
@@ -19,18 +19,18 @@ namespace Relentless
 		uint32_t codePage = CP_UTF8;
 		VERIFY_HR(pUtils->LoadFile(fullShaderName.c_str(), &codePage, pSource.ReleaseAndGetAddressOf()));
 
-		auto&& GetEntryPoint = [](ShaderType type) -> LPCWSTR
-		{
-			switch (type)
-			{
-			case ShaderType::VERTEX: return L"vs_main";
-			case ShaderType::PIXEL: return L"ps_main";
-			case ShaderType::Compute: return L"cs_main";
-			default:
-				RLS_ASSERT(false, "Unreachable");
-				return L"";
-			}
-		};
+		//auto&& GetEntryPoint = [](ShaderType type) -> LPCWSTR
+		//{
+		//	switch (type)
+		//	{
+		//	case ShaderType::VERTEX: return L"vs_main";
+		//	case ShaderType::PIXEL: return L"ps_main";
+		//	case ShaderType::Compute: return L"cs_main";
+		//	default:
+		//		RLS_ASSERT(false, "Unreachable");
+		//		return L"";
+		//	}
+		//};
 
 		auto&& GetProfile = [](ShaderType type) -> LPCWSTR
 		{
@@ -47,7 +47,11 @@ namespace Relentless
 
 		std::vector<LPCWSTR> shaderArguments{};
 		shaderArguments.push_back(L"-E");
-		shaderArguments.push_back(GetEntryPoint(shaderType));
+		//shaderArguments.push_back(GetEntryPoint(shaderType));
+
+		const std::wstring entryPoint = ConvertStringToWstring(pEntryPoint);
+		shaderArguments.push_back(entryPoint.c_str());
+		
 		shaderArguments.push_back(L"-T");
 		shaderArguments.push_back(GetProfile(shaderType));
 
@@ -100,7 +104,7 @@ namespace Relentless
 		}
 
 		RLS_CORE_INFO("Compiled shader: '{0}'", fileName);
-		return std::make_shared<Shader>(shaderType, fileName.substr(0, fileName.find_first_of(".")), std::move(pShaderBlob));
+		return std::make_shared<Shader>(shaderType, fileName.substr(0, fileName.find_first_of(".")), pEntryPoint, std::move(pShaderBlob));
 	}
 
 	void ShaderCompiler::LoadDXC() noexcept

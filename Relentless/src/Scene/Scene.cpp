@@ -57,7 +57,7 @@ namespace Relentless
 		/*TRANSFORMS*/
 		m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)
 		{
-			const ResourceHandle handle = m_EntityManager.Get<TransformComponent>(entityHandle).ConstantBufferHandle;
+			//const ResourceHandle handle = m_EntityManager.Get<TransformComponent>(entityHandle).ConstantBufferHandle;
 			DirectX::XMFLOAT4X4 transform = GetWorldTransform(entityHandle);
 			//resourceManager.UploadConstantBufferData(handle, &transform, sizeof(transform), frameIndex);
 		});
@@ -568,12 +568,12 @@ namespace Relentless
 			tc.LocalTransform.Rotation = rotationQuat;
 			tc.LocalTransform.Location = location;
 
-			tc.IsDirty = true;
+			//tc.IsDirty = true;
 
 			std::vector<entity> descendants = GetAllEntityDescendants(e);
 			for (auto& child : descendants)
 			{
-				m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
+				//m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
 				m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
 			}
 		}
@@ -658,13 +658,13 @@ namespace Relentless
 			tc.LocalTransform.Rotation = rotationQuat;
 			tc.LocalTransform.Location = translation;
 		
-			tc.IsDirty = true;
+			//tc.IsDirty = true;
 			m_EntityManager.AddOrReplace<DirtyTransformComponent>(e);
 
 			const std::vector<entity> descendants = GetAllEntityDescendants(e);
 			for (auto& child : descendants)
 			{
-				m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
+				//m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
 				m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
 			}
 		}
@@ -871,11 +871,11 @@ namespace Relentless
 	void Scene::UpdateWorldTransformIfDirty(entity e) noexcept
 	{
 		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
-		if (tc.IsDirty)
-		{
+		//if (tc.IsDirty)
+		//{
 			UpdateWorldTransform(e);
-			tc.IsDirty = false;
-		}
+			//tc.IsDirty = false;
+		//}
 	}
 
 	void Scene::UpdateWorldTransform(entity e) noexcept
@@ -918,13 +918,13 @@ namespace Relentless
 		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
 		tc.LocalTransform.Matrix = scaleMatrix * rotationMatrix * translationMatrix;
 
-		tc.IsDirty = true;
+		//tc.IsDirty = true;
 		m_EntityManager.AddOrReplace<DirtyTransformComponent>(e);
 
 		std::vector<entity> descendants = GetAllEntityDescendants(e);
 		for (auto& child : descendants)
 		{
-			m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
+			//m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
 			m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
 		}
 	}
@@ -978,14 +978,14 @@ namespace Relentless
 					}
 					else if constexpr (std::is_same_v<ComponentType, MeshRendererComponent>)
 					{
-						const AssetHandle materialHandle = AssetManager::CreateNew<Material>();
-						std::shared_ptr<Material> material = AssetManager::Get<Material>(materialHandle);
+						RLS_ASSERT(false, "TODO");
+						//const AssetHandle materialHandle = AssetManager::CreateNew<Material>();
+						//Ref<Material> material = AssetManager::Get<Material>(materialHandle);
 
-						//As it will be copy assigned we first invalidate it:
-						material->Invalidate();
-						material = AssetManager::Get<Material>(ct.AssetHandle);
+						//As it will be copy assigned we first invalidate it: //HUH?
+						//material = AssetManager::Get<Material>(ct.AssetHandle);
 
-						dstMgr.Get<MeshRendererComponent>(entityID).AssetHandle = materialHandle;
+						//dstMgr.Get<MeshRendererComponent>(entityID).AssetHandle = materialHandle;
 						dstMgr.AddOrReplace<DirtyMeshRendererComponent>(entityID);
 					}
 					else if constexpr (std::is_same_v<ComponentType, ParentComponent>)

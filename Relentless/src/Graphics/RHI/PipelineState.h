@@ -22,6 +22,13 @@ namespace Relentless
 	{
 		friend class PipelineState;
 	public:
+
+		struct ShaderDesc
+		{
+			std::string Name;
+			std::string EntryPoint;
+		};
+
 		PipelineStateInitializer() noexcept;
 
 		void SetName(const char* pName) noexcept;
@@ -47,9 +54,9 @@ namespace Relentless
 		void SetStencilTest(bool stencilEnabled, D3D12_COMPARISON_FUNC mode, D3D12_STENCIL_OP pass, D3D12_STENCIL_OP fail, D3D12_STENCIL_OP zFail, unsigned char compareMask, unsigned char writeMask) noexcept;
 	
 		//Shaders:
-		void SetVertexShader(const char* pShaderName) noexcept;
-		void SetPixelShader(const char* pShaderName) noexcept;
-		void SetComputeShader(const char* pShaderName) noexcept;
+		void SetVertexShader(const char* pShaderName, const char* pEntryPoint) noexcept;
+		void SetPixelShader(const char* pShaderName, const char* pEntryPoint) noexcept;
+		void SetComputeShader(const char* pShaderName, const char* pEntryPoint) noexcept;
 
 		void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE topology) noexcept;
 		void SetRootSignature(RootSignature* pRootSignature) noexcept;
@@ -95,7 +102,7 @@ namespace Relentless
 		} m_Stream;
 
 		std::string m_Name;
-		std::array<std::string, (size_t)ShaderType::Max> m_ShaderInfo;
+		std::array<ShaderDesc, (size_t)ShaderType::Max> m_ShaderInfo;
 	};
 
 	class PipelineState : public DeviceObject

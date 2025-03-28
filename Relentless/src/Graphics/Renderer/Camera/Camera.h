@@ -18,6 +18,7 @@ namespace Relentless
 		void SetNearPlane(float near) noexcept;
 		void SetFarPlane(float far) noexcept;
 
+		[[nodiscard]] Vector3 GetForwardVector() const noexcept;
 		[[nodiscard]] const Vector3& GetLocation() const noexcept;
 		[[nodiscard]] const Quaternion& GetRotation() const noexcept;
 		[[nodiscard]] const ViewTransform& GetViewTransform() const noexcept;

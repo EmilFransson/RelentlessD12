@@ -1,5 +1,6 @@
 #pragma once
 #include "ECS/ECSCommon.h"
+#include "Graphics/RHI/RHI.h"
 #include "ImportSettings.h"
 
 struct aiNode;
@@ -32,12 +33,30 @@ namespace Relentless
 
 	using AssetImportSettingsVariant = std::variant<TextureImportSettings, MeshImportSettings>;
 
+	struct ImporterFeedbackContext : public RefCounted<ImporterFeedbackContext>
+	{
+		Broadcaster<void(const std::string& status)> OnStatusChanged;
+		Broadcaster<void(float partialProgress)> OnProgressUpdated;
+		Broadcaster<void(const AssetHandle& handle, bool success)> OnAssetImported;
+	};
+
+	struct ImportRequest
+	{
+		std::filesystem::path Filepath;
+		std::optional<AssetImportSettingsVariant> ImportSettings;
+	};
+
 	class Importer
 	{
 	public:
+		static std::future<void> RequestAsyncLoad(GraphicsDevice* pDevice, Span<ImportRequest> importRequests, Ref<ImporterFeedbackContext> pFeedbackContext = nullptr) noexcept;
+
 		static std::future<void> RequestAsyncLoadFromFile(const std::filesystem::path& filepath, const std::filesystem::path& dstAssetDirectorPath, const std::optional<AssetImportSettingsVariant>& optionalImportSettings = std::nullopt) noexcept;
 		static [[nodiscard]] bool ImportTexture(const std::filesystem::path& fullPath, const std::filesystem::path& dstAssetDirectorPath, bool isABlockingOperation, const TextureImportSettings& importSettings = {}) noexcept;
 		static [[nodiscard]] bool ImportModel(const std::filesystem::path& fullPath, const std::filesystem::path& dstAssetDirectorPath, bool isABlockingOperation, const MeshImportSettings& importSettings = {}) noexcept;
+
+		static [[nodiscard]] bool ImportModelEx(GraphicsDevice* pDevice, const std::filesystem::path& fullPath, const MeshImportSettings& importSettings = {}, Ref<ImporterFeedbackContext> pFeedbackContext = nullptr) noexcept;
+
 
 		template<typename T>
 		struct always_false : std::false_type{};
@@ -60,7 +79,11 @@ namespace Relentless
 	private:
 		static [[nodiscard]] DXGI_FORMAT GetCompressedDXGITextureFormat(const TextureImportSettings& importSettings) noexcept;
 		static void ScheduleCommandListAndWaitForCompletion(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4>& pCommandList) noexcept;
+		
 		static bool ImportAssimpMesh(aiMesh* pMesh, const std::filesystem::path& srcPath, const std::filesystem::path& destinationDirectory, bool isABlockingOperation, AssetHandle& outHandle) noexcept;
+		static bool ImportAssimpMeshEx(GraphicsDevice* pDevice, aiMesh* pMesh, AssetHandle& outHandle) noexcept;
+
+		
 		template<typename T>
 		static T CastToImportSettings(const std::optional<AssetImportSettingsVariant>& optionalImportSettings) noexcept
 		{
@@ -70,5 +93,8 @@ namespace Relentless
 		}
 	private:
 		static std::unordered_map<AssetType, std::function<bool(const std::filesystem::path&, const std::filesystem::path&, const std::optional<AssetImportSettingsVariant>&, bool)>> m_LoadFuncs;
+
+		static std::unordered_map<AssetType, std::function<bool(GraphicsDevice* pDevice, const std::filesystem::path&, const std::optional<AssetImportSettingsVariant>&, Ref<ImporterFeedbackContext>)>> m_LoadFuncsEx;
+
 	};
 }

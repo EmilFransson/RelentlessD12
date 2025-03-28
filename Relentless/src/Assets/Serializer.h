@@ -1,4 +1,7 @@
 #pragma once
+
+#include "Graphics/RHI/RHI.h"
+
 namespace Relentless
 {
 	//Forward declarations:
@@ -65,7 +68,7 @@ namespace Relentless
 	bool Serializer::Serialize<Material>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept;
 
 	template<>
-	bool Serializer::Serialize<Texture2D>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept;
+	bool Serializer::Serialize<TextureEx>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept;
 
 	template<>
 	bool Serializer::Serialize<Mesh>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept;
@@ -74,7 +77,7 @@ namespace Relentless
 	bool Serializer::Deserialize<Mesh>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept;
 
 	template<>
-	bool Serializer::Deserialize<Texture2D>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept;
+	bool Serializer::Deserialize<TextureEx>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept;
 
 	template<>
 	bool Serializer::Deserialize<Material>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept;
