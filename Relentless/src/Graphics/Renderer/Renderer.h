@@ -1,8 +1,9 @@
 #pragma once
 
+#include "Assets/AssetMeta.h"
 #include "Graphics/Renderer/Techniques/EditorGrid.h"
 #include "Graphics/Renderer/Techniques/ForwardRenderer.h"
-#include "Graphics/Renderer/Techniques/ToyRenderer.h"
+#include "Graphics/Renderer/Techniques/PostProcessing.h"
 #include "Graphics/RHI/RHI.h"
 #include "Graphics/RHI/DescriptorHeap.h"
 #include "RenderTypes.h"
@@ -42,6 +43,7 @@ namespace Relentless
 		SceneBuffer m_MaterialsBuffer;
 		SceneBuffer m_MeshesBuffer;
 		SceneBuffer m_InstancesBuffer;
+		SceneBuffer m_EnvironmentBuffer;
 
 		SceneTextures m_SceneTextures;
 
@@ -54,7 +56,8 @@ namespace Relentless
 		*/
 		UniquePtr<ForwardRenderer> m_pForwardRenderer = nullptr;
 		UniquePtr<EditorGrid> m_pEditorGrid = nullptr;
-		UniquePtr<ToyRenderer> m_pToyRenderer = nullptr;
+		UniquePtr<PostProcessing> m_pPostProcessing = nullptr;
 
+		AssetHandle m_BRDFLutTextureHandle;
 	};
 }

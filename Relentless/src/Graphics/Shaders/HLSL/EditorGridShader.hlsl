@@ -1,3 +1,4 @@
+#include "Common.hlsli"
 #include "CommonBindings.hlsli"
 
 struct VS_OUT
@@ -67,21 +68,21 @@ VS_OUT vs_main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
     return vsOut;
 }
 
-float Lerp(float a, float b, float t)
-{
-    return (1.0f - t) * a + b * t;
-}
-
-float InverseLerp(float a, float b, float v)
-{
-    return (v - a) / (b - a);
-}
-
-float Remap(float iMin, float iMax, float oMin, float oMax, float v)
-{
-    float t = InverseLerp(iMin, iMax, v);
-    return Lerp(oMin, oMax, t);
-}
+//float Lerp(float a, float b, float t)
+//{
+//    return (1.0f - t) * a + b * t;
+//}
+//
+//float InverseLerp(float a, float b, float v)
+//{
+//    return (v - a) / (b - a);
+//}
+//
+//float Remap(float iMin, float iMax, float oMin, float oMax, float v)
+//{
+//    float t = InverseLerp(iMin, iMax, v);
+//    return Lerp(oMin, oMax, t);
+//}
 
 static const float BOUNDARY_EPSILON = 0.01f;
 static const float3 RED_GRID_COLOR = float3(0.63f, 0.0f, 0.0f);

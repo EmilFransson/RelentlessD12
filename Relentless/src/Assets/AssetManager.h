@@ -263,6 +263,19 @@ namespace Relentless
 		//	return it->second;
 		//}
 
+		//template<typename AssetType>
+		//[[nodiscard]] static typename std::enable_if<std::is_same<AssetType, TextureEx>::value, AssetHandle>::type
+		//	CreateNew(const TextureDesc& specification, const UUID& uuid = CreateUUID(), const std::string& pathToFile = "") noexcept
+		//{
+		//	const uint32_t index = GetStorage<AssetType>().Add(new AssetType(specification));
+		//	auto [it, _] = InsertMetaData(uuid, index, AssetTypeTrait<AssetType>::value);
+		//
+		//	if (!pathToFile.empty())
+		//		Link(pathToFile, uuid);
+		//
+		//	return it->second;
+		//}
+
 		template<typename AssetType>
 		static void Destroy(const AssetHandle& handle) noexcept
 		{

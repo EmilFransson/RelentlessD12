@@ -222,7 +222,87 @@ namespace Relentless
 			DXGI_FORMAT_D32_FLOAT,
 			DXGI_FORMAT_D24_UNORM_S8_UINT,
 			DXGI_FORMAT_D32_FLOAT_S8X24_UINT,
+
+			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+			DXGI_FORMAT_B8G8R8A8_UNORM_SRGB
 		};
+
+		constexpr [[nodiscard]] ResourceFormat ConvertFormat(DXGI_FORMAT format) noexcept
+		{
+			switch (format)
+			{
+			case DXGI_FORMAT_UNKNOWN:				return ResourceFormat::Unknown;
+			case DXGI_FORMAT_R8_UINT:				return ResourceFormat::R8_UINT;
+			case DXGI_FORMAT_R8_SINT:				return ResourceFormat::R8_SINT;
+			case DXGI_FORMAT_R8_UNORM:				return ResourceFormat::R8_UNORM;
+			case DXGI_FORMAT_R8_SNORM:				return ResourceFormat::R8_SNORM;
+			case DXGI_FORMAT_R8G8_UINT:				return ResourceFormat::RG8_UINT;
+			case DXGI_FORMAT_R8G8_SINT:				return ResourceFormat::RG8_SINT;
+			case DXGI_FORMAT_R8G8_UNORM:			return ResourceFormat::RG8_UNORM;
+			case DXGI_FORMAT_R8G8_SNORM:			return ResourceFormat::RG8_SNORM;
+			case DXGI_FORMAT_R16_UINT:				return ResourceFormat::R16_UINT;
+			case DXGI_FORMAT_R16_SINT:				return ResourceFormat::R16_SINT;
+			case DXGI_FORMAT_R16_UNORM:				return ResourceFormat::R16_UNORM;
+			case DXGI_FORMAT_R16_SNORM:				return ResourceFormat::R16_SNORM;
+			case DXGI_FORMAT_R16_FLOAT:				return ResourceFormat::R16_FLOAT;
+			case DXGI_FORMAT_B4G4R4A4_UNORM:		return ResourceFormat::BGRA4_UNORM;
+			case DXGI_FORMAT_B5G6R5_UNORM:			return ResourceFormat::B5G6R5_UNORM;
+			case DXGI_FORMAT_B5G5R5A1_UNORM:		return ResourceFormat::B5G5R5A1_UNORM;
+			case DXGI_FORMAT_R8G8B8A8_UINT:			return ResourceFormat::RGBA8_UINT;
+			case DXGI_FORMAT_R8G8B8A8_SINT:			return ResourceFormat::RGBA8_SINT;
+			case DXGI_FORMAT_R8G8B8A8_UNORM:		return ResourceFormat::RGBA8_UNORM;
+			case DXGI_FORMAT_R8G8B8A8_SNORM:		return ResourceFormat::RGBA8_SNORM;
+			case DXGI_FORMAT_B8G8R8A8_UNORM:		return ResourceFormat::BGRA8_UNORM;
+			case DXGI_FORMAT_R10G10B10A2_UNORM:		return ResourceFormat::RGB10A2_UNORM;
+			case DXGI_FORMAT_R11G11B10_FLOAT:		return ResourceFormat::R11G11B10_FLOAT;
+			case DXGI_FORMAT_R16G16_UINT:			return ResourceFormat::RG16_UINT;
+			case DXGI_FORMAT_R16G16_SINT:			return ResourceFormat::RG16_SINT;
+			case DXGI_FORMAT_R16G16_UNORM:			return ResourceFormat::RG16_UNORM;
+			case DXGI_FORMAT_R16G16_SNORM:			return ResourceFormat::RG16_SNORM;
+			case DXGI_FORMAT_R16G16_FLOAT:			return ResourceFormat::RG16_FLOAT;
+			case DXGI_FORMAT_R32_UINT:				return ResourceFormat::R32_UINT;
+			case DXGI_FORMAT_R32_SINT:				return ResourceFormat::R32_SINT;
+			case DXGI_FORMAT_R32_FLOAT:				return ResourceFormat::R32_FLOAT;
+			case DXGI_FORMAT_R16G16B16A16_UINT:		return ResourceFormat::RGBA16_UINT;
+			case DXGI_FORMAT_R16G16B16A16_SINT:		return ResourceFormat::RGBA16_SINT;
+			case DXGI_FORMAT_R16G16B16A16_FLOAT:	return ResourceFormat::RGBA16_FLOAT;
+			case DXGI_FORMAT_R16G16B16A16_UNORM:	return ResourceFormat::RGBA16_UNORM;
+			case DXGI_FORMAT_R16G16B16A16_SNORM:	return ResourceFormat::RGBA16_SNORM;
+			case DXGI_FORMAT_R32G32_UINT:			return ResourceFormat::RG32_UINT;
+			case DXGI_FORMAT_R32G32_SINT:			return ResourceFormat::RG32_SINT;
+			case DXGI_FORMAT_R32G32_FLOAT:			return ResourceFormat::RG32_FLOAT;
+			case DXGI_FORMAT_R32G32B32_UINT:		return ResourceFormat::RGB32_UINT;
+			case DXGI_FORMAT_R32G32B32_SINT:		return ResourceFormat::RGB32_SINT;
+			case DXGI_FORMAT_R32G32B32_FLOAT:		return ResourceFormat::RGB32_FLOAT;
+			case DXGI_FORMAT_R32G32B32A32_UINT:		return ResourceFormat::RGBA32_UINT;
+			case DXGI_FORMAT_R32G32B32A32_SINT:		return ResourceFormat::RGBA32_SINT;
+			case DXGI_FORMAT_R32G32B32A32_FLOAT:	return ResourceFormat::RGBA32_FLOAT;
+
+			case DXGI_FORMAT_BC1_UNORM:				return ResourceFormat::BC1_UNORM;
+			case DXGI_FORMAT_BC2_UNORM:				return ResourceFormat::BC2_UNORM;
+			case DXGI_FORMAT_BC3_UNORM:				return ResourceFormat::BC3_UNORM;
+			case DXGI_FORMAT_BC4_UNORM:				return ResourceFormat::BC4_UNORM;
+			case DXGI_FORMAT_BC4_SNORM:				return ResourceFormat::BC4_SNORM;
+			case DXGI_FORMAT_BC5_UNORM:				return ResourceFormat::BC5_UNORM;
+			case DXGI_FORMAT_BC5_SNORM:				return ResourceFormat::BC5_SNORM;
+			case DXGI_FORMAT_BC6H_UF16:				return ResourceFormat::BC6H_UFLOAT;
+			case DXGI_FORMAT_BC6H_SF16:				return ResourceFormat::BC6H_SFLOAT;
+			case DXGI_FORMAT_BC7_UNORM:				return ResourceFormat::BC7_UNORM;
+
+			case DXGI_FORMAT_D16_UNORM:				return ResourceFormat::D16_UNORM;
+			case DXGI_FORMAT_D32_FLOAT:				return ResourceFormat::D32_FLOAT;
+			case DXGI_FORMAT_D24_UNORM_S8_UINT:		return ResourceFormat::D24S8;
+			case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:	return ResourceFormat::D32S8;
+
+			case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return ResourceFormat::RGBA8_UNORM_SRGB;
+			case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:   return ResourceFormat::BGRA8_UNORM_SRGB;
+			default:
+			{
+				RLS_ASSERT(false, "[D3D::ConvertFormat] Unkown DXGI Format Encountered.");
+				return ResourceFormat::Unknown;
+			}
+			}
+		}
 
 		constexpr [[nodiscard]] DXGI_FORMAT ConvertFormat(ResourceFormat format) noexcept
 		{

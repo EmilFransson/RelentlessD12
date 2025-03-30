@@ -9,11 +9,13 @@ namespace Relentless
 		//Add(Shader::Create(ShaderType::PIXEL, "NewPixelShader.hlsl"));
 		//Add(Shader::Create(ShaderType::Compute, "ToyComputeShader.hlsl"));
 
-		Add(Shader::Create(ShaderType::VERTEX, "EvolvingShader.hlsl", "vs_main"));
-		Add(Shader::Create(ShaderType::PIXEL, "EvolvingShader.hlsl", "ps_main"));
-
 		Add(Shader::Create(ShaderType::VERTEX, "EditorGridShader.hlsl", "vs_main"));
 		Add(Shader::Create(ShaderType::PIXEL, "EditorGridShader.hlsl", "ps_main"));
+
+		Add(Shader::Create(ShaderType::VERTEX, "EvolvingShader.hlsl", "vs_main"));
+		Add(Shader::Create(ShaderType::PIXEL, "EvolvingShader.hlsl", "ps_main", {"RED_OUTPUT"}));
+
+		Add(Shader::Create(ShaderType::Compute, "PostProcessShader.hlsl", "cs_main"));
 
 		//Add(Shader::Create(ShaderType::VERTEX, "EditorGridVertexShader.hlsl"));
 		//Add(Shader::Create(ShaderType::PIXEL, "EditorGridPixelShader.hlsl"));
@@ -43,15 +45,19 @@ namespace Relentless
 	{
 		RLS_ASSERT(pShader, "Shader pointer is invalid.");
 
-		const std::string shaderIdentifier = pShader->GetName() + pShader->GetEntryPoint();
+		std::string shaderIdentifier = pShader->GetName() + pShader->GetEntryPoint();
+		for (auto& define : pShader->GetDefines())
+			shaderIdentifier += define;
 
 		RLS_ASSERT(m_Shaders.find(shaderIdentifier) == m_Shaders.end(), "Shader already exists in shader library.");
 		m_Shaders[shaderIdentifier] = pShader;
 	}
 
-	std::shared_ptr<Shader> ShaderLibrary::Get(const std::string& shaderName, const std::string& entryPoint) noexcept
+	std::shared_ptr<Shader> ShaderLibrary::Get(const std::string& shaderName, const std::string& entryPoint, Span<std::string> defines) noexcept
 	{
-		const std::string shaderIdentifier = shaderName + entryPoint;
+		std::string shaderIdentifier = shaderName + entryPoint;
+		for (auto& define : defines)
+			shaderIdentifier += define;
 
 		RLS_ASSERT(m_Shaders.find(shaderIdentifier) != m_Shaders.end(), "Shader does not exist in shader library.");
 		return m_Shaders[shaderIdentifier];

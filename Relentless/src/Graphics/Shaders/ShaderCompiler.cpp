@@ -1,5 +1,8 @@
 #include "ShaderCompiler.h"
+
+#include "File/File.h"
 #include "Graphics/RHI/D3D.h"
+#include "Utility/StringUtils.h"
 
 namespace Relentless
 {
@@ -8,10 +11,10 @@ namespace Relentless
 	static Ref<IDxcIncludeHandler> pDefaultIncludeHandler{ nullptr };
 	static Ref<IDxcValidator> pValidator{ nullptr };
 
-	std::shared_ptr<Shader> ShaderCompiler::CompileFromFile(const ShaderType shaderType, const std::string& fileName, const char* pEntryPoint) noexcept
+	std::shared_ptr<Shader> ShaderCompiler::CompileFromFile(const ShaderType shaderType, const std::string& fileName, const char* pEntryPoint, Span<std::string> defines) noexcept
 	{
-		std::wstring fullShaderName = ConvertStringToWstring(SHADER_DIRECTORY) + ConvertStringToWstring(fileName);
-		RLS_ASSERT(std::filesystem::exists(fullShaderName), "Shader file does not exist.");
+		std::wstring fullShaderName = StringUtils::ConvertToWide(SHADER_DIRECTORY) + StringUtils::ConvertToWide(fileName);
+		RLS_ASSERT(File::Exists(fullShaderName), "Shader file does not exist.");
 		RLS_ASSERT(fullShaderName.ends_with(L".hlsl"), "Shader file extension is not supported.");
 
 		Ref<IDxcBlobEncoding> pSource{ nullptr };
@@ -36,9 +39,9 @@ namespace Relentless
 		{
 			switch (type)
 			{
-			case ShaderType::VERTEX: return L"vs_6_6";
-			case ShaderType::PIXEL: return L"ps_6_6";
-			case ShaderType::Compute: return L"cs_6_6";
+			case ShaderType::VERTEX: return L"vs_6_7";
+			case ShaderType::PIXEL: return L"ps_6_7";
+			case ShaderType::Compute: return L"cs_6_7";
 			default:
 				RLS_ASSERT(false, "Unreachable");
 				return L"";
@@ -47,16 +50,14 @@ namespace Relentless
 
 		std::vector<LPCWSTR> shaderArguments{};
 		shaderArguments.push_back(L"-E");
-		//shaderArguments.push_back(GetEntryPoint(shaderType));
-
-		const std::wstring entryPoint = ConvertStringToWstring(pEntryPoint);
+		const std::wstring entryPoint = StringUtils::ConvertToWide(pEntryPoint);
 		shaderArguments.push_back(entryPoint.c_str());
 		
 		shaderArguments.push_back(L"-T");
 		shaderArguments.push_back(GetProfile(shaderType));
 
 		// Add include directory argument
-		std::wstring includePath = ConvertStringToWstring(SHADER_DIRECTORY);
+		const std::wstring includePath = StringUtils::ConvertToWide(SHADER_DIRECTORY);
 		shaderArguments.push_back(L"-I");
 		shaderArguments.push_back(includePath.c_str());
 
@@ -64,8 +65,9 @@ namespace Relentless
 		shaderArguments.push_back(DXC_ARG_WARNINGS_ARE_ERRORS);
 
 #if defined RLS_DEBUG
-		shaderArguments.push_back(L"-Od");
 		shaderArguments.push_back(DXC_ARG_DEBUG);
+		shaderArguments.push_back(DXC_ARG_SKIP_OPTIMIZATIONS);
+		shaderArguments.push_back(L"-Qembed_debug");  // Embed debug info into the blob
 #else
 		shaderArguments.push_back(L"-O3");
 #endif
@@ -73,6 +75,14 @@ namespace Relentless
 		shaderArguments.push_back(L"-HV");
 		shaderArguments.push_back(L"2021");
 		shaderArguments.push_back(L"-enable-16bit-types");
+
+		std::vector<std::wstring> definesVector;
+		for (const auto& define : defines)
+		{
+			shaderArguments.push_back(L"-D");
+			definesVector.push_back(StringUtils::ConvertToWide(define));
+			shaderArguments.push_back(definesVector.back().c_str());
+		}
 
 		DxcBuffer sourceBuffer = {};
 		sourceBuffer.Ptr = pSource->GetBufferPointer();
@@ -83,6 +93,22 @@ namespace Relentless
 		Ref<IDxcResult> pCompileResults{ nullptr };
 		VERIFY_HR(pCompiler->Compile(&sourceBuffer, shaderArguments.data(), (uint32_t)shaderArguments.size(), pDefaultIncludeHandler.Get(), IID_PPV_ARGS(pCompileResults.ReleaseAndGetAddressOf())));
 		VERIFY_HR(pCompileResults->GetResult(pShaderBlob.ReleaseAndGetAddressOf()));
+
+		Ref<IDxcBlobUtf8> pErrors;
+		if (SUCCEEDED(pCompileResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(pErrors.GetAddressOf()), nullptr)))
+		{
+			if (pErrors && pErrors->GetStringLength())
+			{
+				const char* errorMessage = (char*)pErrors->GetStringPointer();
+				RLS_CORE_CRITICAL("{}", errorMessage);
+			}
+		}
+
+		HRESULT hrStatus;
+		if (FAILED(pCompileResults->GetStatus(&hrStatus)) || FAILED(hrStatus))
+		{
+			//RLS_ASSERT(false, "FAILED TO COMPILE SHADER");
+		}
 
 		//Validation
 		{
@@ -98,13 +124,15 @@ namespace Relentless
 				pResult->GetErrorBuffer(pPrintBlob.GetAddressOf());
 				pUtils->GetBlobAsUtf8(pPrintBlob.Get(), pPrintBlobUtf8.GetAddressOf());
 
-				RLS_CORE_CRITICAL("{}", (char*)pPrintBlobUtf8->GetStringPointer());
-				RLS_ASSERT(false, (char*)pPrintBlobUtf8->GetStringPointer());
+				const char* errorMessage = pPrintBlobUtf8->GetStringPointer();
+
+				RLS_CORE_CRITICAL("{}", errorMessage);
+				RLS_ASSERT(false, errorMessage);
 			}
 		}
 
 		RLS_CORE_INFO("Compiled shader: '{0}'", fileName);
-		return std::make_shared<Shader>(shaderType, fileName.substr(0, fileName.find_first_of(".")), pEntryPoint, std::move(pShaderBlob));
+		return std::make_shared<Shader>(shaderType, fileName.substr(0, fileName.find_first_of(".")), pEntryPoint, defines.Copy(), std::move(pShaderBlob));
 	}
 
 	void ShaderCompiler::LoadDXC() noexcept

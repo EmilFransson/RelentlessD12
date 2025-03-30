@@ -100,6 +100,7 @@ namespace Relentless
 				}
 				case RLS_Key::A:
 				{
+					break;
 					if (m_ViewportIsFocused)
 					{
 						if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
@@ -309,9 +310,20 @@ namespace Relentless
 
 		m_pActiveScene = std::make_shared<Scene>();
 
+		entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
+		auto& dlc = m_pActiveScene->GetEntityManager().Add<DirectionalLightComponent>(dirEntity);
+		dlc.Color = Vector3(1.0f, 1.0f, 1.0f);
+		dlc.Intensity = 3.0f;
+		Vector3 target = Vector3(0, 0, 0);
+		Vector3 from = Vector3(7, 5, 5);
+		dlc.Direction = target - from;
+		dlc.Direction.Normalize();
+
 		Ref<Material> pWhiteMaterial = new Material();
 		pWhiteMaterial->SetRenderMode(RenderMode::Opaque);
 		pWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		pWhiteMaterial->m_Metallic = 0.0f;
+		pWhiteMaterial->m_Roughness = 0.5f;
 
 		const uint32 index = AssetManager::GetStorage<Material>().Add(pWhiteMaterial);
 		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Material);
@@ -320,19 +332,42 @@ namespace Relentless
 		auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(e);
 		mrc.AssetHandle = handle->second;
 
-		std::vector<ImportRequest> requests;
-		ImportRequest& request = requests.emplace_back();
-		request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Cube.obj");
-		Ref<ImporterFeedbackContext> pFeedback = new ImporterFeedbackContext();
-		pFeedback->OnAssetImported.Connect([this, e](const AssetHandle& handle, bool success)
-			{
-				//Change to per request perhaps instead of this overarching PnAssetImported func?
-				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(e);
-				mfc.AssetHandle = handle;
-			});
+		{
+			std::vector<ImportRequest> requests;
+			ImportRequest& request = requests.emplace_back();
+			request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Cube.obj");
 
-		std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
-		fut.wait();
+			ImportRequest& textureRequest = requests.emplace_back();
+			textureRequest.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rustediron2_basecolor.png");
+			TextureImportSettings textureImportSettings;
+			textureImportSettings.GenerateMipMaps = true;
+			textureImportSettings.TextureCompressionType = ETextureCompressionType::Uncompressed;
+			textureImportSettings.IsSRGB = true;
+			textureImportSettings.IsHDR = false;
+
+			Ref<ImporterFeedbackContext> pFeedback = new ImporterFeedbackContext();
+			pFeedback->OnAssetImported.Connect([this, e](const AssetHandle& handle, bool success)
+				{
+					if (!success)
+						return;
+
+					if (handle.Type == AssetType::Mesh)
+					{
+						//Change to per request perhaps instead of this overarching OnAssetImported func?
+						auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(e);
+						mfc.AssetHandle = handle;
+					}
+					else if (handle.Type == AssetType::TextureEx)
+					{
+						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
+						AssetManager::Get<Material>(mrc.AssetHandle)->SetAlbedoTexture(handle);
+					}
+				});
+
+			std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
+			fut.wait();
+		}
+
 
 		//m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
 		//
@@ -429,8 +464,6 @@ namespace Relentless
 			renderView.FarPlane					= cameraViewTransform.FarPlane;
 
 			renderView.MouseHoverCoordinates = pViewportPanel->IsClientAreaHovered() ? pViewportPanel->GetClientHoverCoordinates() : Vector2i(-1, -1);
-			if (i == 1)
-				RLS_CORE_INFO("[{0}, {1}]", renderView.MouseHoverCoordinates.x, renderView.MouseHoverCoordinates.y);
 		}
 
 		//PROFILE_FUNC;

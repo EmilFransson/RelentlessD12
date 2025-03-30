@@ -66,6 +66,9 @@ namespace Relentless
 		{ FORMAT_TYPE(D32_FLOAT),			FormatType::DepthStencil, 4,		1,		1,			true,  false, false, false },
 		{ FORMAT_TYPE(D24S8),				FormatType::DepthStencil, 4,		1,		1,			true,  true,  false, false },
 		{ FORMAT_TYPE(D32S8),				FormatType::DepthStencil, 8,		1,		1,			true,  true,  false, false },
+		{ FORMAT_TYPE(RGBA8_UNORM_SRGB),	FormatType::Normalized,   4,		1,		4,			false, false, false, false },
+		{ FORMAT_TYPE(BGRA8_UNORM_SRGB),	FormatType::Normalized,   4,		1,		4,			false, false, false, false }
+
 	};
 
 	static_assert(ARRAYSIZE(sFormatInfo) == (uint32_t)ResourceFormat::Count);

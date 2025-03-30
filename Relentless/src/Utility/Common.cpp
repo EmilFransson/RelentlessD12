@@ -1,11 +1,15 @@
 #include "Common.h"
+
+#include "Graphics/RHI/D3D.h"
+
+#include "StringUtils.h"
 namespace Relentless
 {
 	UUID ConvertStringToGUID(const std::string& guidString) noexcept
 	{
-		std::wstring GUIDAsWString = ConvertStringToWstring(guidString);
-		GUID uuid;
-		IIDFromString(GUIDAsWString.c_str(), &uuid);
+		const std::wstring GUIDAsWString = StringUtils::ConvertToWide(guidString);
+		GUID uuid{};
+		VERIFY_HR(IIDFromString(GUIDAsWString.c_str(), &uuid));
 		return uuid;
 	}
 

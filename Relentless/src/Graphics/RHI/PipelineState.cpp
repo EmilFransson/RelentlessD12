@@ -42,9 +42,6 @@ namespace Relentless
 		if (m_pPipelineState)
 			GetParent()->DeferReleaseObject(m_pPipelineState.Detach());
 
-		/*
-			Shaders
-		*///TODO! ADJUST SHADER LIBRARY TO NEW VERSION!!!
 		ShaderLibrary* pShaderLibrary = GetParent()->GetShaderLibrary();
 		for (int i = 0; i < m_Desc.m_ShaderInfo.size(); ++i)
 		{
@@ -52,7 +49,7 @@ namespace Relentless
 			if (shaderDesc.Name.empty())
 				continue;
 
-			const std::shared_ptr<Shader> pShader = pShaderLibrary->Get(shaderDesc.Name, shaderDesc.EntryPoint);
+			const std::shared_ptr<Shader> pShader = pShaderLibrary->Get(shaderDesc.Name, shaderDesc.EntryPoint, shaderDesc.Defines);
 			const ShaderType shaderType = (ShaderType)i;
 			switch (shaderType)
 			{
@@ -336,19 +333,19 @@ namespace Relentless
 		depthStencilDesc.BackFace = depthStencilDesc.FrontFace;
 	}
 
-	void PipelineStateInitializer::SetVertexShader(const char* pShaderName, const char* pEntryPoint) noexcept
+	void PipelineStateInitializer::SetVertexShader(const char* pShaderName, const char* pEntryPoint, Span<std::string> defines) noexcept
 	{
-		m_ShaderInfo[(int)ShaderType::VERTEX] = ShaderDesc{ .Name = pShaderName, .EntryPoint = pEntryPoint };
+		m_ShaderInfo[(int)ShaderType::VERTEX] = ShaderDesc{ .Name = pShaderName, .EntryPoint = pEntryPoint, .Defines = defines.Copy() };
 	}
 
-	void PipelineStateInitializer::SetPixelShader(const char* pShaderName, const char* pEntryPoint) noexcept
+	void PipelineStateInitializer::SetPixelShader(const char* pShaderName, const char* pEntryPoint, Span<std::string> defines) noexcept
 	{
-		m_ShaderInfo[(int)ShaderType::PIXEL] = ShaderDesc{ .Name = pShaderName, .EntryPoint = pEntryPoint };
+		m_ShaderInfo[(int)ShaderType::PIXEL] = ShaderDesc{ .Name = pShaderName, .EntryPoint = pEntryPoint, .Defines = defines.Copy() };
 	}
 
-	void PipelineStateInitializer::SetComputeShader(const char* pShaderName, const char* pEntryPoint) noexcept
+	void PipelineStateInitializer::SetComputeShader(const char* pShaderName, const char* pEntryPoint, Span<std::string> defines) noexcept
 	{
-		m_ShaderInfo[(int)ShaderType::Compute] = ShaderDesc{ .Name = pShaderName, .EntryPoint = pEntryPoint };
+		m_ShaderInfo[(int)ShaderType::Compute] = ShaderDesc{ .Name = pShaderName, .EntryPoint = pEntryPoint, .Defines = defines.Copy() };
 	}
 
 	void PipelineStateInitializer::SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE topology) noexcept

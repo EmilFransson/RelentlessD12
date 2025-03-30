@@ -3,6 +3,7 @@
 #include "Assets/AssetManager.h"
 #include "Core/Time.h"
 #include "ECS/Component.h"
+#include "File/FilePath.h"
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/RingBufferAllocator.h"
@@ -14,8 +15,29 @@ namespace Relentless
 		: m_pDevice{pDevice}
 	{
 		m_pForwardRenderer = std::make_unique<ForwardRenderer>(pDevice);
-		//m_pToyRenderer = std::make_unique<ToyRenderer>(pDevice);
 		m_pEditorGrid = std::make_unique<EditorGrid>(pDevice);
+		m_pPostProcessing = std::make_unique<PostProcessing>(pDevice);
+
+		std::vector<ImportRequest> requests;
+		ImportRequest& request = requests.emplace_back();
+		
+		TextureImportSettings importSettings;
+		importSettings.GenerateMipMaps = false;
+		importSettings.IsSRGB = false;
+		importSettings.TextureCompressionType = ETextureCompressionType::Uncompressed;
+		importSettings.IsHDR = false;
+		
+		request.ImportSettings = importSettings;
+
+		request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
+		Ref<ImporterFeedbackContext> pFeedback = new ImporterFeedbackContext();
+		pFeedback->OnAssetImported.Connect([this](const AssetHandle& handle, bool success)
+			{
+				m_BRDFLutTextureHandle = handle;
+			});
+
+		std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
+		fut.wait();
 	}
 
 	void Renderer::Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<TextureEx> pTarget) noexcept
@@ -49,8 +71,8 @@ namespace Relentless
 			m_MainView.PerspectiveFrustum	= pViewTransform->PerspectiveFrustum;
 			m_MainView.OrthographicFrustum	= pViewTransform->OrthographicFrustum;
 		}
-																													//Change to RGBA32_FLOAT for when tone map etc
-		m_SceneTextures.pColorTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM), "Color Target");
+																													
+		m_SceneTextures.pColorTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT), "Color Target");
 		m_SceneTextures.pDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::D32_FLOAT), "Depth Target");
 
 		{
@@ -108,11 +130,22 @@ namespace Relentless
 			pCommandContext->Execute();
 		}
 
+		//Post processing:
+		{
+			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
+
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+			m_pPostProcessing->Render(*pCommandContext, m_MainView, m_SceneTextures);
+			pCommandContext->Execute();
+
+			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
+		}
+
 		{
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 
 			pCommandContext->InsertResourceBarrier(pTarget, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-			pCommandContext->InsertResourceBarrier(m_SceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			pCommandContext->InsertResourceBarrier(m_SceneTextures.pColorTarget, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		
 			pCommandContext->CopyResource(m_SceneTextures.pColorTarget, pTarget);
 		
@@ -171,6 +204,7 @@ namespace Relentless
 		outViewUniform.WorldToClip.Invert(outViewUniform.ClipToWorld);
 
 		outViewUniform.ViewLocation				= renderView.Location;
+		outViewUniform.BRDFfLutTextureIndex		= m_BRDFLutTextureHandle.IsValid() ? AssetManager::Get<TextureEx>(m_BRDFLutTextureHandle)->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 
 		outViewUniform.ViewportDimensions		= Vector2(renderView.Viewport.GetWidth(), renderView.Viewport.GetHeight());
 		outViewUniform.ViewportDimensionsInv	= Vector2(1.0f / renderView.Viewport.GetWidth(), 1.0f / renderView.Viewport.GetHeight());
@@ -178,14 +212,17 @@ namespace Relentless
 		outViewUniform.FrameIndex				= m_Frame;
 		outViewUniform.DeltaTime				= Time::GetDeltaTime();
 		outViewUniform.ElapsedTime				= Time::GetElapsedTime();
+		outViewUniform.RadianceMapIndex			= ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 
 		outViewUniform.NumInstances				= m_InstancesBuffer.Count;
 		outViewUniform.LightCount				= m_LightsBuffer.Count;
+		outViewUniform.EnvironmentIndex			= m_EnvironmentBuffer.pBuffer ? m_EnvironmentBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+		outViewUniform.IrradianceMapIndex		= ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 		
-		outViewUniform.InstancesIndex			= m_InstancesBuffer.pBuffer ? m_InstancesBuffer.pBuffer->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-		outViewUniform.MeshesIndex				= m_MeshesBuffer.pBuffer ? m_MeshesBuffer.pBuffer->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-		outViewUniform.MaterialsIndex			= m_MaterialsBuffer.pBuffer ? m_MaterialsBuffer.pBuffer->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-		outViewUniform.LightsIndex				= m_LightsBuffer.pBuffer ? m_LightsBuffer.pBuffer->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
+		outViewUniform.InstancesIndex			= m_InstancesBuffer.pBuffer ? m_InstancesBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+		outViewUniform.MeshesIndex				= m_MeshesBuffer.pBuffer ? m_MeshesBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+		outViewUniform.MaterialsIndex			= m_MaterialsBuffer.pBuffer ? m_MaterialsBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+		outViewUniform.LightsIndex				= m_LightsBuffer.pBuffer ? m_LightsBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 	}
 
 	void Renderer::UploadSceneData(CommandContext& commandContext) noexcept
@@ -269,14 +306,15 @@ namespace Relentless
 				const auto& pMaterial = materialStorage.Assets[i];
 
 				ShaderInterop::Material& material = materials.emplace_back();
-				material.AlbedoIndex = pMaterial->HasAlbedoTexture() ? pMaterial->GetAlbedoTexture()->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-				material.NormalIndex = pMaterial->HasNormalMap() ? pMaterial->GetNormalMap()->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-				material.RoughnessIndex = pMaterial->HasRoughnessTexture() ? pMaterial->GetRoughnessTexture()->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-				material.MetalnessIndex = pMaterial->HasMetallicTexture() ? pMaterial->GetRoughnessTexture()->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-				material.EmissiveIndex = pMaterial->HasEmissionTexture() ? pMaterial->GetEmissionTexture()->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-				material.HeightMapIndex = pMaterial->HasHeightMap() ? pMaterial->GetHeightMap()->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-				material.AOIndex = pMaterial->HasAmbientOcclusionTexture() ? pMaterial->GetAmbientOcclusionTexture()->GetSRVIndex() : DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-			
+				material.AlbedoIndex = pMaterial->HasAlbedoTexture() ? pMaterial->GetAlbedoTexture()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+				material.NormalIndex = pMaterial->HasNormalMap() ? pMaterial->GetNormalMap()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+				material.RoughnessIndex = pMaterial->HasRoughnessTexture() ? pMaterial->GetRoughnessTexture()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+				material.MetalnessIndex = pMaterial->HasMetallicTexture() ? pMaterial->GetRoughnessTexture()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+				material.EmissiveIndex = pMaterial->HasEmissionTexture() ? pMaterial->GetEmissionTexture()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+				material.HeightMapIndex = pMaterial->HasHeightMap() ? pMaterial->GetHeightMap()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+				material.AOIndex = pMaterial->HasAmbientOcclusionTexture() ? pMaterial->GetAmbientOcclusionTexture()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+				material.RoughnessMetalnessIndex = ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+
 				material.BaseColorFactor = pMaterial->m_AlbedoColor;
 				material.EmissiveFactor = pMaterial->m_EmissionColor;
 				material.MetalnessFactor = pMaterial->m_Metallic;
@@ -341,6 +379,14 @@ namespace Relentless
 
 			CopyBufferData((uint32)lights.size(), sizeof(ShaderInterop::Light), "Lights", lights.data(), m_LightsBuffer);
 		}
+
+		//Environment
+		{
+			ShaderInterop::Environment environment;
+			environment.BackgroundColor = Vector3(Colors::LightSkyBlue.x, Colors::LightSkyBlue.y, Colors::LightSkyBlue.z);
+			CopyBufferData(1u, sizeof(ShaderInterop::Environment), "Environment", &environment, m_EnvironmentBuffer);
+		}
+
 
 		batches.swap(m_Batches);
 	}

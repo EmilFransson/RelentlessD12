@@ -64,6 +64,12 @@ using float4x4 = Matrix;
 		uint Padding;
 	};
 
+	struct Environment
+	{
+		float3 BackgroundColor;
+		uint Padding;
+	};
+
 	struct Light
 	{
 		float3 Position;
@@ -89,7 +95,7 @@ using float4x4 = Matrix;
 		float4x4 ClipToWorld;
 
 		float3 ViewLocation;
-		uint pad0;
+		uint BRDFfLutTextureIndex;
 
 		float2 ViewportDimensions;
 		float2 ViewportDimensionsInv;
@@ -97,18 +103,20 @@ using float4x4 = Matrix;
 		uint FrameIndex;
 		float DeltaTime;
 		float ElapsedTime;
-		uint pad1;
+		uint RadianceMapIndex;
 
 		uint NumInstances;
 		uint LightCount;
-		uint pad2;
-		uint pad3;
+		uint EnvironmentIndex;
+		uint IrradianceMapIndex;
 
 		uint InstancesIndex;
 		uint MeshesIndex;
 		uint MaterialsIndex;
 		uint LightsIndex;
 	};
+
+	static const uint INVALID_DESCRIPTOR_INDEX = 0xFFFFFFFF;
 
 #ifdef __cplusplus
 }

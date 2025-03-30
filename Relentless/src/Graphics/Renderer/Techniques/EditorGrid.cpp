@@ -27,8 +27,7 @@ namespace Relentless
 		psoDesc.SetDepthEnabled(true);
 		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
 		psoDesc.SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE);
-		//TODO: Change to HDR!!
-		psoDesc.SetRenderTargetFormats(ResourceFormat::RGB10A2_UNORM, ResourceFormat::D32_FLOAT, 1);
+		psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, 1);
 
 		m_pGridPSO = m_pDevice->CreatePipeline(psoDesc);
 

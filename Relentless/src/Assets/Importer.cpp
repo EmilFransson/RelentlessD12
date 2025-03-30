@@ -76,8 +76,8 @@ namespace Relentless
 	std::unordered_map<AssetType, std::function<bool(GraphicsDevice* pDevice, const std::filesystem::path&, const std::optional<AssetImportSettingsVariant>&, Ref<ImporterFeedbackContext>)>> Importer::m_LoadFuncsEx = {
 		{AssetType::TextureEx, [](GraphicsDevice* pDevice, const std::filesystem::path& path, const std::optional<AssetImportSettingsVariant>& importSettings, Ref<ImporterFeedbackContext> pImportFeedback = nullptr)
 			{
-				//if (!ImportTexture(path, dstPath, isABlockingOperation, CastToImportSettings<TextureImportSettings>(importSettings)))
-				//	return false;
+				if (!ImportTextureEx(pDevice, path, CastToImportSettings<TextureImportSettings>(importSettings), pImportFeedback))
+					return false;
 
 				return true;
 			}},
@@ -964,6 +964,145 @@ namespace Relentless
 			if (pFeedbackContext)
 				pFeedbackContext->OnAssetImported(handle, true);
 		}
+
+		return true;
+	}
+
+	[[nodiscard]] bool Importer::ImportTextureEx(GraphicsDevice* pDevice, const std::filesystem::path& fullPath, const TextureImportSettings& importSettings /*= {}*/, Ref<ImporterFeedbackContext> pFeedbackContext /*= nullptr*/) noexcept
+	{
+		if (!File::Exists(fullPath))
+		{
+			RLS_CORE_ERROR("[Importer]: Failed to import texture file with path '{0}'; file does not exist.", fullPath.string().c_str());
+			return false;
+		}
+
+		const ExtensionType extensionType = GetExtensionTypeFromPath(fullPath);
+		DirectX::ScratchImage image;
+		HRESULT result = S_OK;
+		switch (extensionType)
+		{
+		case ExtensionType::TGA:
+			result = LoadFromTGAFile(fullPath.c_str(), nullptr, image);
+			break;
+		case ExtensionType::JPG:
+		case ExtensionType::JPEG:
+		case ExtensionType::PNG:
+		case ExtensionType::TIFF:
+		{
+			DirectX::WIC_FLAGS importFlags = DirectX::WIC_FLAGS::WIC_FLAGS_NONE;
+			importSettings.IsSRGB ? importFlags |= DirectX::WIC_FLAGS::WIC_FLAGS_FORCE_SRGB : importFlags |= DirectX::WIC_FLAGS::WIC_FLAGS_FORCE_RGB;
+			result = LoadFromWICFile(fullPath.c_str(), importFlags, nullptr, image);
+			break;
+		}
+		case ExtensionType::HDR:
+		case ExtensionType::EXR:
+		{
+			result = LoadFromHDRFile(fullPath.c_str(), nullptr, image);
+			break;
+		}
+		case ExtensionType::DDS:
+		{
+			result = LoadFromDDSFile(fullPath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);
+			break;
+		}
+
+		default:
+		{
+			RLS_CORE_ERROR("[Importer]: Failed to import texture file with path '{0}'; file type is not supported.", fullPath.string().c_str());
+			return false;
+		}
+		}
+
+		if (result != S_OK)
+		{
+			LogHR(result, "import", fullPath);
+			return false;
+		}
+		if (image.GetMetadata().format == DXGI_FORMAT_B8G8R8A8_UNORM && importSettings.IsSRGB)
+			image.OverrideFormat(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB);
+
+		if (importSettings.GenerateMipMaps)
+		{
+			DirectX::ScratchImage mipChain;
+			const HRESULT hr = GenerateMipMaps(image.GetImages()[0], DirectX::TEX_FILTER_DEFAULT, 0u, mipChain);
+			if (hr != S_OK)
+				LogHR(hr, "generate mipmaps", fullPath);
+			else
+				image = std::move(mipChain);
+		}
+
+		const bool shouldCompress = importSettings.TextureCompressionType != ETextureCompressionType::Uncompressed;
+		if (shouldCompress)
+		{
+			DirectX::TEX_COMPRESS_FLAGS compressFlags = DirectX::TEX_COMPRESS_FLAGS::TEX_COMPRESS_PARALLEL;
+			if (importSettings.TextureCompressionType == ETextureCompressionType::BC7_Quick)
+				compressFlags |= DirectX::TEX_COMPRESS_BC7_QUICK;
+
+			DirectX::ScratchImage compressedImage;
+			const HRESULT hr = Compress(image.GetImages(), image.GetImageCount(), image.GetMetadata(), GetCompressedDXGITextureFormat(importSettings), compressFlags, DirectX::TEX_THRESHOLD_DEFAULT, compressedImage);
+			if (hr != S_OK)
+				LogHR(hr, "compress", fullPath);
+			else
+				image = std::move(compressedImage);
+		}
+
+		auto& metaData = image.GetMetadata();
+
+		//TextureDesc textureDesc;
+		//textureDesc.Width = metaData.width;
+		//textureDesc.Height = metaData.height;
+		//textureDesc.SampleCount = 1;
+		//textureDesc.Mips = metaData.mipLevels;
+		//textureDesc.Type = TextureType::Texture2D;
+		//textureDesc.Format = D3D::ConvertFormat(metaData.format);
+
+		const std::string fileName = FilepathUtils::ExtractFilename(fullPath);
+
+		//DirectX::ResourceUploadBatch uploadBatch(pDevice->GetDevice());
+		//uploadBatch.Begin();
+
+		const DirectX::Image* pImg = image.GetImages();
+		std::vector<D3D12_SUBRESOURCE_DATA> initData;
+		for (uint32_t i{ 0u }; i < image.GetImageCount(); ++i, ++pImg)
+		{
+			D3D12_SUBRESOURCE_DATA subresourceData = {};
+			subresourceData.pData = pImg->pixels;
+			subresourceData.RowPitch = pImg->rowPitch;
+			subresourceData.SlicePitch = pImg->slicePitch;
+
+			initData.push_back(subresourceData);
+			//uploadBatch.Upload(pTexture->GetResource(), static_cast<UINT>(i), &subresourceData, 1);
+		}
+
+		Ref<TextureEx> pNewTexture = pDevice->CreateTexture(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), fileName.c_str(), initData);
+		const uint32 index = AssetManager::GetStorage<TextureEx>().Add(pNewTexture);
+		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::TextureEx);
+		if (pFeedbackContext)
+			pFeedbackContext->OnAssetImported(handle->second, true);
+
+		//uploadBatch.Transition(pTexture->GetResource(), pTexture->GetResourceState(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		//auto finish = uploadBatch.End(pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue());
+		//finish.wait();
+		//pTexture->SetResourceState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		//AssetMetaData assetMetaData;
+		//assetMetaData.Name = pTexture->GetName();
+		//assetMetaData.SourcePath = fullPath;
+		//assetMetaData.Uuid = handle.Uuid;
+		//assetMetaData.AssetType = AssetType::TextureEx;
+
+		auto now = std::chrono::system_clock::now();
+		auto duration = now.time_since_epoch();
+		auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+		//assetMetaData.ModificationDateAndTime = static_cast<uint64_t>(millis);
+
+		//const std::filesystem::path fullDestinationPath = FilepathUtils::Combine(dstAssetDirectorPath, fileName);
+
+		//AssetRegistry::Map(fullDestinationPath, assetMetaData, AssetRegistry::MapOperation::Override);
+		//AssetManager::Link(fullDestinationPath.string(), handle.Uuid);
+
+		//if (!Serializer::Serialize(fullDestinationPath, handle, isABlockingOperation))
+		//	RLS_CORE_ERROR("[Importer]: Failed to serialize imported texture with name '{0}'.", assetMetaData.Name.c_str());
 
 		return true;
 	}

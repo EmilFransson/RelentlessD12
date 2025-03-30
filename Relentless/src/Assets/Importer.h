@@ -56,7 +56,7 @@ namespace Relentless
 		static [[nodiscard]] bool ImportModel(const std::filesystem::path& fullPath, const std::filesystem::path& dstAssetDirectorPath, bool isABlockingOperation, const MeshImportSettings& importSettings = {}) noexcept;
 
 		static [[nodiscard]] bool ImportModelEx(GraphicsDevice* pDevice, const std::filesystem::path& fullPath, const MeshImportSettings& importSettings = {}, Ref<ImporterFeedbackContext> pFeedbackContext = nullptr) noexcept;
-
+		static [[nodiscard]] bool ImportTextureEx(GraphicsDevice* pDevice, const std::filesystem::path& fullPath, const TextureImportSettings& importSettings = {}, Ref<ImporterFeedbackContext> pFeedbackContext = nullptr) noexcept;
 
 		template<typename T>
 		struct always_false : std::false_type{};

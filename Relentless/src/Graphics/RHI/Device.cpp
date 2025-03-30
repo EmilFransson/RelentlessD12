@@ -367,9 +367,6 @@ namespace Relentless
 
 		D3D12_RESOURCE_DESC resourceDesc = GetResourceDesc(desc);
 
-		DXGI_QUERY_VIDEO_MEMORY_INFO info;
-		m_pAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
-
 		D3D12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 		ID3D12Resource2* pResource;
 		VERIFY_HR_EX(GetDevice()->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &resourceDesc, resourceState, pClearValue, IID_PPV_ARGS(&pResource)), m_pDevice);

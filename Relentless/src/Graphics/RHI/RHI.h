@@ -96,6 +96,9 @@ namespace Relentless
 		D24S8,
 		D32S8,
 
+		RGBA8_UNORM_SRGB,
+		BGRA8_UNORM_SRGB,
+
 		Count
 	};
 

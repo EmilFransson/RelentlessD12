@@ -63,7 +63,7 @@ namespace Relentless
 		UniquePtr<WindowEx> m_pWindow = nullptr;
 	private:
 		static Application* s_Instance;
-		ThreadPool m_ThreadPool;
+		UniquePtr<ThreadPool> m_ThreadPool;
 
 		ApplicationSpecification m_ApplicationSpecification;
 		UniquePtr<ImguiLayer> m_pImGuiLayer = nullptr;

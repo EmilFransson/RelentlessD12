@@ -69,10 +69,10 @@ namespace Relentless
 			}
 		}
 	private:
+		std::mutex m_Mutex;
+		std::condition_variable m_Condition;
 		std::atomic_bool m_Done = false;
 		ThreadSafeQueue<std::function<void()>> m_WorkQueue;
 		std::vector<std::jthread> m_Threads;
-		std::mutex m_Mutex;
-		std::condition_variable m_Condition;
 	};
 }

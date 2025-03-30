@@ -15,13 +15,12 @@ namespace Relentless
 		psoDesc.SetAlphaToCoverageEnable(false);
 		psoDesc.SetName("Forward - Opaque");
 		psoDesc.SetVertexShader("EvolvingShader", "vs_main");
-		psoDesc.SetPixelShader("EvolvingShader", "ps_main");
+		psoDesc.SetPixelShader("EvolvingShader", "ps_main", {"RED_OUTPUT"});
 		psoDesc.SetDepthWrite(true);
 		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
 		psoDesc.SetDepthEnabled(true);
 		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
-		//TODO: Change to HDR!!
-		psoDesc.SetRenderTargetFormats(ResourceFormat::RGB10A2_UNORM, ResourceFormat::D32_FLOAT, 1);
+		psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, 1);
 
 		m_pForwardSolidPSO = m_pDevice->CreatePipeline(psoDesc);
 
@@ -40,7 +39,7 @@ namespace Relentless
 			height,
 			colorFormat,
 			1u, 
-			TextureFlag::RenderTarget, 
+			TextureFlag::RenderTarget | TextureFlag::ShaderResource, 
 			ClearBinding(Colors::LightSkyBlue),
 			sceneTextures.pColorTarget->GetSampleCount());
 

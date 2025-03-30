@@ -176,11 +176,12 @@ namespace Relentless
 
 	ThreadPool& Application::GetThreadPool() noexcept
 	{
-		return m_ThreadPool;
+		return *m_ThreadPool;
 	}
 
 	void Application::Initialize_Internal() noexcept
 	{
+		m_ThreadPool = std::make_unique<ThreadPool>();
 		Log::Initialize();
 
 		GraphicsDeviceOptions options;

@@ -88,15 +88,15 @@ namespace Relentless
 
 	struct DirectionalLightComponent
 	{
-		explicit DirectionalLightComponent(const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f))
-			: Direction{ 0.0f, 0.0f, 0.0f },
-			  Intensity{1.0f},
-			  Color{color}
+		explicit DirectionalLightComponent(const Vector3& color = Vector3(1.0f, 1.0f, 1.0f))
+			: Color{ color },
+			  Direction{ 0.0f, 0.0f, 0.0f },
+			  Intensity{1.0f}
 		{}
 
-		DirectX::XMFLOAT3 Direction;
+		Vector3 Color;
+		Vector3 Direction;
 		float Intensity;
-		DirectX::XMFLOAT3 Color;
 	};
 
 	struct PointLightComponent
