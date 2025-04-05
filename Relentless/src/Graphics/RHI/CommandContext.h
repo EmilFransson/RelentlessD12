@@ -96,7 +96,7 @@ namespace Relentless
 		void CopyBuffer(const BufferEx* pSource, const BufferEx* pTarget, uint64 size, uint64 sourceOffset, uint64 destinationOffset) noexcept;
 		void ClearState() noexcept;
 		void CopyResource(const DeviceResource* pSource, const DeviceResource* pTarget) noexcept;
-		void CopyTexture(const TextureEx* pSource, const BufferEx* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource /*= 0*/, uint32 destinationOffset /*= 0*/) noexcept;
+		void CopyTexture(const TextureEx* pSource, const BufferEx* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource = 0u, uint32 destinationOffset = 0u) noexcept;
 		void CopyTexture(const TextureEx* pSource, const TextureEx* pDestination, const D3D12_BOX& sourceRegion, const D3D12_BOX& destinationRegion, uint32 sourceSubresource = 0, uint32 destinationSubresource = 0) noexcept;
 		void Dispatch(uint32 groupCountX, uint32 groupCountY = 1, uint32 groupCountZ = 1) noexcept;
 		void Dispatch(const Vector3i groupCount) noexcept;

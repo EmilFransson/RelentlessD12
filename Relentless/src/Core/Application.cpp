@@ -107,6 +107,11 @@ namespace Relentless
 		s_Instance = this;
 	}
 
+	Application::~Application() noexcept
+	{
+		RLS_CORE_INFO("");
+	}
+
 	GraphicsDevice* Application::GetGraphicsDevice() const noexcept
 	{
 		return m_pGraphicsDevice;
@@ -115,6 +120,11 @@ namespace Relentless
 	const UniquePtr<WindowEx>& Application::GetWindow() const noexcept
 	{
 		return m_pWindow;
+	}
+
+	void Application::InitializeShutdownProcedure()
+	{
+		m_IsRunning = false;
 	}
 
 	void Application::Run() noexcept
@@ -182,10 +192,13 @@ namespace Relentless
 	void Application::Initialize_Internal() noexcept
 	{
 		m_ThreadPool = std::make_unique<ThreadPool>();
-		Log::Initialize();
 
 		GraphicsDeviceOptions options;
+#ifdef RLS_DEBUG
 		options.UseDebugDevice = true;
+#else
+		options.UseDebugDevice = false;
+#endif
 		options.UseGPUValidation = false;
 		m_pGraphicsDevice = new GraphicsDevice(options);
 
@@ -269,9 +282,11 @@ namespace Relentless
 	void Application::ShutDown_Internal() noexcept
 	{
 		ShutDown();
-		
+
 		LayerStack::Get().PopAllLayers();
 		m_pGraphicsDevice->IdleGPU();
+
+		AssetManager::Shutdown();
 	}
 
 	void Application::ExecuteMainThreadQueue() noexcept

@@ -45,11 +45,14 @@ namespace Relentless
 		[[nodiscard]] DescriptorHeapEx* GetGlobalShaderBindableHeap() const noexcept;
 		[[nodiscard]] DescriptorHeapEx* GetGlobalSamplerHeap() const noexcept;
 		[[nodiscard]] RootSignature* GetGlobalRootSignature() const noexcept;
+		[[nodiscard]] DescriptorHeapEx* GetRenderTargetViewDescriptorHeap() const noexcept;
 		[[nodiscard]] RingBufferAllocator* GetRingBuffer() const noexcept;
 		[[nodiscard]] ShaderLibrary* GetShaderLibrary() const noexcept;
 
 		void IdleGPU() noexcept;
 		[[nodiscard]] DescriptorHandleEx RegisterGlobalDescriptor(DescriptorHandleTypeEx descriptorHandleType) noexcept;
+		[[nodiscard]] std::vector<DescriptorHandleEx> RegisterGlobalDescriptorBlock(DescriptorHandleTypeEx descriptorHandleType, uint32 blockSize) noexcept;
+
 		void TickFrame() noexcept;
 		void UnregisterGlobalDescriptor(const DescriptorHandleEx& descriptorHandle) noexcept;
 	private:

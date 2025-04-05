@@ -42,24 +42,25 @@ namespace Relentless
 		: m_pEditor{ pEditor }
 	{
 		pEditor->OnSceneChanged.Connect(this, &OutlinerPanel::OnEditorSceneChanged);
-		pEditor->GetSelection().OnSelectionChanged.Connect(this, &OutlinerPanel::OnEntitySelectionChangedFromEditor);
+		pEditor->GetSelection()->OnSelectionChanged.Connect(this, &OutlinerPanel::OnEntitySelectionChangedFromEditor);
 
-		EntityFiltersManager& entityFiltersManager = pEditor->GetEntityFiltersManager();
-
-		entityFiltersManager.OnFilterCreated.Connect(this, &OutlinerPanel::OnEntityFilterCreated);
-		entityFiltersManager.OnFilterDestroyed.Connect(this, &OutlinerPanel::OnEntityFilterDestroyed);
-		entityFiltersManager.OnEntitySetToFilter.Connect(this, &OutlinerPanel::OnEntitySetToFilter);
-		entityFiltersManager.OnEntityRemovedFromFilter.Connect(this, &OutlinerPanel::OnEntityRemovedFromFilter);
-		entityFiltersManager.OnFilterReattached.Connect(this, &OutlinerPanel::OnEntityFilterReattached);
+		if (const UniquePtr<EntityFiltersManager>& pEntityFiltersManager = m_pEditor->GetEntityFiltersManager())
+		{
+			pEntityFiltersManager->OnFilterCreated.Connect(this, &OutlinerPanel::OnEntityFilterCreated);
+			pEntityFiltersManager->OnFilterDestroyed.Connect(this, &OutlinerPanel::OnEntityFilterDestroyed);
+			pEntityFiltersManager->OnEntitySetToFilter.Connect(this, &OutlinerPanel::OnEntitySetToFilter);
+			pEntityFiltersManager->OnEntityRemovedFromFilter.Connect(this, &OutlinerPanel::OnEntityRemovedFromFilter);
+			pEntityFiltersManager->OnFilterReattached.Connect(this, &OutlinerPanel::OnEntityFilterReattached);
+		}
 		
-		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\showicon.rasset"), m_ShowEntityTextureIconHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\hideicon.rasset"), m_HideEntityTextureIconHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\outlinerentityicon.rasset"), m_EntityTextureIconHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\outlinersceneicon.rasset"), m_SceneTextureIconHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\check.rasset"), m_CheckTextureIconHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\not_allowed.rasset"), m_NotAllowedTextureIconHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilteropen.rasset"), m_EntityFilterOpenTextureIconHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilterclosed.rasset"), m_EntityFilterClosedTextureIconHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\showicon.rasset"), m_ShowEntityTextureIconHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\hideicon.rasset"), m_HideEntityTextureIconHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\outlinerentityicon.rasset"), m_EntityTextureIconHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\outlinersceneicon.rasset"), m_SceneTextureIconHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\check.rasset"), m_CheckTextureIconHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\not_allowed.rasset"), m_NotAllowedTextureIconHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilteropen.rasset"), m_EntityFilterOpenTextureIconHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilterclosed.rasset"), m_EntityFilterClosedTextureIconHandle), "Core engine icon missing.");
 		
 		SetupOutlinerTable();
 	}
@@ -69,21 +70,25 @@ namespace Relentless
 		if (m_pEditor)
 		{
 			m_pEditor->OnSceneChanged.Detach(this);
-			m_pEditor->GetSelection().OnSelectionChanged.Detach(this);
 
-			EntityFiltersManager& entityFiltersManager = m_pEditor->GetEntityFiltersManager();
+			if (const UniquePtr<Selection>& pSelection = m_pEditor->GetSelection())
+				pSelection->OnSelectionChanged.Detach(this);
 
-			entityFiltersManager.OnFilterCreated.Detach(this);
-			entityFiltersManager.OnFilterDestroyed.Detach(this);
-			entityFiltersManager.OnEntitySetToFilter.Detach(this);
-			entityFiltersManager.OnEntityRemovedFromFilter.Detach(this);
-			entityFiltersManager.OnFilterReattached.Detach(this);
+			if (const UniquePtr<EntityFiltersManager>& pEntityFiltersManager = m_pEditor->GetEntityFiltersManager())
+			{
+				pEntityFiltersManager->OnFilterCreated.Detach(this);
+				pEntityFiltersManager->OnFilterDestroyed.Detach(this);
+				pEntityFiltersManager->OnEntitySetToFilter.Detach(this);
+				pEntityFiltersManager->OnEntityRemovedFromFilter.Detach(this);
+				pEntityFiltersManager->OnFilterReattached.Detach(this);
+			}
+			
 		}
 
 		if (m_pScene)
 		{
 			m_pScene->OnEntityCreated.Detach(this);
-			m_pScene->OnEntityDestroyed.Detach(this);
+			m_pScene->OnEntityPreDestroyed.Detach(this);
 			m_pScene->OnEntityAttached.Detach(this);
 			m_pScene->OnEntityDetached.Detach(this);
 			m_pScene->OnEntityVisibilityChanged.Detach(this);
@@ -153,7 +158,7 @@ namespace Relentless
 			pDrawList->AddRectFilled(bannerStartPos, bannerEndPos, ImGui::ColorConvertFloat4ToU32(ImVec4(0.2f, 0.2f, 0.2f, 1.0f)));
 
 			const uint32_t numEntities = m_pScene->GetEntityManager().GetEntityAliveCount();
-			const uint32_t selectedEntities = m_pEditor->GetSelection().GetSelectedEntityCount();
+			const uint32_t selectedEntities = m_pEditor->GetSelection()->GetSelectedEntityCount();
 
 			std::string bannerLabel = std::format("{} Entities", numEntities);
 			if (selectedEntities > 0)
@@ -225,7 +230,7 @@ namespace Relentless
 		for (OutlinerTreeItem* pFilterItem : m_SelectedEntityFilters)
 			toDeselect.push_back(pFilterItem);
 
-		if (IsTreeItemSelected(m_pOutliner->GetRootEntries().front().get()))
+		if (!m_pOutliner->GetRootEntries().empty() && IsTreeItemSelected(m_pOutliner->GetRootEntries().front().get()))
 			toDeselect.push_back(static_cast<OutlinerTreeItem*>(m_pOutliner->GetRootEntries().front().get()));
 
 		for (OutlinerTreeItem* pFilterItemToDeselect : toDeselect)
@@ -255,7 +260,7 @@ namespace Relentless
 		
 		}
 
-		EntityFiltersManager& filterManager = m_pEditor->GetEntityFiltersManager();
+		EntityFiltersManager& filterManager = *m_pEditor->GetEntityFiltersManager();
 		
 		for (OutlinerEntityTreeItem* pEntityTreeItem : selectedEntityTreeItems)
 		{
@@ -458,7 +463,7 @@ namespace Relentless
 
 	void OutlinerPanel::OnEntityVisibilityChanged(entity e, bool visibilityState) noexcept
 	{
-		const bool isSelected = m_pEditor->GetSelection().IsEntitySelected(e);
+		const bool isSelected = m_pEditor->GetSelection()->IsEntitySelected(e);
 
 		m_EntityToTreeItemMap[e]->SetVisibility(visibilityState);
 		m_EntityToTreeItemMap[e]->SetVisibilityIcon(visibilityState ? m_ShowEntityTextureIconHandle : m_HideEntityTextureIconHandle);
@@ -467,7 +472,7 @@ namespace Relentless
 
 	void OutlinerPanel::OnOutlinerTreeFocusChanged(bool isFocused) noexcept
 	{
-		const std::vector<entity>& selectedEntities = m_pEditor->GetSelection().GetSelectedEntities();
+		const std::vector<entity>& selectedEntities = m_pEditor->GetSelection()->GetSelectedEntities();
 		for (entity selectedEntity : selectedEntities)
 			m_EntityToTreeItemMap[selectedEntity]->SetBackgroundColor(isFocused ? TreeDefaultColors::RowSelectedFocusedColor : TreeDefaultColors::RowSelectedColor);
 
@@ -651,7 +656,7 @@ namespace Relentless
 			pFilterTreeItem->SetExpanded(newExpandState);
 			pFilterTreeItem->SetColumnIcon(newExpandState ? m_EntityFilterOpenTextureIconHandle : m_EntityFilterClosedTextureIconHandle, 1);
 
-			m_pEditor->GetEntityFiltersManager().GetFilter(pFilterTreeItem->GetPath())->SetExpandedState(newExpandState);
+			m_pEditor->GetEntityFiltersManager()->GetFilter(pFilterTreeItem->GetPath())->SetExpandedState(newExpandState);
 		}
 		else
 		{
@@ -967,7 +972,7 @@ namespace Relentless
 					{
 						OutlinerFilterTreeItem* pGrandParentFilterTreeItem = OutlinerPanel_private::AsOutlinerFilterTreeItem(pGrandParentOutlinerTreeItem);
 						for (OutlinerEntityTreeItem* pEntityTreeItem : entityTreeItems)
-							m_pEditor->GetEntityFiltersManager().SetEntityToFilter(pEntityTreeItem->GetEntityID(), pGrandParentFilterTreeItem->GetPath());
+							m_pEditor->GetEntityFiltersManager()->SetEntityToFilter(pEntityTreeItem->GetEntityID(), pGrandParentFilterTreeItem->GetPath());
 
 						break;
 					}
@@ -1000,7 +1005,7 @@ namespace Relentless
 				}),
 				entityTreeItems.end());
 
-			EntityFiltersManager& filterManager = m_pEditor->GetEntityFiltersManager();
+			EntityFiltersManager& filterManager = *m_pEditor->GetEntityFiltersManager();
 
 			OutlinerFilterTreeItem* pTargetFilterTreeItem = OutlinerPanel_private::AsOutlinerFilterTreeItem(pTargetTreeItem);
 			const std::string& targetFilterPath = pTargetFilterTreeItem->GetPath();
@@ -1018,7 +1023,7 @@ namespace Relentless
 
 	void OutlinerPanel::OnEntityFilterCreated(const std::string& path) noexcept
 	{
-		std::shared_ptr<EntityFilter> pFilter = m_pEditor->GetEntityFiltersManager().GetFilter(path);
+		std::shared_ptr<EntityFilter> pFilter = m_pEditor->GetEntityFiltersManager()->GetFilter(path);
 		std::vector<EntityFilter*> hierarchy;
 
 		EntityFilter* pCurrent = pFilter.get();
@@ -1085,7 +1090,7 @@ namespace Relentless
 
 		pFilterTreeItem->RemoveChild(pEntityTreeItem);
 
-		if (filterToBeDestroyed && m_pEditor->GetEntityFiltersManager().IsRootFilter(filterPath))
+		if (filterToBeDestroyed && m_pEditor->GetEntityFiltersManager()->IsRootFilter(filterPath))
 		{
 			//We need to manually set the entity to the scene tree item in this case.
 			m_pOutliner->GetRootEntries().front()->AddChild(pEntityTreeItem);
@@ -1219,7 +1224,7 @@ namespace Relentless
 					{
 					case ETreeItemType::Entity:
 					{
-						const entity firstSelected = m_pEditor->GetSelection().GetFirstSelected();
+						const entity firstSelected = m_pEditor->GetSelection()->GetFirstSelected();
 						RLS_ASSERT(firstSelected != NULL_ENTITY, "[OutlinerPanel]: Invalid enitity ID!");
 						SetReferenceSelection(m_EntityToTreeItemMap[firstSelected].get());
 						break;
@@ -1284,7 +1289,7 @@ namespace Relentless
 		{
 		case ETreeItemType::Entity:
 		{
-			m_pEditor->GetSelection().SelectEntity(OutlinerPanel_private::AsOutlinerEntityTreeItem(pTreeItem)->GetEntityID());
+			m_pEditor->GetSelection()->SelectEntity(OutlinerPanel_private::AsOutlinerEntityTreeItem(pTreeItem)->GetEntityID());
 			break;
 		}
 		case ETreeItemType::Scene:
@@ -1318,7 +1323,7 @@ namespace Relentless
 		case ETreeItemType::Entity:
 		{
 			OutlinerEntityTreeItem* pEntityTreeItem = OutlinerPanel_private::AsOutlinerEntityTreeItem(pTreeItem);
-			m_pEditor->GetSelection().DeselectEntity(pEntityTreeItem->GetEntityID());
+			m_pEditor->GetSelection()->DeselectEntity(pEntityTreeItem->GetEntityID());
 			break;
 		}
 		case ETreeItemType::Scene:
@@ -1356,7 +1361,7 @@ namespace Relentless
 
 	void OutlinerPanel::DeselectAllTreeItems() noexcept
 	{
-		m_pEditor->GetSelection().DeselectAllEntities();
+		m_pEditor->GetSelection()->DeselectAllEntities();
 
 		if (m_SceneTreeItemSelected)
 			DeselectTreeItem(OutlinerPanel_private::AsOutlinerTreeItem(m_pOutliner->GetRootEntries().front()));
@@ -1380,7 +1385,7 @@ namespace Relentless
 		case ETreeItemType::Entity: 
 		{
 			OutlinerEntityTreeItem* pEntityItem = OutlinerPanel_private::AsOutlinerEntityTreeItem(pOutlinerTreeItem);
-			return m_pEditor->GetSelection().IsEntitySelected(pEntityItem->GetEntityID());
+			return m_pEditor->GetSelection()->IsEntitySelected(pEntityItem->GetEntityID());
 		}
 		case ETreeItemType::Scene:
 		{
@@ -1411,7 +1416,7 @@ namespace Relentless
 		std::vector<std::shared_ptr<TreeItem>> selectedTreeItems;
 		selectedTreeItems.reserve(GetNumSelected());
 
-		const std::vector<entity>& selectedEntities = m_pEditor->GetSelection().GetSelectedEntities();
+		const std::vector<entity>& selectedEntities = m_pEditor->GetSelection()->GetSelectedEntities();
 
 		for (const entity selectedEntity : selectedEntities)
 			selectedTreeItems.push_back(m_EntityToTreeItemMap.at(selectedEntity));
@@ -1432,7 +1437,7 @@ namespace Relentless
 	{
 		uint32_t selectedTreeItemCount = 0u;
 		
-		selectedTreeItemCount += m_pEditor->GetSelection().GetSelectedEntityCount();
+		selectedTreeItemCount += m_pEditor->GetSelection()->GetSelectedEntityCount();
 
 		if (m_SceneTreeItemSelected)
 			selectedTreeItemCount++;

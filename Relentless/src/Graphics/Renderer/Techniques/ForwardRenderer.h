@@ -3,7 +3,6 @@
 #include "Graphics/Renderer/RenderTypes.h"
 #include "Graphics/RHI/PipelineState.h"
 
-
 namespace Relentless
 {
 	class ForwardRenderer

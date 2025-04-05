@@ -135,12 +135,15 @@ namespace Relentless
 				if (pInfoQueue.As<ID3D12InfoQueue1>(&pInfoQueue1))
 				{
 					auto&& MessageCallback = [](
-						D3D12_MESSAGE_CATEGORY /*category*/,
+						D3D12_MESSAGE_CATEGORY category,
 						D3D12_MESSAGE_SEVERITY severity,
-						D3D12_MESSAGE_ID /*id*/,
+						D3D12_MESSAGE_ID id,
 						LPCSTR pDescription,
 						void* /*pContext*/)
 					{
+						if (category == D3D12_MESSAGE_CATEGORY_STATE_CREATION)
+							return;
+
 						switch (severity)
 						{
 						case D3D12_MESSAGE_SEVERITY::D3D12_MESSAGE_SEVERITY_CORRUPTION:
@@ -228,6 +231,11 @@ namespace Relentless
 	DescriptorHandleEx GraphicsDevice::RegisterGlobalDescriptor(DescriptorHandleTypeEx descriptorHandleType) noexcept
 	{
 		return m_pDescriptorManager->CreateDescriptorHandle(descriptorHandleType);
+	}
+
+	std::vector<DescriptorHandleEx> GraphicsDevice::RegisterGlobalDescriptorBlock(DescriptorHandleTypeEx descriptorHandleType, uint32 blockSize) noexcept
+	{
+		return m_pDescriptorManager->CreateDescriptorHandleBlock(descriptorHandleType, blockSize);
 	}
 
 	Ref<BufferEx> GraphicsDevice::CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData /*= (const void*)nullptr*/) noexcept
@@ -347,7 +355,7 @@ namespace Relentless
 
 		D3D12_CLEAR_VALUE* pClearValue = nullptr;
 		D3D12_CLEAR_VALUE clearValue = {};
-		clearValue.Format = D3D::ConvertFormat(desc.Format);
+		clearValue.Format = desc.Format == ResourceFormat::R32_TYPELESS ? DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT : D3D::ConvertFormat(desc.Format); //TODO, CHANGE!
 
 		if (EnumHasAnyFlags(desc.Flags, TextureFlag::RenderTarget))
 		{
@@ -473,7 +481,7 @@ namespace Relentless
 		const TextureDesc& desc = pTexture->GetDesc();
 
 		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
-		dsvDesc.Format = D3D::ConvertFormat(desc.Format);
+		dsvDesc.Format = desc.Format == ResourceFormat::R32_TYPELESS ? DXGI_FORMAT_D32_FLOAT : D3D::ConvertFormat(desc.Format);
 		dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 
 		if (EnumHasAnyFlags(textureDSVDesc.Flags, DepthTargetAccessFlags::ReadOnlyDepth))
@@ -559,7 +567,7 @@ namespace Relentless
 		const TextureDesc& desc = pTexture->GetDesc();
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = D3D::ConvertFormat(desc.Format);
+		srvDesc.Format = desc.Format == ResourceFormat::R32_TYPELESS ? DXGI_FORMAT_R32_FLOAT : D3D::ConvertFormat(desc.Format);
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 		switch (desc.Type)
@@ -703,6 +711,11 @@ namespace Relentless
 	RootSignature* GraphicsDevice::GetGlobalRootSignature() const noexcept
 	{
 		return m_pGlobalRootSignature;
+	}
+
+	DescriptorHeapEx* GraphicsDevice::GetRenderTargetViewDescriptorHeap() const noexcept
+	{
+		return m_pDescriptorManager->GetRTVDescriptorHeap();
 	}
 
 	RingBufferAllocator* GraphicsDevice::GetRingBuffer() const noexcept

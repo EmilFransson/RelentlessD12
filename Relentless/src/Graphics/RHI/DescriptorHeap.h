@@ -26,6 +26,7 @@ namespace Relentless
 		DescriptorHeapEx(GraphicsDevice* pParent, const D3D12_DESCRIPTOR_HEAP_TYPE descriptorHeapType, const uint32_t capacity, const bool isShaderVisible) noexcept;
 		virtual ~DescriptorHeapEx() noexcept override = default;
 		[[nodiscard]] DescriptorHandleEx AllocateDescriptor() noexcept;
+		[[nodiscard]] std::vector<DescriptorHandleEx> AllocateDescriptorBlock(uint32 blockSize) noexcept;
 		void FreeDescriptor(const DescriptorHandleEx& descriptorHandle, const SyncPoint& syncPoint) noexcept;
 		[[nodiscard]] ID3D12DescriptorHeap* GetDescriptorHeapInterface() const noexcept { return m_pDescriptorHeap; }
 		[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCPUStartHandle() const  noexcept { return m_CpuHandleStart; }

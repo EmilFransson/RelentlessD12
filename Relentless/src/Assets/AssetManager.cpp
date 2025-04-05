@@ -85,6 +85,13 @@ namespace Relentless
 		//invalidMaterial->SetName("M_InvalidMaterial");
 	}
 
+	void AssetManager::Shutdown() noexcept
+	{
+		s_AssetStorages.TextureStorage.DestroyAll();
+		s_AssetStorages.MeshStorage.DestroyAll();
+		s_AssetStorages.MaterialStorage.DestroyAll();
+	}
+
 	std::future<void> AssetManager::RequestAsyncLoadAsset(const std::filesystem::path& filepathToAsset, DelegateToCall&& delegateToCall) noexcept
 	{
 		return Application::Get().GetThreadPool().Submit([filepathToAsset, Delegate = std::move(delegateToCall)]()

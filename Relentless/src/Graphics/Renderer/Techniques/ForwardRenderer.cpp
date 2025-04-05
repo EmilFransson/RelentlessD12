@@ -16,8 +16,8 @@ namespace Relentless
 		psoDesc.SetName("Forward - Opaque");
 		psoDesc.SetVertexShader("EvolvingShader", "vs_main");
 		psoDesc.SetPixelShader("EvolvingShader", "ps_main", {"RED_OUTPUT"});
-		psoDesc.SetDepthWrite(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthWrite(false);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_EQUAL);
 		psoDesc.SetDepthEnabled(true);
 		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
 		psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, 1);
@@ -40,20 +40,10 @@ namespace Relentless
 			colorFormat,
 			1u, 
 			TextureFlag::RenderTarget | TextureFlag::ShaderResource, 
-			ClearBinding(Colors::LightSkyBlue),
+			ClearBinding(Colors::Black),
 			sceneTextures.pColorTarget->GetSampleCount());
 
-		const TextureDesc depthTargetDesc = TextureDesc::Create2D(
-			width,
-			height,
-			sceneTextures.pDepthTarget->GetFormat(),
-			1u,
-			TextureFlag::DepthStencil,
-			ClearBinding(1.0f, 1u),
-			sceneTextures.pDepthTarget->GetSampleCount());
-
 		const Ref<TextureEx> pColorTarget = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
-		const Ref<TextureEx> pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
 		
 		RenderPassInfo info;
 		info.RenderTargets[0].pTarget = pColorTarget;
@@ -61,8 +51,8 @@ namespace Relentless
 		info.RenderTargets[0].EndAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargetCount++;
 
-		info.DepthStencilTarget.pTarget = pDepthTarget;
-		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ClearDepth;
+		info.DepthStencilTarget.pTarget = sceneTextures.pDepthTarget;
+		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ReadOnlyDepth;
 		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::None;
 
 		commandContext.BeginRenderPass(info);
@@ -85,6 +75,5 @@ namespace Relentless
 		commandContext.EndRenderPass();
 
 		sceneTextures.pColorTarget = pColorTarget;
-		sceneTextures.pDepthTarget = pDepthTarget;
 	}
 }

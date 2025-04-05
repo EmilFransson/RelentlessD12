@@ -1,4 +1,5 @@
 #pragma once
+#include "src/Core/Log.h"
 
 extern const std::unique_ptr<Relentless::Application> Relentless::CreateApplication() noexcept;
 
@@ -13,8 +14,11 @@ int main(int, char**)
 	CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 #endif
 
-	auto app = Relentless::CreateApplication();
-	app->Run();
+	Relentless::Log::Initialize();
+	{
+		auto app = Relentless::CreateApplication();
+		app->Run();
+	}
 
 	_CrtDumpMemoryLeaks();
 	return 0;

@@ -65,6 +65,7 @@ namespace Relentless
 		R32_UINT,
 		R32_SINT,
 		R32_FLOAT,
+		R32_TYPELESS,
 		RGBA16_UINT,
 		RGBA16_SINT,
 		RGBA16_FLOAT,
@@ -107,7 +108,8 @@ namespace Relentless
 		Integer,
 		Normalized,
 		Float,
-		DepthStencil
+		DepthStencil,
+		Typeless
 	};
 
 	struct FormatInfo

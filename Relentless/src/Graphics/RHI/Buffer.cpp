@@ -55,6 +55,15 @@ namespace Relentless
 		VERIFY_HR(pResource->Map(subresource, pRange, &m_pMappedPtr));
 	}
 
+	void BufferEx::Unmap(uint32 subresource, const D3D12_RANGE* pRange) noexcept
+	{
+		ID3D12Resource* pResource = GetResource();
+		RLS_ASSERT(pResource, "D3D12 resource is invalid");
+
+		pResource->Unmap(subresource, pRange);
+		m_pMappedPtr = nullptr;
+	}
+
 	void BufferEx::SetSRV(Ref<ShaderResourceView> pSRV) noexcept
 	{
 		m_pSRV = pSRV;

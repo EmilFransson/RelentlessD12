@@ -38,6 +38,7 @@ namespace Relentless
 		{ FORMAT_TYPE(R32_UINT),			FormatType::Integer,      4,		1,		1,			false, false, false, false },
 		{ FORMAT_TYPE(R32_SINT),			FormatType::Integer,      4,		1,		1,			false, false, true,  false },
 		{ FORMAT_TYPE(R32_FLOAT),			FormatType::Float,        4,		1,		1,			false, false, true,  false },
+		{ FORMAT_TYPE(R32_TYPELESS),		FormatType::Typeless,	  4,		1,		1,			false, false, false, false },
 		{ FORMAT_TYPE(RGBA16_UINT),			FormatType::Integer,      8,		1,		4,			false, false, false, false },
 		{ FORMAT_TYPE(RGBA16_SINT),			FormatType::Integer,      8,		1,		4,			false, false, true,  false },
 		{ FORMAT_TYPE(RGBA16_FLOAT),		FormatType::Float,        8,		1,		4,			false, false, true,  false },

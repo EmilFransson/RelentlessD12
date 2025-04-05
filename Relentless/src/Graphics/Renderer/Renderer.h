@@ -1,11 +1,17 @@
 #pragma once
 
 #include "Assets/AssetMeta.h"
+#include "Callback/Broadcaster.h"
+
+#include "Graphics/Renderer/Techniques/DepthPrePass.h"
 #include "Graphics/Renderer/Techniques/EditorGrid.h"
 #include "Graphics/Renderer/Techniques/ForwardRenderer.h"
+#include "Graphics/Renderer/Techniques/HBAOPlus.h"
+#include "Graphics/Renderer/Techniques/Outlines.h"
 #include "Graphics/Renderer/Techniques/PostProcessing.h"
 #include "Graphics/RHI/RHI.h"
 #include "Graphics/RHI/DescriptorHeap.h"
+
 #include "RenderTypes.h"
 
 namespace ShaderInterop
@@ -29,8 +35,12 @@ namespace Relentless
 		
 		[[nodiscard]] Span<const Batch> GetBatches() const noexcept;
 		void Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<TextureEx> pTarget) noexcept;
+		
+		Broadcaster<void(uint32 readbackResult)> OnEntityIDReadbackDone;
+		
 	private:
 		void GetViewUniforms(const RenderView& renderView, ShaderInterop::ViewUniforms& outViewUniform) noexcept;
+		void InitializePipelines();
 		void UploadSceneData(CommandContext& commandContext) noexcept;
 		void UploadViewUniforms(CommandContext& commandContext, RenderView& view) noexcept;
 	private:
@@ -57,7 +67,17 @@ namespace Relentless
 		UniquePtr<ForwardRenderer> m_pForwardRenderer = nullptr;
 		UniquePtr<EditorGrid> m_pEditorGrid = nullptr;
 		UniquePtr<PostProcessing> m_pPostProcessing = nullptr;
+		UniquePtr<DepthPrePass> m_pDepthPrePass = nullptr;
+		UniquePtr<HBAOPlus> m_pHBAOPlus = nullptr;
+		UniquePtr<Outlines> m_pOutlines = nullptr;
 
 		AssetHandle m_BRDFLutTextureHandle;
+
+		Ref<TextureEx> m_pEntityIDTexture = nullptr;
+		
+		Ref<BufferEx> m_EntityIDReadbackBuffer = nullptr;
+		
+		Ref<PipelineState> m_pEntityIdPSO = nullptr;
+		std::queue<SyncPoint> m_EntityIDSyncs;
 	};
 }

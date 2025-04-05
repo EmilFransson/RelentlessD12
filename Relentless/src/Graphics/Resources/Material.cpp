@@ -17,7 +17,7 @@ namespace Relentless
 		  m_HeightMapIndex{0xFFFFFFFF},
 		  m_AmbientOcclusionTextureIndex{ 0xFFFFFFFF },
 		  m_EmissionTextureIndex{ 0xFFFFFFFF },
-		  m_HeightScale{0.02f},
+		  m_HeightScale{1.0f},
 		  m_AOScale{1.0f},
 		  m_CombinedRoughnessMetallnesMap{false},
 		  m_TilingFactor{1.0f, 1.0f},

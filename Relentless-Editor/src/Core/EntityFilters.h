@@ -49,12 +49,12 @@ namespace Relentless
 		void SetFilterToFilter(const std::string& filterPathChild, const std::string& filterPathParent) noexcept;
 		void RemoveEntityFromCurrentFilter(entity e) noexcept;
 
-		Broadcaster<void(entity e, const std::string& path, bool filterToBeDestroyed)> OnEntityRemovedFromFilter;
-		Broadcaster<void(entity e, const std::string& path)> OnEntitySetToFilter;
-		Broadcaster<void(const std::string& path)> OnFilterCreated;
-		Broadcaster<void(const std::string& path)> OnFilterDestroyed;
+		mutable Broadcaster<void(entity e, const std::string& path, bool filterToBeDestroyed)> OnEntityRemovedFromFilter;
+		mutable Broadcaster<void(entity e, const std::string& path)> OnEntitySetToFilter;
+		mutable Broadcaster<void(const std::string& path)> OnFilterCreated;
+		mutable Broadcaster<void(const std::string& path)> OnFilterDestroyed;
 
-		Broadcaster<void(const std::string& originalChildPath, const std::string& newChildPath, const std::string& parentPath)> OnFilterReattached;
+		mutable Broadcaster<void(const std::string& originalChildPath, const std::string& newChildPath, const std::string& parentPath)> OnFilterReattached;
 	private:
 		void DestroyHierarchy(const std::string& path) noexcept;
 		void RemoveEntityFromCurrentFilterInternal(entity e, bool partOfFilterDestroyAction) noexcept;

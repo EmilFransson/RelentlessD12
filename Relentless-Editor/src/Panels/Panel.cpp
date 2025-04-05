@@ -20,8 +20,12 @@ namespace Relentless
 
 		m_Position = Vector2u(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y);
 		m_Size = Vector2u(ImGui::GetWindowSize().x, ImGui::GetWindowSize().y);
+		
+		ImGuiWindow* window = ImGui::FindWindowByName(m_Name.c_str());
+		m_IsVisible = window && !window->Hidden;
 
-		OnRender();
+		if (m_IsVisible)
+			OnRender();
 
 		m_IsDocked = ImGui::IsWindowDocked();
 		m_IsFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
@@ -86,6 +90,11 @@ namespace Relentless
 	bool PanelBase::IsHovered() const noexcept
 	{
 		return m_IsHovered;
+	}
+
+	bool PanelBase::IsVisible() const noexcept
+	{
+		return m_IsVisible;
 	}
 
 }

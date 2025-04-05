@@ -45,3 +45,5 @@ target_compile_definitions(${ExecutableName} PUBLIC "EDITOR_ASSET_DIRECTORY=\"${
 
 string(REPLACE "/" "\\\\" WINDOWS_STYLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Resources/")
 target_compile_definitions(${ExecutableName} PUBLIC "EDITOR_RESOURCE_DIRECTORY=\"${WINDOWS_STYLE_PATH}\"")
+
+target_compile_definitions(${ExecutableName} PUBLIC RLS_EDITOR)

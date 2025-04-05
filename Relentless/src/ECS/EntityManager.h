@@ -235,6 +235,16 @@ namespace Relentless
 		}
 
 		/**
+		 * @brief Returns the complete entity having the identity.
+		 * @param identity The identity (non-version part) of an entity.
+		 * @return The complete entity.
+		 */
+		[[nodiscard]] entity GetEntityFromIdentity(const uint32_t identity) const noexcept
+		{
+			return m_Entities[identity];
+		}
+
+		/**
 		 * @brief Masks out and returns the identity from the entity id.
 		 * @param entity The complete entity id with both identity and version.
 		 * @return The masked out identity.

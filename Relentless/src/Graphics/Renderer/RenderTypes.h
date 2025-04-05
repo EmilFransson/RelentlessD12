@@ -1,9 +1,10 @@
 #pragma once
 
+#include "ECS/ECSCommon.h"
+
 #include "Graphics/RHI/Buffer.h"
 #include "Graphics/RHI/DescriptorHeap.h"
 #include "Graphics/RHI/TextureEx.h"
-
 #include "Graphics/Shaders/Interop/ShaderInterop.h"
 
 namespace Relentless
@@ -74,6 +75,7 @@ namespace Relentless
 		Mesh* pMesh = nullptr;
 		uint32 MaterialIndex = DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
 		uint32 MeshIndex = DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
+		entity EntityID = NULL_ENTITY;
 	};
 	DECLARE_BITMASK_TYPE(Batch::Blending)
 

@@ -69,6 +69,65 @@ namespace Relentless
 		return DescriptorHandleEx();
 	}
 
+	const std::vector<DescriptorHandleEx> DescriptorManager::CreateDescriptorHandleBlock(DescriptorHandleTypeEx descriptorHandleType, uint32 blockSize) noexcept
+	{
+		std::vector<DescriptorHandleEx> handles;
+
+		switch (descriptorHandleType)
+		{
+		case DescriptorHandleTypeEx::RTV:
+		{
+			handles = m_pRTVDescriptorHeap->AllocateDescriptorBlock(blockSize);
+			break;
+		}
+		case DescriptorHandleTypeEx::DSV:
+		{
+			handles = m_pDSVDescriptorHeap->AllocateDescriptorBlock(blockSize);
+			break;
+		}
+		case DescriptorHandleTypeEx::SRV_NV:
+		{
+			handles = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptorBlock(blockSize);
+			break;
+		}
+		case DescriptorHandleTypeEx::CBV_NV:
+		{
+			handles = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptorBlock(blockSize);
+			break;
+		}
+		case DescriptorHandleTypeEx::UAV_NV:
+		{
+			handles = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptorBlock(blockSize);
+			break;
+		}
+		case DescriptorHandleTypeEx::SRV:
+		{
+			handles = m_pShaderBindablesDescriptorHeap->AllocateDescriptorBlock(blockSize);
+			break;
+		}
+		case DescriptorHandleTypeEx::CBV:
+		{
+			handles = m_pShaderBindablesDescriptorHeap->AllocateDescriptorBlock(blockSize);
+			break;
+		}
+		case DescriptorHandleTypeEx::UAV:
+		{
+			handles = m_pShaderBindablesDescriptorHeap->AllocateDescriptorBlock(blockSize);
+			break;
+		}
+		default:
+			RLS_ASSERT(false, "Unreachable.");
+			break;
+		}
+
+		std::for_each(handles.begin(), handles.end(), [&descriptorHandleType](DescriptorHandleEx& handle)
+			{
+				handle.Type = descriptorHandleType;
+			});
+
+		return handles;
+	}
+
 	void DescriptorManager::DeferReleaseDescriptorHandle(const DescriptorHandleEx& descriptorHandle, const SyncPoint& syncPoint) noexcept
 	{
 		switch (descriptorHandle.Type)

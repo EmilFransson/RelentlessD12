@@ -8,6 +8,7 @@ namespace Relentless
 		DescriptorManager(GraphicsDevice* pDevice) noexcept;
 		~DescriptorManager() noexcept = default;
 		[[nodiscard]] const DescriptorHandleEx CreateDescriptorHandle(DescriptorHandleTypeEx descriptorHandleType) noexcept;
+		[[nodiscard]] const std::vector<DescriptorHandleEx> CreateDescriptorHandleBlock(DescriptorHandleTypeEx descriptorHandleType, uint32 blockSize) noexcept;
 		void DeferReleaseDescriptorHandle(const DescriptorHandleEx& descriptorHandle, const SyncPoint& syncPoint) noexcept;
 		[[nodiscard]] DescriptorHeapEx* GetShaderBindableDescriptorHeap() const noexcept { return m_pShaderBindablesDescriptorHeap; }
 		[[nodiscard]] DescriptorHeapEx* GetCBVSRVUAVDescriptorHeap() const noexcept { return m_pShaderBindablesDescriptorHeapNV; }

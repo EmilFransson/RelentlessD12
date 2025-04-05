@@ -12,7 +12,8 @@ namespace Relentless
 		UnorderedAccess = 1 << 1,
 		ReadBack		= 1 << 2,
 		Upload			= 1 << 3,
-		ByteAddress		= 1 << 4
+		ByteAddress		= 1 << 4,
+		NoBindless		= 1 << 5,
 	};
 	DECLARE_BITMASK_TYPE(BufferFlag);
 
@@ -33,6 +34,12 @@ namespace Relentless
 		static [[nodiscard]] BufferDesc CreateVertexBuffer(uint32 elements, uint32 vertexSize, BufferFlag flags = BufferFlag::None) noexcept
 		{
 			return { .Size = elements * vertexSize, .ElementSize = vertexSize, .Flags = flags };
+		}
+
+		static BufferDesc CreateReadback(uint64 bytes) noexcept
+		{
+			RLS_ASSERT(bytes % 4 == 0, "[BufferDesc::CreateReadback] Invalid bytes");
+			return { .Size = bytes, .ElementSize = 4, .Flags = BufferFlag::ReadBack | BufferFlag::NoBindless };
 		}
 
 		static BufferDesc CreateStructured(uint32 elementCount, uint32 elementSize, BufferFlag flags = BufferFlag::None)
@@ -60,6 +67,7 @@ namespace Relentless
 		[[nodiscard]] uint32 GetSRVIndex() const noexcept;
 
 		void Map(uint32 subresource, const D3D12_RANGE* pRange) noexcept;
+		void Unmap(uint32 subresource, const D3D12_RANGE* pRange) noexcept;
 		void SetSRV(Ref<ShaderResourceView> pSRV) noexcept;
 	private:
 		const BufferDesc m_Desc;

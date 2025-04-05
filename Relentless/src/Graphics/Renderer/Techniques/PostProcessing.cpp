@@ -12,7 +12,7 @@ namespace Relentless
 		m_pPostProcessPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "PostProcessShader", "cs_main");
 	}
 
-	void PostProcessing::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept
+	void PostProcessing::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<TextureEx> pOutlinesSolidTexture, Ref<TextureEx> pOutlinesBlurredTexture) noexcept
 	{
 		const uint32 width = sceneTextures.pColorTarget->GetWidth();
 		const uint32 height = sceneTextures.pColorTarget->GetHeight();
@@ -27,10 +27,16 @@ namespace Relentless
 		{
 			uint32 SourceIndex;
 			uint32 TargetIndex;
+
+			uint32 OutlinesSolidIndex;
+			uint32 OutlinesBlurredIndex;
 		} params;
 
 		params.SourceIndex = sceneTextures.pColorTarget->GetSRVIndex();
 		params.TargetIndex = pTarget->GetUAVIndex();
+
+		params.OutlinesSolidIndex = pOutlinesSolidTexture->GetSRVIndex();
+		params.OutlinesBlurredIndex = pOutlinesBlurredTexture->GetSRVIndex();
 
 		commandContext.BindRootCBV(BindingSlot::PerPass, &params, sizeof(params));
 		Renderer::BindViewData(commandContext, renderView);

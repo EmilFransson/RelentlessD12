@@ -133,6 +133,14 @@ namespace Relentless
 			FreeList.push(sparseIndex);
 		}
 
+		__forceinline void DestroyAll() noexcept
+		{
+			std::lock_guard<std::mutex> guard(Mutex);
+			Assets.clear();
+			SparseArray.clear();
+			ReverseLookup.clear();
+		}
+
 		__forceinline void IncreaseReferenceCount(const AssetHandle& assetHandle) noexcept
 		{
 			RLS_ASSERT(assetHandle.Type == AssetTypeTrait<AssetType>::value, "Asset type mismatch detected.");
@@ -188,6 +196,7 @@ namespace Relentless
 		using DelegateToCall = std::function<void(AssetHandle)>;
 
 		static void Initialize() noexcept;
+		static void Shutdown() noexcept;
 
 		template<typename AssetType>
 		static [[nodiscard]] Ref<AssetType> Get(const AssetHandle& assetHandle) noexcept

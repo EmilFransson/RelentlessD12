@@ -1,4 +1,5 @@
 #include "Editor.h"
+#include "RelentlessEditorApp.h"
 
 namespace Relentless
 {
@@ -58,23 +59,23 @@ namespace Relentless
 			event.StopPropagation();
 			m_IsPanningMouse = false;
 
-			//const bool lCtrlDown = Keyboard::IsKeyDown(RLS_Key::LCtrl);
-			//const bool lShiftDown = Keyboard::IsKeyDown(RLS_Key::LShift);
-			//const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
-			//
-			//if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
-			//{
-			//	m_pOutlinerPanel->DeselectNonEntityItems();
-			//	m_Selection.DeselectAllEntities();
-			//}
-			//
-			//if (isHoveringEntity)
-			//{
-			//	if (lCtrlDown && m_Selection.IsEntitySelected(m_HoveredEntity))
-			//		m_Selection.DeselectEntity(m_HoveredEntity);
-			//	else
-			//		m_Selection.SelectEntity(m_HoveredEntity);
-			//}
+			const bool lCtrlDown = Keyboard::IsKeyDown(RLS_Key::LCtrl);
+			const bool lShiftDown = Keyboard::IsKeyDown(RLS_Key::LShift);
+			const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
+
+			if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
+			{
+				m_pOutlinerPanel->DeselectNonEntityItems();
+				m_pSelection->DeselectAllEntities();
+			}
+			
+			if (isHoveringEntity)
+			{
+				if (lCtrlDown && m_pSelection->IsEntitySelected(m_HoveredEntity))
+					m_pSelection->DeselectEntity(m_HoveredEntity);
+				else
+					m_pSelection->SelectEntity(m_HoveredEntity);
+			}
 
 			break;
 		}
@@ -107,8 +108,8 @@ namespace Relentless
 						{
 							m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
 								{
-									if (!m_Selection.IsEntitySelected(e))
-										m_Selection.SelectEntity(e);
+									if (!m_pSelection->IsEntitySelected(e))
+										m_pSelection->SelectEntity(e);
 								});
 						}
 					}
@@ -128,14 +129,14 @@ namespace Relentless
 					}
 					else
 					{
-						const std::vector<entity>& selectedEntities = m_Selection.GetSelectedEntities();
+						const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
 						EntityManager& entityManager = m_pActiveScene->GetEntityManager();
 
 						for (int i = selectedEntities.size() - 1; i >= 0; --i)
 						{
 							const entity currentEntity = selectedEntities[i];
 
-							m_Selection.DeselectEntity(currentEntity);
+							m_pSelection->DeselectEntity(currentEntity);
 								m_pActiveScene->SetEntityVisibleInGame(currentEntity, false);
 						}
 					}
@@ -145,7 +146,7 @@ namespace Relentless
 				{
 					if (m_ViewportIsFocused)
 					{
-						const std::vector<entity>& selectedEntities = m_Selection.GetSelectedEntities();
+						const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
 						EntityManager& entityManager = m_pActiveScene->GetEntityManager();
 
 						for (int i = selectedEntities.size() - 1; i >= 0; --i)
@@ -284,6 +285,9 @@ namespace Relentless
 
 	void Editor::OnCreate() noexcept
 	{
+		m_pSelection = std::make_unique<Selection>();
+		m_pEntityFiltersManager = std::make_unique<EntityFiltersManager>();
+
 		m_RenderViews.push_back(ViewportRenderView());
 		m_EditorViewports.push_back(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size()+1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size()));
 		
@@ -308,11 +312,12 @@ namespace Relentless
 			m_ViewportCameras.push_back(pEditorCamera);
 		}
 
-		m_pActiveScene = std::make_shared<Scene>();
+		m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
+		SetActiveScene(std::make_shared<Scene>());
 
 		entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
 		auto& dlc = m_pActiveScene->GetEntityManager().Add<DirectionalLightComponent>(dirEntity);
-		dlc.Color = Vector3(1.0f, 1.0f, 1.0f);
+		dlc.Color = Math::MakeFromColorTemperature(5900.0f);
 		dlc.Intensity = 3.0f;
 		Vector3 target = Vector3(0, 0, 0);
 		Vector3 from = Vector3(7, 5, 5);
@@ -328,52 +333,152 @@ namespace Relentless
 		const uint32 index = AssetManager::GetStorage<Material>().Add(pWhiteMaterial);
 		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Material);
 		
-		entity e = m_pActiveScene->CreateEntity("Cube");
+		Ref<Material> pNewWhiteMaterial = new Material();
+		pNewWhiteMaterial->SetRenderMode(RenderMode::Opaque);
+		pNewWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+		pNewWhiteMaterial->m_Metallic = 0.0f;
+		pNewWhiteMaterial->m_Roughness = 1.0f;
+		const uint32 index2 = AssetManager::GetStorage<Material>().Add(pNewWhiteMaterial);
+		auto [handle2, __] = AssetManager::InsertMetaData(CreateUUID(), index2, AssetType::Material);
+
+		entity ground = m_pActiveScene->CreateEntity("Ground");
+
+		m_pActiveScene->AddWorldOffset(ground, Vector3(0.0f, -1.0f, 0.0f));
+		m_pActiveScene->SetWorldScale(ground, Vector3(4.0f, 0.5f, 4.0f));
+
+		{
+			auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(ground);
+			mrc.AssetHandle = handle2->second;
+		}
+
+		entity e = m_pActiveScene->CreateEntity("Sphere");
+		m_pActiveScene->GetEntityManager().Add<RotatorComponent>(e);
+
 		auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(e);
 		mrc.AssetHandle = handle->second;
 
 		{
-			std::vector<ImportRequest> requests;
-			ImportRequest& request = requests.emplace_back();
-			request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Cube.obj");
-
-			ImportRequest& textureRequest = requests.emplace_back();
-			textureRequest.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rustediron2_basecolor.png");
 			TextureImportSettings textureImportSettings;
 			textureImportSettings.GenerateMipMaps = true;
 			textureImportSettings.TextureCompressionType = ETextureCompressionType::Uncompressed;
 			textureImportSettings.IsSRGB = true;
 			textureImportSettings.IsHDR = false;
 
-			Ref<ImporterFeedbackContext> pFeedback = new ImporterFeedbackContext();
-			pFeedback->OnAssetImported.Connect([this, e](const AssetHandle& handle, bool success)
-				{
-					if (!success)
-						return;
+			std::vector<ImportRequest> requests;
+			
+			{
+				MeshImportSettings meshImportSettings;
+				meshImportSettings.OptimizeMesh = true;
 
-					if (handle.Type == AssetType::Mesh)
+				ImportRequest& request = requests.emplace_back();
+				request.ImportSettings = meshImportSettings;
+				request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Sphere.obj");
+				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
 					{
-						//Change to per request perhaps instead of this overarching OnAssetImported func?
 						auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(e);
-						mfc.AssetHandle = handle;
-					}
-					else if (handle.Type == AssetType::TextureEx)
+						mfc.AssetHandle = assetHandle;
+					});
+			}
+			{
+				MeshImportSettings meshImportSettings;
+				meshImportSettings.OptimizeMesh = true;
+
+				ImportRequest& request = requests.emplace_back();
+				request.ImportSettings = meshImportSettings;
+				request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Cube.obj");
+				request.OnAssetImported.Connect([this, ground](const AssetHandle& assetHandle, bool success)
+					{
+						auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(ground);
+						mfc.AssetHandle = assetHandle;
+					});
+			}
+			{
+				ImportRequest& request = requests.emplace_back();
+				request.ImportSettings = textureImportSettings;
+				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_albedo.png");
+				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
 					{
 						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
-						AssetManager::Get<Material>(mrc.AssetHandle)->SetAlbedoTexture(handle);
-					}
-				});
+						AssetManager::Get<Material>(mrc.AssetHandle)->SetAlbedoTexture(assetHandle);
+					});
+			}
+			{
+				ImportRequest& request = requests.emplace_back();
+				request.ImportSettings = textureImportSettings;
+				textureImportSettings.IsSRGB = false;
 
+				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_metallic.png");
+				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
+					{
+						RLS_ASSERT(success, "FAILED!");
+						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
+						AssetManager::Get<Material>(mrc.AssetHandle)->SetMetallicTexture(assetHandle);
+					});
+			}
+			{
+				ImportRequest& request = requests.emplace_back();
+				request.ImportSettings = textureImportSettings;
+				textureImportSettings.IsSRGB = false;
+
+				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_roughness.png");
+				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
+					{
+						RLS_ASSERT(success, "FAILED!");
+						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
+						AssetManager::Get<Material>(mrc.AssetHandle)->SetRoughnessTexture(assetHandle);
+					});
+			}
+			{
+				ImportRequest& request = requests.emplace_back();
+				request.ImportSettings = textureImportSettings;
+				textureImportSettings.IsSRGB = false;
+
+				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_ao.png");
+				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
+					{
+						RLS_ASSERT(success, "FAILED!");
+						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
+						AssetManager::Get<Material>(mrc.AssetHandle)->SetAmbientOcclusionTexture(assetHandle);
+					});
+			}
+			{
+				ImportRequest& request = requests.emplace_back();
+				request.ImportSettings = textureImportSettings;
+				textureImportSettings.IsSRGB = false;
+
+				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_normal-dx.png");
+				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
+					{
+						RLS_ASSERT(success, "FAILED!");
+						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
+						AssetManager::Get<Material>(mrc.AssetHandle)->SetNormalMap(assetHandle);
+					});
+			}
+			{
+				ImportRequest& request = requests.emplace_back();
+				request.ImportSettings = textureImportSettings;
+				textureImportSettings.IsSRGB = false;
+
+				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_height.png");
+				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
+					{
+						RLS_ASSERT(success, "FAILED!");
+						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
+						AssetManager::Get<Material>(mrc.AssetHandle)->SetHeightMap(assetHandle);
+					});
+			}
+
+			Ref<ImporterFeedbackContext> pFeedback = new ImporterFeedbackContext();
+		
 			std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
 			fut.wait();
 		}
 
+		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
+		app.GetRenderer()->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
 
-		//m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
-		//
-		//m_Selection.OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
-		//
-		//SetActiveScene(std::make_shared<Scene>());
+		m_pSelection->OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
+		
 		//
 		//LoadStarterMeshes();
 		//CreateStartScene();
@@ -428,16 +533,29 @@ namespace Relentless
 
 	void Editor::OnDestroy() noexcept
 	{
-		//m_Selection.OnSelectionChanged.Detach(this);
+		m_pSelection->OnSelectionChanged.Detach(this);
+
+		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
+		if (auto& pRenderer = app.GetRenderer())
+		{
+			pRenderer->OnEntityIDReadbackDone.Detach(this);
+		}
 	}
 
 	void Editor::OnUpdate(const float deltaTime) noexcept
 	{
+		m_pActiveScene->GetEntityManager().Collect<TransformComponent, RotatorComponent>().Do([&](entity e)
+			{
+				const float rotationSpeed = 10.0f;
+				const Vector3 rotation = Vector3(0, deltaTime * rotationSpeed, 0);
+				m_pActiveScene->AddWorldRotation(e, rotation);
+			});
+
 		for (int i = 0; i < m_EditorViewports.size(); ++i)
 		{
 			UniquePtr<ViewportPanel>& pViewportPanel = m_EditorViewports[i];
 
-			const Vector2u& region = pViewportPanel->GetContentRegionAvail();
+			const Vector2u& region = pViewportPanel->GetViewportSize();
 			m_RenderViews[i].Viewport = FloatRect(0.0f, 0.0f, Math::Max(1.0f, (float)region.x), Math::Max(1.0f, (float)region.y));
 			m_ViewportCameras[i]->SetViewport(m_RenderViews[i].Viewport);
 
@@ -506,14 +624,14 @@ namespace Relentless
 		return m_pActiveScene.get();
 	}
 
-	Selection& Editor::GetSelection() noexcept
+	const UniquePtr<Selection>& Editor::GetSelection() noexcept
 	{
-		return m_Selection;
+		return m_pSelection;
 	}
 
-	EntityFiltersManager& Editor::GetEntityFiltersManager() noexcept
+	const UniquePtr<EntityFiltersManager>& Editor::GetEntityFiltersManager() noexcept
 	{
-		return m_EntityFiltersManager;
+		return m_pEntityFiltersManager;
 	}
 
 	ViewportRenderView& Editor::GetRenderView(uint32 renderViewIndex) noexcept
@@ -557,14 +675,14 @@ namespace Relentless
 
 	void Editor::SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept
 	{
-		m_Selection.DeselectAllEntities();
+		m_pSelection->DeselectAllEntities();
 
 		if (m_pActiveScene)
 		{
 			m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
 				{
-					if (m_EntityFiltersManager.IsEntityInAnyFilter(e))
-						m_EntityFiltersManager.RemoveEntityFromCurrentFilter(e);
+					if (m_pEntityFiltersManager->IsEntityInAnyFilter(e))
+						m_pEntityFiltersManager->RemoveEntityFromCurrentFilter(e);
 				});
 
 			m_pActiveScene->OnEntityPreDestroyed.Detach(this);
@@ -622,7 +740,7 @@ namespace Relentless
 		m_pActiveScene->SetWorldLocation(otherCube, DirectX::XMFLOAT3(-5.0f, 0.0f, 0.0f));
 		m_pActiveScene->SetWorldLocation(other, DirectX::XMFLOAT3(-8.0f, 0.0f, 0.0f));
 
-		m_EntityFiltersManager.CreateFilter("StarterContent/Shapes/Cubes/Another/Last");
+		m_pEntityFiltersManager->CreateFilter("StarterContent/Shapes/Cubes/Another/Last");
 	}
 
 	void Editor::OnSceneViewportChanged() noexcept
@@ -637,7 +755,7 @@ namespace Relentless
 
 	void Editor::ManipulateTransformGizmo() noexcept
 	{
-		const std::vector<entity>& selectedEntities = m_Selection.GetSelectedEntities();
+		const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
 		if (selectedEntities.empty())
 			return;
 
@@ -750,6 +868,9 @@ namespace Relentless
 
 		if (ImGui::BeginMenu("File"))
 		{
+			if (ImGui::MenuItem("Exit", nullptr))
+				Application::Get().InitializeShutdownProcedure();
+
 			ImGui::EndMenu();
 		}
 
@@ -826,17 +947,32 @@ namespace Relentless
 
 	void Editor::OnEntityPreDestroyed(entity e) noexcept
 	{
-		if (m_Selection.IsEntitySelected(e))
-			m_Selection.DeselectEntity(e);
+		if (m_pSelection->IsEntitySelected(e))
+			m_pSelection->DeselectEntity(e);
 
-		if (m_EntityFiltersManager.IsEntityInAnyFilter(e))
-			m_EntityFiltersManager.RemoveEntityFromCurrentFilter(e);
+		if (m_pEntityFiltersManager->IsEntityInAnyFilter(e))
+			m_pEntityFiltersManager->RemoveEntityFromCurrentFilter(e);
 	}
 
 	void Editor::OnEntityAttached(entity child, entity parent) noexcept
 	{
-		if (m_EntityFiltersManager.IsEntityInAnyFilter(child))
-			m_EntityFiltersManager.RemoveEntityFromCurrentFilter(child);
+		if (m_pEntityFiltersManager->IsEntityInAnyFilter(child))
+			m_pEntityFiltersManager->RemoveEntityFromCurrentFilter(child);
 	}
 
+	void Editor::OnEntityReadbackDone(uint32 entityID) noexcept
+	{
+		/*
+		 An id of 0 is considered a sentinel value for the readback results.
+		 This means all actual entity ids are shifted up by one and should be downshifted again (if entityID != 0)
+		*/
+
+		if (entityID == 0u)
+			m_HoveredEntity = NULL_ENTITY;
+		else
+		{
+			const uint32 actualEntityID = entityID - 1;
+			m_HoveredEntity = m_pActiveScene->GetEntityManager().GetEntityFromIdentity(actualEntityID);
+		}
+	}
 }

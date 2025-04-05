@@ -73,17 +73,17 @@ namespace Relentless
 		}}
 	};
 
-	std::unordered_map<AssetType, std::function<bool(GraphicsDevice* pDevice, const std::filesystem::path&, const std::optional<AssetImportSettingsVariant>&, Ref<ImporterFeedbackContext>)>> Importer::m_LoadFuncsEx = {
-		{AssetType::TextureEx, [](GraphicsDevice* pDevice, const std::filesystem::path& path, const std::optional<AssetImportSettingsVariant>& importSettings, Ref<ImporterFeedbackContext> pImportFeedback = nullptr)
+	std::unordered_map<AssetType, std::function<bool(GraphicsDevice* pDevice, const ImportRequest& request)>> Importer::m_LoadFuncsEx = {
+		{AssetType::TextureEx, [](GraphicsDevice* pDevice, const ImportRequest& request)
 			{
-				if (!ImportTextureEx(pDevice, path, CastToImportSettings<TextureImportSettings>(importSettings), pImportFeedback))
+				if (!ImportTextureEx(pDevice, request))
 					return false;
 
 				return true;
 			}},
-		{AssetType::Mesh, [](GraphicsDevice* pDevice, const std::filesystem::path& path, const std::optional<AssetImportSettingsVariant>& importSettings, Ref<ImporterFeedbackContext> pImportFeedback = nullptr)
+		{AssetType::Mesh, [](GraphicsDevice* pDevice, const ImportRequest& request)
 		{
-			return ImportModelEx(pDevice, path, CastToImportSettings<MeshImportSettings>(importSettings), pImportFeedback);
+			return ImportModelEx(pDevice, request);
 		}}
 	};
 
@@ -149,7 +149,7 @@ namespace Relentless
 				std::vector<std::future<void>> futures;
 				futures.reserve(requests.GetSize());
 
-				for (auto& request : requests)
+				for (const ImportRequest& request : requests)
 				{
 					futures.push_back(Application::Get().GetThreadPool().Submit([pDevice, request, pFeedbackContext, progressPerRequest]()
 						{
@@ -157,7 +157,7 @@ namespace Relentless
 							const AssetType assetType = GetAssetTypeFromExtensionType(extensionType);
 							if (assetType != AssetType::Undefined)
 							{
-								m_LoadFuncsEx[assetType](pDevice, request.Filepath.string(), request.ImportSettings, pFeedbackContext);
+								m_LoadFuncsEx[assetType](pDevice, request);
 							}
 
 							if (pFeedbackContext)
@@ -753,8 +753,10 @@ namespace Relentless
 		return true;
 	}
 
-	bool Importer::ImportModelEx(GraphicsDevice* pDevice, const std::filesystem::path& fullPath, const MeshImportSettings& importSettings /*= {}*/, Ref<ImporterFeedbackContext> pFeedbackContext) noexcept
+	bool Importer::ImportModelEx(GraphicsDevice* pDevice, const ImportRequest& request) noexcept
 	{
+		const MeshImportSettings& importSettings = std::get<MeshImportSettings>(*request.ImportSettings);
+
 		uint32_t importFlags = (uint32_t)(aiProcess_ConvertToLeftHanded | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals);
 		if (importSettings.OptimizeMesh)
 			importFlags |= (uint32_t)(aiProcess_Triangulate | aiProcess_ImproveCacheLocality | aiProcess_JoinIdenticalVertices);
@@ -762,12 +764,12 @@ namespace Relentless
 			importFlags |= (uint32_t)(aiProcess_GenBoundingBoxes);
 
 		Assimp::Importer importer;
-		const aiScene* pAssimpScene = importer.ReadFile(fullPath.string(), importFlags);
+		const aiScene* pAssimpScene = importer.ReadFile(request.Filepath.string(), importFlags);
 		const bool incompleteScene = pAssimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE;
 
 		if (!pAssimpScene || incompleteScene || !pAssimpScene->mRootNode)
 		{
-			RLS_CORE_ERROR("[Importer]: Reading file for model with path '{0}' failed with error message: '{1}'.", fullPath.string().c_str(), importer.GetErrorString());
+			RLS_CORE_ERROR("[Importer]: Reading file for model with path '{0}' failed with error message: '{1}'.", request.Filepath.string().c_str(), importer.GetErrorString());
 			return false;
 		}
 
@@ -958,31 +960,32 @@ namespace Relentless
 
 		for (auto& [uuid, aiMeshAndHandlePair] : uuidToAIMeshMap)
 		{
-			auto& [handle, mesh] = aiMeshAndHandlePair;
+			const auto& [handle, mesh] = aiMeshAndHandlePair;
 			AssetManager::Get<Mesh>(handle)->SetOffsetTransform(aiMeshToImportedTransformMap[mesh]);
 			
-			if (pFeedbackContext)
-				pFeedbackContext->OnAssetImported(handle, true);
+			request.OnAssetImported(handle, true);
 		}
 
 		return true;
 	}
 
-	[[nodiscard]] bool Importer::ImportTextureEx(GraphicsDevice* pDevice, const std::filesystem::path& fullPath, const TextureImportSettings& importSettings /*= {}*/, Ref<ImporterFeedbackContext> pFeedbackContext /*= nullptr*/) noexcept
+	[[nodiscard]] bool Importer::ImportTextureEx(GraphicsDevice* pDevice, const ImportRequest& request) noexcept
 	{
-		if (!File::Exists(fullPath))
+		if (!File::Exists(request.Filepath))
 		{
-			RLS_CORE_ERROR("[Importer]: Failed to import texture file with path '{0}'; file does not exist.", fullPath.string().c_str());
+			RLS_CORE_ERROR("[Importer]: Failed to import texture file with path '{0}'; file does not exist.", request.Filepath.string().c_str());
 			return false;
 		}
 
-		const ExtensionType extensionType = GetExtensionTypeFromPath(fullPath);
+		const TextureImportSettings& importSettings = std::get<TextureImportSettings>(*request.ImportSettings);
+
+		const ExtensionType extensionType = GetExtensionTypeFromPath(request.Filepath);
 		DirectX::ScratchImage image;
 		HRESULT result = S_OK;
 		switch (extensionType)
 		{
 		case ExtensionType::TGA:
-			result = LoadFromTGAFile(fullPath.c_str(), nullptr, image);
+			result = LoadFromTGAFile(request.Filepath.c_str(), nullptr, image);
 			break;
 		case ExtensionType::JPG:
 		case ExtensionType::JPEG:
@@ -991,42 +994,44 @@ namespace Relentless
 		{
 			DirectX::WIC_FLAGS importFlags = DirectX::WIC_FLAGS::WIC_FLAGS_NONE;
 			importSettings.IsSRGB ? importFlags |= DirectX::WIC_FLAGS::WIC_FLAGS_FORCE_SRGB : importFlags |= DirectX::WIC_FLAGS::WIC_FLAGS_FORCE_RGB;
-			result = LoadFromWICFile(fullPath.c_str(), importFlags, nullptr, image);
+			result = LoadFromWICFile(request.Filepath.c_str(), importFlags, nullptr, image);
 			break;
 		}
 		case ExtensionType::HDR:
 		case ExtensionType::EXR:
 		{
-			result = LoadFromHDRFile(fullPath.c_str(), nullptr, image);
+			result = LoadFromHDRFile(request.Filepath.c_str(), nullptr, image);
 			break;
 		}
 		case ExtensionType::DDS:
 		{
-			result = LoadFromDDSFile(fullPath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);
+			result = LoadFromDDSFile(request.Filepath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);
 			break;
 		}
 
 		default:
 		{
-			RLS_CORE_ERROR("[Importer]: Failed to import texture file with path '{0}'; file type is not supported.", fullPath.string().c_str());
+			RLS_CORE_ERROR("[Importer]: Failed to import texture file with path '{0}'; file type is not supported.", request.Filepath.string().c_str());
 			return false;
 		}
 		}
 
 		if (result != S_OK)
 		{
-			LogHR(result, "import", fullPath);
+			LogHR(result, "import", request.Filepath);
 			return false;
 		}
 		if (image.GetMetadata().format == DXGI_FORMAT_B8G8R8A8_UNORM && importSettings.IsSRGB)
 			image.OverrideFormat(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB);
+		else if (image.GetMetadata().format == DXGI_FORMAT_R8G8B8A8_UNORM && importSettings.IsSRGB)
+			image.OverrideFormat(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
 
 		if (importSettings.GenerateMipMaps)
 		{
 			DirectX::ScratchImage mipChain;
 			const HRESULT hr = GenerateMipMaps(image.GetImages()[0], DirectX::TEX_FILTER_DEFAULT, 0u, mipChain);
 			if (hr != S_OK)
-				LogHR(hr, "generate mipmaps", fullPath);
+				LogHR(hr, "generate mipmaps", request.Filepath);
 			else
 				image = std::move(mipChain);
 		}
@@ -1041,7 +1046,7 @@ namespace Relentless
 			DirectX::ScratchImage compressedImage;
 			const HRESULT hr = Compress(image.GetImages(), image.GetImageCount(), image.GetMetadata(), GetCompressedDXGITextureFormat(importSettings), compressFlags, DirectX::TEX_THRESHOLD_DEFAULT, compressedImage);
 			if (hr != S_OK)
-				LogHR(hr, "compress", fullPath);
+				LogHR(hr, "compress", request.Filepath);
 			else
 				image = std::move(compressedImage);
 		}
@@ -1056,7 +1061,7 @@ namespace Relentless
 		//textureDesc.Type = TextureType::Texture2D;
 		//textureDesc.Format = D3D::ConvertFormat(metaData.format);
 
-		const std::string fileName = FilepathUtils::ExtractFilename(fullPath);
+		const std::string fileName = FilepathUtils::ExtractFilename(request.Filepath);
 
 		//DirectX::ResourceUploadBatch uploadBatch(pDevice->GetDevice());
 		//uploadBatch.Begin();
@@ -1077,8 +1082,7 @@ namespace Relentless
 		Ref<TextureEx> pNewTexture = pDevice->CreateTexture(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), fileName.c_str(), initData);
 		const uint32 index = AssetManager::GetStorage<TextureEx>().Add(pNewTexture);
 		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::TextureEx);
-		if (pFeedbackContext)
-			pFeedbackContext->OnAssetImported(handle->second, true);
+		request.OnAssetImported(handle->second, true);
 
 		//uploadBatch.Transition(pTexture->GetResource(), pTexture->GetResourceState(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		//auto finish = uploadBatch.End(pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue());

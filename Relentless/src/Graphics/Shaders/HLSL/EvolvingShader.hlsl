@@ -26,15 +26,26 @@ VS_OUT vs_main(uint vertexID : SV_VertexID)
     
     InstanceData instanceData = GetInstance(perDrawData.InstanceIndex);
     MeshData meshData = GetMesh(instanceData.MeshDataIndex);
+    Material material = GetMaterial(instanceData.MaterialIndex);
     Vertex vertex = LoadVertex(meshData, vertexID);
 
-    float4 worldPos = mul(instanceData.LocalToWorld, float4(vertex.inPositionLS, 1.0f));
+    float2 adjustedTexCoords = (vertex.inTexCoords * material.TilingFactor) + material.Offset;
+
+    float3 positionLS = vertex.inPositionLS;
+    if (material.HeightMapIndex != INVALID_DESCRIPTOR_INDEX)
+    {
+        Texture2D heightMap = ResourceDescriptorHeap[material.HeightMapIndex];
+        const float height = heightMap.SampleLevel(sLinearWrap, adjustedTexCoords, 0).r;
+        positionLS += vertex.inNormalLS * height * material.HeightFactor;
+    }
+    
+    float4 worldPos = mul(instanceData.LocalToWorld, float4(positionLS, 1.0f));
     vsOut.PositionCS = mul(cView.WorldToClip, worldPos);
     vsOut.PositionWS = worldPos.xyz;
     vsOut.NormalWS = mul(instanceData.LocalToWorld, float4(vertex.inNormalLS, 0.0f)).xyz;
     vsOut.TangentWS = mul(instanceData.LocalToWorld, float4(vertex.inTangentLS, 0.0f)).xyz;
     vsOut.BiTangentWS = mul(instanceData.LocalToWorld, float4(vertex.inBiTangentLS, 0.0f)).xyz;
-    vsOut.TexCoords = vertex.inTexCoords;
+    vsOut.TexCoords = adjustedTexCoords;
     
     return vsOut;
 }
@@ -53,8 +64,12 @@ float4 ps_main(VS_OUT psIn) : SV_TARGET
         albedoColor = albedoTexture.Sample(sAnisoWrap, adjustedUV);
     }
     albedoColor *= material.BaseColorFactor;
-    #ifdef ALPHA_CLIP
+    #ifdef ALPHA_MASK
         clip(albedoColor.a < 0.1f ? -1 : 1);
+    #endif
+    
+    #ifdef ALPHA_BLEND
+        albedoColor.a *= material.BaseColorFactor.a;
     #endif
 
     float metallic = material.MetalnessFactor;
@@ -92,9 +107,10 @@ float4 ps_main(VS_OUT psIn) : SV_TARGET
         Texture2D normalMap = ResourceDescriptorHeap[material.NormalIndex];
         float3 sampledNormal = normalMap.Sample(sAnisoWrap, adjustedUV).rgb;
         
-        sampledNormal.x = sampledNormal.x * 2.0f - 1.0f;
-        sampledNormal.y = -sampledNormal.y * 2.0f + 1.0f;
-        sampledNormal.z = sampledNormal.z;
+        //sampledNormal.x = sampledNormal.x * 2.0f - 1.0f;
+        //sampledNormal.y = -sampledNormal.y * 2.0f + 1.0f;
+        //sampledNormal.z = sampledNormal.z;
+        sampledNormal = sampledNormal * 2.0f - 1.0f;
         
         normal = normalize(mul(sampledNormal, tbn).xyz);
     }
@@ -199,5 +215,5 @@ float4 ps_main(VS_OUT psIn) : SV_TARGET
     const float3 finalAmbientColor = ((diffuse + specular) * ambientOcclusion) + emissionColor.rgb;
    
     const float3 outColor = finalAmbientColor + lightOut;
-    return float4(outColor, 1.0f);
+    return float4(outColor, albedoColor.a);
 }

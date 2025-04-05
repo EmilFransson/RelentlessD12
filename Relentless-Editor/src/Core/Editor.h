@@ -33,8 +33,8 @@ namespace Relentless
 		virtual void OnPostRender() noexcept;
 
 		[[nodiscard]] Scene* GetActiveScene() const noexcept;
-		[[nodiscard]] Selection& GetSelection() noexcept;
-		[[nodiscard]] EntityFiltersManager& GetEntityFiltersManager() noexcept;
+		[[nodiscard]] const UniquePtr<Selection>& GetSelection() noexcept;
+		[[nodiscard]] const UniquePtr<EntityFiltersManager>& GetEntityFiltersManager() noexcept;
 		[[nodiscard]] ViewportRenderView& GetRenderView(uint32 renderViewIndex) noexcept;
 		[[nodiscard]] std::vector<ViewportRenderView>& GetRenderViews() noexcept;
 
@@ -62,6 +62,7 @@ namespace Relentless
 		void OnEntitySelectionChanged(entity e, ESelectionState selectionState);
 		void OnEntityPreDestroyed(entity e) noexcept;
 		void OnEntityAttached(entity child, entity parent) noexcept;
+		void OnEntityReadbackDone(uint32 entityID) noexcept;
 	private:
 		std::vector<ViewportRenderView> m_RenderViews;
 		std::vector<UniquePtr<ViewportPanel>> m_EditorViewports;
@@ -77,7 +78,9 @@ namespace Relentless
 		EGizmoType m_CurrentGizmoType = EGizmoType::None;
 		EGizmoMode m_CurrentGizmoMode = EGizmoMode::World;
 
-		std::unique_ptr<OutlinerPanel> m_pOutlinerPanel = nullptr;
+		UniquePtr<Selection> m_pSelection = nullptr;
+		UniquePtr<EntityFiltersManager> m_pEntityFiltersManager = nullptr;
+
 		//PropertiesPanel m_PropertiesPanel;
 		//ContentBrowserPanel m_ContentBrowserPanel;
 		//MetricsPanel m_MetricsPanel;
@@ -89,6 +92,8 @@ namespace Relentless
 
 		std::shared_ptr<SceneRenderer> m_pSceneRenderer = nullptr;
 		std::shared_ptr<UtilityRenderer> m_pUtilityRenderer = nullptr;
+		
+		std::unique_ptr<OutlinerPanel> m_pOutlinerPanel = nullptr;
 
 		bool m_DisplayOutlinerPanel = true;
 		bool m_DisplayContentBrowserPanel = true;
@@ -109,9 +114,6 @@ namespace Relentless
 		ESceneState m_SceneState = ESceneState::Edit;
 
 		std::shared_ptr<TextureCube> m_SkyBox = nullptr;
-
-		Selection m_Selection;
-		EntityFiltersManager m_EntityFiltersManager;
 
 		bool m_IsPanningMouse = false;
 		bool m_ViewportIsFocused = false;

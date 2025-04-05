@@ -31,6 +31,11 @@ namespace Relentless
 		}
 	}
 
+	const UniquePtr<Renderer>& RelentlessEditor::GetRenderer() const noexcept
+	{
+		return m_pRenderer;
+	}
+
 	const std::unique_ptr<Application> CreateApplication() noexcept
 	{
 		ApplicationSpecification applicationSpecification;

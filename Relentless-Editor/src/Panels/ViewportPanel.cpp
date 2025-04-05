@@ -7,6 +7,11 @@ namespace Relentless
 		: PanelBase(pName, flags), m_pEditor{pEditor}, m_RenderViewIndex{renderViewIndex}
 	{}
 
+	const Vector2u& ViewportPanel::GetViewportSize() const noexcept
+	{
+		return m_ViewportSize;
+	}
+
 	Vector2i ViewportPanel::GetClientHoverCoordinates() const noexcept
 	{
 		if (!IsClientAreaHovered())
@@ -71,8 +76,9 @@ namespace Relentless
 		// Render your viewport content here
 		// e.g., displaying the rendered image, handling input, etc.
 		
-		ImGui::Image((ImTextureID)renderView.pTarget->GetSRV()->GetGPUHandle().ptr, ImVec2(region.x, region.y));
-
+		m_ViewportSize = Vector2u(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+		ImGui::Image((ImTextureID)renderView.pTarget->GetSRV()->GetGPUHandle().ptr, ImVec2(m_ViewportSize.x, m_ViewportSize.y));
+		
 		m_ClientAreaHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlapped);
 
 		// Retrieve the client area (in absolute screen coordinates)

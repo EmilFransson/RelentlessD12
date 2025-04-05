@@ -27,6 +27,7 @@ namespace Relentless
 		[[nodiscard]] bool IsDocked() const noexcept;
 		[[nodiscard]] bool IsFocused() const noexcept;
 		[[nodiscard]] bool IsHovered() const noexcept;
+		[[nodiscard]] bool IsVisible() const noexcept;
 	protected:
 		virtual void PreRender() noexcept {}
 		virtual void OnRender() noexcept = 0;
@@ -45,5 +46,6 @@ namespace Relentless
 		bool m_IsDocked = false;
 		bool m_IsFocused = false;
 		bool m_IsHovered = false;
+		bool m_IsVisible = false;
 	};
 }

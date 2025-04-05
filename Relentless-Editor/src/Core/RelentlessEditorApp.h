@@ -11,6 +11,8 @@ namespace Relentless
 
 		virtual void Initialize() noexcept override;
 		virtual void Update() noexcept override;
+
+		const UniquePtr<Renderer>& GetRenderer() const noexcept;
 	private:
 		UniquePtr<EditorLayer> m_pEditorLayer = nullptr;
 		UniquePtr<Renderer> m_pRenderer = nullptr;

@@ -72,6 +72,48 @@ namespace Relentless
 		}
 	}
 
+	std::vector<DescriptorHandleEx> DescriptorHeapEx::AllocateDescriptorBlock(uint32 blockSize) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_Mutex);
+
+		RLS_ASSERT(m_pDescriptorHeap, "D3D12 Descriptor heap interface is not initialized.");
+		RLS_ASSERT(m_CurrentNrOfDescriptors != m_Capacity, "Descriptor heap capacity reached.");
+
+		std::vector<DescriptorHandleEx> descriptorBlock;
+		descriptorBlock.reserve(blockSize);
+			
+		for (uint32 i = 0u; i < blockSize; ++i)
+		{
+			if (!m_FreeList.empty() && m_FreeList.front().SyncPoint.IsComplete())
+			{
+				const DescriptorHandleEx descriptorHandle = m_FreeList.front().DescriptorHandle;
+				m_FreeList.pop();
+				descriptorBlock.push_back(descriptorHandle);
+			}
+			else
+			{
+				m_CurrentNrOfDescriptors++;
+				const uint32_t index = m_FreeHandles[m_CurrentNrOfDescriptors];
+				const uint32_t offset = index * m_DescriptorSize;
+
+				DescriptorHandleEx descriptorHandle{};
+				descriptorHandle.CPUHandle.ptr = m_CpuHandleStart.ptr + offset;
+				if (IsShaderVisible())
+				{
+					descriptorHandle.GPUHandle.ptr = m_GpuHandleStart.ptr + offset;
+				}
+
+				descriptorHandle.Index = index;
+#if defined(RLS_DEBUG)
+				descriptorHandle.pDebugInterface = this;
+#endif
+				descriptorBlock.push_back(descriptorHandle);
+			}
+		}
+
+		return descriptorBlock;
+	}
+
 	void DescriptorHeapEx::FreeDescriptor(const DescriptorHandleEx& descriptorHandle, const SyncPoint& syncPoint) noexcept
 	{
 		std::lock_guard<std::mutex> lock(m_Mutex);

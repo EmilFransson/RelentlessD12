@@ -153,7 +153,7 @@ namespace Relentless
 								m_pScene->GetLightManager().DeallocateDirectionalLight(m_SelectedEntity);
 								auto& dlc = m_pScene->GetEntityManager().Add<PointLightComponent>(m_SelectedEntity);
 								m_pScene->GetLightManager().AllocatePointLight(m_SelectedEntity);
-								dlc.Color = color;
+								dlc.Color = DirectX::XMFLOAT3(color.x, color.y, color.z);
 								dlc.Intensity = intensity;
 								m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 							}
@@ -192,7 +192,7 @@ namespace Relentless
 								m_pScene->GetLightManager().DeallocatePointLight(m_SelectedEntity);
 								auto& dlc = m_pScene->GetEntityManager().Add<DirectionalLightComponent>(m_SelectedEntity);
 								m_pScene->GetLightManager().AllocateDirectionalLight(m_SelectedEntity);
-								dlc.Color = color;
+								dlc.Color = Color(color.x, color.y, color.z);
 								dlc.Intensity = intensity;
 								m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 

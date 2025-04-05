@@ -88,15 +88,9 @@ namespace Relentless
 
 	struct DirectionalLightComponent
 	{
-		explicit DirectionalLightComponent(const Vector3& color = Vector3(1.0f, 1.0f, 1.0f))
-			: Color{ color },
-			  Direction{ 0.0f, 0.0f, 0.0f },
-			  Intensity{1.0f}
-		{}
-
-		Vector3 Color;
-		Vector3 Direction;
-		float Intensity;
+		Color Color = Colors::White;
+		Vector3 Direction = Vector3(0.0f, 0.0f, 0.0f);
+		float Intensity = 1.0f;
 	};
 
 	struct PointLightComponent
@@ -157,6 +151,11 @@ namespace Relentless
 	};
 
 	struct HiddenInGameComponent
+	{
+		//ID
+	};
+
+	struct RotatorComponent
 	{
 		//ID
 	};

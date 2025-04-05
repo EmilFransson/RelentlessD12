@@ -39,6 +39,16 @@ namespace Relentless
 			return (value + ((T)alignment - 1)) & ~(alignment - 1);
 		}
 
+		template<typename T, typename U, typename V>
+		constexpr T Clamp(const T value, const U low, const V high)
+		{
+			if (value > high)
+				return (T)high;
+			else if (value < low)
+				return (T)low;
+			return value;
+		}
+
 		constexpr inline uint32 DivideAndRoundUp(uint32 nominator, uint32 denominator) noexcept
 		{
 			return (nominator + denominator - 1) / denominator;
@@ -130,5 +140,7 @@ namespace Relentless
 			frustum.Transform(frustum, view.Invert());
 			return frustum;
 		}
+
+		[[nodiscard]] Color MakeFromColorTemperature(float Temp) noexcept;
 	}
 }

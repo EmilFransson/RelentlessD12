@@ -30,17 +30,17 @@ namespace Relentless
 
 	Scene::~Scene() noexcept
 	{
-		m_EntityManager.Collect<TransformComponent>().Do([this](entity e)
-			{
-				if (m_EntityManager.Has<PointLightComponent>(e))
-				{
-					m_LightManager.DeallocatePointLight(e);
-				}
-				else if (m_EntityManager.Has<DirectionalLightComponent>(e))
-				{
-					m_LightManager.DeallocateDirectionalLight(e);
-				}
-			});
+// 		m_EntityManager.Collect<TransformComponent>().Do([this](entity e)
+// 			{
+// 				if (m_EntityManager.Has<PointLightComponent>(e))
+// 				{
+// 					m_LightManager.DeallocatePointLight(e);
+// 				}
+// 				else if (m_EntityManager.Has<DirectionalLightComponent>(e))
+// 				{
+// 					m_LightManager.DeallocateDirectionalLight(e);
+// 				}
+// 			});
 	}
 
 	void Scene::SetName(const std::string& name) noexcept

@@ -192,6 +192,7 @@ namespace Relentless
 			DXGI_FORMAT_R32_UINT,
 			DXGI_FORMAT_R32_SINT,
 			DXGI_FORMAT_R32_FLOAT,
+			DXGI_FORMAT_R32_TYPELESS,
 			DXGI_FORMAT_R16G16B16A16_UINT,
 			DXGI_FORMAT_R16G16B16A16_SINT,
 			DXGI_FORMAT_R16G16B16A16_FLOAT,
@@ -263,6 +264,7 @@ namespace Relentless
 			case DXGI_FORMAT_R32_UINT:				return ResourceFormat::R32_UINT;
 			case DXGI_FORMAT_R32_SINT:				return ResourceFormat::R32_SINT;
 			case DXGI_FORMAT_R32_FLOAT:				return ResourceFormat::R32_FLOAT;
+			case DXGI_FORMAT_R32_TYPELESS:			return ResourceFormat::R32_TYPELESS;
 			case DXGI_FORMAT_R16G16B16A16_UINT:		return ResourceFormat::RGBA16_UINT;
 			case DXGI_FORMAT_R16G16B16A16_SINT:		return ResourceFormat::RGBA16_SINT;
 			case DXGI_FORMAT_R16G16B16A16_FLOAT:	return ResourceFormat::RGBA16_FLOAT;

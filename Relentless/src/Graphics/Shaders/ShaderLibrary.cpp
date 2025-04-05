@@ -5,9 +5,7 @@ namespace Relentless
 	/*Initialize sets up all basic shaders that ship with Relentless*/
 	void ShaderLibrary::Initialize() noexcept
 	{
-		//Add(Shader::Create(ShaderType::VERTEX, "NewVertexShader.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "NewPixelShader.hlsl"));
-		//Add(Shader::Create(ShaderType::Compute, "ToyComputeShader.hlsl"));
+		Add(Shader::Create(ShaderType::VERTEX, "DepthPrePassShader.hlsl", "vs_main"));
 
 		Add(Shader::Create(ShaderType::VERTEX, "EditorGridShader.hlsl", "vs_main"));
 		Add(Shader::Create(ShaderType::PIXEL, "EditorGridShader.hlsl", "ps_main"));
@@ -15,23 +13,16 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::VERTEX, "EvolvingShader.hlsl", "vs_main"));
 		Add(Shader::Create(ShaderType::PIXEL, "EvolvingShader.hlsl", "ps_main", {"RED_OUTPUT"}));
 
+		Add(Shader::Create(ShaderType::VERTEX, "EntityOutputShader.hlsl", "vs_main"));
+		Add(Shader::Create(ShaderType::PIXEL, "EntityOutputShader.hlsl", "ps_main"));
+
 		Add(Shader::Create(ShaderType::Compute, "PostProcessShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "GaussianBlurSeparable.hlsl", "cs_main"));
 
-		//Add(Shader::Create(ShaderType::VERTEX, "EditorGridVertexShader.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "EditorGridPixelShader.hlsl"));
-
-		//Add(Shader::Create(ShaderType::VERTEX, "VertexShader.hlsl"));
 		//Add(Shader::Create(ShaderType::VERTEX, "FullScreenTriVertexShader.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "PixelShader.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "PostProcessPixelShader.hlsl"));
 		//Add(Shader::Create(ShaderType::PIXEL, "PickingPixelShader.hlsl"));
-		//Add(Shader::Create(ShaderType::VERTEX, "VertexShaderEditorGrid.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "PixelShaderEditorGrid.hlsl"));
 		//Add(Shader::Create(ShaderType::PIXEL, "PixelShaderOrangeOutput.hlsl"));
 		//Add(Shader::Create(ShaderType::PIXEL, "GeometryAndPickingPixelShader.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "PBRPixelShader.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "CutOutPBRPixelShader.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "TransparentPBRPixelShader.hlsl"));
 		//Add(Shader::Create(ShaderType::VERTEX, "PickingVertexShader.hlsl"));
 		//Add(Shader::Create(ShaderType::VERTEX, "EquirectangularToCubemapVertexShader.hlsl"));
 		//Add(Shader::Create(ShaderType::PIXEL, "EquirectangularToCubemapPixelShader.hlsl"));

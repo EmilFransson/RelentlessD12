@@ -27,20 +27,22 @@ namespace Relentless
 	public:
 		[[nodiscard]] static Application& Get() noexcept;
 		Application(const ApplicationSpecification& applicationSpecification) noexcept;
-		virtual ~Application() noexcept = default;
+		virtual ~Application() noexcept;
 
 		[[nodiscard]] GraphicsDevice* GetGraphicsDevice() const noexcept;
 		[[nodiscard]] const UniquePtr<WindowEx>& GetWindow() const noexcept;
 
+		void InitializeShutdownProcedure();
+
 		void Run() noexcept;
 		void PushLayer(Layer* pLayer) const noexcept;
 		void PushOverlay(Layer* pLayer) const noexcept;
-		void OnEvent(IEvent& event) noexcept;
 
+		//Should be protected?
 		virtual void Initialize() noexcept {}
 		virtual void Update() noexcept {}
 		virtual void ShutDown() noexcept {}
-
+		
 		void SubmitToMainThread(const std::function<void()>& func); //Determine usage?
 		[[nodiscard]] ThreadPool& GetThreadPool() noexcept;
 	private:

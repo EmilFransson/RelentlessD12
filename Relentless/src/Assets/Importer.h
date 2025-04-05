@@ -37,13 +37,13 @@ namespace Relentless
 	{
 		Broadcaster<void(const std::string& status)> OnStatusChanged;
 		Broadcaster<void(float partialProgress)> OnProgressUpdated;
-		Broadcaster<void(const AssetHandle& handle, bool success)> OnAssetImported;
 	};
 
 	struct ImportRequest
 	{
 		std::filesystem::path Filepath;
 		std::optional<AssetImportSettingsVariant> ImportSettings;
+		mutable Broadcaster<void(const AssetHandle& handle, bool success)> OnAssetImported;
 	};
 
 	class Importer
@@ -55,8 +55,8 @@ namespace Relentless
 		static [[nodiscard]] bool ImportTexture(const std::filesystem::path& fullPath, const std::filesystem::path& dstAssetDirectorPath, bool isABlockingOperation, const TextureImportSettings& importSettings = {}) noexcept;
 		static [[nodiscard]] bool ImportModel(const std::filesystem::path& fullPath, const std::filesystem::path& dstAssetDirectorPath, bool isABlockingOperation, const MeshImportSettings& importSettings = {}) noexcept;
 
-		static [[nodiscard]] bool ImportModelEx(GraphicsDevice* pDevice, const std::filesystem::path& fullPath, const MeshImportSettings& importSettings = {}, Ref<ImporterFeedbackContext> pFeedbackContext = nullptr) noexcept;
-		static [[nodiscard]] bool ImportTextureEx(GraphicsDevice* pDevice, const std::filesystem::path& fullPath, const TextureImportSettings& importSettings = {}, Ref<ImporterFeedbackContext> pFeedbackContext = nullptr) noexcept;
+		static [[nodiscard]] bool ImportModelEx(GraphicsDevice* pDevice, const ImportRequest& request) noexcept;
+		static [[nodiscard]] bool ImportTextureEx(GraphicsDevice* pDevice, const ImportRequest& request) noexcept;
 
 		template<typename T>
 		struct always_false : std::false_type{};
@@ -94,7 +94,7 @@ namespace Relentless
 	private:
 		static std::unordered_map<AssetType, std::function<bool(const std::filesystem::path&, const std::filesystem::path&, const std::optional<AssetImportSettingsVariant>&, bool)>> m_LoadFuncs;
 
-		static std::unordered_map<AssetType, std::function<bool(GraphicsDevice* pDevice, const std::filesystem::path&, const std::optional<AssetImportSettingsVariant>&, Ref<ImporterFeedbackContext>)>> m_LoadFuncsEx;
+		static std::unordered_map<AssetType, std::function<bool(GraphicsDevice*, const ImportRequest&)>> m_LoadFuncsEx;
 
 	};
 }
