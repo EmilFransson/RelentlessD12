@@ -54,25 +54,25 @@ namespace Relentless
 				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
 				const char* VSyncStrings[] = { "Off", "On" };
-				const char* currentVSyncString = VSyncStrings[(int)Window::IsVSyncing()];
+				//const char* currentVSyncString = VSyncStrings[(int)Window::IsVSyncing()];
 
-				if (ImGui::BeginCombo("##Vsync", currentVSyncString))
-				{
-					for (uint8_t i = 0u; i < ARRAYSIZE(VSyncStrings); ++i)
-					{
-						bool isSelected = currentVSyncString == VSyncStrings[i];
-						if (ImGui::Selectable(VSyncStrings[i], isSelected))
-						{
-							if (!isSelected)
-							{
-								Window::ToggleVSync();
-							}
-						}
-						if (isSelected)
-							ImGui::SetItemDefaultFocus();
-					}
-					ImGui::EndCombo();
-				}
+// 				if (ImGui::BeginCombo("##Vsync", currentVSyncString))
+// 				{
+// 					for (uint8_t i = 0u; i < ARRAYSIZE(VSyncStrings); ++i)
+// 					{
+// 						bool isSelected = currentVSyncString == VSyncStrings[i];
+// 						if (ImGui::Selectable(VSyncStrings[i], isSelected))
+// 						{
+// 							if (!isSelected)
+// 							{
+// 								Window::ToggleVSync();
+// 							}
+// 						}
+// 						if (isSelected)
+// 							ImGui::SetItemDefaultFocus();
+// 					}
+// 					ImGui::EndCombo();
+// 				}
 
 				ImGui::PopItemWidth();
 				ImGui::PopStyleVar();

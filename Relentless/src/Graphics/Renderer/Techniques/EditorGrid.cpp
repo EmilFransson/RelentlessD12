@@ -49,7 +49,6 @@ namespace Relentless
 
 		for (int i = -EDITOR_GRID_INSTANCE_COUNT_HALF_SIZE; i < EDITOR_GRID_INSTANCE_COUNT_HALF_SIZE; ++i)
 		{
-			const int index = i + EDITOR_GRID_INSTANCE_COUNT_HALF_SIZE;
 			InstanceData& instanceData = instances.emplace_back();
 			instanceData.Position = DirectX::XMFLOAT3(0.0f, 0.0f, static_cast<float>(i));
 			instanceData.Color.R = 0.15f;
@@ -64,7 +63,7 @@ namespace Relentless
 			}
 		}
 
-		m_pInstancesStructuredBuffer = m_pDevice->CreateBuffer(BufferDesc::CreateStructured(instances.size(), sizeof(InstanceData)), "Editor Grid Instances", instances.data());
+		m_pInstancesStructuredBuffer = m_pDevice->CreateBuffer(BufferDesc::CreateStructured(static_cast<uint32>(instances.size()), sizeof(InstanceData)), "Editor Grid Instances", instances.data());
 	}
 
 	void EditorGrid::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept
@@ -79,7 +78,8 @@ namespace Relentless
 		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ReadOnlyDepth;
 		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::None;
 
-		commandContext.InsertResourceBarrier(sceneTextures.pDepthTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		commandContext.InsertResourceBarrier(sceneTextures.pDepthTarget, sceneTextures.pDepthTarget->GetResourceState(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		sceneTextures.pDepthTarget->SetResourceState(D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 		commandContext.BeginRenderPass(info);
 

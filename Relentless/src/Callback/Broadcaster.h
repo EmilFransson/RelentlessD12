@@ -13,7 +13,7 @@ namespace Relentless
 	public:
 		using CallbackType = std::function<ReturnValue(Args...)>;
 
-		[[nodiscard]] CallbackID Connect(CallbackType&& callback) noexcept
+		CallbackID Connect(CallbackType&& callback) noexcept
 		{
 			const CallbackID newID = m_NextID++;
 			m_Callbacks[newID] = std::move(callback);

@@ -55,10 +55,10 @@ namespace Relentless
 			{
 				RLS_ASSERT(!m_RootFilters.contains(name) && pToDestroy->GetName() != name, "Filter with name already exists at root!");
 
-				const std::string path = filter->GetPath();
+				const std::string filterPath = filter->GetPath();
 				filter->SetParent(nullptr);
 				m_RootFilters[name] = filter;
-				OnFilterReattached(path, name, "");
+				OnFilterReattached(filterPath, name, "");
 			}
 			m_RootFilters.erase(pToDestroy->GetName());
 		}
@@ -287,7 +287,7 @@ namespace Relentless
 			pCurrent = pCurrent->GetParent();
 		}
 
-		for (int i = hierarchy.size() - 1; i >= 0; --i)
+		for (int i = static_cast<int>(hierarchy.size()) - 1; i >= 0; --i)
 		{
 			std::string name = hierarchy[i]->GetName();
 			if (i != 0)

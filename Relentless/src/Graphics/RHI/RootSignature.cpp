@@ -22,7 +22,7 @@ namespace Relentless
 	void RootSignature::AddRootConstant(uint8 shaderRegister, uint64 num32BitValues, uint8 space, D3D12_SHADER_VISIBILITY visibility) noexcept
 	{
 		CD3DX12_ROOT_PARAMETER1& rootParam = m_RootParameters[m_NrOfParameters++];
-		rootParam.InitAsConstants(num32BitValues, shaderRegister, space, visibility);
+		rootParam.InitAsConstants(static_cast<UINT>(num32BitValues), shaderRegister, space, visibility);
 	}
 
 	void RootSignature::AddRootSRV(uint8 shaderRegister, uint8 space, D3D12_SHADER_VISIBILITY visibility) noexcept

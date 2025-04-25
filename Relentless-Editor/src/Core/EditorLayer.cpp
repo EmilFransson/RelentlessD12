@@ -38,11 +38,6 @@ namespace Relentless
 		m_pEditor->OnRender();
 	}
 	
-	void EditorLayer::OnPostRender() noexcept
-	{
-		m_pEditor->OnPostRender();
-	}
-
 	const UniquePtr<Editor>& EditorLayer::GetEditor() const noexcept
 	{
 		return m_pEditor;

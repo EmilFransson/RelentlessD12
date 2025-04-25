@@ -1,6 +1,7 @@
 #pragma once
 #include "AssetMeta.h"
 #include "Scene/Scene.h"
+#include "Mesh/Mesh.h"
 
 namespace Relentless
 {
@@ -39,7 +40,7 @@ namespace Relentless
 	};
 
 	template<>
-	struct AssetTypeInfo<Texture2D>
+	struct AssetTypeInfo<TextureEx>
 	{
 		using Settings = TextureImportSettings;
 	};

@@ -52,8 +52,8 @@ struct TVector2
 
 	explicit operator Vector2() const { return Vector2((float)x, (float)y); }
 
-	static TVector2 Zero() { return TVector2(0, 0); }
-	static TVector2 One() { return TVector2(1, 1); }
+	static constexpr TVector2 Zero() { return TVector2(0, 0); }
+	static constexpr TVector2 One() { return TVector2(1, 1); }
 
 	bool operator==(const TVector2& rhs) const { return x == rhs.x && y == rhs.y; }
 	bool operator!=(const TVector2& rhs) const { return !operator==(rhs); }

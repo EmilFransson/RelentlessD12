@@ -1,6 +1,5 @@
 #include "Shader.h"
 #include "ShaderCompiler.h"
-#include "Graphics/D3D12Debug.h"
 
 namespace Relentless
 {

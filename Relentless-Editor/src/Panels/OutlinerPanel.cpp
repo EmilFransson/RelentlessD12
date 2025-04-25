@@ -62,6 +62,83 @@ namespace Relentless
 		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilteropen.rasset"), m_EntityFilterOpenTextureIconHandle), "Core engine icon missing.");
 		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilterclosed.rasset"), m_EntityFilterClosedTextureIconHandle), "Core engine icon missing.");
 		
+		std::vector<ImportRequest> importRequests;
+		{
+			ImportRequest& request = importRequests.emplace_back();
+			request.ImportSettings = TextureImportSettings();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\showicon.png");
+			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
+				{
+					m_ShowEntityTextureIconHandle = handle;
+				});
+		}
+		{
+			ImportRequest& request = importRequests.emplace_back();
+			request.ImportSettings = TextureImportSettings();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\hideicon.png");
+			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
+				{
+					m_HideEntityTextureIconHandle = handle;
+				});
+		}
+		{
+			ImportRequest& request = importRequests.emplace_back();
+			request.ImportSettings = TextureImportSettings();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\png_icbfo.png");
+			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
+				{
+					m_EntityTextureIconHandle = handle;
+				});
+		}
+		{
+			ImportRequest& request = importRequests.emplace_back();
+			request.ImportSettings = TextureImportSettings();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\png_o2wr5.png");
+			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
+				{
+					m_SceneTextureIconHandle = handle;
+				});
+		}
+		{
+			ImportRequest& request = importRequests.emplace_back();
+			request.ImportSettings = TextureImportSettings();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\check.png");
+			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
+				{
+					m_CheckTextureIconHandle = handle;
+				});
+		}
+		{
+			ImportRequest& request = importRequests.emplace_back();
+			request.ImportSettings = TextureImportSettings();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\not_allowed.png");
+			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
+				{
+					m_NotAllowedTextureIconHandle = handle;
+				});
+		}
+		{
+			ImportRequest& request = importRequests.emplace_back();
+			request.ImportSettings = TextureImportSettings();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilteropen.png");
+			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
+				{
+					m_EntityFilterOpenTextureIconHandle = handle;
+				});
+		}
+		{
+			ImportRequest& request = importRequests.emplace_back();
+			request.ImportSettings = TextureImportSettings();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilterclosed.png");
+			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
+				{
+					m_EntityFilterClosedTextureIconHandle = handle;
+				});
+		}
+
+		Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), importRequests).wait();
+
+
 		SetupOutlinerTable();
 	}
 
@@ -184,7 +261,7 @@ namespace Relentless
 				ImGui::BeginTooltip();
 				
 				const Ref<TextureEx> pDragDropTexture = AssetManager::Get<TextureEx>(m_DragDropTooltipIcon);
-				ImGui::Image((ImTextureID)pDragDropTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(pDragDropTexture->GetWidth(), pDragDropTexture->GetHeight()));
+				ImGui::Image((ImTextureID)pDragDropTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(static_cast<float>(pDragDropTexture->GetWidth()), static_cast<float>(pDragDropTexture->GetHeight())));
 				ImGui::SameLine();
 				ImGui::Text(m_DragDropTooltip.c_str());
 				
@@ -786,7 +863,7 @@ namespace Relentless
 		}
 	}
 
-	void OutlinerPanel::OnMouseEnterTreeItemRow(std::shared_ptr<TreeItem> pTreeItem, uint32_t column) noexcept
+	void OutlinerPanel::OnMouseEnterTreeItemRow(std::shared_ptr<TreeItem> pTreeItem, [[maybe_unused]] uint32_t column) noexcept
 	{
 		if (IsTreeItemSelected(pTreeItem.get()))
 			return;
@@ -904,7 +981,7 @@ namespace Relentless
 		return true;
 	}
 
-	void OutlinerPanel::OnDrop(const Any& payload, const Any& target, std::string_view dropContext) noexcept
+	void OutlinerPanel::OnDrop([[maybe_unused]] const Any& payload, const Any& target, std::string_view dropContext) noexcept
 	{
 		if (dropContext != "TreeItem")
 			return;
@@ -1034,7 +1111,7 @@ namespace Relentless
 		}
 
 		//Hierarchy is stored in reverse, so traverse it so:
-		const int lastIndex = hierarchy.size() - 1;
+		const int lastIndex = static_cast<int>(hierarchy.size()) - 1;
 
 		for (int i = lastIndex; i >= 0; --i)
 		{
@@ -1403,7 +1480,7 @@ namespace Relentless
 		}
 	}
 
-	bool OutlinerPanel::IsTreeItemSelectableAtClickedColumn(TreeItem* pTreeItem, uint32_t column) const noexcept
+	bool OutlinerPanel::IsTreeItemSelectableAtClickedColumn([[maybe_unused]] TreeItem* pTreeItem, uint32_t column) const noexcept
 	{
 		if (column == 0)
 			return false;
@@ -1435,14 +1512,14 @@ namespace Relentless
 
 	uint32_t OutlinerPanel::GetNumSelected() const noexcept
 	{
-		uint32_t selectedTreeItemCount = 0u;
+		uint32 selectedTreeItemCount = 0u;
 		
 		selectedTreeItemCount += m_pEditor->GetSelection()->GetSelectedEntityCount();
 
 		if (m_SceneTreeItemSelected)
 			selectedTreeItemCount++;
 
-		selectedTreeItemCount += m_SelectedEntityFilters.size();
+		selectedTreeItemCount += static_cast<uint32>(m_SelectedEntityFilters.size());
 
 		return selectedTreeItemCount;
 	}

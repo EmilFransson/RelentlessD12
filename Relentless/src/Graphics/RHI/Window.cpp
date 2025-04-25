@@ -129,7 +129,7 @@ namespace Relentless
 			// Save the new client area dimensions.
 			const int newWidth = LOWORD(lParam);
 			const int newHeight = HIWORD(lParam);
-			const bool resized = newWidth != m_DisplayWidth || newHeight != m_DisplayHeight;
+			const bool resized = newWidth != static_cast<int>(m_DisplayWidth) || newHeight != static_cast<int>(m_DisplayHeight);
 			bool shouldResize = false;
 
 			if (wParam == SIZE_MINIMIZED)
@@ -265,6 +265,5 @@ namespace Relentless
 	{
 		::SetWindowPos(m_WindowHandle, nullptr, newPosition.x, newPosition.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 	}
-
 }
 

@@ -72,6 +72,8 @@ namespace Relentless
 		const uint32 height = sceneTextures.pColorTarget->GetHeight();
 
 		commandContext.InsertResourceBarrier(sceneTextures.pDepthTarget, sceneTextures.pDepthTarget->GetResourceState(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		sceneTextures.pDepthTarget->SetResourceState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
 		commandContext.SetViewport(FloatRect(0, 0, (float)width, (float)height), 0.0f, 1.0f);
 
 		GFSDK_SSAO_Status status = m_pSSAOContext->RenderAO(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue(), commandContext.GetCommandList(), inputData, parameters, output, renderMask);

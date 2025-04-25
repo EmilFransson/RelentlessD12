@@ -22,6 +22,7 @@ namespace Relentless
 		[[nodiscard]] const Vector3& GetLocation() const noexcept;
 		[[nodiscard]] const Quaternion& GetRotation() const noexcept;
 		[[nodiscard]] const ViewTransform& GetViewTransform() const noexcept;
+		[[nodiscard]] ViewTransform& GetViewTransform() noexcept;
 	protected:
 		Vector3 m_Location = Vector3::Zero;
 		Quaternion m_Rotation = Quaternion::Identity;

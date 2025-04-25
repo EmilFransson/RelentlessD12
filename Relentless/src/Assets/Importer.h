@@ -52,7 +52,6 @@ namespace Relentless
 		static std::future<void> RequestAsyncLoad(GraphicsDevice* pDevice, Span<ImportRequest> importRequests, Ref<ImporterFeedbackContext> pFeedbackContext = nullptr) noexcept;
 
 		static std::future<void> RequestAsyncLoadFromFile(const std::filesystem::path& filepath, const std::filesystem::path& dstAssetDirectorPath, const std::optional<AssetImportSettingsVariant>& optionalImportSettings = std::nullopt) noexcept;
-		static [[nodiscard]] bool ImportTexture(const std::filesystem::path& fullPath, const std::filesystem::path& dstAssetDirectorPath, bool isABlockingOperation, const TextureImportSettings& importSettings = {}) noexcept;
 		static [[nodiscard]] bool ImportModel(const std::filesystem::path& fullPath, const std::filesystem::path& dstAssetDirectorPath, bool isABlockingOperation, const MeshImportSettings& importSettings = {}) noexcept;
 
 		static [[nodiscard]] bool ImportModelEx(GraphicsDevice* pDevice, const ImportRequest& request) noexcept;
@@ -92,9 +91,6 @@ namespace Relentless
 				: T();
 		}
 	private:
-		static std::unordered_map<AssetType, std::function<bool(const std::filesystem::path&, const std::filesystem::path&, const std::optional<AssetImportSettingsVariant>&, bool)>> m_LoadFuncs;
-
 		static std::unordered_map<AssetType, std::function<bool(GraphicsDevice*, const ImportRequest&)>> m_LoadFuncsEx;
-
 	};
 }

@@ -8,7 +8,7 @@ namespace Relentless
 		  m_ForceDisplay{false},
 		  m_MaterialMapThumbnailSize{25.0f}
 	{
-		m_pColorPickerWidgetTexture = Texture2D::Create(std::string(ENGINE_ASSET_DIRECTORY) + "Textures/pickerwidget.png");
+		//m_pColorPickerWidgetTexture = Texture2D::Create(std::string(ENGINE_ASSET_DIRECTORY) + "Textures/pickerwidget.png");
 	}
 
 	void InspectorPanel::OnImGuiRender(const bool show) noexcept
@@ -195,7 +195,7 @@ namespace Relentless
 			}
 
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-			ImGui::ImageButton((ImTextureID)m_pColorPickerWidgetTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImGui::GetItemRectSize(), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//ImGui::ImageButton((ImTextureID)m_pColorPickerWidgetTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImGui::GetItemRectSize(), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 			ImGui::PopStyleColor();
 
 			ImGui::PopStyleVar(2);
@@ -601,7 +601,7 @@ namespace Relentless
 			}
 
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-			ImGui::ImageButton((ImTextureID)m_pColorPickerWidgetTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImGui::GetItemRectSize(), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//ImGui::ImageButton((ImTextureID)m_pColorPickerWidgetTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImGui::GetItemRectSize(), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 			ImGui::PopStyleColor();
 
 			ImGui::PopStyleVar(2);

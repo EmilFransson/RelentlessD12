@@ -89,4 +89,15 @@ namespace Relentless
 	private:
 		Vector2i deltaCoordinates;
 	};
+
+	class MouseWheelScrolledEvent : public IEvent
+	{
+	public:
+		MouseWheelScrolledEvent(float delta) noexcept : Delta{ delta } {}
+		virtual ~MouseWheelScrolledEvent() noexcept override final = default;
+		[[nodiscard]] virtual constexpr const EventType GetEventType() const noexcept override final { return EventType::MouseWheelScrolledEvent; }
+		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const noexcept override final { return EventCategory::MouseEventCategory; }
+	public:
+		float Delta = 0.0f;
+	};
 }

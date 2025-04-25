@@ -1,46 +1,24 @@
 #include "Scene.h"
 #include "../Assets/AssetManager.h"
-#include "Input/Keyboard.h"
 namespace Relentless
 {
 	Scene::Scene(const char* name) noexcept
 		: m_Name{ name }
 	{
-		//Viewport:
-		m_Viewport.TopLeftX = 0.0f;
-		m_Viewport.TopLeftY = 0.0f;
-		m_Viewport.Width = 800.0f;
-		m_Viewport.Height = 600.0f;
-		m_Viewport.MinDepth = 0.0f;
-		m_Viewport.MaxDepth = 1.0f;
-
-		//ScissorRect:
-		m_ScissorRect.left = 0u;
-		m_ScissorRect.top = 0u;
-		m_ScissorRect.right = static_cast<LONG>(m_Viewport.Width);
-		m_ScissorRect.bottom = static_cast<LONG>(m_Viewport.Height);
-		
-		m_pEditorCamera = PerspectiveCamera::Create();
-		m_pEditorCamera->SetLocation(Vector3(5.0f, 5.0f, -5.0f ));
-		m_pEditorCamera->SetNearPlane(0.1f);
-		m_pEditorCamera->SetFarPlane(1'000.0f);
-		m_pEditorCamera->SetRotation(Quaternion::CreateFromYawPitchRoll(Math::PI_DIV_4, Math::PI_DIV_4 * 0.5f, 0));
-		m_pEditorCamera->SetViewport(FloatRect(0, 0, 800.06, 600.0f));
 	}
 
-	Scene::~Scene() noexcept
+	bool Scene::AnyEntityHasName(const char* pName) const noexcept
 	{
-// 		m_EntityManager.Collect<TransformComponent>().Do([this](entity e)
-// 			{
-// 				if (m_EntityManager.Has<PointLightComponent>(e))
-// 				{
-// 					m_LightManager.DeallocatePointLight(e);
-// 				}
-// 				else if (m_EntityManager.Has<DirectionalLightComponent>(e))
-// 				{
-// 					m_LightManager.DeallocateDirectionalLight(e);
-// 				}
-// 			});
+		const std::string name(pName);
+
+		const std::vector<NameComponent>& components = m_EntityManager.Collect<NameComponent>().GetComponents();
+		for (const auto& component : components)
+		{
+			if (component.Name == name)
+				return true;
+		}
+
+		return false;
 	}
 
 	void Scene::SetName(const std::string& name) noexcept
@@ -51,69 +29,56 @@ namespace Relentless
 	void Scene::OnUpdate([[maybe_unused]] const float deltaTime) noexcept
 	{
 		PROFILE_FUNC;
-		//ResourceManager& resourceManager = Application::Get().GetResourceManager();
-		//const uint32_t frameIndex = Application::Get().GetGPUTaskManager().GetCurrentFrameIndex();
+	}
 
-		/*TRANSFORMS*/
-		m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)
+	entity Scene::CopyEntity(entity entityToCopy, bool preserveHierarchy) noexcept
+	{
+		const String originalName = m_EntityManager.Get<NameComponent>(entityToCopy).Name;
+
+		// Find the position where trailing digits start
+		size_t end = originalName.size();
+		while (end > 0 && std::isdigit(originalName[end - 1]))
+			--end;
+
+		const String baseName = originalName.substr(0, end);
+		const String numberPart = originalName.substr(end);
+
+		uint32 number = 1u;
+
+		if (!numberPart.empty())
+			number = std::stoi(numberPart); 
+
+		int nextNumber = Math::Max(2u, number + 1u);
+
+		String newName{};
+		do
 		{
-			//const ResourceHandle handle = m_EntityManager.Get<TransformComponent>(entityHandle).ConstantBufferHandle;
-			DirectX::XMFLOAT4X4 transform = GetWorldTransform(entityHandle);
-			//resourceManager.UploadConstantBufferData(handle, &transform, sizeof(transform), frameIndex);
-		});
+			newName = baseName + std::to_string(nextNumber++);
+		} while (AnyEntityHasName(newName.c_str()));
 
-		/*MATERIALS*/
-		m_EntityManager.Collect<MeshRendererComponent, DirtyMeshRendererComponent>().Do([this](entity e, MeshRendererComponent& mrc)
-			{
-				//Application::Get().GetMemorymanager().SetDirtyMaterial(mrc.AssetHandle);
-				m_EntityManager.Remove<DirtyMeshRendererComponent>(e);
-			});
+		const entity newEntity = CreateEntityWithUUID(newName.c_str(), CreateUUID());
+		
+		CopyComponentIfExists<TransformComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<MeshFilterComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<MeshRendererComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<DirectionalLightComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<PointLightComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<CameraComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<HiddenInGameComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<RotatorComponent>(entityToCopy, newEntity);
 
-		//Application::Get().GetMemorymanager().UpdateDirtyMaterials();
-
-		/****LIGHTS****/
-		m_EntityManager.Collect<DirectionalLightComponent, DirtyTransformComponent>().Do([&](entity entityID, DirectionalLightComponent& lc)
-			{
-				auto& tc = m_EntityManager.Get<TransformComponent>(entityID);
-
-				lc.Direction.x = std::sin(DirectX::XMConvertToRadians(tc.WorldTransform.Rotation.y));
-				lc.Direction.y = std::cos(DirectX::XMConvertToRadians(tc.WorldTransform.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.WorldTransform.Rotation.y));
-				lc.Direction.z = std::sin(DirectX::XMConvertToRadians(tc.WorldTransform.Rotation.x) + DirectX::XMConvertToRadians(90.0f)) * std::cos(DirectX::XMConvertToRadians(tc.WorldTransform.Rotation.y));
-
-				m_LightManager.UpdateDirectionalLight(lc, entityID);
-			});
-
-		m_EntityManager.Collect<PointLightComponent, DirtyTransformComponent>().Do([&](entity entityID, PointLightComponent& lc)
-			{
-				auto& tc = m_EntityManager.Get<TransformComponent>(entityID);
-
-				lc.Position = tc.WorldTransform.Location;
-				m_LightManager.UpdatePointLight(lc, entityID);
-			});
-
-		/****Clean up****/
-		m_EntityManager.Collect<DirtyTransformComponent>().Do([&](entity entityHandle, DirtyTransformComponent& dirty)
-			{
-				dirty.Updates--;
-				if (dirty.Updates == 0u)
-				{
-					dirty.OnlyUpload = false;
-					m_EntityManager.Remove<DirtyTransformComponent>(entityHandle);
-				}
-			});
-
+		return newEntity;
 	}
 
 	entity Scene::CreateEntity(const char* name) noexcept
 	{
-		return CreateEntityWithUUID(name, IDComponent().UuId);
+		return CreateEntityWithUUID(name, CreateUUID());
 	}
 
 	entity Scene::CreateEntityWithUUID(const char* name, const UUID& guid) noexcept
 	{
 		auto entity = m_EntityManager.CreateEntity();
-		auto& tc = m_EntityManager.Add<TransformComponent>(entity);
-		m_EntityManager.Add<DirtyTransformComponent>(entity);
+		m_EntityManager.Add<TransformComponent>(entity);
 		m_EntityManager.Add<NameComponent>(entity, name);
 		m_EntityManager.Add<IDComponent>(entity, guid);
 		m_EntityManager.Add<RootComponent>(entity);
@@ -133,15 +98,12 @@ namespace Relentless
 			tc.WorldTransform.Location = { 0.0f, 3.0f, 0.0f };
 			auto& dlc = m_EntityManager.Add<DirectionalLightComponent>(lightEntity);
 			dlc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
-			m_LightManager.AllocateDirectionalLight(lightEntity);
 		}
 		else if (type == LightType::Point)
 		{
 			m_EntityManager.Get<TransformComponent>(lightEntity).WorldTransform.Location = { 0.0f, 3.0f, 0.0f };
 			auto& plc = m_EntityManager.Add<PointLightComponent>(lightEntity);
-			plc.Position = { 0.0f, 3.0f, 0.0f };
 			plc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
-			m_LightManager.AllocatePointLight(lightEntity);
 		}
 		
 		return lightEntity;
@@ -149,25 +111,21 @@ namespace Relentless
 
 	entity Scene::CreateShape(const Shape shape) noexcept
 	{
-		std::filesystem::path fullPath = GetFullShapePath(shape);
-		std::string nameString = fullPath.stem().string();
+		const std::filesystem::path fullPath = GetFullShapePath(shape);
+		const std::string nameString = fullPath.stem().string();
 
-		AssetHandle meshHandle = AssetManager::GetHandleByPath(fullPath);
+		const AssetHandle meshHandle = AssetManager::GetHandleByPath(fullPath);
 
-		auto entity = CreateEntity(nameString.c_str());
+		entity newShape = CreateEntity(nameString.c_str());
 
-		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
+		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(newShape);
 		mfc.AssetHandle = meshHandle;
 
-		m_EntityManager.Add<OpaquePassComponent>(entity);
-
-		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
+		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(newShape);
 
 		mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
 
-		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
-
-		return entity;
+		return newShape;
 	}
 
 	entity Scene::CreateExtra(const Extra extra) noexcept
@@ -182,11 +140,8 @@ namespace Relentless
 		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
 		mfc.AssetHandle = meshHandle;
 
-		m_EntityManager.Add<OpaquePassComponent>(entity);
 		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
-
 		mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
-		m_EntityManager.Add<DirtyMeshRendererComponent>(entity);
 
 		return entity;
 	}
@@ -289,33 +244,19 @@ namespace Relentless
 		auto& tc = m_EntityManager.Get<TransformComponent>(camera);
 		tc.WorldTransform.Location = {0.0f, 0.0f, -5.0f};
 
-		DirectX::XMVECTOR forward = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract({ 0.0f, 0.0f, 0.0f }, DirectX::XMLoadFloat3(&tc.WorldTransform.Location)));
-		DirectX::XMVECTOR lookAt = DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&tc.WorldTransform.Location), forward);
-		DirectX::XMMATRIX viewMatrix = DirectX::XMMatrixLookAtLH(DirectX::XMLoadFloat3(&tc.WorldTransform.Location), lookAt, DirectX::FXMVECTOR{ 0.0f, 1.0f, 0.0f });
+		Vector3 forward = Vector3::Zero - tc.WorldTransform.Location;
+		forward.Normalize();
+		
+		const Vector3 lookAt = tc.WorldTransform.Location + forward;
 
-		float aspectRatio = static_cast<float>(m_ViewportPanelSize.x) / static_cast<float>(m_ViewportPanelSize.y);
-		DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(cc.FieldOfViewDegrees),
-			aspectRatio,
-			cc.ClippingPlaneNear,
-			cc.ClippingPlaneFar);
-
-		DirectX::XMStoreFloat4x4(&cc.ViewMatrix, viewMatrix);
-		DirectX::XMStoreFloat4x4(&cc.ProjectionMatrix, projectionMatrix);
+		cc.WorldToView = Math::CreateLookToMatrix(tc.WorldTransform.Location, forward, Vector3::Up);
+		cc.ViewToClip = Math::CreatePerspectiveMatrix(cc.FieldOfViewDegrees, 16.0f / 9.0f, cc.ClippingPlaneNear, cc.ClippingPlaneFar);
 
 		return camera;
 	}
 			
 	void Scene::DestroyEntity(const entity entityHandle) noexcept
 	{
-		if (m_EntityManager.Has<PointLightComponent>(entityHandle))
-		{
-			m_LightManager.DeallocatePointLight(entityHandle);
-		}
-		else if (m_EntityManager.Has<DirectionalLightComponent>(entityHandle))
-		{
-			m_LightManager.DeallocateDirectionalLight(entityHandle);
-		}
-
 		//Check if the entity itself is a child. If it is, remove its entry from parent child list:
 		if (HasParent(entityHandle))
 			DetachEntity(entityHandle);
@@ -324,21 +265,9 @@ namespace Relentless
 		for (entity child : children)
 			DetachEntity(child);
 
-		//TODO: CLEAN UP TRANSFORM COMPONENT HANDLES!!
 		OnEntityPreDestroyed(entityHandle);
 		m_EntityManager.DestroyEntity(entityHandle);
 		OnEntityDestroyed(entityHandle);
-	}
-
-	void Scene::SetViewportPanelSize(const ImVec2& viewportPanelSize) noexcept
-	{
-		m_ViewportPanelSize = viewportPanelSize;
-		m_Viewport.Width = m_ViewportPanelSize.x;
-		m_Viewport.Height = m_ViewportPanelSize.y;
-		m_ScissorRect.right = static_cast<LONG>(m_ViewportPanelSize.x);
-		m_ScissorRect.bottom = static_cast<LONG>(m_ViewportPanelSize.y);
-
-		m_pEditorCamera->SetViewport(FloatRect(0, 0, m_Viewport.Width, m_Viewport.Height));
 	}
 
 	bool Scene::EntityIsDescendant(const entity ancestor, const entity descendant) noexcept
@@ -542,16 +471,6 @@ namespace Relentless
 		return m_EntityManager.Get<IsChildComponent>(e).Parent;
 	}
 
-	void Scene::SetHoveredEntity(entity hoveredEntity) noexcept
-	{
-		m_HoveredEntity = hoveredEntity;
-	}
-
-	entity Scene::GetHoveredEntity() const noexcept
-	{
-		return m_HoveredEntity;
-	}
-
 	void Scene::SetLocalTransform(entity e, const Matrix& localTransform) noexcept
 	{
 		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
@@ -568,14 +487,13 @@ namespace Relentless
 			tc.LocalTransform.Rotation = rotationQuat;
 			tc.LocalTransform.Location = location;
 
-			//tc.IsDirty = true;
-
 			std::vector<entity> descendants = GetAllEntityDescendants(e);
-			for (auto& child : descendants)
-			{
-				//m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
-				m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
-			}
+			//for (auto& child : descendants)
+			//{
+				//IMPORTANT TO FIX!
+				RLS_ASSERT(false, "NOPE");
+				//m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
+			//}
 		}
 	}
 
@@ -635,8 +553,6 @@ namespace Relentless
 
 	void Scene::SetWorldTransform(entity e, const Matrix& worldMatrix) noexcept
 	{
-		using namespace DirectX;
-
 		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
 		Matrix parentLocalMatrix = Matrix::Identity;
 		if (HasParent(e))
@@ -658,16 +574,15 @@ namespace Relentless
 			tc.LocalTransform.Rotation = rotationQuat;
 			tc.LocalTransform.Location = translation;
 		
-			//tc.IsDirty = true;
-			m_EntityManager.AddOrReplace<DirtyTransformComponent>(e);
-
 			const std::vector<entity> descendants = GetAllEntityDescendants(e);
-			for (auto& child : descendants)
-			{
-				//m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
-				m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
-			}
+			//for (auto& child : descendants)
+			//{
+				//RLS_ASSERT(false, "TODO");
+				//m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
+			//}
 		}
+
+		UpdateWorldTransform(e);
 	}
 
 	void Scene::SetWorldLocation(entity e, const Vector3& worldLocation) noexcept
@@ -870,7 +785,7 @@ namespace Relentless
 
 	void Scene::UpdateWorldTransformIfDirty(entity e) noexcept
 	{
-		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
+		//TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
 		//if (tc.IsDirty)
 		//{
 			UpdateWorldTransform(e);
@@ -901,7 +816,6 @@ namespace Relentless
 			tc.WorldTransform.Scale = scale;
 			tc.WorldTransform.Rotation = rotationQuat;
 			tc.WorldTransform.Location = location;
-			m_EntityManager.AddOrReplace<DirtyTransformComponent>(e);
 		}
 	}
 
@@ -918,15 +832,13 @@ namespace Relentless
 		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
 		tc.LocalTransform.Matrix = scaleMatrix * rotationMatrix * translationMatrix;
 
-		//tc.IsDirty = true;
-		m_EntityManager.AddOrReplace<DirtyTransformComponent>(e);
-
 		std::vector<entity> descendants = GetAllEntityDescendants(e);
-		for (auto& child : descendants)
-		{
-			//m_EntityManager.Get<TransformComponent>(child).IsDirty = true;
-			m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
-		}
+		//for (auto& child : descendants)
+		//{
+			//RLS_ASSERT(false, "TODO!");
+
+			//m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
+		//}
 	}
 
 	template<typename ComponentType>
@@ -958,20 +870,7 @@ namespace Relentless
 
 					dstMgr.AddOrReplace<ComponentType>(entityID, ct);
 
-					if constexpr (std::is_same_v<ComponentType, TransformComponent>)
-					{
-						//Also give DirtyTransformComponent:
-						dstMgr.AddOrReplace<DirtyTransformComponent>(entityID);
-					}
-					else if constexpr (std::is_same_v<ComponentType, DirectionalLightComponent>)
-					{
-						dstScene->GetLightManager().AllocateDirectionalLight(entityID);
-					}
-					else if constexpr (std::is_same_v<ComponentType, PointLightComponent>)
-					{
-						dstScene->GetLightManager().AllocatePointLight(entityID);
-					}
-					else if constexpr (std::is_same_v<ComponentType, IsChildComponent>)
+					if constexpr (std::is_same_v<ComponentType, IsChildComponent>)
 					{
 						entity actualParent = idToEntityMap[srcMgr.Get<IDComponent>(ct.Parent).UuId];
 						dstMgr.Get<IsChildComponent>(entityID).Parent = actualParent;
@@ -986,7 +885,6 @@ namespace Relentless
 						//material = AssetManager::Get<Material>(ct.AssetHandle);
 
 						//dstMgr.Get<MeshRendererComponent>(entityID).AssetHandle = materialHandle;
-						dstMgr.AddOrReplace<DirtyMeshRendererComponent>(entityID);
 					}
 					else if constexpr (std::is_same_v<ComponentType, ParentComponent>)
 					{
@@ -1009,8 +907,6 @@ namespace Relentless
 		RLS_ASSERT(pSrcScene, "Scene to copy from is invalid.");
 
 		std::shared_ptr<Scene> pNewScene = std::make_shared<Scene>("Play-In-Editor-Scene");
-		const D3D12_VIEWPORT vp = pSrcScene->GetViewport();
-		pNewScene->SetViewportPanelSize(ImVec2(vp.Width, vp.Height));
 
 		std::unordered_map<UUID, entity> UUIDToEntityMap;
 		
@@ -1027,7 +923,6 @@ namespace Relentless
 		CopyComponent<MeshRendererComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
 		CopyComponent<TransformComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
 		CopyComponent<MeshFilterComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
-		CopyComponent<OpaquePassComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
 		CopyComponent<DirectionalLightComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
 		CopyComponent<PointLightComponent>(pSrcScene, pNewScene, UUIDToEntityMap);
 		CopyComponent<IsChildComponent>(pSrcScene, pNewScene, UUIDToEntityMap);

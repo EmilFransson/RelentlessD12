@@ -6,6 +6,8 @@
 
 #include "Scene/Scene.h"
 
+#include "Mesh/Mesh.h"
+
 namespace Relentless
 {
 	constexpr uint32 RADIUS = 3u;
@@ -110,7 +112,7 @@ namespace Relentless
 		
 				commandContext.BindRootCBV(BindingSlot::PerInstance, (const void*)&params, sizeof(params));
 		
-				const uint32 numIndices = batch.pMesh->GetIndexBuffer()->GetNrOfElements();
+				const uint32 numIndices = static_cast<uint32>(batch.pMesh->GetIndexBuffer()->GetNrOfElements());
 				commandContext.Draw(0u, numIndices, 0u, 1u);
 			}
 		}

@@ -1,5 +1,5 @@
-#include "Core/Window.h"
 #include "FileDialogs.h"
+#include "Core/Application.h"
 
 namespace Relentless
 {
@@ -9,7 +9,7 @@ namespace Relentless
 		CHAR szFile[2048] = { 0 };
 		ZeroMemory(&openFileName, sizeof(OPENFILENAMEA));
 		openFileName.lStructSize = sizeof(OPENFILENAMEA);
-		openFileName.hwndOwner = Window::GetHandle();
+		openFileName.hwndOwner = Application::Get().GetWindow()->GetNativeWindow();
 		openFileName.lpstrFile = szFile;
 		openFileName.nMaxFile = sizeof(szFile);
 		openFileName.lpstrFilter = filter;
@@ -48,7 +48,7 @@ namespace Relentless
 		CHAR szFile[260] = { 0 };
 		ZeroMemory(&openFileName, sizeof(OPENFILENAMEA));
 		openFileName.lStructSize = sizeof(OPENFILENAMEA);
-		openFileName.hwndOwner = Window::GetHandle();
+		openFileName.hwndOwner = Application::Get().GetWindow()->GetNativeWindow();
 		openFileName.lpstrFile = szFile;
 		openFileName.nMaxFile = sizeof(szFile);
 		openFileName.lpstrFilter = filter;

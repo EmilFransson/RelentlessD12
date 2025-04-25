@@ -15,7 +15,6 @@ namespace Relentless
 		virtual void OnDetach() noexcept override final;
 		virtual void OnUpdate(const float deltaTime) noexcept override final;
 		virtual void OnRender() noexcept override final;
-		virtual void OnPostRender() noexcept override final;
 
 		[[nodiscard]] const UniquePtr<Editor>& GetEditor() const noexcept;
 	private:

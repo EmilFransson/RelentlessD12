@@ -44,7 +44,7 @@ namespace Relentless
 		void DeselectHiearchyDirectory(const std::string& directoryPath) noexcept;
 		void DeselectAllHierarchyDirectories() noexcept;
 		void DeselectAllContentBrowserEntries() noexcept;
-		[[nodiscard]] uint32_t GetSelectedHierarchyDirectoriesCount() const;
+		[[nodiscard]] uint32 GetSelectedHierarchyDirectoriesCount() const;
 		[[nodiscard]] bool IsAncestorDirectoryToAnySelectedDirectory(const std::filesystem::path& directoryPath) const;
 		[[nodiscard]] std::string ConstructAssetBrowserHintString() const noexcept;
 

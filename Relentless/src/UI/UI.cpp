@@ -248,9 +248,41 @@ namespace Relentless
 
 	void UI::Initialize() noexcept
 	{
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\searchicon.rasset", s_GlobalData.SearchIconTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\cancelicon.rasset", s_GlobalData.CancelIconTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", s_GlobalData.ArrowDownIconTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\searchicon.rasset", s_GlobalData.SearchIconTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\cancelicon.rasset", s_GlobalData.CancelIconTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", s_GlobalData.ArrowDownIconTextureHandle), "Core engine icon missing.");
+
+		std::vector<ImportRequest> requests;
+
+		{
+			ImportRequest& request =  requests.emplace_back();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\searchicon.png");
+			request.ImportSettings = TextureImportSettings();
+			request.OnAssetImported.Connect([](const AssetHandle& handle, bool)
+				{
+					s_GlobalData.SearchIconTextureHandle = handle;
+				});
+		}
+		{
+			ImportRequest& request = requests.emplace_back();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\cancelicon.png");
+			request.ImportSettings = TextureImportSettings();
+			request.OnAssetImported.Connect([](const AssetHandle& handle, bool)
+				{
+					s_GlobalData.CancelIconTextureHandle = handle;
+				});
+		}
+		{
+			ImportRequest& request = requests.emplace_back();
+			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\arrowdownicon.png");
+			request.ImportSettings = TextureImportSettings();
+			request.OnAssetImported.Connect([](const AssetHandle& handle, bool)
+				{
+					s_GlobalData.ArrowDownIconTextureHandle = handle;
+				});
+		}
+
+		Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests).wait();
 	}
 
 	std::string UI::SearchBar(const char* uniqueID, const char* hintText, bool displaySearchHistory, float width) noexcept
@@ -265,7 +297,7 @@ namespace Relentless
 
 		// Measure the original string
 		const ImVec2 textSize = ImGui::CalcTextSize(originalString.c_str());
-		const uint32_t possibleNrOfRows = std::floor(availableHeight / textSize.y);
+		const uint32 possibleNrOfRows = static_cast<uint32>(std::floor(availableHeight / textSize.y));
 		const float availableWidth = (bottomRight.x - topLeft.x) * possibleNrOfRows;
 
 		// If the string fits within the available width, no need to shorten
@@ -294,7 +326,7 @@ namespace Relentless
 		return modified + ellipsis;
 	}
 
-	void UI::Utility::DrawTitledSeparator(const std::string& title, const ImVec2& begin, const ImVec2& end) noexcept
+	void UI::Utility::DrawTitledSeparator(const std::string& title, const ImVec2& begin, const ImVec2&) noexcept
 	{
 		ImDrawList* pDrawList = ImGui::GetWindowDrawList();
 		if (!pDrawList)

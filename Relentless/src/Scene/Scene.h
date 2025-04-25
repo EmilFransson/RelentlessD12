@@ -1,20 +1,22 @@
 #pragma once
+#include "Callback/Broadcaster.h"
 #include "ECS/EntityManager.h"
-#include "Graphics/Renderer/Camera/PerspectiveCamera.h"
-#include "ImGui/ImguiLayer.h"
-#include "LightManager.h"
 namespace Relentless
 {
 	enum class Shape : uint8_t { Triangle = 0, Cube, Cylinder, Capsule, Cone, Sphere, IcoSphere, Torus, Quad, Plane };
 	enum class Extra : uint8_t { UtahTeapot = 0u };
+	enum class LightType : uint8_t { Directional = 0, Point };
 
 	class Scene
 	{
 	public:
 		explicit Scene(const char* name = "Sample Scene") noexcept;
-		~Scene() noexcept;
+		~Scene() noexcept = default;
+		[[nodidscard]] bool AnyEntityHasName(const char* pName) const noexcept;
 		void SetName(const std::string& name) noexcept;
 		void OnUpdate(const float deltaTime) noexcept;
+		entity CopyEntity(entity entityToCopy, bool preserveHierarchy) noexcept;
+		entity CreateCamera(const char* name) noexcept;
 		entity CreateEntity(const char* tag) noexcept;
 		entity CreateEntityWithUUID(const char* tag, const UUID& guid) noexcept;
 		entity CreateLight(const char* name, LightType type) noexcept;
@@ -26,11 +28,9 @@ namespace Relentless
 		void OnRuntimeStart() noexcept;
 		void OnRuntimeStop() noexcept;
 
-		entity CreateCamera(const char* name) noexcept;
 		void DestroyEntity(const entity entityHandle) noexcept;
 		[[nodiscard]] EntityManager& GetEntityManager() noexcept { return m_EntityManager; }
 		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
-		void SetViewportPanelSize(const ImVec2& viewportPanelSize) noexcept;
 		[[nodiscard]] bool EntityIsDescendant(const entity ancestor, const entity descendant) noexcept;
 		[[nodiscard]] bool EntityIsAncestor(const entity ancestor, const entity descendant) noexcept;
 		[[nodiscard]] bool EntityIsParent(entity possibleChild, entity possibleParent) noexcept;
@@ -41,18 +41,11 @@ namespace Relentless
 		[[nodiscard]] std::vector<entity> GetAllEntityAncestors(entity rootEntity) noexcept;
 		[[nodiscard]] std::vector<entity> GetEntityChildren(entity parent) noexcept;
 		[[nodiscard]] entity FindEntityByUUID(const UUID& uuid) noexcept;
-		[[nodiscard]] LightManager& GetLightManager() noexcept { return m_LightManager; }
-		[[nodiscard]] const D3D12_VIEWPORT& GetViewport() const noexcept { return m_Viewport; }
-		[[nodiscard]] const RECT& GetScissorRect() const noexcept { return m_ScissorRect; }
-		[[nodiscard]] const std::shared_ptr<PerspectiveCamera>& GetEditorCamera() const noexcept { return m_pEditorCamera; }
 		void SetEntityVisibleInGame(entity e, bool visibilityState) noexcept;
 
 		[[nodiscard]] bool IsParent(entity e) noexcept;
 		[[nodiscard]] bool HasParent(entity e) noexcept;
 		[[nodiscard]] entity GetParent(entity e) noexcept;
-
-		void SetMousePosition(const ImVec2& newMousePosition) noexcept { m_MousePosition = newMousePosition; }
-		[[nodiscard]] const ImVec2& GetMousePosition() const noexcept { return m_MousePosition; }
 
 		void SetPaused(bool paused) noexcept { m_IsPaused = paused; }
 		[[nodiscard]] bool IsPaused() const noexcept { return m_IsPaused; }
@@ -80,6 +73,9 @@ namespace Relentless
 		void AddWorldRotation(entity e, const Vector3& rotationEulerAnglesDegrees) noexcept;
 		void AddWorldScale(entity e, const Vector3& worldscale) noexcept;
 
+		template<typename ComponentType>
+		void CopyComponentIfExists(entity srcEntity, entity dstEntity) noexcept;
+
 		[[nodiscard]] Matrix GetWorldTransform(entity e) noexcept;
 		[[nodiscard]] Vector3 GetWorldLocation(entity e) noexcept;
 		[[nodiscard]] Vector3 GetWorldScale(entity e) noexcept;
@@ -98,9 +94,9 @@ namespace Relentless
 		void SetLocalRotationFromEulerDegrees(entity e, float pitchDegrees, float yawDegrees, float rollDegrees) noexcept;
 		[[nodiscard]] Vector3 GetLocalRotationInEulerDegrees(entity e);
 		
-		std::shared_ptr<TextureCube> m_pSkyBox = nullptr;
-		std::shared_ptr<TextureCube> m_pIrradianceMap = nullptr;
-		std::shared_ptr<TextureCube> m_pRadianceMap = nullptr;
+		//std::shared_ptr<TextureCube> m_pSkyBox = nullptr;
+		//std::shared_ptr<TextureCube> m_pIrradianceMap = nullptr;
+		//std::shared_ptr<TextureCube> m_pRadianceMap = nullptr;
 
 		Broadcaster<void(entity e)> OnEntityCreated;
 		Broadcaster<void(entity e)> OnEntityPreDestroyed;
@@ -114,17 +110,29 @@ namespace Relentless
 		void UpdateWorldTransform(entity e) noexcept;
 		void UpdateLocalTransform(entity e) noexcept;
 	private:
-		EntityManager m_EntityManager;
-		LightManager m_LightManager;
-		std::string m_Name;
-		ImVec2 m_ViewportPanelSize;
-		ImVec2 m_MousePosition;
-		D3D12_VIEWPORT m_Viewport;
-		RECT m_ScissorRect;
-		std::shared_ptr<PerspectiveCamera> m_pEditorCamera{ nullptr };
 		friend class SceneSerializer;
-
+		
+		mutable EntityManager m_EntityManager;
+		std::string m_Name;
 		bool m_IsPaused = false;
-		entity m_HoveredEntity = NULL_ENTITY;
 	};
+
+	//FIX FOR EMPTY STRUCTS TO BE COMPATIBLE!
+
+	template<typename ComponentType>
+	void Scene::CopyComponentIfExists(entity srcEntity, entity dstEntity) noexcept
+	{
+		if (!m_EntityManager.Has<ComponentType>(srcEntity))
+			return;
+
+		if (!m_EntityManager.Has<ComponentType>(dstEntity))
+			m_EntityManager.Add<ComponentType>(dstEntity);
+
+		if constexpr (!std::is_empty_v<ComponentType>)
+		{
+			const ComponentType& originalComponent = m_EntityManager.Get<ComponentType>(srcEntity);
+			ComponentType& newComponent = m_EntityManager.Get<ComponentType>(dstEntity);
+			newComponent = originalComponent;
+		}
+	}
 }

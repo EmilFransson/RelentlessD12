@@ -64,7 +64,7 @@ namespace Relentless
 
 	struct IndexBufferView : public ResourceView
 	{
-		IndexBufferView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle, D3D12_GPU_VIRTUAL_ADDRESS location, uint32 elements, ResourceFormat format, uint64 offsetFromStart) noexcept
+		IndexBufferView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle, [[maybe_unused]] D3D12_GPU_VIRTUAL_ADDRESS location, uint32 elements, ResourceFormat format, uint64 offsetFromStart) noexcept
 			: ResourceView(pParent, descriptorHandle), Elements(elements), OffsetFromStart((uint32)offsetFromStart), Format(format)
 		{
 			RLS_ASSERT(offsetFromStart <= std::numeric_limits<uint32>::max(), "Buffer offset ({0}) will be stored in a 32-bit uint and does not fit.", offsetFromStart);

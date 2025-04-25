@@ -152,6 +152,7 @@ namespace Relentless
 
 		// Submit the DockSpace
 		ImGuiIO& io = ImGui::GetIO();
+
 		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
 		{
 			ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
@@ -205,6 +206,7 @@ namespace Relentless
 		io.ConfigFlags |= ImGuiConfigFlags_::ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_::ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_::ImGuiConfigFlags_ViewportsEnable;
+
 		ImGui::StyleColorsDark();
 		
 		std::string openSansFontPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("/Fonts/opensans/");
@@ -220,7 +222,7 @@ namespace Relentless
 		}
 		
 		auto& colors = ImGui::GetStyle().Colors;
-		colors[ImGuiCol_WindowBg] = ImVec4{ 37.0 / 255.0f, 35.0 / 255.0f, 35.0 / 255.0f, 1.0f };
+		colors[ImGuiCol_WindowBg] = ImVec4{ 37.0f / 255.0f, 35.0f / 255.0f, 35.0f / 255.0f, 1.0f };
 		
 		// Headers
 		colors[ImGuiCol_Header] = ImVec4{ 0.2f, 0.205f, 0.21f, 1.0f };

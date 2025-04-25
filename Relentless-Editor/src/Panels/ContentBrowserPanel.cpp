@@ -300,7 +300,7 @@ namespace Relentless
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // Set border size
 		ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(0, 0, 0, 255)); // Set border color
 
-		const bool pressedAdd = ImGui::Button(addText, addButtonSize);
+		//const bool pressedAdd = ImGui::Button(addText, addButtonSize);
 		const ImVec2 addButtonMin = ImGui::GetItemRectMin();
 		const ImVec2 addButtonMax = ImGui::GetItemRectMax();
 
@@ -319,7 +319,7 @@ namespace Relentless
 		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_ButtonActive, ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered]);
 		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Text, ImVec4(192.0f / 255, 192.0f / 255, 192.0f / 255, 1.0f));
 
-		const float importTextWidth = ImGui::CalcTextSize("     Import").x;
+		//const float importTextWidth = ImGui::CalcTextSize("     Import").x;
 		const ImVec2 buttonSize = ImVec2(90, 0);
 
 		const bool pressed = ImGui::Button("      Import", buttonSize);
@@ -511,7 +511,7 @@ namespace Relentless
 		
 		constexpr ImU32 filterHoverColor = IM_COL32(0.0f, 112.0f, 224.0f, 255.0f);
 
-		const float textWidth = ImGui::CalcTextSize("Reset filters").x;
+		//const float textWidth = ImGui::CalcTextSize("Reset filters").x;
 		const ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
 		const float imagePosition = ImGui::GetCursorPos().x + availableSize.x / 4.0f;
@@ -772,8 +772,11 @@ namespace Relentless
 					std::string entryStemToLower = dir_entry.path().filename().string();
 					std::string contentFilterToLower = m_ContentFilter;
 
-					std::transform(entryStemToLower.begin(), entryStemToLower.end(), entryStemToLower.begin(), ::tolower);
-					std::transform(contentFilterToLower.begin(), contentFilterToLower.end(), contentFilterToLower.begin(), ::tolower);
+					std::transform(entryStemToLower.begin(), entryStemToLower.end(), entryStemToLower.begin(),
+						[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+					std::transform(contentFilterToLower.begin(), contentFilterToLower.end(), contentFilterToLower.begin(),
+						[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
 					if (entryStemToLower.find(contentFilterToLower) == std::string::npos)
 						continue;
@@ -876,7 +879,7 @@ namespace Relentless
 				const ImVec2 vMinLine(thumbnailMinPoint.x + 0.8f, thumbnailMinPoint.y + m_ThumbnailWidth);
 				const ImVec2 vMaxLine(vMinLine.x + m_ThumbnailWidth - 1.6f, thumbnailMinPoint.y + m_ThumbnailWidth);
 
-				ImU32 lineColor;
+				ImU32 lineColor = IM_COL32(0, 0, 0, 255);
 				if (assetType == AssetType::TextureEx)
 					lineColor = IM_COL32(180, 0, 0, 255);
 				else if (assetType == AssetType::Mesh)
@@ -1369,9 +1372,9 @@ namespace Relentless
 		m_SelectedEntries.clear();
 	}
 
-	uint32_t ContentBrowserPanel::GetSelectedHierarchyDirectoriesCount() const
+	uint32 ContentBrowserPanel::GetSelectedHierarchyDirectoriesCount() const
 	{
-		return m_SelectedHierarchyDirectories.size();
+		return static_cast<uint32>(m_SelectedHierarchyDirectories.size());
 	}
 
 	bool ContentBrowserPanel::IsAncestorDirectoryToAnySelectedDirectory(const std::filesystem::path& directoryPath) const
@@ -1421,7 +1424,7 @@ namespace Relentless
 
 	void ContentBrowserPanel::DetermineEntryDragDropSource() noexcept
 	{
-		const uint32_t selectedEntryCount = m_SelectedEntries.size();
+		const uint32 selectedEntryCount = static_cast<uint32>(m_SelectedEntries.size());
 		if (selectedEntryCount == 0u)
 			return;
 

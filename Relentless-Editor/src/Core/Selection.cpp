@@ -30,7 +30,7 @@ namespace Relentless
 
 	void Selection::DeselectAllEntities() noexcept
 	{
-		for (int i = m_SelectedEntities.size() -1; i >= 0; --i)
+		for (int i = static_cast<int>(m_SelectedEntities.size()) - 1; i >= 0; --i)
 			DeselectEntity(m_SelectedEntities[i]);
 	}
 
@@ -44,9 +44,9 @@ namespace Relentless
 		return std::find(m_SelectedEntities.begin(), m_SelectedEntities.end(), entityToQuery) != m_SelectedEntities.end();
 	}
 
-	size_t Selection::GetSelectedEntityCount() const noexcept
+	uint32 Selection::GetSelectedEntityCount() const noexcept
 	{
-		return m_SelectedEntities.size();
+		return static_cast<uint32>(m_SelectedEntities.size());
 	}
 
 	entity Selection::GetFirstSelected() const noexcept

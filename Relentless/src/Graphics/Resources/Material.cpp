@@ -1,6 +1,5 @@
 #include "Material.h"
 #include "Assets/AssetManager.h"
-#include "../D3D12Core.h"
 namespace Relentless
 {
 	Material::Material() noexcept

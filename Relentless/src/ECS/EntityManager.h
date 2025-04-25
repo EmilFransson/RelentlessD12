@@ -111,7 +111,7 @@ namespace Relentless
 
 		[[nodiscard]] uint32 Size() const noexcept
 		{
-			return m_EntityIdentifiers->size();
+			return static_cast<uint32>(m_EntityIdentifiers->size());
 		}
 
 	private:
@@ -182,6 +182,11 @@ namespace Relentless
 			invocable();
 		}
 
+		[[nodiscard]] const std::vector<ComponentType>& GetComponents() const noexcept
+		{
+			return m_Pool.Components;
+		}
+
 		[[nodiscard]] uint32 Size() const noexcept
 		{
 			return m_Pool.Components.size();
@@ -218,9 +223,9 @@ namespace Relentless
 		 * @brief Returns the total number of alive entities.
 		 * @return The number of entities alive.
 		 */
-		[[nodiscard]] size_t GetEntityAliveCount() const noexcept
+		[[nodiscard]] uint32_t GetEntityAliveCount() const noexcept
 		{
-			return (m_Entities.size() - m_Available);
+			return static_cast<uint32_t>(m_Entities.size() - m_Available);
 		}
 
 		/**

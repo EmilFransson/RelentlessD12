@@ -13,6 +13,8 @@ typedef int64_t		int64;
 template<typename T>
 using UniquePtr = std::unique_ptr<T>;
 
+using String = std::string;
+
 #define DECLARE_BITMASK_TYPE(Enum) \
 inline constexpr Enum& operator|=(Enum& Lhs, Enum Rhs) { return Lhs = (Enum)((__underlying_type(Enum))Lhs | (__underlying_type(Enum))Rhs); } \
 inline constexpr Enum& operator&=(Enum& Lhs, Enum Rhs) { return Lhs = (Enum)((__underlying_type(Enum))Lhs & (__underlying_type(Enum))Rhs); } \

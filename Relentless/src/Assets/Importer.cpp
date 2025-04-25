@@ -1,10 +1,7 @@
 #include "Importer.h"
 #include "AssetManager.h"
 #include "Utility/Common.h"
-#include "Graphics/Renderer/RenderCommand.h"
-#include "Graphics/Resources/Texture.h"
 #include "Graphics/Resources/Material.h"
-#include "Graphics/MemoryManager.h"
 #include "ImportSettings.h"
 #include "Mesh/Mesh.h"
 #include "Mesh/Vertex.h"
@@ -58,20 +55,6 @@ namespace Relentless
 			ResolveMeshHierarchy(pNode->mChildren[i], pAssimpScene, accumulatedTransform, aiMeshToImportedTransformMap);
 		}
 	}
-
-	std::unordered_map<AssetType, std::function<bool(const std::filesystem::path&, const std::filesystem::path&, const std::optional<AssetImportSettingsVariant>&, bool)>> Importer::m_LoadFuncs = {
-		{AssetType::TextureEx, [](const std::filesystem::path& path, const std::filesystem::path& dstPath,const std::optional<AssetImportSettingsVariant>& importSettings, bool isABlockingOperation)
-			{
-				if (!ImportTexture(path, dstPath, isABlockingOperation, CastToImportSettings<TextureImportSettings>(importSettings)))
-					return false;
-
-				return true;
-			}},
-		{AssetType::Mesh, [](const std::filesystem::path& path, const std::filesystem::path& dstPath, const std::optional<AssetImportSettingsVariant>& importSettings, bool isABlockingOperation)
-		{
-			return ImportModel(path, dstPath, isABlockingOperation, CastToImportSettings<MeshImportSettings>(importSettings));
-		}}
-	};
 
 	std::unordered_map<AssetType, std::function<bool(GraphicsDevice* pDevice, const ImportRequest& request)>> Importer::m_LoadFuncsEx = {
 		{AssetType::TextureEx, [](GraphicsDevice* pDevice, const ImportRequest& request)
@@ -130,14 +113,14 @@ namespace Relentless
 					return;
 				}
 
-				if (m_LoadFuncs[assetType](srcPath.string(), dstAssetDirectorPath, optionalImportSettings, true))
-				{
-					RLS_CORE_INFO("[Importer]: Imported asset(s) with path {0} to directory {1}", srcPath.string().c_str(), dstAssetDirectorPath.string().c_str());
-				}
-				else
-				{
-					RLS_CORE_ERROR("[Importer]: Failed to load asset from file with path: '{0}'.", srcPath.string().c_str());
-				}
+				//if (m_LoadFuncs[assetType](srcPath.string(), dstAssetDirectorPath, optionalImportSettings, true))
+				//{
+				//	RLS_CORE_INFO("[Importer]: Imported asset(s) with path {0} to directory {1}", srcPath.string().c_str(), dstAssetDirectorPath.string().c_str());
+				//}
+				//else
+				//{
+				//	RLS_CORE_ERROR("[Importer]: Failed to load asset from file with path: '{0}'.", srcPath.string().c_str());
+				//}
 			});
 	}
 
@@ -168,133 +151,6 @@ namespace Relentless
 				for (auto& future : futures)
 					future.wait();
 			});
-	}
-
-	bool Importer::ImportTexture(const std::filesystem::path& srcPath, const std::filesystem::path& dstAssetDirectorPath, bool isABlockingOperation, const TextureImportSettings& importSettings) noexcept
-	{
-		if (!File::Exists(srcPath))
-		{
-			RLS_CORE_ERROR("[Importer]: Failed to import texture file with path '{0}'; file does not exist.", srcPath.string().c_str());
-			return false;
-		}
-
-		const ExtensionType extensionType = GetExtensionTypeFromPath(srcPath);
-		DirectX::ScratchImage image;
-		HRESULT result = S_OK;
-		switch (extensionType)
-		{
-		case ExtensionType::TGA:
-			result = LoadFromTGAFile(srcPath.c_str(), nullptr, image);
-			break;
-		case ExtensionType::JPG:
-		case ExtensionType::JPEG:
-		case ExtensionType::PNG:
-		case ExtensionType::TIFF:
-		{
-			DirectX::WIC_FLAGS importFlags = DirectX::WIC_FLAGS::WIC_FLAGS_NONE;
-			importSettings.IsSRGB ? importFlags |= DirectX::WIC_FLAGS::WIC_FLAGS_FORCE_SRGB : importFlags |= DirectX::WIC_FLAGS::WIC_FLAGS_FORCE_RGB;
-			result = LoadFromWICFile(srcPath.c_str(), importFlags, nullptr, image);
-			break;
-		}
-		case ExtensionType::HDR:
-		case ExtensionType::EXR:
-		{
-			result = LoadFromHDRFile(srcPath.c_str(), nullptr, image);
-			break;
-		}
-		default:
-		{
-			RLS_CORE_ERROR("[Importer]: Failed to import texture file with path '{0}'; file type is not supported.", srcPath.string().c_str());
-			return false;
-		}
-		}
-
-		if (result != S_OK)
-		{
-			LogHR(result, "import", srcPath);
-			return false;
-		}
-
-		if (importSettings.GenerateMipMaps)
-		{
-			DirectX::ScratchImage mipChain;
-			const HRESULT hr = GenerateMipMaps(image.GetImages()[0], DirectX::TEX_FILTER_DEFAULT, 0u, mipChain);
-			if (hr != S_OK)
-				LogHR(hr, "generate mipmaps", srcPath);
-			else
-				image = std::move(mipChain);
-		}
-
-		const bool shouldCompress = importSettings.TextureCompressionType != ETextureCompressionType::Uncompressed;
-		if (shouldCompress)
-		{
-			DirectX::TEX_COMPRESS_FLAGS compressFlags = DirectX::TEX_COMPRESS_FLAGS::TEX_COMPRESS_PARALLEL;
-			if (importSettings.TextureCompressionType == ETextureCompressionType::BC7_Quick)
-				compressFlags |= DirectX::TEX_COMPRESS_BC7_QUICK;
-
-			DirectX::ScratchImage compressedImage;
-			const HRESULT hr = Compress(image.GetImages(), image.GetImageCount(), image.GetMetadata(), GetCompressedDXGITextureFormat(importSettings), compressFlags, DirectX::TEX_THRESHOLD_DEFAULT, compressedImage);
-			if (hr != S_OK)
-				LogHR(hr, "compress", srcPath);
-			else
-				image = std::move(compressedImage);
-		}
-
-		auto& metaData = image.GetMetadata();
-
-		Texture2DSpecification spec;
-		spec.Name = FilepathUtils::ExtractFilename(srcPath);
-		spec.Width = metaData.width;
-		spec.Height = metaData.height;
-		spec.IsSRGB = importSettings.IsSRGB;
-		spec.SampleCount = 1;
-		spec.MipCount = metaData.mipLevels;
-		spec.Format = metaData.format;
-
-
-		RLS_ASSERT(false, "TODO");
-		//AssetHandle handle = AssetManager::CreateNew<Texture2D>(spec);
-		//Ref<TextureEx> pTexture = AssetManager::Get<TextureEx>(handle);
-
-		DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
-		uploadBatch.Begin();
-
-		const DirectX::Image* pImg = image.GetImages();
-		for (uint32_t i{ 0u }; i < image.GetImageCount(); ++i, ++pImg)
-		{
-			D3D12_SUBRESOURCE_DATA subresourceData = {};
-			subresourceData.pData = pImg->pixels;
-			subresourceData.RowPitch = pImg->rowPitch;
-			subresourceData.SlicePitch = pImg->slicePitch;
-			//uploadBatch.Upload(pTexture->GetResource(), static_cast<UINT>(i), &subresourceData, 1);
-		}
-
-		//uploadBatch.Transition(pTexture->GetResource(), pTexture->GetResourceState(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		//auto finish = uploadBatch.End(Application::Get().GetGPUTaskManager().GetCommandQueue(CommandType::Direct).Get());
-		//finish.wait();
-		//pTexture->SetResourceState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-		AssetMetaData assetMetaData;
-		//assetMetaData.Name = pTexture->GetName();
-		assetMetaData.SourcePath = srcPath;
-		//assetMetaData.Uuid = handle.Uuid;
-		assetMetaData.AssetType = AssetType::TextureEx;
-		
-		auto now = std::chrono::system_clock::now();
-		auto duration = now.time_since_epoch();
-		auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-		assetMetaData.ModificationDateAndTime = static_cast<uint64_t>(millis);
-		
-		const std::string filename = FilepathUtils::ExtractFilenameWithoutExtension(srcPath) + ASSET_EXTENSION;
-		const std::filesystem::path fullDestinationPath = FilepathUtils::Combine(dstAssetDirectorPath, filename);
-		
-		AssetRegistry::Map(fullDestinationPath, assetMetaData, AssetRegistry::MapOperation::Override);
-		//AssetManager::Link(fullDestinationPath.string(), handle.Uuid);
-		
-		//if (!Serializer::Serialize(fullDestinationPath, handle, isABlockingOperation))
-		//	RLS_CORE_ERROR("[Importer]: Failed to serialize imported texture with name '{0}'.", assetMetaData.Name.c_str());
-		
-		return true;
 	}
 
 	bool Importer::ImportAssimpMesh(aiMesh* pMesh, const std::filesystem::path& srcPath, const std::filesystem::path& destinationDirectory, bool isABlockingOperation, AssetHandle& outHandle) noexcept
@@ -384,8 +240,8 @@ namespace Relentless
 		//std::shared_ptr<VertexBuffer> pVB = resourceManager.GetVertexBuffer(vbHandle);
 		//std::shared_ptr<IndexBuffer> pIB = resourceManager.GetIndexBuffer(ibHandle);
 
-		DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
-		uploadBatch.Begin();
+		//DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
+		//uploadBatch.Begin();
 
 		{
 			D3D12_SUBRESOURCE_DATA subresourceData = {};

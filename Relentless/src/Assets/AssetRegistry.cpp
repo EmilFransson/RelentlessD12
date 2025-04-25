@@ -73,7 +73,7 @@ namespace Relentless
 		s_Data.UUIDToPathMap.clear();
 	}
 	
-	void AssetRegistry::ChangeMappedFilepath(const UUID& uuid, const std::string& newfilepath) noexcept
+	void AssetRegistry::ChangeMappedFilepath(const UUID& uuid, const std::string&) noexcept
 	{
 		RLS_ASSERT(IsUUIDMapped(uuid), "UUID is not mapped to any filepath");
 		const std::filesystem::path currentFilepath = s_Data.UUIDToPathMap[uuid];

@@ -1,7 +1,5 @@
 #pragma once
-#include "RenderPass.h"
 #include "Callback/Callback.h"
-#include "Graphics/Resources/ConstantBufferSet.h"
 namespace Relentless
 {
 	class Texture2D;
@@ -20,9 +18,9 @@ namespace Relentless
 		void CreateIrradianceMap(const std::shared_ptr<TextureCube> pEnvironmentTextureCube, CreateIrradianceMapCompleteCallback&& callback);
 		void CreateRadianceMap(const std::shared_ptr<TextureCube> pEnvironmentTextureCube, CreateRadianceMapCompleteCallback&& callback);
 	private:
-		std::shared_ptr<RenderPass> m_pEquirectangularToCubeMapPass = nullptr;
-		std::shared_ptr<RenderPass> m_pTextureCubeIrradianceConvolutionPass = nullptr;
-		std::shared_ptr<RenderPass> m_pTextureCubeRadianceConvolutionPass = nullptr;
+		//std::shared_ptr<RenderPass> m_pEquirectangularToCubeMapPass = nullptr;
+		//std::shared_ptr<RenderPass> m_pTextureCubeIrradianceConvolutionPass = nullptr;
+		//std::shared_ptr<RenderPass> m_pTextureCubeRadianceConvolutionPass = nullptr;
 
 		struct EquirectangularToCubeMapPassData
 		{
@@ -45,7 +43,7 @@ namespace Relentless
 			uint32_t RoughnessIndex = 0u;
 		} m_RadianceRoughnessIndexData;
 
-		std::unique_ptr<ConstantBufferSet> m_pTextureCubeCreationVPCBs[6];
-		std::unique_ptr<ConstantBufferSet> m_pRadianceMapRougnessCBSets[5];
+		//std::unique_ptr<ConstantBufferSet> m_pTextureCubeCreationVPCBs[6];
+		//std::unique_ptr<ConstantBufferSet> m_pRadianceMapRougnessCBSets[5];
 	};
 }

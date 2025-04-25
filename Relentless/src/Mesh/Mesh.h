@@ -1,7 +1,4 @@
 #pragma once
-#include "Graphics/Resources/IndexBuffer.h"
-#include "Graphics/Resources/VertexBuffer.h"
-#include "Graphics/Resources/ResourceMeta.h"
 #include "Math/MathTypes.h"
 
 namespace Relentless
@@ -20,16 +17,11 @@ namespace Relentless
 		Mesh& operator=(Mesh&& otherMesh) noexcept;
 		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
 		void SetName(const std::string& name) noexcept;
-		void SetVertexBufferHandle(ResourceHandle handle) noexcept;
-		void SetIndexBufferHandle(ResourceHandle handle) noexcept;
 		void SetOffsetTransform(const Transform& transform) noexcept;
 		[[nodiscard]] const Transform& GetOffsetTransform() const noexcept;
 
 		[[nodiscard]] BufferEx* GetVertexBuffer() const noexcept;
 		[[nodiscard]] BufferEx* GetIndexBuffer() const noexcept;
-
-		//ResourceHandle m_VertexBufferHandle = NULL_RESOURCE_HANDLE;
-		//ResourceHandle m_IndexBufferHandle = NULL_RESOURCE_HANDLE;
 	private:
 		std::string m_Name;
 		Transform m_OffsetTransform{};

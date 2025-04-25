@@ -1,9 +1,6 @@
 #pragma once
-#include "RenderPass.h"
 #include "Scene/Scene.h"
-#include "Graphics/Resources/Buffer.h"
 #include "../../../vendor/includes/HBAO+/GFSDK_SSAO.h"
-#include "Graphics/Resources/StructuredBufferSet.h"
 namespace Relentless
 {
 	enum class ContactShadows : uint8_t { OFF = 0, HBAO_PLUS };
@@ -124,21 +121,8 @@ namespace Relentless
 		std::vector<entity> m_CutOutRenderModeEntities;
 		std::vector<entity> m_TransparentRenderModeEntities;
 
-		std::shared_ptr<RenderPass> m_OpaqueGeometryRenderPass = nullptr;
-		std::shared_ptr<RenderPass> m_CutOutGeometryRenderPass = nullptr;
-		std::shared_ptr<RenderPass> m_TransparentGeometryRenderPass = nullptr;
-		std::shared_ptr<RenderPass> m_GeometryPickingRenderPass = nullptr;
-		std::shared_ptr<RenderPass> m_CompositeRenderPass = nullptr;
-		std::shared_ptr<RenderPass> m_WireFrameRenderPass = nullptr;
-		std::shared_ptr<RenderPass> m_EditorGridRenderPass = nullptr;
-		std::shared_ptr<RenderPass> m_CombinedGeometryAndPickingPass = nullptr; 
-		std::shared_ptr<RenderPass> m_PreZRenderPass = nullptr;
-		std::shared_ptr<RenderPass> m_SkyboxRenderPass = nullptr;
-
-		std::shared_ptr<ReadBackBuffer> m_pIdentifierReadbackBuffer{ nullptr };
 		void* m_pMappedReadBackBufferPointer = nullptr;
 
-		std::shared_ptr<RenderTexture> m_pResolvedTexture{ nullptr };
 		AssetHandle m_BRDFLutTextureHandle = NULL_HANDLE;
 		
 		entity m_HoveredEntity{NULL_ENTITY};
@@ -163,11 +147,5 @@ namespace Relentless
 		
 		GFSDK_SSAO_Parameters m_HBAOPlusParameters;
 		GFSDK_SSAO_Context_D3D12* m_SSAOContext = nullptr;
-
-		ResourceHandle m_EditorTransformCB1Handle = NULL_RESOURCE_HANDLE;
-		ResourceHandle m_EditorTransformCB2Handle = NULL_RESOURCE_HANDLE;
-		ResourceHandle m_EditorGridInstanceDataSBHandle = NULL_RESOURCE_HANDLE;
-		ResourceHandle m_EnvironmentCBHandle = NULL_RESOURCE_HANDLE;
-		ResourceHandle m_ViewProjectionMatrixCBHandle = NULL_RESOURCE_HANDLE;
 	};
 }

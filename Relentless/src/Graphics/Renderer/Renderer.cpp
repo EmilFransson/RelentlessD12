@@ -38,7 +38,7 @@ namespace Relentless
 
 		request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
 		Ref<ImporterFeedbackContext> pFeedback = new ImporterFeedbackContext();
-		request.OnAssetImported.Connect([this](const AssetHandle& handle, bool success)
+		request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
 			{
 				m_BRDFLutTextureHandle = handle;
 			});
@@ -71,7 +71,7 @@ namespace Relentless
 
 		//Set up render view:
 		{
-			m_MainView.Viewport				= FloatRect(0, 0, width, height);
+			m_MainView.Viewport				= FloatRect(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
 			m_MainView.pRenderer			= this;
 			m_MainView.pScene				= m_pCurrentScene;
 
@@ -513,25 +513,31 @@ namespace Relentless
 			std::vector<ShaderInterop::Light> lights;
 			lights.reserve(directionalLightCollection.Size() + pointLightCollection.Size());
 
-			directionalLightCollection.Do([&](DirectionalLightComponent& dlc)
+			directionalLightCollection.Do([&](entity e, DirectionalLightComponent& dlc)
 				{
+					if (entityManager.Has<HiddenInGameComponent>(e))
+						return;
+
 					ShaderInterop::Light& light = lights.emplace_back();
 					light.Intensity = dlc.Intensity;
 					light.IsDirectional = true;
 					light.IsPoint = light.IsSpot = false;
 					light.Color = Vector3(dlc.Color.x, dlc.Color.y, dlc.Color.z);
-					light.Direction = dlc.Direction;
+					light.Direction = m_pCurrentScene->GetWorldForward(e);
 					light.IsEnabled = dlc.Intensity > 0.0f;
 				});
 
-			pointLightCollection.Do([&](PointLightComponent& plc)
+			pointLightCollection.Do([&](entity e, PointLightComponent& plc)
 				{
+					if (entityManager.Has<HiddenInGameComponent>(e))
+						return;
+
 					ShaderInterop::Light& light = lights.emplace_back();
 					light.Intensity = plc.Intensity;
 					light.IsPoint = true;
 					light.IsDirectional = light.IsSpot = false;
 					light.Color = plc.Color;
-					light.Position = plc.Position;
+					light.Position = m_pCurrentScene->GetWorldLocation(e);
 					light.IsEnabled = plc.Intensity > 0.0f;
 				});
 

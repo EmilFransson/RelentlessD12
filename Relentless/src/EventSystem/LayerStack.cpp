@@ -43,7 +43,7 @@ namespace Relentless
 
 	void LayerStack::PopAllLayers() noexcept
 	{
-		for (int i = m_layers.size() - 1; i >= 0; --i)
+		for (int i = static_cast<int>(m_layers.size()) - 1; i >= 0; --i)
 		{
 			m_layers[i]->OnDetach();
 			m_layers.pop_back();

@@ -137,7 +137,7 @@ namespace Relentless
 					auto&& MessageCallback = [](
 						D3D12_MESSAGE_CATEGORY category,
 						D3D12_MESSAGE_SEVERITY severity,
-						D3D12_MESSAGE_ID id,
+						D3D12_MESSAGE_ID /*id*/,
 						LPCSTR pDescription,
 						void* /*pContext*/)
 					{

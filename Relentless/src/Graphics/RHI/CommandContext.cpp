@@ -511,6 +511,8 @@ namespace Relentless
 	void CommandContext::SetPipelineState(PipelineState* pPipeline) noexcept
 	{
 		RLS_ASSERT(pPipeline, "[CommandContext] Pipeline is invalid.");
+		
+
 		pPipeline->ConditionallyReload();
 
 		m_pCommandList->SetPipelineState(pPipeline->GetPipelineState());

@@ -1,8 +1,6 @@
 #include "Assets/AssetManager.h"
 #include "Core/Application.h"
 #include "File/File.h"
-#include "Graphics/Resources/Texture.h"
-#include "Graphics/Renderer/RenderCommand.h"
 #include "ImportSettings.h"
 #include "Mesh/Mesh.h"
 #include "Mesh/Vertex.h"
@@ -12,7 +10,6 @@
 #include "Utility/FilepathUtils.h"
 #include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
 #include "../../../vendor/includes/DirectXTK/BufferHelpers.h"
-#include "Graphics/D3D12Debug.h"
 
 #include "Graphics/RHI/TextureEx.h"
 
@@ -238,7 +235,7 @@ namespace Relentless
 
 			D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = {};
 			uint64_t mipSize = 0u;
-			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&textureDescriptor, mipLevel, 1, 0, &footprint, nullptr, nullptr, &mipSize));
+			//DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&textureDescriptor, mipLevel, 1, 0, &footprint, nullptr, nullptr, &mipSize));
 
 			// Create buffer resource description for staging
 			D3D12_RESOURCE_DESC bufferDesc = {};
@@ -250,13 +247,13 @@ namespace Relentless
 			bufferDesc.SampleDesc.Count = 1;
 			bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-			DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
-				&heapProperties,
-				D3D12_HEAP_FLAG_NONE,
-				&bufferDesc,
-				D3D12_RESOURCE_STATE_COPY_DEST,
-				nullptr,
-				IID_PPV_ARGS(&stagingResources[mipLevel])));
+// 			DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
+// 				&heapProperties,
+// 				D3D12_HEAP_FLAG_NONE,
+// 				&bufferDesc,
+// 				D3D12_RESOURCE_STATE_COPY_DEST,
+// 				nullptr,
+// 				IID_PPV_ARGS(&stagingResources[mipLevel])));
 
 			// Copy the mip level to the staging resource
 			D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
@@ -325,26 +322,26 @@ namespace Relentless
 			D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
 			uint64_t mipSize = 0u;
 
-			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
-			(
-				&textureDescriptor,
-				mipLevel,
-				1u,
-				0u,
-				&mipFootprint,
-				nullptr,
-				nullptr,
-				&mipSize
-			));
+// 			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
+// 			(
+// 				&textureDescriptor,
+// 				mipLevel,
+// 				1u,
+// 				0u,
+// 				&mipFootprint,
+// 				nullptr,
+// 				nullptr,
+// 				&mipSize
+// 			));
 
 			// Map the staging resource
 			BYTE* pData = nullptr;
 			D3D12_RANGE readRange = { 0, mipSize };
-			DXCall(pStagingResource->Map(0, &readRange, reinterpret_cast<void**>(&pData)));
+			//DXCall(pStagingResource->Map(0, &readRange, reinterpret_cast<void**>(&pData)));
 
 			outFile.write(reinterpret_cast<const char*>(pData), mipSize);
 
-			DXCall_STD(pStagingResource->Unmap(0, nullptr));
+			//DXCall_STD(pStagingResource->Unmap(0, nullptr));
 		}
 		outFile.close();
 
@@ -404,13 +401,13 @@ namespace Relentless
 			readbackHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
 			// Create the readback buffer
-			DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
-				&readbackHeapProps,
-				D3D12_HEAP_FLAG_NONE,
-				&readbackDesc,
-				D3D12_RESOURCE_STATE_COPY_DEST,
-				nullptr,
-				IID_PPV_ARGS(&readbackBuffer)));
+// 			DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
+// 				&readbackHeapProps,
+// 				D3D12_HEAP_FLAG_NONE,
+// 				&readbackDesc,
+// 				D3D12_RESOURCE_STATE_COPY_DEST,
+// 				nullptr,
+// 				IID_PPV_ARGS(&readbackBuffer)));
 
 			//ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
 
@@ -422,11 +419,11 @@ namespace Relentless
 			//	ScheduleCommandListAndWaitForCompletion(copyCommandList);
 
 			UINT8* pData = nullptr;
-			DXCall(readbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pData)));
+			//DXCall(readbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pData)));
 
 			//outFile.write(reinterpret_cast<char*>(pData), vertexBufferSizeInBytes);
 
-			DXCall_STD(readbackBuffer->Unmap(0, nullptr));
+			//DXCall_STD(readbackBuffer->Unmap(0, nullptr));
 		}
 
 		{
@@ -451,13 +448,13 @@ namespace Relentless
 			readbackHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
 			// Create the readback buffer
-			DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
-				&readbackHeapProps,
-				D3D12_HEAP_FLAG_NONE,
-				&readbackDesc,
-				D3D12_RESOURCE_STATE_COPY_DEST,
-				nullptr,
-				IID_PPV_ARGS(&readbackBuffer)));
+// 			DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
+// 				&readbackHeapProps,
+// 				D3D12_HEAP_FLAG_NONE,
+// 				&readbackDesc,
+// 				D3D12_RESOURCE_STATE_COPY_DEST,
+// 				nullptr,
+// 				IID_PPV_ARGS(&readbackBuffer)));
 
 			//ComPtr<ID3D12GraphicsCommandList4> copyCommandList = Application::Get().GetGPUTaskManager().RequestCommandList(CommandType::Direct);
 
@@ -469,11 +466,11 @@ namespace Relentless
 			//	ScheduleCommandListAndWaitForCompletion(copyCommandList);
 
 			UINT8* pData = nullptr;
-			DXCall(readbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pData)));
+			//DXCall(readbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pData)));
 
 			//outFile.write(reinterpret_cast<char*>(pData), indexBufferSizeInBytes);
 
-			DXCall_STD(readbackBuffer->Unmap(0, nullptr));
+			//DXCall_STD(readbackBuffer->Unmap(0, nullptr));
 		}
 		return true;
 	}
@@ -535,8 +532,8 @@ namespace Relentless
 		//std::shared_ptr<VertexBuffer> pVB = resourceManager.GetVertexBuffer(vbHandle);
 		//std::shared_ptr<IndexBuffer> pIB = resourceManager.GetIndexBuffer(ibHandle);
 
-		DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
-		uploadBatch.Begin();
+		//DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
+		//uploadBatch.Begin();
 		
 		{
 			D3D12_SUBRESOURCE_DATA subresourceData = {};
@@ -615,21 +612,21 @@ namespace Relentless
 		TextureHeader textureHeader = {};
 		inFile.read(reinterpret_cast<char*>(&textureHeader), sizeof(TextureHeader));
 
-		Texture2DSpecification specification;
-		specification.Name = name;
-		specification.Width = textureHeader.BaseWidth;
-		specification.Height = textureHeader.BaseHeight;
-		specification.Format = textureHeader.Format;
-		specification.MipCount = textureHeader.NrOfMips;
-		specification.IsSRGB = textureHeader.IsSRGB;
-		specification.SampleCount = textureHeader.Samples;
+		//Texture2DSpecification specification;
+// 		specification.Name = name;
+// 		specification.Width = textureHeader.BaseWidth;
+// 		specification.Height = textureHeader.BaseHeight;
+// 		specification.Format = textureHeader.Format;
+// 		specification.MipCount = textureHeader.NrOfMips;
+// 		specification.IsSRGB = textureHeader.IsSRGB;
+// 		specification.SampleCount = textureHeader.Samples;
 
 		//const AssetHandle handle = AssetManager::CreateNew<Texture2D>(specification, uuid, filepath.string());
 		//Ref<TextureEx> pTexture = AssetManager::Get<TextureEx>(handle);
 
 		//const D3D12_RESOURCE_DESC textureResourceDescriptor = pTexture->GetInterface()->GetDesc();
-		DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
-		uploadBatch.Begin();
+		//DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
+		//uploadBatch.Begin();
 
 		//GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
 		for (uint32_t mipLevel = 0u; mipLevel < textureHeader.NrOfMips; ++mipLevel)

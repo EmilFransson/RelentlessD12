@@ -3,7 +3,6 @@
 #include "AssetRegistry.h"
 #include "Core/Application.h"
 #include "File/File.h"
-#include "Graphics/Resources/Texture.h"
 #include "Graphics/Resources/Material.h"
 #include "Importer.h"
 #include "ImportSettings.h"

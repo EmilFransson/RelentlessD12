@@ -63,7 +63,7 @@ namespace Relentless
 
 	const Vector3& Camera::GetLocation() const noexcept
 	{
-		return m_Transform.Location;
+		return m_Location;
 	}
 
 	const Quaternion& Camera::GetRotation() const noexcept
@@ -72,6 +72,11 @@ namespace Relentless
 	}
 
 	const ViewTransform& Camera::GetViewTransform() const noexcept
+	{
+		return m_Transform;
+	}
+
+	ViewTransform& Camera::GetViewTransform() noexcept
 	{
 		return m_Transform;
 	}

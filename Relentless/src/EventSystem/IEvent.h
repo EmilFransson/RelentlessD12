@@ -6,7 +6,7 @@ namespace Relentless
 	{ 
 		WindowResizedEvent = 0u, WindowPosChangingEvent, WindowClosedEvent, WindowActiveEvent, WindowHitBorderEvent, WindowAltEnterEvent, WindowGainedFocusEvent, WindowLostFocusEvent,
 		LeftMouseButtonPressedEvent, LeftMouseButtonReleasedEvent, RightMouseButtonPressedEvent, RightMouseButtonReleasedEvent, MiddleMouseButtonPressedEvent, MiddleMouseButtonReleasedEvent,
-		MouseMovedEvent, RawMouseMoveEvent,
+		MouseMovedEvent, RawMouseMoveEvent, MouseWheelScrolledEvent,
 		KeyPressedEvent, KeyReleasedEvent
 	};
 

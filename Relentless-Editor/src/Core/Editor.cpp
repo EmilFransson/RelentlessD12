@@ -5,169 +5,16 @@ namespace Relentless
 {
 	void Editor::OnEvent(IEvent& event) noexcept
 	{
-		switch (event.GetEventType())
+		for (auto& pPanel : m_PanelStack)
 		{
-		case EventType::RawMouseMoveEvent:
-		{
-			if (m_HoveringSceneViewport)
-			{
-				if (Mouse::IsButtonDown(RLS_Button::Left) && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver())
-				{
-					m_IsPanningMouse = true;
+			if (!pPanel->IsVisible())
+				continue;
 
-					Mouse::ConfineCursor(vMin.x, vMax.x, vMax.y, vMin.y);
-					Mouse::HideCursor();
-					event.StopPropagation();
-				}
-			}
-
-			break;
-		}
-		case EventType::LeftMouseButtonPressedEvent:
-		case EventType::RightMouseButtonPressedEvent:
-		case EventType::MiddleMouseButtonPressedEvent:
-		{
-			if (ViewportPanel* pViewport = GetHoveredViewport())
-			{
-				const Vector2u cursorScreenPosition = Mouse::GetCursorScreenPosition();
-				Mouse::ConfineCursor(cursorScreenPosition.x, cursorScreenPosition.x, cursorScreenPosition.y, cursorScreenPosition.y);
-				Mouse::HideCursor();
-				event.StopPropagation();
-			}
-			break;
-		}
-		case EventType::RightMouseButtonReleasedEvent:
-		case EventType::MiddleMouseButtonReleasedEvent:
-		{
-			if (ViewportPanel* pViewport = GetHoveredViewport())
-			{
-				Mouse::FreeCursor();
-				Mouse::ShowCursor();
-				event.StopPropagation();
-			}
-
-			break;
-		}
-		case EventType::LeftMouseButtonReleasedEvent:
-		{
-			ViewportPanel* pViewport = GetHoveredViewport();
-			if (!pViewport)
+			if (pPanel->OnEvent(event))
 				return;
-
-			Mouse::FreeCursor();
-			Mouse::ShowCursor();
-			event.StopPropagation();
-			m_IsPanningMouse = false;
-
-			const bool lCtrlDown = Keyboard::IsKeyDown(RLS_Key::LCtrl);
-			const bool lShiftDown = Keyboard::IsKeyDown(RLS_Key::LShift);
-			const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
-
-			if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
-			{
-				m_pOutlinerPanel->DeselectNonEntityItems();
-				m_pSelection->DeselectAllEntities();
-			}
-			
-			if (isHoveringEntity)
-			{
-				if (lCtrlDown && m_pSelection->IsEntitySelected(m_HoveredEntity))
-					m_pSelection->DeselectEntity(m_HoveredEntity);
-				else
-					m_pSelection->SelectEntity(m_HoveredEntity);
-			}
-
-			break;
-		}
-		case EventType::KeyPressedEvent:
-		{
-			const bool isNavigatingScene = m_HoveringSceneViewport && Mouse::IsButtonDown(RLS_Button::Right);
-			if (!isNavigatingScene)
-			{
-				const RLS_Key key = EVENT(KeyPressedEvent).key;
-				switch (key)
-				{
-				case RLS_Key::Q: m_CurrentGizmoType = EGizmoType::None; break;
-				case RLS_Key::W: m_CurrentGizmoType = (EGizmoType)ImGuizmo::TRANSLATE; break;
-				case RLS_Key::E: m_CurrentGizmoType = (EGizmoType)ImGuizmo::ROTATE; break;
-				case RLS_Key::R: m_CurrentGizmoType = (EGizmoType)ImGuizmo::SCALE; break;
-				case RLS_Key::T: m_CurrentGizmoMode = (EGizmoMode)!(bool)m_CurrentGizmoMode; break;
-				case RLS_Key::I:
-				{
-					if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
-						m_ImmersiveModeEnabled = !m_ImmersiveModeEnabled;
-
-					break;
-				}
-				case RLS_Key::A:
-				{
-					break;
-					if (m_ViewportIsFocused)
-					{
-						if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
-						{
-							m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
-								{
-									if (!m_pSelection->IsEntitySelected(e))
-										m_pSelection->SelectEntity(e);
-								});
-						}
-					}
-					else if (m_pOutlinerPanel->IsFocused())
-						m_pOutlinerPanel->SelectAllExpanded();
-
-					break;
-				}
-				case RLS_Key::H:
-				{
-					if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
-					{
-						m_pActiveScene->GetEntityManager().Collect<HiddenInGameComponent>().Do([this](entity e)
-							{
-								m_pActiveScene->SetEntityVisibleInGame(e, true);
-							});
-					}
-					else
-					{
-						const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
-						EntityManager& entityManager = m_pActiveScene->GetEntityManager();
-
-						for (int i = selectedEntities.size() - 1; i >= 0; --i)
-						{
-							const entity currentEntity = selectedEntities[i];
-
-							m_pSelection->DeselectEntity(currentEntity);
-								m_pActiveScene->SetEntityVisibleInGame(currentEntity, false);
-						}
-					}
-					break;
-				}
-				case RLS_Key::Delete:
-				{
-					if (m_ViewportIsFocused)
-					{
-						const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
-						EntityManager& entityManager = m_pActiveScene->GetEntityManager();
-
-						for (int i = selectedEntities.size() - 1; i >= 0; --i)
-						{
-							const entity currentEntity = selectedEntities[i];
-							m_pActiveScene->DestroyEntity(currentEntity);
-						}
-					}
-					else if (m_pOutlinerPanel->IsFocused())
-						m_pOutlinerPanel->OnDeleteKeyPressed();
-				
-					break;
-				}
-				}
-			}
-			event.StopPropagation();
-			break;
-		}
 		}
 
-		//m_ContentBrowserPanel.OnEvent(event);
+		OnUnhandledEvent(event);
 	}
 
 	void Editor::OnImGuiRender() noexcept
@@ -189,64 +36,22 @@ namespace Relentless
 		ImGui::End();
 		ImGui::PopStyleVar();
 
-		for (auto& viewport : m_EditorViewports)
-			viewport->Render();
+		for (auto& panel : m_PanelStack)
+			panel->Render();
 
 		ImGui::Begin("Content Browser");
 
 		ImGui::End();
 
-		ImGui::Begin("Outliner");
 
+		ImGui::Begin("Spawn");
+		if (ImGui::Button("Spawn viewport"))
+			SpawnViewport();
 		ImGui::End();
+		
 
-		//UI_DrawMainMenuBar();
-		//
-		//ImGuiWindowClass viewportWindowClass;
-		//viewportWindowClass.DockNodeFlagsOverrideSet = m_ImmersiveModeEnabled ? ImGuiDockNodeFlags_NoTabBar : 0;
-		//ImGui::SetNextWindowClass(&viewportWindowClass);
-		//
-		//ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		//ImGui::Begin("Scene");
-		//m_ViewportIsFocused = ImGui::IsWindowFocused();
-		//
 		////UI_DrawSceneStateIcons();
-		//
-		//if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
-		//{
-		//	m_DisplayInspectorPanel = false;
-		//}
-		//
-		//vMin = ImGui::GetWindowContentRegionMin();
-		//vMax = ImGui::GetWindowContentRegionMax();
-		//vMin.x += ImGui::GetWindowPos().x;
-		//vMin.y += ImGui::GetWindowPos().y;
-		//vMax.x += ImGui::GetWindowPos().x;
-		//vMax.y += ImGui::GetWindowPos().y;
-		//
-		//m_HoveringSceneViewport = ImGui::IsWindowHovered();
-		//
-		//const float toolBarPadding = m_ImmersiveModeEnabled ? 0 : 24.0f;
-		//ImVec2 mousePosition = ImGui::GetMousePos();
-		//ImVec2 windowPosition = ImGui::GetWindowPos();
-		//ImVec2 mousePositionInSceneClientArea = ImVec2(mousePosition.x - windowPosition.x, mousePosition.y - windowPosition.y - toolBarPadding);
-		//m_pActiveScene->SetMousePosition(mousePositionInSceneClientArea);
-		//auto xx = ImGui::GetContentRegionAvail().x;
-		//auto yy = ImGui::GetContentRegionAvail().y;
-		//
-		//if (m_ViewportPanelSize.x != xx || m_ViewportPanelSize.y != yy)
-		//{
-		//	//Verify values are valid (as is not the case when shutting down the program!)
-		//	if (!(ImGui::GetContentRegionAvail().x < 0.0f) && !(ImGui::GetContentRegionAvail().y < 0.0f))
-		//	{
-		//		m_ViewportPanelSize.x = ImGui::GetContentRegionAvail().x;
-		//		m_ViewportPanelSize.y = ImGui::GetContentRegionAvail().y;
-		//		m_SceneViewportChanged = true;
-		//	}
-		//}
-		//
-		//m_pSceneRenderer->OnImGuiRender(ImVec2(m_ViewportPanelSize.x, m_ViewportPanelSize.y));
-		//
+	
 		//if (ImGui::BeginDragDropTarget())
 		//{
 		//	if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("MULTIPLE_ENTRIES_DRAG_DROP"))
@@ -267,15 +72,10 @@ namespace Relentless
 		//	ImGui::EndDragDropTarget();
 		//}
 		//
-		//if (m_CurrentGizmoType != EGizmoType::None)
-		//	ManipulateTransformGizmo();
-		//
-		//ImGui::End();
-		//ImGui::PopStyleVar();
 		//
 		//UI_DrawStatisticsPanel();
 		//
-		//m_pOutlinerPanel->OnImGuiRender(m_DisplayOutlinerPanel && !m_ImmersiveModeEnabled);
+		m_pOutlinerPanel->OnImGuiRender(m_DisplayOutlinerPanel && !m_ImmersiveModeEnabled);
 		//m_InspectorPanel.OnImGuiRender(m_DisplayInspectorPanel && !m_ImmersiveModeEnabled);
 		//m_SceneRendererPanel.OnImGuiRender(m_DisplaySceneRendererPanel && !m_ImmersiveModeEnabled);
 		//m_PropertiesPanel.OnImGuiRender(m_DisplayPropertiesPanel && !m_ImmersiveModeEnabled);
@@ -285,44 +85,22 @@ namespace Relentless
 
 	void Editor::OnCreate() noexcept
 	{
+		//TODO: Change ffs.
+		UI::Initialize();
+
 		m_pSelection = std::make_unique<Selection>();
 		m_pEntityFiltersManager = std::make_unique<EntityFiltersManager>();
 
-		m_RenderViews.push_back(ViewportRenderView());
-		m_EditorViewports.push_back(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size()+1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size()));
-		
-		{
-			std::shared_ptr<PerspectiveCamera> pEditorCamera = PerspectiveCamera::Create();
-			pEditorCamera->SetLocation(Vector3(5.0f, 5.0f, -5.0f));
-			pEditorCamera->SetNearPlane(0.1f);
-			pEditorCamera->SetFarPlane(1'000.0f);
-			pEditorCamera->SetRotation(Quaternion::CreateFromYawPitchRoll(-Math::PI_DIV_4, Math::PI_DIV_4 * 0.5f, 0));
-			m_ViewportCameras.push_back(pEditorCamera);
-		}
-
-		m_RenderViews.push_back(ViewportRenderView());
-		m_EditorViewports.push_back(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size()));
-
-		{
-			std::shared_ptr<PerspectiveCamera> pEditorCamera = PerspectiveCamera::Create();
-			pEditorCamera->SetLocation(Vector3(0.0f, 5.0f, -5.0f));
-			pEditorCamera->SetNearPlane(0.1f);
-			pEditorCamera->SetFarPlane(1'000.0f);
-			pEditorCamera->SetRotation(Quaternion::Identity);
-			m_ViewportCameras.push_back(pEditorCamera);
-		}
+		SpawnViewport();
+		//SpawnViewport();
 
 		m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
 		SetActiveScene(std::make_shared<Scene>());
 
 		entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
 		auto& dlc = m_pActiveScene->GetEntityManager().Add<DirectionalLightComponent>(dirEntity);
-		dlc.Color = Math::MakeFromColorTemperature(5900.0f);
+		dlc.Color = Math::MakeFromColorTemperature(5'900.0f);
 		dlc.Intensity = 3.0f;
-		Vector3 target = Vector3(0, 0, 0);
-		Vector3 from = Vector3(7, 5, 5);
-		dlc.Direction = target - from;
-		dlc.Direction.Normalize();
 
 		Ref<Material> pWhiteMaterial = new Material();
 		pWhiteMaterial->SetRenderMode(RenderMode::Opaque);
@@ -373,7 +151,7 @@ namespace Relentless
 				ImportRequest& request = requests.emplace_back();
 				request.ImportSettings = meshImportSettings;
 				request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Sphere.obj");
-				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
+				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool)
 					{
 						auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(e);
 						mfc.AssetHandle = assetHandle;
@@ -386,7 +164,7 @@ namespace Relentless
 				ImportRequest& request = requests.emplace_back();
 				request.ImportSettings = meshImportSettings;
 				request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Cube.obj");
-				request.OnAssetImported.Connect([this, ground](const AssetHandle& assetHandle, bool success)
+				request.OnAssetImported.Connect([this, ground](const AssetHandle& assetHandle, bool)
 					{
 						auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(ground);
 						mfc.AssetHandle = assetHandle;
@@ -396,7 +174,7 @@ namespace Relentless
 				ImportRequest& request = requests.emplace_back();
 				request.ImportSettings = textureImportSettings;
 				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_albedo.png");
-				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
+				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool)
 					{
 						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
 						AssetManager::Get<Material>(mrc.AssetHandle)->SetAlbedoTexture(assetHandle);
@@ -408,9 +186,8 @@ namespace Relentless
 				textureImportSettings.IsSRGB = false;
 
 				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_metallic.png");
-				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
+				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool)
 					{
-						RLS_ASSERT(success, "FAILED!");
 						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
 						AssetManager::Get<Material>(mrc.AssetHandle)->SetMetallicTexture(assetHandle);
 					});
@@ -479,18 +256,10 @@ namespace Relentless
 
 		m_pSelection->OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
 		
-		//
 		//LoadStarterMeshes();
 		//CreateStartScene();
-		//
-		//m_pSceneRenderer = std::make_shared<SceneRenderer>(m_pActiveScene);
-		//m_pUtilityRenderer = std::make_shared<UtilityRenderer>();
-		//
-		//m_PropertiesPanel.SetOnMaterialSelectedCallback([this](const AssetHandle& materialHandle)
-		//	{
-		//		m_InspectorPanel.SetContext(materialHandle, InspectedAssetType::MATERIAL);
-		//		m_DisplayInspectorPanel = true;
-		//	});
+		
+
 		//
 		//m_ContentBrowserPanel.SetOnAssetSelectedCallback([this](const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)
 		//	{
@@ -544,6 +313,9 @@ namespace Relentless
 
 	void Editor::OnUpdate(const float deltaTime) noexcept
 	{
+		for (auto& panel : m_PanelStack)
+			panel->Update();
+
 		m_pActiveScene->GetEntityManager().Collect<TransformComponent, RotatorComponent>().Do([&](entity e)
 			{
 				const float rotationSpeed = 10.0f;
@@ -555,14 +327,12 @@ namespace Relentless
 		{
 			UniquePtr<ViewportPanel>& pViewportPanel = m_EditorViewports[i];
 
-			const Vector2u& region = pViewportPanel->GetViewportSize();
+			const Vector2i& region = pViewportPanel->GetViewportSize();
 			m_RenderViews[i].Viewport = FloatRect(0.0f, 0.0f, Math::Max(1.0f, (float)region.x), Math::Max(1.0f, (float)region.y));
-			m_ViewportCameras[i]->SetViewport(m_RenderViews[i].Viewport);
 
 			const bool cameraMovementEnabled = pViewportPanel->IsClientAreaHovered();
-			m_ViewportCameras[i]->Update(cameraMovementEnabled);
 
-			const ViewTransform& cameraViewTransform = m_ViewportCameras[i]->GetViewTransform();
+			const ViewTransform& cameraViewTransform = pViewportPanel->GetCamera()->GetViewTransform();
 			ViewportRenderView& renderView = m_RenderViews[i];
 			
 			renderView.Location					= cameraViewTransform.Location;
@@ -583,40 +353,11 @@ namespace Relentless
 
 			renderView.MouseHoverCoordinates = pViewportPanel->IsClientAreaHovered() ? pViewportPanel->GetClientHoverCoordinates() : Vector2i(-1, -1);
 		}
-
-		//PROFILE_FUNC;
-		//
-		//if (m_SceneViewportChanged)
-		//	OnSceneViewportChanged();
-		//
-		//m_pActiveScene->GetEditorCamera()->Update();
-		//m_pActiveScene->OnUpdate(deltaTime);
 	}
 
 	void Editor::OnRender() noexcept
 	{
-		//PROFILE_FUNC;
-		//
-		//m_pSceneRenderer->Begin();
-		//m_pSceneRenderer->IssueRenderPasses();
-		//m_pSceneRenderer->End();
-	}
-
-	//This is post issuing the render commands.
-	//Important: That does NOT mean it is finished.
-	//To be specific: It should be assumed it is not
-	void Editor::OnPostRender() noexcept
-	{
-		PROFILE_FUNC;
-
-		if (m_HoveringSceneViewport)
-		{
-			m_HoveredEntity = m_pActiveScene->GetHoveredEntity();
-		}
-		else
-			m_HoveredEntity = NULL_ENTITY;
-
-		//m_SceneRendererPanel.OnPostRender();
+		//...
 	}
 
 	Scene* Editor::GetActiveScene() const noexcept
@@ -692,8 +433,6 @@ namespace Relentless
 		m_pActiveScene = pScene;
 		m_pEditorScene = m_pActiveScene;
 
-		m_pActiveScene->SetViewportPanelSize(m_ViewportPanelSize);
-
 		m_pActiveScene->OnEntityPreDestroyed.Connect(this, &Editor::OnEntityPreDestroyed);
 		m_pActiveScene->OnEntityAttached.Connect(this, &Editor::OnEntityAttached);
 
@@ -741,83 +480,6 @@ namespace Relentless
 		m_pActiveScene->SetWorldLocation(other, DirectX::XMFLOAT3(-8.0f, 0.0f, 0.0f));
 
 		m_pEntityFiltersManager->CreateFilter("StarterContent/Shapes/Cubes/Another/Last");
-	}
-
-	void Editor::OnSceneViewportChanged() noexcept
-	{
-		m_ViewportPanelSize.x = std::max(1.0f, m_ViewportPanelSize.x);
-		m_ViewportPanelSize.y = std::max(1.0f, m_ViewportPanelSize.y);
-		m_pActiveScene->SetViewportPanelSize(m_ViewportPanelSize);
-
-		m_pSceneRenderer->OnSceneViewportChanged(static_cast<uint32_t>(m_ViewportPanelSize.x), static_cast<uint32_t>(m_ViewportPanelSize.y));
-		m_SceneViewportChanged = false;
-	}
-
-	void Editor::ManipulateTransformGizmo() noexcept
-	{
-		const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
-		if (selectedEntities.empty())
-			return;
-
-		std::vector<entity> participatingEntities;
-		participatingEntities.reserve(selectedEntities.size());
-
-		for (int i = 0; i < selectedEntities.size(); ++i)
-		{
-			const entity e = selectedEntities[i];
-
-			if (!std::any_of(selectedEntities.begin(), selectedEntities.end(), [&](entity currentEntity)
-				{
-					return m_pActiveScene->EntityIsAncestor(currentEntity, e);
-				}))
-			{
-				participatingEntities.push_back(e);
-			}
-		}
-		
-		if (participatingEntities.empty())
-			return;
-
-		const entity pivotEntity = participatingEntities.back();
-
-		Matrix pivot = m_CurrentGizmoMode == EGizmoMode::World ? m_pActiveScene->GetWorldTransform(pivotEntity) : m_pActiveScene->GetLocalTransform(pivotEntity);
-		const Matrix pivotNonManipulated = pivot;
-
-		ImGuizmo::SetOrthographic(false);
-		ImGuizmo::SetDrawlist();
-		ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
-
-		const ImGuizmo::MODE mode = (m_CurrentGizmoType == EGizmoType::Scale) ? ImGuizmo::LOCAL : (ImGuizmo::MODE)m_CurrentGizmoMode;
-
-		const bool manipulated = ImGuizmo::Manipulate(*m_pActiveScene->GetEditorCamera()->GetViewTransform().WorldToView.m, *m_pActiveScene->GetEditorCamera()->GetViewTransform().ViewToClip.m, (ImGuizmo::OPERATION)m_CurrentGizmoType, mode, pivot.m[0]);
-		if (manipulated)
-		{
-			m_pActiveScene->SetWorldTransform(pivotEntity, pivot);
-
-			const Matrix pivotInverseMatrix = pivotNonManipulated.Invert();
-
-			participatingEntities.pop_back();
-
-			for (auto e : participatingEntities)
-			{
-				const Matrix entityWorld = m_pActiveScene->GetWorldTransform(e);
-				const Matrix entityLocalToPivotMatrix = entityWorld * pivotInverseMatrix;
-				const Matrix newEntityMatrix = entityLocalToPivotMatrix * pivot;
-
-				m_pActiveScene->SetWorldTransform(e, newEntityMatrix);
-			}
-		}
-	}
-
-	void Editor::SetSceneContext(std::shared_ptr<Scene> pScene) noexcept
-	{
-		RLS_ASSERT(pScene, "Scene is invalid.");
-
-		m_pSceneRenderer->SetContext(pScene);
-
-		//m_PropertiesPanel.SetActiveScene(pScene.get());
-
-		pScene->GetEditorCamera()->SetViewport(FloatRect(0, 0, m_ViewportPanelSize.x, m_ViewportPanelSize.y));
 	}
 
 	void Editor::UI_DrawStatisticsPanel() noexcept
@@ -975,4 +637,189 @@ namespace Relentless
 			m_HoveredEntity = m_pActiveScene->GetEntityManager().GetEntityFromIdentity(actualEntityID);
 		}
 	}
+
+	void Editor::OnPanelCreated(PanelBase* pPanel) noexcept
+	{
+		pPanel->OnGainedFocus.Connect(this, &Editor::OnPanelGainedFocus);
+
+		m_PanelStack.push_back(pPanel);
+	}
+
+	void Editor::OnPanelGainedFocus(PanelBase*) noexcept
+	{
+		std::sort(m_PanelStack.begin(), m_PanelStack.end(), [](PanelBase* pPanelA, PanelBase* pPanelB)
+			{
+				return pPanelA->GetLastFrameFocused() > pPanelB->GetLastFrameFocused();
+			});
+	}
+
+	void Editor::OnViewportHotkeyPressed([[maybe_unused]] ViewportPanel* pPanel, RLS_Key key) noexcept
+	{
+		switch (key)
+		{
+		case RLS_Key::A:
+		{
+			if (!Keyboard::IsKeyDown(RLS_Key::LCtrl))
+				return;
+			
+			if (!m_pActiveScene || !m_pSelection)
+				return;
+			
+			m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
+				{
+					if (!m_pSelection->IsEntitySelected(e))
+						m_pSelection->SelectEntity(e);
+				});
+			break;
+		}
+		case RLS_Key::H:
+		{
+			if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
+			{
+				m_pActiveScene->GetEntityManager().Collect<HiddenInGameComponent>().Do([this](entity e)
+					{
+						m_pActiveScene->SetEntityVisibleInGame(e, true);
+					});
+			}
+			else
+			{
+				const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
+
+				for (int i = (int)selectedEntities.size() - 1; i >= 0; --i)
+				{
+					const entity currentEntity = selectedEntities[i];
+
+					m_pSelection->DeselectEntity(currentEntity);
+					m_pActiveScene->SetEntityVisibleInGame(currentEntity, false);
+				}
+			}
+			break;
+		}
+		case RLS_Key::Delete:
+		{
+			if (!m_pSelection || ! m_pActiveScene)
+				return;
+			
+			const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
+			
+			for (int i = (int)selectedEntities.size() - 1; i >= 0; --i)
+				m_pActiveScene->DestroyEntity(selectedEntities[i]);
+
+			break;
+		}
+		}
+	}
+
+	void Editor::OnViewportClicked([[maybe_unused]] ViewportPanel* pPanel, [[maybe_unused]] Vector2u relativeMouseCoords) noexcept
+	{
+		const bool lCtrlDown = Keyboard::IsKeyDown(RLS_Key::LCtrl);
+		const bool lShiftDown = Keyboard::IsKeyDown(RLS_Key::LShift);
+		const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
+
+		if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
+		{
+			m_pOutlinerPanel->DeselectNonEntityItems();
+			m_pSelection->DeselectAllEntities();
+		}
+
+		if (isHoveringEntity)
+		{
+			if (lCtrlDown && m_pSelection->IsEntitySelected(m_HoveredEntity))
+				m_pSelection->DeselectEntity(m_HoveredEntity);
+			else
+				m_pSelection->SelectEntity(m_HoveredEntity);
+		}
+	}
+
+	void Editor::OnUnhandledEvent(IEvent& event)
+	{
+		switch (event.GetEventType())
+		{
+		case EventType::KeyPressedEvent:
+		{
+			const bool isNavigatingScene = false/* = m_HoveringSceneViewport && Mouse::IsButtonDown(RLS_Button::Right)*/;
+			if (!isNavigatingScene)
+			{
+				const RLS_Key key = EVENT(KeyPressedEvent).key;
+				switch (key)
+				{
+				case RLS_Key::I:
+				{
+					if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
+						m_ImmersiveModeEnabled = !m_ImmersiveModeEnabled;
+
+					break;
+				}
+				case RLS_Key::A:
+				{
+					if (m_pOutlinerPanel->IsFocused())
+						m_pOutlinerPanel->SelectAllExpanded();
+
+					break;
+				}
+				break;
+				}
+			}
+			event.StopPropagation();
+			break;
+		}
+		}
+	}
+
+	void Editor::OnViewportEntityDuplicationRequest() noexcept
+	{
+		const std::vector<entity> selectedEntities = m_pSelection->GetSelectedEntities();
+		if (selectedEntities.empty())
+			return;
+
+		std::vector<entity> newEntities;
+		newEntities.reserve(selectedEntities.size());
+
+		for (entity selectedEntity : selectedEntities)
+			newEntities.push_back(m_pActiveScene->CopyEntity(selectedEntity, false));
+
+		m_pSelection->DeselectAllEntities();
+		m_pSelection->SelectEntities(newEntities);
+	}
+
+	std::vector<entity> Editor::GetTransformSelection() const noexcept
+	{
+		if (!m_pActiveScene || !m_pSelection)
+			return {};
+
+		const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
+
+		if (selectedEntities.empty())
+			return {};
+
+		std::vector<entity> participatingEntities;
+		participatingEntities.reserve(selectedEntities.size());
+
+		for (entity e : selectedEntities)
+		{
+			if (!std::any_of(selectedEntities.begin(), selectedEntities.end(), [&](entity currentEntity)
+				{
+					return m_pActiveScene->EntityIsAncestor(currentEntity, e);
+				}))
+			{
+				participatingEntities.push_back(e);
+			}
+		}
+
+		return participatingEntities;
+	}
+
+	void Editor::SpawnViewport() noexcept
+	{
+		m_RenderViews.push_back(ViewportRenderView());
+		
+		UniquePtr<ViewportPanel> pViewport = std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size());
+		pViewport->OnClickedOnViewport.Connect(this, &Editor::OnViewportClicked);
+		pViewport->OnHotkeyPressed.Connect(this, &Editor::OnViewportHotkeyPressed);
+
+		OnPanelCreated(pViewport.get());
+		
+		m_EditorViewports.push_back(std::move(pViewport));
+	}
+
 }

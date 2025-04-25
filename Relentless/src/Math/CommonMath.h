@@ -39,6 +39,12 @@ namespace Relentless
 			return (value + ((T)alignment - 1)) & ~(alignment - 1);
 		}
 
+		template<typename T>
+		T AreValuesClose(T value, T alignment) noexcept
+		{
+			return std::abs(value - alignment) < EPSILON;
+		}
+
 		template<typename T, typename U, typename V>
 		constexpr T Clamp(const T value, const U low, const V high)
 		{
@@ -72,7 +78,7 @@ namespace Relentless
 			return radians * DEGREES_PER_RADIANS;
 		}
 
-		inline [[nodiscard]] static float DegToRad(float degrees) noexcept
+		inline [[nodiscard]] constexpr static float DegToRad(float degrees) noexcept
 		{
 			constexpr float RADIANS_PER_DEGREE = PI / 180.0f;
 			return degrees * RADIANS_PER_DEGREE;
@@ -129,6 +135,24 @@ namespace Relentless
 				x.z, y.z, z.z, 0,
 				p.x, p.y, p.z, 1
 			);
+		}
+
+		// Create left-handed DX style look-to quaternion
+		inline [[nodiscard]] Quaternion CreateLookToRotation(const Vector3& eye, const Vector3& target)
+		{
+			Vector3 forward = target - eye;
+			forward.Normalize();
+
+			Vector3 right = Vector3::Up.Cross(forward);
+			right.Normalize();
+
+			const Vector3 correctedUp = forward.Cross(right);
+
+			const Matrix orientationMatrix = Matrix(right, correctedUp, forward);
+			Quaternion rotation = Quaternion::CreateFromRotationMatrix(orientationMatrix);
+			rotation.Normalize();
+
+			return rotation;
 		}
 
 		inline [[nodiscard]] BoundingFrustum CreateBoundingFrustum(const Matrix& projection, const Matrix& view) noexcept

@@ -71,10 +71,10 @@ namespace Relentless
 		PublishEvent<RawMouseMoveEvent>(delta);
 	}
 
-	void Application::OnMouseScrolled(float scrollAmount) noexcept
+	void Application::OnMouseScrolled(float delta) noexcept
 	{
-		Mouse::UpdateMouseWheel(scrollAmount);
-		//TODO: Scroll Event! :)
+		Mouse::UpdateMouseWheel(delta);
+		PublishEvent<MouseWheelScrolledEvent>(delta);
 	}
 
 	void Application::OnKeyInput(uint32 keyCode, bool pressed) noexcept
@@ -138,34 +138,6 @@ namespace Relentless
 			Update_Internal();
 		}
 		ShutDown_Internal();
-		return;
-
-		while (true)
-		{
-			
-
-			{
-				PROFILE_SCOPE("Application::Run::OnImGuiRender");
-
-				Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList;
-
-				ImguiLayer::BeginFrame(pCommandList);
-				for (auto& pLayer : LayerStack::Get())
-					pLayer->OnImGuiRender();
-				ImguiLayer::EndFrame(pCommandList);
-			}
-
-			{
-				PROFILE_SCOPE("Application::Run::OnPostRender");
-
-				for (auto& pLayer : LayerStack::Get())
-				{
-					pLayer->OnPostRender();
-				}
-			}
-
-			MasterRenderer::PrepareBackBuffer();
-		}
 	}
 
 	void Application::PushLayer(Layer* pLayer) const noexcept
@@ -180,7 +152,7 @@ namespace Relentless
 
 	void Application::SubmitToMainThread(const std::function<void()>& func)
 	{
-		std::scoped_lock(m_MainThreadFunctionQueueMutex);
+		std::scoped_lock lock(m_MainThreadFunctionQueueMutex);
 		m_MainThreadFunctionQueue.push(func);
 	}
 
@@ -197,7 +169,7 @@ namespace Relentless
 #ifdef RLS_DEBUG
 		options.UseDebugDevice = true;
 #else
-		options.UseDebugDevice = false;
+		options.UseDebugDevice = true;
 #endif
 		options.UseGPUValidation = false;
 		m_pGraphicsDevice = new GraphicsDevice(options);
@@ -291,7 +263,7 @@ namespace Relentless
 
 	void Application::ExecuteMainThreadQueue() noexcept
 	{
-		std::scoped_lock(m_MainThreadFunctionQueueMutex);
+		std::scoped_lock lock(m_MainThreadFunctionQueueMutex);
 
 		while (m_MainThreadFunctionQueue.size() > 0)
 		{

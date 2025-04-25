@@ -64,7 +64,7 @@ namespace Relentless
 		[[nodiscard]] bool IsRowSpaceHovered() const noexcept;
 		[[nodiscard]] bool IsTreeNodeToggled() const noexcept;
 
-		[[nodiscard]] uint32_t GetNumColumns() const noexcept;
+		[[nodiscard]] uint32 GetNumColumns() const noexcept;
 		[[nodiscard]] std::vector<std::shared_ptr<TreeItem>> GetDescendants(const std::shared_ptr<TreeItem>& pTreeItem) const noexcept;
 		
 		[[nodiscard]] std::vector<TreeDataRow> FlattenTree() const noexcept;

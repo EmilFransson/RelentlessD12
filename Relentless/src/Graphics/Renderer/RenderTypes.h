@@ -88,7 +88,7 @@ namespace Relentless
 	struct SceneBuffer
 	{
 		Ref<BufferEx> pBuffer = nullptr;
-		uint64 Count = 0u;
+		uint32 Count = 0u;
 	};
 
 	struct GraphicsOptions

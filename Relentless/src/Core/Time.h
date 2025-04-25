@@ -7,15 +7,17 @@ namespace Relentless
 		Time() noexcept = default;
 		~Time() noexcept = default;
 		static void Tick() noexcept;
-		[[nodiscard]] static constexpr float GetDeltaTime() noexcept
+		[[nodiscard]] static float GetDeltaTime() noexcept
 		{
 			return std::chrono::duration<float>(m_CurrentTimePoint - m_PreviousTimePoint).count();
 		}
-		[[nodiscard]] static constexpr float GetElapsedTime() noexcept
+		[[nodiscard]] static float GetElapsedTime() noexcept
 		{
 			return m_ElapsedApplicationTime;
 		}
-		[[nodiscard]] static constexpr uint32_t GetFramesPerSecond() noexcept
+
+		[[nodiscard]] static uint32 GetFrameCount() noexcept;
+		[[nodiscard]] static uint32 GetFramesPerSecond() noexcept
 		{
 			return m_FramesPerSecond;
 		}
@@ -24,7 +26,7 @@ namespace Relentless
 		static std::chrono::steady_clock::time_point m_CurrentTimePoint;
 		static float m_ElapsedTime;
 		static float m_ElapsedApplicationTime;
-		static uint32_t m_FramesPerSecond;
-		static uint32_t m_FramesPerSecondCounter;
+		static uint32 m_FramesPerSecond;
+		static uint32 m_FramesPerSecondCounter;
 	};
 }

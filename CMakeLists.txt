@@ -18,6 +18,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Define the macro globally to resolve mutex constructor issue
 add_compile_definitions(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
 
+if(MSVC)
+    add_compile_options(/wd4201)
+endif()
+
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2")
 

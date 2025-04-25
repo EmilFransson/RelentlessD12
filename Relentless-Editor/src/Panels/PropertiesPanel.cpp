@@ -52,14 +52,6 @@ namespace Relentless
 #pragma warning(push, 0)
 			_itoa(m_SelectedEntity, bPtr, 2);
 #pragma warning(pop)			
-			bool shouldRender = m_pScene->GetEntityManager().Has<OpaquePassComponent>(m_SelectedEntity);
-			if (ImGui::Checkbox(buff, &shouldRender))
-			{
-				if (!shouldRender)
-					m_pScene->GetEntityManager().Remove<OpaquePassComponent>(m_SelectedEntity);
-				else
-					m_pScene->GetEntityManager().Add<OpaquePassComponent>(m_SelectedEntity);
-			}
 
 			ImGuiIO& io = ImGui::GetIO();
 			auto font = io.Fonts->Fonts[1];
@@ -108,9 +100,6 @@ namespace Relentless
 			ImGui::Separator();
 			changedValues |= DrawVec3Control("Scale", tc.WorldTransform.Scale, 0.03f, 1.0f, 0.01f);
 			
-			if (changedValues)
-				m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = true;
-			
 			ImGui::TreePop();
 
 			const bool opened = ImGui::TreeNodeEx((void*)typeid(IsChildComponent).hash_code(), flags, "Local Transform");
@@ -123,9 +112,6 @@ namespace Relentless
 				//changedValues |= DrawVec3Control("Local Rotation", transformComponent.LocalRotation, 0.03f);
 				ImGui::Separator();
 				changedValues |= DrawVec3Control("Local Scale", transformComponent.LocalTransform.Scale, 0.03f, 1.0f, 0.01f);
-
-				if (changedValues)
-					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity).AdjustedWorldSpace = false;
 
 				ImGui::TreePop();
 			}
@@ -150,12 +136,9 @@ namespace Relentless
 								auto color = lc.Color;
 								auto intensity = lc.Intensity;
 								m_pScene->GetEntityManager().Remove<DirectionalLightComponent>(m_SelectedEntity);
-								m_pScene->GetLightManager().DeallocateDirectionalLight(m_SelectedEntity);
 								auto& dlc = m_pScene->GetEntityManager().Add<PointLightComponent>(m_SelectedEntity);
-								m_pScene->GetLightManager().AllocatePointLight(m_SelectedEntity);
 								dlc.Color = DirectX::XMFLOAT3(color.x, color.y, color.z);
 								dlc.Intensity = intensity;
-								m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 							}
 						}
 						if (isSelected)
@@ -164,11 +147,6 @@ namespace Relentless
 					ImGui::EndCombo();
 				}
 
-				if (ImGui::ColorEdit3("Color", &lc.Color.x))
-					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
-
-				if (ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, FLT_MAX))
-					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 			});
 
 		DrawComponentNode<PointLightComponent>("Light", [&]()
@@ -189,12 +167,9 @@ namespace Relentless
 								auto color = lc.Color;
 								auto intensity = lc.Intensity;
 								m_pScene->GetEntityManager().Remove<PointLightComponent>(m_SelectedEntity);
-								m_pScene->GetLightManager().DeallocatePointLight(m_SelectedEntity);
 								auto& dlc = m_pScene->GetEntityManager().Add<DirectionalLightComponent>(m_SelectedEntity);
-								m_pScene->GetLightManager().AllocateDirectionalLight(m_SelectedEntity);
 								dlc.Color = Color(color.x, color.y, color.z);
 								dlc.Intensity = intensity;
-								m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 
 								//m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
 							}
@@ -205,11 +180,6 @@ namespace Relentless
 					ImGui::EndCombo();
 				}
 
-				if (ImGui::ColorEdit3("Color", &lc.Color.x))
-					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
-
-				if (ImGui::DragFloat("Intensity", &lc.Intensity, 0.05f, 0.0f, FLT_MAX))
-					m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 			});
 
 		DrawComponentNode<MeshFilterComponent>("Mesh Filter", [this]()
@@ -383,7 +353,6 @@ namespace Relentless
 				if (!m_pScene->GetEntityManager().Has<MeshFilterComponent>(m_SelectedEntity))
 				{
 					m_pScene->GetEntityManager().Add<MeshFilterComponent>(m_SelectedEntity);
-					m_pScene->GetEntityManager().AddOrReplace<OpaquePassComponent>(m_SelectedEntity);
 				}
 				else
 				{
@@ -399,8 +368,6 @@ namespace Relentless
 						!m_pScene->GetEntityManager().Has<PointLightComponent>(m_SelectedEntity))
 					{
 						m_pScene->GetEntityManager().Add<DirectionalLightComponent>(m_SelectedEntity);
-						m_pScene->GetLightManager().AllocateDirectionalLight(m_SelectedEntity);
-						m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 					}
 					else
 					{
@@ -414,8 +381,6 @@ namespace Relentless
 						!m_pScene->GetEntityManager().Has<PointLightComponent>(m_SelectedEntity))
 					{
 						m_pScene->GetEntityManager().Add<PointLightComponent>(m_SelectedEntity);
-						m_pScene->GetLightManager().AllocatePointLight(m_SelectedEntity);
-						m_pScene->GetEntityManager().AddOrReplace<DirtyTransformComponent>(m_SelectedEntity);
 					}
 					else
 					{

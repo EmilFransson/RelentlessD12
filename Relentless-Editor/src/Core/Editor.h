@@ -13,10 +13,7 @@
 
 namespace Relentless
 {
-	enum class EGizmoType : int8_t { None = -1, Translate = 0, Rotate = 1, Scale = 2 };
-	enum class EGizmoMode : uint8_t { Local = 0, World };
-
-	enum class ESceneState : uint8_t { Edit = 0, Play, Simulate };
+	enum class ESceneState : uint8 { Edit = 0, Play, Simulate };
 
 	class Editor
 	{
@@ -30,7 +27,6 @@ namespace Relentless
 		virtual void OnDestroy() noexcept;
 		virtual void OnUpdate(const float deltaTime) noexcept;
 		virtual void OnRender() noexcept;
-		virtual void OnPostRender() noexcept;
 
 		[[nodiscard]] Scene* GetActiveScene() const noexcept;
 		[[nodiscard]] const UniquePtr<Selection>& GetSelection() noexcept;
@@ -38,9 +34,11 @@ namespace Relentless
 		[[nodiscard]] ViewportRenderView& GetRenderView(uint32 renderViewIndex) noexcept;
 		[[nodiscard]] std::vector<ViewportRenderView>& GetRenderViews() noexcept;
 
+		[[nodiscard]] std::vector<entity> GetTransformSelection() const noexcept;
+
+		void OnViewportEntityDuplicationRequest() noexcept;
 
 		Broadcaster<void(Scene*)> OnSceneChanged;
-
 	private:
 		[[nodiscard]] bool IsHoveringAnyFocusedViewport() const noexcept;
 		[[nodiscard]] bool IsNavigatingAnyViewport() const noexcept;
@@ -50,10 +48,6 @@ namespace Relentless
 		void SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept;
 		void LoadStarterMeshes() noexcept;
 		void CreateStartScene() noexcept;
-		void OnSceneViewportChanged() noexcept;
-		void ManipulateTransformGizmo() noexcept;
-
-		void SetSceneContext(std::shared_ptr<Scene> pScene) noexcept;
 
 		void UI_DrawStatisticsPanel() noexcept;
 		void UI_DrawMainMenuBar() noexcept;
@@ -63,20 +57,23 @@ namespace Relentless
 		void OnEntityPreDestroyed(entity e) noexcept;
 		void OnEntityAttached(entity child, entity parent) noexcept;
 		void OnEntityReadbackDone(uint32 entityID) noexcept;
+
+		void OnPanelCreated(PanelBase* pPanel) noexcept;
+		void OnPanelGainedFocus(PanelBase* pPanel) noexcept;
+
+		void OnViewportHotkeyPressed(ViewportPanel* pPanel, RLS_Key key) noexcept;
+		void OnViewportClicked(ViewportPanel* pPanel, Vector2u relativeMouseCoords) noexcept;
+
+		void OnUnhandledEvent(IEvent& event);
+
+		void SpawnViewport() noexcept;
 	private:
 		std::vector<ViewportRenderView> m_RenderViews;
 		std::vector<UniquePtr<ViewportPanel>> m_EditorViewports;
-		std::vector<std::shared_ptr<PerspectiveCamera>> m_ViewportCameras;
 
-		bool m_SceneViewportChanged = false;
-		bool m_HoveringSceneViewport = false;
-		ImVec2 m_ViewportPanelSize = ImVec2(800.0f, 600.0f);
-		ImVec2 vMin;
-		ImVec2 vMax;
+		std::vector<PanelBase*> m_PanelStack;
 
 		entity m_HoveredEntity = NULL_ENTITY;
-		EGizmoType m_CurrentGizmoType = EGizmoType::None;
-		EGizmoMode m_CurrentGizmoMode = EGizmoMode::World;
 
 		UniquePtr<Selection> m_pSelection = nullptr;
 		UniquePtr<EntityFiltersManager> m_pEntityFiltersManager = nullptr;
@@ -90,7 +87,6 @@ namespace Relentless
 		std::shared_ptr<Scene> m_pActiveScene = nullptr;
 		std::shared_ptr<Scene> m_pEditorScene = nullptr;
 
-		std::shared_ptr<SceneRenderer> m_pSceneRenderer = nullptr;
 		std::shared_ptr<UtilityRenderer> m_pUtilityRenderer = nullptr;
 		
 		std::unique_ptr<OutlinerPanel> m_pOutlinerPanel = nullptr;
@@ -104,6 +100,7 @@ namespace Relentless
 		bool m_DisplayStatisticsPanel = true;
 
 		bool m_ImmersiveModeEnabled = false;
+		bool m_AllowMouseConfinement = true;
 
 		AssetHandle m_PlayButtonTextureHandle = NULL_HANDLE;
 		AssetHandle m_StopButtonTextureHandle = NULL_HANDLE;
@@ -114,8 +111,5 @@ namespace Relentless
 		ESceneState m_SceneState = ESceneState::Edit;
 
 		std::shared_ptr<TextureCube> m_SkyBox = nullptr;
-
-		bool m_IsPanningMouse = false;
-		bool m_ViewportIsFocused = false;
 	};
 }

@@ -26,7 +26,9 @@ namespace Relentless
 		std::vector<ViewportRenderView>& renderViews = m_pEditorLayer->GetEditor()->GetRenderViews();
 		for (int i = 0; i < renderViews.size(); ++i)
 		{
-			renderViews[i].pTarget = m_pGraphicsDevice->CreateTexture(TextureDesc::Create2D(std::max(1.0f, renderViews[i].Viewport.GetWidth()), std::max(1.0f, renderViews[i].Viewport.GetHeight()), ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource), std::format("Target: {}", i).c_str());
+			const uint32 width	= static_cast<uint32>(std::max(1.0f, std::min(renderViews[i].Viewport.GetWidth(), (float)WindowEx::GetDisplaySize().x)));
+			const uint32 height = static_cast<uint32>(std::max(1.0f, std::min(renderViews[i].Viewport.GetHeight(), (float)WindowEx::GetDisplaySize().y)));
+			renderViews[i].pTarget = m_pGraphicsDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource), std::format("Target: {}", i).c_str());
 			m_pRenderer->Render(m_pEditorLayer->GetEditor()->GetActiveScene(), &renderViews[i], options, renderViews[i].pTarget);
 		}
 	}

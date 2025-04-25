@@ -96,9 +96,9 @@ namespace Relentless
 		return m_TreeNodeToggled;
 	}
 
-	uint32_t Tree::GetNumColumns() const noexcept
+	uint32 Tree::GetNumColumns() const noexcept
 	{
-		return m_Columns.size();
+		return static_cast<uint32>(m_Columns.size());
 	}
 
 	std::vector<std::shared_ptr<TreeItem>> Tree::GetDescendants(const std::shared_ptr<TreeItem>& pTreeItem) const noexcept
@@ -480,6 +480,7 @@ namespace Relentless
 				min.x += ImGui::GetFontSize();
 				
 				toReturn.push_back(ImRect(min, cellRect.Max));
+				return toReturn;
 			};
 
 			// Set cursor to the top-left of the cell

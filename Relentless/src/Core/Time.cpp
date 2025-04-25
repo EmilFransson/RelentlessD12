@@ -23,4 +23,10 @@ namespace Relentless
 		}
 		m_FramesPerSecondCounter++;
 	}
+
+	uint32 Time::GetFrameCount() noexcept
+	{
+		return m_FramesPerSecondCounter;
+	}
+
 }

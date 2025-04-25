@@ -20,7 +20,7 @@ namespace Relentless
 
 		[[nodiscard]] const std::vector<entity>& GetSelectedEntities() const noexcept;
 		[[nodiscard]] bool IsEntitySelected(entity entityToQuery) const noexcept;
-		[[nodiscard]] size_t GetSelectedEntityCount() const noexcept;
+		[[nodiscard]] uint32 GetSelectedEntityCount() const noexcept;
 		[[nodiscard]] entity GetFirstSelected() const noexcept;
 
 		Broadcaster<void(entity e, ESelectionState)> OnSelectionChanged;
