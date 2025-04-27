@@ -26,7 +26,9 @@ namespace Relentless
 				std::filesystem::create_directory(s_SystemPathsData.UserDocumentsDirectory);
 		}
 		else
-			RLS_ASSERT(false, "Error retrieving user documents path,");
+		{
+			RLS_ASSERT(false, "Error retrieving user documents path.");
+		}
 	}
 
 	std::filesystem::path SystemPaths::GetWorkingDirectory() noexcept

@@ -73,9 +73,6 @@ namespace Relentless
 
 	void ViewportPanel::PreRender() noexcept
 	{
-		ImGuiIO& io = ImGui::GetIO();
-		io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
-
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 	}
 
@@ -167,6 +164,16 @@ namespace Relentless
 
 		if (ImGui::Button("Solid"))
 			renderView.DrawGrid = !renderView.DrawGrid;
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("T-Snapping"))
+			m_pTransformController->ToggleTranslationMovementMode();
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("R-Snapping"))
+			m_pTransformController->ToggleRotationMovementMode();
 
 		ImGui::EndChild();
 	}
@@ -285,10 +292,15 @@ namespace Relentless
 		}
 		case EViewportState::TransformingGizmo:
 		{
-			if (m_pTransformController->GetActiveTransformType() == ETransformGizmoType::Translate)
+			switch (m_pTransformController->GetActiveTransformType())
+			{
+			case ETransformGizmoType::Translate:
+			case ETransformGizmoType::Rotate:
 			{
 				if (Keyboard::IsKeyDown(RLS_Key::Alt))
 					m_pEditor->OnViewportEntityDuplicationRequest();
+				break;
+			}
 			}
 
 			break;

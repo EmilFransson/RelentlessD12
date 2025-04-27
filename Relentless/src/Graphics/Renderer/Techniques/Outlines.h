@@ -24,19 +24,19 @@ namespace Relentless
 	{
 	public:
 		Outlines(GraphicsDevice* pDevice) noexcept;
-		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<TextureEx> pEntityIDTexture) noexcept;
+		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<Texture> pEntityIDTexture) noexcept;
 
-		[[nodiscard]] Ref<TextureEx> GetSelectedEntityIDOutput() const noexcept;
-		[[nodiscard]] Ref<TextureEx> GetBlurredOutput() const noexcept;
+		[[nodiscard]] Ref<Texture> GetSelectedEntityIDOutput() const noexcept;
+		[[nodiscard]] Ref<Texture> GetBlurredOutput() const noexcept;
 	private:
 		GraphicsDevice* m_pDevice = nullptr;
 
 		Ref<PipelineState> m_pSolidPSO = nullptr;
 		Ref<PipelineState> m_pGaussianBlurPSO = nullptr;
 
-		Ref<TextureEx> m_pSolidOutput = nullptr;
-		Ref<TextureEx> m_pIntermediateBlur = nullptr;
-		Ref<TextureEx> m_pBlurredOutput = nullptr;
+		Ref<Texture> m_pSolidOutput = nullptr;
+		Ref<Texture> m_pIntermediateBlur = nullptr;
+		Ref<Texture> m_pBlurredOutput = nullptr;
 
 		GaussianBlurCB m_CBData;
 	};

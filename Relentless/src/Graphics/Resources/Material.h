@@ -1,13 +1,14 @@
 #pragma once
 #include "Assets/AssetMeta.h"
+#include "Core/IAsset.h"
 #include "Core/Ref.h"
 
 namespace Relentless
 {
-	enum class RenderMode : uint8_t {None = 0, Opaque, CutOut, Transparent, Count};
+	enum class EBlendMode : uint8_t {Opaque, AlphaMask, AlphaBlend};
 
-	class TextureEx;
-	class Material : public RefCounted<Material>
+	class Texture;
+	class Material : public IAsset, public RefCounted<Material>
 	{
 	public:
 		explicit Material() noexcept;
@@ -15,7 +16,7 @@ namespace Relentless
 		Material& operator=(const Material& otherMaterial) noexcept;
 		Material(Material&& otherMaterial) noexcept;
 		Material& operator=(Material&& otherMaterial) noexcept;
-		~Material() noexcept = default;
+		virtual ~Material() noexcept override = default;
 		void SetAlbedoTexture(const AssetHandle& albedoTextureHandle) noexcept;
 		void SetMetallicTexture(const AssetHandle& metallicTextureHandle) noexcept;
 		void SetRoughnessTexture(const AssetHandle& roughnessTextureHandle) noexcept;
@@ -31,7 +32,8 @@ namespace Relentless
 		void RemoveAmbientOcclusionTexture() noexcept;
 		void RemoveEmissionTexture() noexcept;
 		void SetName(const std::string& materialName) noexcept;
-		void SetRenderMode(const RenderMode renderMode) noexcept;
+		void SetBlendMode(const EBlendMode blendMode) noexcept;
+		void SetIsTwoSided(bool state) noexcept;
 		[[nodiscard]] bool HasAlbedoTexture() const noexcept;
 		[[nodiscard]] bool HasMetallicTexture() const noexcept;
 		[[nodiscard]] bool HasRoughnessTexture() const noexcept;
@@ -39,15 +41,15 @@ namespace Relentless
 		[[nodiscard]] bool HasHeightMap() const noexcept;
 		[[nodiscard]] bool HasAmbientOcclusionTexture() const noexcept;
 		[[nodiscard]] bool HasEmissionTexture() const noexcept;
-		[[nodiscard]] Ref<TextureEx> GetAlbedoTexture() const noexcept;
-		[[nodiscard]] Ref<TextureEx> GetMetallicTexture() const noexcept;
-		[[nodiscard]] Ref<TextureEx> GetRoughnessTexture() const noexcept;
-		[[nodiscard]] Ref<TextureEx> GetNormalMap() const noexcept;
-		[[nodiscard]] Ref<TextureEx> GetHeightMap() const noexcept;
-		[[nodiscard]] Ref<TextureEx> GetAmbientOcclusionTexture() const noexcept;
-		[[nodiscard]] Ref<TextureEx> GetEmissionTexture() const noexcept;
+		[[nodiscard]] Ref<Texture> GetAlbedoTexture() const noexcept;
+		[[nodiscard]] Ref<Texture> GetMetallicTexture() const noexcept;
+		[[nodiscard]] Ref<Texture> GetRoughnessTexture() const noexcept;
+		[[nodiscard]] Ref<Texture> GetNormalMap() const noexcept;
+		[[nodiscard]] Ref<Texture> GetHeightMap() const noexcept;
+		[[nodiscard]] Ref<Texture> GetAmbientOcclusionTexture() const noexcept;
+		[[nodiscard]] Ref<Texture> GetEmissionTexture() const noexcept;
 		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
-		[[nodiscard]] const RenderMode GetRenderMode() const noexcept;
+		[[nodiscard]] const EBlendMode GetBlendMode() const noexcept;
 		void ToggleAlbedoTextureUsage() noexcept;
 		void ToggleMetallicTextureUsage() noexcept;
 		void ToggleRoughnessTextureUsage() noexcept;
@@ -95,8 +97,10 @@ namespace Relentless
 		bool m_UseHeightMap;
 		bool m_UseAmbientOcclusionTexture;
 		bool m_UseEmissionTexture;
+
+		bool m_IsTwoSided = false;
 	public:
-		RenderMode m_RenderMode;
+		EBlendMode m_BlendMode = EBlendMode::Opaque;
 
 		friend class Serializer;
 	};

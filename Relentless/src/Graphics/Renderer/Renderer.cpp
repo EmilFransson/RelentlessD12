@@ -43,11 +43,11 @@ namespace Relentless
 				m_BRDFLutTextureHandle = handle;
 			});
 
-		std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
-		fut.wait();
+		//std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
+		//fut.wait();
 	}
 
-	void Renderer::Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<TextureEx> pTarget) noexcept
+	void Renderer::Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept
 	{
 		if (!m_EntityIDSyncs.empty() && m_EntityIDSyncs.front().IsComplete())
 		{
@@ -191,7 +191,7 @@ namespace Relentless
 				m_SceneTextures.pDepthTarget->GetSampleCount());
 
 			m_pEntityIDTexture = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
-			const Ref<TextureEx> pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
+			const Ref<Texture> pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
 			
 			RenderPassInfo info;
 			info.RenderTargets[0].pTarget = m_pEntityIDTexture;
@@ -337,7 +337,7 @@ namespace Relentless
 		outViewUniform.WorldToClip.Invert(outViewUniform.ClipToWorld);
 
 		outViewUniform.ViewLocation				= renderView.Location;
-		outViewUniform.BRDFfLutTextureIndex		= m_BRDFLutTextureHandle.IsValid() ? AssetManager::Get<TextureEx>(m_BRDFLutTextureHandle)->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+		outViewUniform.BRDFfLutTextureIndex		= m_BRDFLutTextureHandle.IsValid() ? AssetManager::Get<Texture>(m_BRDFLutTextureHandle)->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 
 		outViewUniform.ViewportDimensions		= Vector2(renderView.Viewport.GetWidth(), renderView.Viewport.GetHeight());
 		outViewUniform.ViewportDimensionsInv	= Vector2(1.0f / renderView.Viewport.GetWidth(), 1.0f / renderView.Viewport.GetHeight());
@@ -421,13 +421,13 @@ namespace Relentless
 					const uint32 materialIndex = materialStorage.GetPhysicalIndex(mrc.AssetHandle);
 					const uint32 meshIndex = meshStorage.GetPhysicalIndex(mc.AssetHandle);
 
-					auto&& GetBlendMode = [](RenderMode renderMode) -> Batch::Blending
+					auto&& GetBlendMode = [](EBlendMode renderMode) -> Batch::Blending
 						{
 							switch (renderMode)
 							{
-							case RenderMode::Opaque:		return Batch::Blending::Opaque;
-							case RenderMode::CutOut:		return Batch::Blending::AlphaMask;
-							case RenderMode::Transparent:	return Batch::Blending::AlphaBlend;
+							case EBlendMode::Opaque:		return Batch::Blending::Opaque;
+							case EBlendMode::AlphaMask:		return Batch::Blending::AlphaMask;
+							case EBlendMode::AlphaBlend:	return Batch::Blending::AlphaBlend;
 							default:
 								RLS_ASSERT(false, "Unreachable.");
 								return Batch::Blending::Opaque;
@@ -446,7 +446,7 @@ namespace Relentless
 					batch.MaterialIndex = materialIndex;
 					batch.MeshIndex = meshIndex;
 					batch.pMesh = pMesh;
-					batch.BlendMode = GetBlendMode(pMaterial->GetRenderMode());
+					batch.BlendMode = GetBlendMode(pMaterial->GetBlendMode());
 					batch.EntityID = e;
 
 					instanceID++;

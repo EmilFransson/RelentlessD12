@@ -14,6 +14,6 @@ namespace Relentless
 		GraphicsDevice* m_pDevice = nullptr;
 
 		Ref<PipelineState> m_pGridPSO = nullptr;
-		Ref<BufferEx> m_pInstancesStructuredBuffer = nullptr;
+		Ref<Buffer> m_pInstancesStructuredBuffer = nullptr;
 	};
 }

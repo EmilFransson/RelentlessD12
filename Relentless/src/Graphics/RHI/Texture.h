@@ -2,6 +2,7 @@
 #include "D3D.h"
 #include "DeviceResource.h"
 #include "Core/CoreTypes.h"
+#include "Core/IAsset.h"
 
 namespace Relentless
 {
@@ -111,10 +112,10 @@ namespace Relentless
 		}
 	};
 
-	class TextureEx : public DeviceResource
+	class Texture : public DeviceResource, public IAsset
 	{
 	public:
-		TextureEx(GraphicsDevice* pParent, const TextureDesc& desc, ID3D12Resource2* pResource) noexcept;
+		Texture(GraphicsDevice* pParent, const TextureDesc& desc, ID3D12Resource2* pResource) noexcept;
 
 		[[nodiscard]] uint32 GetWidth() const noexcept;
 		[[nodiscard]] uint32 GetHeight() const noexcept;

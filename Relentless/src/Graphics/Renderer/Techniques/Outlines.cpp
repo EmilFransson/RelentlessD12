@@ -48,7 +48,7 @@ namespace Relentless
 		}
 	}
 
-	void Outlines::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<TextureEx> pEntityIDTexture) noexcept
+	void Outlines::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<Texture> pEntityIDTexture) noexcept
 	{
 		const uint32 width = sceneTextures.pColorTarget->GetWidth();
 		const uint32 height = sceneTextures.pColorTarget->GetHeight();
@@ -73,7 +73,7 @@ namespace Relentless
 			sceneTextures.pDepthTarget->GetSampleCount());
 		
 		m_pSolidOutput = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
-		const Ref<TextureEx> pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
+		const Ref<Texture> pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
 		
 		RenderPassInfo info;
 		info.RenderTargets[0].pTarget = m_pSolidOutput;
@@ -168,12 +168,12 @@ namespace Relentless
 		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
 	}
 
-	Ref<TextureEx> Outlines::GetSelectedEntityIDOutput() const noexcept
+	Ref<Texture> Outlines::GetSelectedEntityIDOutput() const noexcept
 	{
 		return m_pSolidOutput;
 	}
 
-	Ref<TextureEx> Outlines::GetBlurredOutput() const noexcept
+	Ref<Texture> Outlines::GetBlurredOutput() const noexcept
 	{
 		return m_pBlurredOutput;
 	}

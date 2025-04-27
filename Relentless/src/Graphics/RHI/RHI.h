@@ -2,13 +2,13 @@
 
 namespace Relentless
 {
-	class BufferEx;
+	class Buffer;
 	struct BufferDesc;
 	struct BufferSRVDesc;
 	class CommandContext;
 	class CommandQueue;
 	class DepthStencilView;
-	class DescriptorHeapEx;
+	class DescriptorHeap;
 	class DeviceObject;
 	class Fence;
 	class GraphicsDevice;
@@ -20,7 +20,7 @@ namespace Relentless
 	class ScratchAllocationManager;
 	class ShaderResourceView;
 	class Swapchain;
-	class TextureEx;
+	class Texture;
 	struct TextureDesc;
 	struct TextureDSVDesc;
 	struct TextureRTVDesc;

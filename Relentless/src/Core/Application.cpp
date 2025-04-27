@@ -164,13 +164,8 @@ namespace Relentless
 	void Application::Initialize_Internal() noexcept
 	{
 		m_ThreadPool = std::make_unique<ThreadPool>();
-
 		GraphicsDeviceOptions options;
-#ifdef RLS_DEBUG
-		options.UseDebugDevice = true;
-#else
-		options.UseDebugDevice = true;
-#endif
+		RLS_DEBUG_ONLY(options.UseDebugDevice = true)
 		options.UseGPUValidation = false;
 		m_pGraphicsDevice = new GraphicsDevice(options);
 
@@ -228,12 +223,12 @@ namespace Relentless
 			pContext->Execute();
 
 			CommandContext* pCommandContext = m_pGraphicsDevice->AllocateCommandContext();
-			m_pImGuiLayer->BeginFrameEx(m_pSwapchain->GetBackBuffer(), pCommandContext);
+			m_pImGuiLayer->BeginFrame(m_pSwapchain->GetBackBuffer(), pCommandContext);
 			
 			for (auto& pLayer : LayerStack::Get())
 				pLayer->OnImGuiRender();
 			
-			m_pImGuiLayer->EndFrameEx(m_pSwapchain->GetBackBuffer(), pCommandContext);
+			m_pImGuiLayer->EndFrame(m_pSwapchain->GetBackBuffer(), pCommandContext);
 			pCommandContext->Execute();
 		}
 

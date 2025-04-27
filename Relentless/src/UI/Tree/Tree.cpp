@@ -175,7 +175,7 @@ namespace Relentless
 
 			ImGui::SetCursorScreenPos(ImVec2(currentX, iconPosY));
 
-			const Ref<TextureEx> pTexture = AssetManager::Get<TextureEx>(tableIcon.IconTextureHandle);
+			const Ref<Texture> pTexture = AssetManager::Get<Texture>(tableIcon.IconTextureHandle);
 			const ImVec2 imageSize(iconSize);
 
 			ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, imageSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
@@ -309,7 +309,7 @@ namespace Relentless
 				const float iconPosY = cellPos.y + (cellSize.y - iconSize.y) * 0.5f;
 				ImGui::SetCursorScreenPos(ImVec2(ImGui::GetCursorScreenPos().x, iconPosY));
 
-				const Ref<TextureEx> pIcon = AssetManager::Get<TextureEx>(iconHandle);
+				const Ref<Texture> pIcon = AssetManager::Get<Texture>(iconHandle);
 				ImGui::Image((ImTextureID)pIcon->GetSRV()->GetGPUHandle().ptr, iconSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
 				ImGui::SameLine();
 			}
@@ -351,7 +351,7 @@ namespace Relentless
 				const float offsetY = cellPos.y + (cellSize.y / 2.0f) - (iconSize.y / 2.0f);
 				ImGui::SetCursorScreenPos(ImVec2(ImGui::GetCursorScreenPos().x, offsetY));
 
-				const Ref<TextureEx> pIcon = AssetManager::Get<TextureEx>(iconHandle);
+				const Ref<Texture> pIcon = AssetManager::Get<Texture>(iconHandle);
 				ImGui::Image((ImTextureID)pIcon->GetSRV()->GetGPUHandle().ptr, iconSize, ImVec2(0, 0), ImVec2(1, 1), tableIcon.Tint);
 				ImGui::SameLine(0.0f, rowStyle.Spacing);
 			}

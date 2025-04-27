@@ -78,7 +78,7 @@ namespace Relentless
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
 			const char* renderModeStrings[] = { "None", "Opaque", "CutOut", "Transparent"};
-			const char* currentRenderModeString = renderModeStrings[(uint32_t)material->GetRenderMode()];
+			const char* currentRenderModeString = renderModeStrings[(uint32_t)material->GetBlendMode()];
 
 			if (ImGui::BeginCombo("##RenderModeString", currentRenderModeString))
 			{
@@ -89,7 +89,7 @@ namespace Relentless
 					{
 						if (!isSelected)
 						{
-							material->SetRenderMode((RenderMode)i);
+							material->SetBlendMode((EBlendMode)i);
 						}
 					}
 					if (isSelected)
@@ -123,7 +123,7 @@ namespace Relentless
 
 			if (material->HasAlbedoTexture())
 			{
-				Ref<TextureEx> albedoTexture = material->GetAlbedoTexture();
+				Ref<Texture> albedoTexture = material->GetAlbedoTexture();
 				ImGui::ImageButton((ImTextureID)albedoTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
@@ -206,7 +206,7 @@ namespace Relentless
 			
 			if (material->HasMetallicTexture())
 			{
-				Ref<TextureEx> metallicTexture = material->GetMetallicTexture();
+				Ref<Texture> metallicTexture = material->GetMetallicTexture();
 				ImGui::ImageButton((ImTextureID)metallicTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
@@ -269,7 +269,7 @@ namespace Relentless
 			
 			if (material->HasRoughnessTexture())
 			{
-				Ref<TextureEx> roughnessTexture = material->GetRoughnessTexture();
+				Ref<Texture> roughnessTexture = material->GetRoughnessTexture();
 				ImGui::ImageButton((ImTextureID)roughnessTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
@@ -333,7 +333,7 @@ namespace Relentless
 
 			if (material->HasNormalMap())
 			{
-				Ref<TextureEx> normalMap = material->GetNormalMap();
+				Ref<Texture> normalMap = material->GetNormalMap();
 				ImGui::ImageButton((ImTextureID)normalMap->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
@@ -395,7 +395,7 @@ namespace Relentless
 
 			if (material->HasHeightMap())
 			{
-				Ref<TextureEx> heightMap = material->GetHeightMap();
+				Ref<Texture> heightMap = material->GetHeightMap();
 				ImGui::ImageButton((ImTextureID)heightMap->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
@@ -462,7 +462,7 @@ namespace Relentless
 			
 			if (material->HasAmbientOcclusionTexture())
 			{
-				Ref<TextureEx> ambientOcclusionTexture = material->GetAmbientOcclusionTexture();
+				Ref<Texture> ambientOcclusionTexture = material->GetAmbientOcclusionTexture();
 				ImGui::ImageButton((ImTextureID)ambientOcclusionTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{
@@ -527,7 +527,7 @@ namespace Relentless
 			
 			if (material->HasEmissionTexture())
 			{
-				Ref<TextureEx> emissionTexture = material->GetEmissionTexture();
+				Ref<Texture> emissionTexture = material->GetEmissionTexture();
 				ImGui::ImageButton((ImTextureID)emissionTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
 				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
 				{

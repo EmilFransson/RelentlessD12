@@ -139,7 +139,7 @@ namespace Relentless
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-		const Ref<TextureEx> texture = AssetManager::Get<TextureEx>(s_GlobalData.SearchIconTextureHandle);
+		const Ref<Texture> texture = AssetManager::Get<Texture>(s_GlobalData.SearchIconTextureHandle);
 		const ImVec4 tintCol = m_IsActive ? ImVec4(0.9f, 0.9f, 0.9f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
 		ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(24.0f, 24.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
 		
@@ -154,7 +154,7 @@ namespace Relentless
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-		const Ref<TextureEx> texture = AssetManager::Get<TextureEx>(s_GlobalData.CancelIconTextureHandle);
+		const Ref<Texture> texture = AssetManager::Get<Texture>(s_GlobalData.CancelIconTextureHandle);
 		const ImVec4 tintCol = m_CancelIconHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
 		ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(15.0f, 15.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
 
@@ -175,7 +175,7 @@ namespace Relentless
 	void SearchBar::DrawSearchHistoryPopupIcon() noexcept
 	{
 		const ImVec4 tintCol = m_ArrowDownIconHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		const Ref<TextureEx> texture = AssetManager::Get<TextureEx>(s_GlobalData.ArrowDownIconTextureHandle);
+		const Ref<Texture> texture = AssetManager::Get<Texture>(s_GlobalData.ArrowDownIconTextureHandle);
 
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
@@ -282,7 +282,7 @@ namespace Relentless
 				});
 		}
 
-		Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests).wait();
+		//Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests).wait();
 	}
 
 	std::string UI::SearchBar(const char* uniqueID, const char* hintText, bool displaySearchHistory, float width) noexcept

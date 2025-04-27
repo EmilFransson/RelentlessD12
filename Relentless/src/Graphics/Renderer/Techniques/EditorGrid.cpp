@@ -4,7 +4,7 @@
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/PipelineState.h"
-#include "Graphics/RHI/TextureEx.h"
+#include "Graphics/RHI/Texture.h"
 
 namespace Relentless
 {

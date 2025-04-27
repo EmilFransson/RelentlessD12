@@ -25,16 +25,16 @@ namespace Relentless
 		virtual ~GraphicsDevice() noexcept override;
 
 		[[nodiscard]] CommandContext* AllocateCommandContext(D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT) noexcept;
-		[[nodiscard]] Ref<BufferEx> CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData = (const void*)nullptr) noexcept;
-		[[nodiscard]] Ref<DepthStencilView> CreateDSV(TextureEx* pTexture, const TextureDSVDesc& textureDSVDesc) noexcept;            
-		[[nodiscard]] Ref<TextureEx> CreateTexture(const TextureDesc& desc, const char* pName, Span<D3D12_SUBRESOURCE_DATA> initData = {}) noexcept;
-		[[nodiscard]] Ref<TextureEx> CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept;
+		[[nodiscard]] Ref<Buffer> CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData = (const void*)nullptr) noexcept;
+		[[nodiscard]] Ref<DepthStencilView> CreateDSV(Texture* pTexture, const TextureDSVDesc& textureDSVDesc) noexcept;            
+		[[nodiscard]] Ref<Texture> CreateTexture(const TextureDesc& desc, const char* pName, Span<D3D12_SUBRESOURCE_DATA> initData = {}) noexcept;
+		[[nodiscard]] Ref<Texture> CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept;
 		[[nodiscard]] Ref<PipelineState> CreatePipeline(const PipelineStateInitializer& pipelineStateInitializer) noexcept;
 		[[nodiscard]] Ref<PipelineState> CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName, const char* pEntryPoint) noexcept;
-		[[nodiscard]] Ref<RenderTargetView> CreateRTV(TextureEx* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept;
-		[[nodiscard]] Ref<ShaderResourceView> CreateSRV(BufferEx* pBuffer, const BufferSRVDesc& desc) noexcept;
-		[[nodiscard]] Ref<ShaderResourceView> CreateSRV(TextureEx* pTexture, const TextureSRVDesc& srvDesc) noexcept;
-		[[nodiscard]] Ref<UnorderedAccessView> CreateUAV(TextureEx* pTexture, const TextureUAVDesc& desc) noexcept;
+		[[nodiscard]] Ref<RenderTargetView> CreateRTV(Texture* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept;
+		[[nodiscard]] Ref<ShaderResourceView> CreateSRV(Buffer* pBuffer, const BufferSRVDesc& desc) noexcept;
+		[[nodiscard]] Ref<ShaderResourceView> CreateSRV(Texture* pTexture, const TextureSRVDesc& srvDesc) noexcept;
+		[[nodiscard]] Ref<UnorderedAccessView> CreateUAV(Texture* pTexture, const TextureUAVDesc& desc) noexcept;
 
 		void DeferReleaseObject(ID3D12Object* pResource) noexcept;
 		void FreeCommandContext(CommandContext* pCommandContext) noexcept;
@@ -42,19 +42,19 @@ namespace Relentless
 		[[nodiscard]] ID3D12DeviceX* GetDevice() const noexcept;
 		[[nodiscard]] IDXGIFactoryX* GetFactory() const noexcept;
 		[[nodiscard]] Fence* GetFrameFence() const noexcept;
-		[[nodiscard]] DescriptorHeapEx* GetGlobalShaderBindableHeap() const noexcept;
-		[[nodiscard]] DescriptorHeapEx* GetGlobalSamplerHeap() const noexcept;
+		[[nodiscard]] DescriptorHeap* GetGlobalShaderBindableHeap() const noexcept;
+		[[nodiscard]] DescriptorHeap* GetGlobalSamplerHeap() const noexcept;
 		[[nodiscard]] RootSignature* GetGlobalRootSignature() const noexcept;
-		[[nodiscard]] DescriptorHeapEx* GetRenderTargetViewDescriptorHeap() const noexcept;
+		[[nodiscard]] DescriptorHeap* GetRenderTargetViewDescriptorHeap() const noexcept;
 		[[nodiscard]] RingBufferAllocator* GetRingBuffer() const noexcept;
 		[[nodiscard]] ShaderLibrary* GetShaderLibrary() const noexcept;
 
 		void IdleGPU() noexcept;
-		[[nodiscard]] DescriptorHandleEx RegisterGlobalDescriptor(DescriptorHandleTypeEx descriptorHandleType) noexcept;
-		[[nodiscard]] std::vector<DescriptorHandleEx> RegisterGlobalDescriptorBlock(DescriptorHandleTypeEx descriptorHandleType, uint32 blockSize) noexcept;
+		[[nodiscard]] DescriptorHandle RegisterGlobalDescriptor(DescriptorHandleType descriptorHandleType) noexcept;
+		[[nodiscard]] std::vector<DescriptorHandle> RegisterGlobalDescriptorBlock(DescriptorHandleType descriptorHandleType, uint32 blockSize) noexcept;
 
 		void TickFrame() noexcept;
-		void UnregisterGlobalDescriptor(const DescriptorHandleEx& descriptorHandle) noexcept;
+		void UnregisterGlobalDescriptor(const DescriptorHandle& descriptorHandle) noexcept;
 	private:
 		Ref<IDXGIFactoryX> m_pFactory = nullptr;
 		Ref<ID3D12DeviceX> m_pDevice = nullptr;

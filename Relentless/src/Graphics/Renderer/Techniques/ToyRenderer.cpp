@@ -18,7 +18,7 @@ namespace Relentless
 		const uint32 height = sceneTextures.pColorTarget->GetHeight();
 		const ResourceFormat colorFormat = sceneTextures.pColorTarget->GetFormat();
 
-		Ref<TextureEx> pTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, colorFormat, 1u, TextureFlag::UnorderedAccess), "UAV Target");
+		Ref<Texture> pTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, colorFormat, 1u, TextureFlag::UnorderedAccess), "UAV Target");
 
 		commandContext.SetPipelineState(m_pToyPSO);
 		commandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());

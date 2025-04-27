@@ -1,10 +1,13 @@
 #pragma once
+#include "Assets/Factory/IFactory.h"
 #include "AssetMeta.h"
 #include "Scene/Scene.h"
 #include "Mesh/Mesh.h"
 
 namespace Relentless
 {
+
+
 	enum class ETextureCompressionType : uint8_t
 	{
 		Uncompressed = 0u, BC5, BC7, BC7_Quick
@@ -26,6 +29,12 @@ namespace Relentless
 		bool ImportMaterialsAndTextures{ true };
 		bool GenerateColliders{ true };
 	};
+	
+	struct AssetImportTask
+	{
+		Path FilePath;
+		Ref<IFactory> pFactory = nullptr;
+	};
 
 	template<typename AssetType>
 	struct AssetImportSettings
@@ -40,7 +49,7 @@ namespace Relentless
 	};
 
 	template<>
-	struct AssetTypeInfo<TextureEx>
+	struct AssetTypeInfo<Texture>
 	{
 		using Settings = TextureImportSettings;
 	};

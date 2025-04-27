@@ -3,7 +3,7 @@
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
-#include "Graphics/RHI/TextureEx.h"
+#include "Graphics/RHI/Texture.h"
 
 namespace Relentless
 {
@@ -43,7 +43,7 @@ namespace Relentless
 			ClearBinding(Colors::Black),
 			sceneTextures.pColorTarget->GetSampleCount());
 
-		const Ref<TextureEx> pColorTarget = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
+		const Ref<Texture> pColorTarget = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
 		
 		RenderPassInfo info;
 		info.RenderTargets[0].pTarget = pColorTarget;

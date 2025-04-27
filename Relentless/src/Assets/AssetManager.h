@@ -22,9 +22,9 @@ namespace Relentless
 	};
 
 	template<>
-	struct AssetTypeTrait<TextureEx>
+	struct AssetTypeTrait<Texture>
 	{
-		static constexpr AssetType value = AssetType::TextureEx;
+		static constexpr AssetType value = AssetType::Texture;
 	};
 
 	template<>
@@ -86,7 +86,7 @@ namespace Relentless
 				SparseArray.push_back(sparseIndex);
 			}
 
-			Assets.push_back(std::move(pAssetType));
+			Assets.push_back(pAssetType);
 			ReverseLookup.push_back(sparseIndex);
 
 			if (RefCounts.size() > physicalIndex)
@@ -312,7 +312,7 @@ namespace Relentless
 		struct AssetStorages
 		{
 			AssetStorage<Mesh> MeshStorage;
-			AssetStorage<TextureEx> TextureStorage;
+			AssetStorage<Texture> TextureStorage;
 			AssetStorage<Material> MaterialStorage;
 		};
 
@@ -335,7 +335,7 @@ namespace Relentless
 	};
 
 	template<>
-	inline AssetStorage<TextureEx>& AssetManager::GetStorage<TextureEx>() noexcept { return s_AssetStorages.TextureStorage; }
+	inline AssetStorage<Texture>& AssetManager::GetStorage<Texture>() noexcept { return s_AssetStorages.TextureStorage; }
 
 	template<>
 	inline AssetStorage<Mesh>& AssetManager::GetStorage<Mesh>() noexcept { return s_AssetStorages.MeshStorage; }

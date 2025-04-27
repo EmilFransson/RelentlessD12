@@ -1,15 +1,17 @@
 #pragma once
+
+#include "Assets/AssetMeta.h"
+#include "Core/IAsset.h"
 #include "Math/MathTypes.h"
+#include "Graphics/RHI/RHI.h"
 
 namespace Relentless
 {
-	class BufferEx;
-	
-	class Mesh : public RefCounted<Mesh>
+	class Mesh : public IAsset, public RefCounted<Mesh>
 	{
 	public:
 		explicit Mesh(const std::string& name = "Unnamed") noexcept;
-		Mesh(Ref<BufferEx> pVertexBuffer, Ref<BufferEx> pIndexBuffer, const std::string& name = "Unnamed") noexcept;
+		Mesh(Ref<Buffer> pVertexBuffer, Ref<Buffer> pIndexBuffer, const std::string& name = "Unnamed") noexcept;
 		
 		Mesh(const Mesh& otherMesh) noexcept;
 		Mesh& operator=(const Mesh& otherMesh) noexcept;
@@ -20,12 +22,19 @@ namespace Relentless
 		void SetOffsetTransform(const Transform& transform) noexcept;
 		[[nodiscard]] const Transform& GetOffsetTransform() const noexcept;
 
-		[[nodiscard]] BufferEx* GetVertexBuffer() const noexcept;
-		[[nodiscard]] BufferEx* GetIndexBuffer() const noexcept;
+		[[nodiscard]] const AssetHandle& GetDefaultMaterialHandle() noexcept;
+		[[nodiscard]] Buffer* GetVertexBuffer() const noexcept;
+		[[nodiscard]] Buffer* GetIndexBuffer() const noexcept;
+
+		void SetDefaultMaterial(const AssetHandle& handle) noexcept;
 	private:
 		std::string m_Name;
 		Transform m_OffsetTransform{};
-		Ref<BufferEx> m_pVertexBuffer = nullptr;
-		Ref<BufferEx> m_pIndexBuffer = nullptr;
+		Ref<Buffer> m_pVertexBuffer = nullptr;
+		Ref<Buffer> m_pIndexBuffer = nullptr;
+
+		BoundingBox Bounds;
+
+		AssetHandle m_DefaultMaterialHandle = NULL_HANDLE;
 	};
 }

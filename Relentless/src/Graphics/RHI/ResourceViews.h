@@ -8,48 +8,48 @@ namespace Relentless
 	class ResourceView : public DeviceObject
 	{
 	public:
-		ResourceView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept;
+		ResourceView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
 		virtual ~ResourceView() noexcept override;
 
 		[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle() const noexcept;
 		[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle() const noexcept;
-		[[nodiscard]] const DescriptorHandleEx& GetDescriptorHandle() const noexcept;
+		[[nodiscard]] const DescriptorHandle& GetDescriptorHandle() const noexcept;
 		[[nodiscard]] uint32_t GetDescriptorIndex() const noexcept;
 	private:
-		DescriptorHandleEx m_DescriptorHandle;
+		DescriptorHandle m_DescriptorHandle;
 	};
 
 	class ShaderResourceView : public ResourceView
 	{
 	public:
-		ShaderResourceView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept;
+		ShaderResourceView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
 		virtual ~ShaderResourceView() noexcept override = default;
 	};
 
 	class UnorderedAccessView : public ResourceView
 	{
 	public:
-		UnorderedAccessView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept;
+		UnorderedAccessView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
 		virtual ~UnorderedAccessView() noexcept override = default;
 	};
 
 	class RenderTargetView : public ResourceView
 	{
 	public:
-		RenderTargetView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept;
+		RenderTargetView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
 		virtual ~RenderTargetView() noexcept override = default;
 	};
 
 	class DepthStencilView : public ResourceView
 	{
 	public:
-		DepthStencilView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle) noexcept;
+		DepthStencilView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
 		virtual ~DepthStencilView() noexcept override = default;
 	};
 
 	struct VertexBufferView : public ResourceView
 	{
-		VertexBufferView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle, uint32 elements, uint32 stride, uint64 offsetFromStart = 0u) noexcept
+		VertexBufferView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle, uint32 elements, uint32 stride, uint64 offsetFromStart = 0u) noexcept
 			: ResourceView(pParent, descriptorHandle), Elements(elements), Stride(stride), OffsetFromStart((uint32)offsetFromStart)
 		{
 			RLS_ASSERT(offsetFromStart <= std::numeric_limits<uint32>::max(), "Buffer offset ({0}) will be stored in a 32-bit uint and does not fit.", offsetFromStart);
@@ -64,7 +64,7 @@ namespace Relentless
 
 	struct IndexBufferView : public ResourceView
 	{
-		IndexBufferView(GraphicsDevice* pParent, const DescriptorHandleEx& descriptorHandle, [[maybe_unused]] D3D12_GPU_VIRTUAL_ADDRESS location, uint32 elements, ResourceFormat format, uint64 offsetFromStart) noexcept
+		IndexBufferView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle, [[maybe_unused]] D3D12_GPU_VIRTUAL_ADDRESS location, uint32 elements, ResourceFormat format, uint64 offsetFromStart) noexcept
 			: ResourceView(pParent, descriptorHandle), Elements(elements), OffsetFromStart((uint32)offsetFromStart), Format(format)
 		{
 			RLS_ASSERT(offsetFromStart <= std::numeric_limits<uint32>::max(), "Buffer offset ({0}) will be stored in a 32-bit uint and does not fit.", offsetFromStart);

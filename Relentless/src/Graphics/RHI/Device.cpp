@@ -9,7 +9,7 @@
 #include "Graphics/Renderer/RenderTypes.h"
 #include "RootSignature.h"
 #include "ScratchAllocator.h"
-#include "TextureEx.h"
+#include "Texture.h"
 #include "Graphics/Shaders/ShaderCompiler.h"
 
 namespace Relentless
@@ -180,7 +180,7 @@ namespace Relentless
 		const uint64 scratchAllocatorPageSize = 256 * Math::KilobytesToBytes;
 		m_pScratchAllocationManager = new ScratchAllocationManager(this, scratchAllocatorPageSize);
 
-		const uint32 ringBufferSize = 128 * Math::MegaBytesToBytes;
+		const uint32 ringBufferSize = 512 * Math::MegaBytesToBytes;
 		m_pRingBufferAllocator = new RingBufferAllocator(this, ringBufferSize);
 
 		m_CommandQueues[D3D12_COMMAND_LIST_TYPE_DIRECT] = new CommandQueue(this, D3D12_COMMAND_LIST_TYPE_DIRECT);
@@ -228,17 +228,17 @@ namespace Relentless
 		return pCommandContext;
 	}
 
-	DescriptorHandleEx GraphicsDevice::RegisterGlobalDescriptor(DescriptorHandleTypeEx descriptorHandleType) noexcept
+	DescriptorHandle GraphicsDevice::RegisterGlobalDescriptor(DescriptorHandleType descriptorHandleType) noexcept
 	{
 		return m_pDescriptorManager->CreateDescriptorHandle(descriptorHandleType);
 	}
 
-	std::vector<DescriptorHandleEx> GraphicsDevice::RegisterGlobalDescriptorBlock(DescriptorHandleTypeEx descriptorHandleType, uint32 blockSize) noexcept
+	std::vector<DescriptorHandle> GraphicsDevice::RegisterGlobalDescriptorBlock(DescriptorHandleType descriptorHandleType, uint32 blockSize) noexcept
 	{
 		return m_pDescriptorManager->CreateDescriptorHandleBlock(descriptorHandleType, blockSize);
 	}
 
-	Ref<BufferEx> GraphicsDevice::CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData /*= (const void*)nullptr*/) noexcept
+	Ref<Buffer> GraphicsDevice::CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData /*= (const void*)nullptr*/) noexcept
 	{
 		auto&& GetResourceDesc = [](const BufferDesc& desc) -> D3D12_RESOURCE_DESC
 		{
@@ -275,7 +275,7 @@ namespace Relentless
 		VERIFY_HR_EX(GetDevice()->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_CREATE_NOT_ZEROED, &resourceDesc, resourceState, nullptr, IID_PPV_ARGS(&pResource)), m_pDevice);
 		D3D::SetObjectName(pResource, pName);
 
-		Ref<BufferEx> pBuffer = RLS_NEW BufferEx(this, desc, pResource);
+		Ref<Buffer> pBuffer = RLS_NEW Buffer(this, desc, pResource);
 		pBuffer->SetName(pName);
 		pBuffer->SetResourceState(resourceState);
 
@@ -311,7 +311,7 @@ namespace Relentless
 		return pBuffer;
 	}
 
-	Ref<TextureEx> GraphicsDevice::CreateTexture(const TextureDesc& desc, const char* pName, Span<D3D12_SUBRESOURCE_DATA> initData) noexcept
+	Ref<Texture> GraphicsDevice::CreateTexture(const TextureDesc& desc, const char* pName, Span<D3D12_SUBRESOURCE_DATA> initData) noexcept
 	{
 		auto&& GetResourceDesc = [](const TextureDesc& textureDesc) -> D3D12_RESOURCE_DESC
 		{
@@ -380,7 +380,7 @@ namespace Relentless
 		VERIFY_HR_EX(GetDevice()->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &resourceDesc, resourceState, pClearValue, IID_PPV_ARGS(&pResource)), m_pDevice);
 		D3D::SetObjectName(pResource, pName);
 
-		Ref<TextureEx> pTexture = new TextureEx(this, desc, pResource);
+		Ref<Texture> pTexture = new Texture(this, desc, pResource);
 		pTexture->SetName(pName);
 		pTexture->SetResourceState(resourceState);
 
@@ -394,7 +394,7 @@ namespace Relentless
 			uint64 rowSizes[16];
 			m_pDevice->GetCopyableFootprints(&resourceDesc, 0, initData.GetSize(), 0, layouts, numRows, rowSizes, &requiredSize);
 			RingBufferAllocation allocation;
-			m_pRingBufferAllocator->Allocate((uint32)requiredSize, allocation);
+			RLS_VERIFY(m_pRingBufferAllocator->Allocate((uint32)requiredSize, allocation), "FAILED TO ALLOCATE");
 
 			for (uint32 subResource = 0; subResource < initData.GetSize(); ++subResource)
 			{
@@ -449,7 +449,7 @@ namespace Relentless
 		return pTexture;
 	}
 
-	Ref<TextureEx> GraphicsDevice::CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept
+	Ref<Texture> GraphicsDevice::CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept
 	{
 		const D3D12_RESOURCE_DESC resourceDesc = pResource->GetDesc();
 		const TextureDesc desc
@@ -463,7 +463,7 @@ namespace Relentless
 			.ClearBindingValue = ClearBinding(Colors::Magenta),
 		};
 
-		Ref<TextureEx> pTexture = RLS_NEW TextureEx(this, desc, pResource);
+		Ref<Texture> pTexture = RLS_NEW Texture(this, desc, pResource);
 		pTexture->SetImmediateDelete(true);
 		pTexture->SetName(std::format("Backbuffer {}", index).c_str());
 		D3D::SetObjectName(pTexture->GetResource(), std::format("Backbuffer {}", index).c_str());
@@ -475,7 +475,7 @@ namespace Relentless
 		return pTexture;
 	}
 
-	Ref<DepthStencilView> GraphicsDevice::CreateDSV(TextureEx* pTexture, const TextureDSVDesc& textureDSVDesc) noexcept
+	Ref<DepthStencilView> GraphicsDevice::CreateDSV(Texture* pTexture, const TextureDSVDesc& textureDSVDesc) noexcept
 	{
 		RLS_ASSERT(pTexture, "[GraphicsDevice] Texture Is Invalid.");
 		const TextureDesc& desc = pTexture->GetDesc();
@@ -508,7 +508,7 @@ namespace Relentless
 		dsvDesc.Texture2D.MipSlice = textureDSVDesc.MipSlice;
 		dsvDesc.Texture2DArray.MipSlice = textureDSVDesc.MipSlice;
 
-		DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::DSV);
+		DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::DSV);
 		GetDevice()->CreateDepthStencilView(pTexture->GetResource(), &dsvDesc, descriptorHandle.CPUHandle);
 
 		return RLS_NEW DepthStencilView(this, descriptorHandle);
@@ -530,7 +530,7 @@ namespace Relentless
 		return CreatePipeline(desc);
 	}
 
-	Ref<ShaderResourceView> GraphicsDevice::CreateSRV(BufferEx* pBuffer, const BufferSRVDesc& desc) noexcept
+	Ref<ShaderResourceView> GraphicsDevice::CreateSRV(Buffer* pBuffer, const BufferSRVDesc& desc) noexcept
 	{
 		RLS_ASSERT(pBuffer, "[GraphicsDevice::CreateSRV] Buffer Is Invalid.");
 		const BufferDesc& bufferDesc = pBuffer->GetDesc();
@@ -555,14 +555,14 @@ namespace Relentless
 			srvDesc.Buffer.NumElements = desc.NumElements > 0 ? desc.NumElements : bufferDesc.NumElements();
 		}
 
-		const DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::SRV);
+		const DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::SRV);
 
 		m_pDevice->CreateShaderResourceView(pBuffer->GetResource(), &srvDesc, descriptorHandle.CPUHandle);
 
 		return RLS_NEW ShaderResourceView(this, descriptorHandle);
 	}
 
-	Ref<ShaderResourceView> GraphicsDevice::CreateSRV(TextureEx* pTexture, const TextureSRVDesc& textureSRVDesc) noexcept
+	Ref<ShaderResourceView> GraphicsDevice::CreateSRV(Texture* pTexture, const TextureSRVDesc& textureSRVDesc) noexcept
 	{
 		const TextureDesc& desc = pTexture->GetDesc();
 
@@ -594,13 +594,13 @@ namespace Relentless
 			break;
 		}
 
-		DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::SRV);
+		DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::SRV);
 		GetDevice()->CreateShaderResourceView(pTexture->GetResource(), &srvDesc, descriptorHandle.CPUHandle);
 		
 		return RLS_NEW ShaderResourceView(this, descriptorHandle);
 	}
 
-	Ref<UnorderedAccessView> GraphicsDevice::CreateUAV(TextureEx* pTexture, const TextureUAVDesc& desc) noexcept
+	Ref<UnorderedAccessView> GraphicsDevice::CreateUAV(Texture* pTexture, const TextureUAVDesc& desc) noexcept
 	{
 		RLS_ASSERT(pTexture, "[GraphicsDevice::CreateUAV] Texture Is Invalid.");
 		const TextureDesc& textureDesc = pTexture->GetDesc();
@@ -624,13 +624,13 @@ namespace Relentless
 		}
 		uavDesc.Format = D3D::ConvertFormat(pTexture->GetFormat());
 
-		DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::UAV);
+		const DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::UAV);
 		GetDevice()->CreateUnorderedAccessView(pTexture->GetResource(), nullptr, &uavDesc, descriptorHandle.CPUHandle);
 
 		return RLS_NEW UnorderedAccessView(this, descriptorHandle);
 	}
 
-	Ref<RenderTargetView> GraphicsDevice::CreateRTV(TextureEx* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept
+	Ref<RenderTargetView> GraphicsDevice::CreateRTV(Texture* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept
 	{
 		RLS_ASSERT(pTexture, "[GraphicsDevice] Texture Is Invalid.");
 		const TextureDesc& textureDesc = pTexture->GetDesc();
@@ -659,7 +659,7 @@ namespace Relentless
 		rtvDesc.Texture3D.MipSlice = textureRTVDesc.MipSlice;
 		rtvDesc.Format = D3D::ConvertFormat(pTexture->GetFormat());
 		
-		DescriptorHandleEx descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleTypeEx::RTV);
+		const DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::RTV);
 		GetDevice()->CreateRenderTargetView(pTexture->GetResource(), &rtvDesc, descriptorHandle.CPUHandle);
 
 		return RLS_NEW RenderTargetView(this, descriptorHandle);
@@ -698,12 +698,12 @@ namespace Relentless
 		return m_pFrameFence;
 	}
 
-	DescriptorHeapEx* GraphicsDevice::GetGlobalShaderBindableHeap() const noexcept
+	DescriptorHeap* GraphicsDevice::GetGlobalShaderBindableHeap() const noexcept
 	{
 		return m_pDescriptorManager->GetShaderBindableDescriptorHeap();
 	}
 
-	DescriptorHeapEx* GraphicsDevice::GetGlobalSamplerHeap() const noexcept
+	DescriptorHeap* GraphicsDevice::GetGlobalSamplerHeap() const noexcept
 	{
 		return m_pDescriptorManager->GetSamplerDescriptorHeap();
 	}
@@ -713,7 +713,7 @@ namespace Relentless
 		return m_pGlobalRootSignature;
 	}
 
-	DescriptorHeapEx* GraphicsDevice::GetRenderTargetViewDescriptorHeap() const noexcept
+	DescriptorHeap* GraphicsDevice::GetRenderTargetViewDescriptorHeap() const noexcept
 	{
 		return m_pDescriptorManager->GetRTVDescriptorHeap();
 	}
@@ -751,7 +751,7 @@ namespace Relentless
 		m_pFrameFence->CPUWait(m_FrameFenceValues[m_FrameIndex % NUM_BUFFERS]);
 	}
 
-	void GraphicsDevice::UnregisterGlobalDescriptor(const DescriptorHandleEx& descriptorHandle) noexcept
+	void GraphicsDevice::UnregisterGlobalDescriptor(const DescriptorHandle& descriptorHandle) noexcept
 	{
 		m_pDescriptorManager->DeferReleaseDescriptorHandle(descriptorHandle, SyncPoint(m_pFrameFence.Get(), m_pFrameFence->GetCurrentValue()));
 	}

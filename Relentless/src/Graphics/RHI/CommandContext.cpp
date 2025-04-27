@@ -5,7 +5,7 @@
 #include "PipelineState.h"
 #include "ResourceViews.h"
 #include "RootSignature.h"
-#include "TextureEx.h"
+#include "Texture.h"
 
 namespace Relentless
 {
@@ -41,7 +41,7 @@ namespace Relentless
 			m_pCommandList->SetComputeRootConstantBufferView(rootIndex, allocation.GpuHandle);
 	}
 
-	void CommandContext::BindRootCBV(uint32 rootIndex, const BufferEx* pBuffer) noexcept
+	void CommandContext::BindRootCBV(uint32 rootIndex, const Buffer* pBuffer) noexcept
 	{
 		if (m_CurrentCommandContext == CommandListContext::Graphics)
 			m_pCommandList->SetGraphicsRootConstantBufferView(rootIndex, pBuffer->GetGpuHandle());
@@ -49,7 +49,7 @@ namespace Relentless
 			m_pCommandList->SetComputeRootConstantBufferView(rootIndex, pBuffer->GetGpuHandle());
 	}
 
-	void CommandContext::CopyBuffer(const BufferEx* pSource, const BufferEx* pTarget, uint64 size, uint64 sourceOffset, uint64 destinationOffset) noexcept
+	void CommandContext::CopyBuffer(const Buffer* pSource, const Buffer* pTarget, uint64 size, uint64 sourceOffset, uint64 destinationOffset) noexcept
 	{
 		RLS_ASSERT(pSource && pSource->GetResource(), "[CommandContext::CopyBuffer] Source is invalid.");
 		RLS_ASSERT(pTarget && pTarget->GetResource(), "[CommandContext::CopyBuffer] Target is invalid.");
@@ -213,7 +213,7 @@ namespace Relentless
 
 		m_pCommandList->BeginRenderPass(renderPassInfo.RenderTargetCount, renderTargets.data(), pDepthStencilDesc, flags);
 
-		TextureEx* pTargetTexture = renderPassInfo.DepthStencilTarget.pTarget ? renderPassInfo.DepthStencilTarget.pTarget : renderPassInfo.RenderTargets[0].pTarget;
+		Texture* pTargetTexture = renderPassInfo.DepthStencilTarget.pTarget ? renderPassInfo.DepthStencilTarget.pTarget : renderPassInfo.RenderTargets[0].pTarget;
 		SetViewport(FloatRect(0, 0, (float)pTargetTexture->GetWidth(), (float)pTargetTexture->GetHeight()), 0, 1);
 
 		m_CurrentRenderPassInfo = renderPassInfo;
@@ -254,7 +254,7 @@ namespace Relentless
 		m_pCommandList->CopyResource(pTarget->GetResource(), pSource->GetResource());
 	}
 
-	void CommandContext::CopyTexture(const TextureEx* pSource, const BufferEx* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource /*= 0*/, uint32 destinationOffset /*= 0*/) noexcept
+	void CommandContext::CopyTexture(const Texture* pSource, const Buffer* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource /*= 0*/, uint32 destinationOffset /*= 0*/) noexcept
 	{
 		RLS_ASSERT(pSource && pSource->GetResource(), "[CommandContext::CopyTexture] Source is invalid.");
 		RLS_ASSERT(pTarget && pTarget->GetResource(), "[CommandContext::CopyTexture] Target is invalid.");
@@ -274,7 +274,7 @@ namespace Relentless
 		m_pCommandList->CopyTextureRegion(&dstLocation, destinationOffset, 0, 0, &srcLocation, &sourceRegion);
 	}
 
-	void CommandContext::CopyTexture(const TextureEx* pSource, const TextureEx* pTarget, const D3D12_BOX& sourceRegion, const D3D12_BOX& destinationRegion, uint32 sourceSubresource, uint32 destinationSubresource) noexcept
+	void CommandContext::CopyTexture(const Texture* pSource, const Texture* pTarget, const D3D12_BOX& sourceRegion, const D3D12_BOX& destinationRegion, uint32 sourceSubresource, uint32 destinationSubresource) noexcept
 	{
 		RLS_ASSERT(pSource && pSource->GetResource(), "[CommandContext::CopyTexture] Source is invalid.");
 		RLS_ASSERT(pTarget && pTarget->GetResource(), "[CommandContext::CopyTexture] Target is invalid.");
@@ -480,7 +480,7 @@ namespace Relentless
 		m_PendingBarriers.clear();
 	}
 
-	void CommandContext::ResolveResource(TextureEx* pSource, uint32 sourceSubResource, TextureEx* pTarget, uint32 targetSubResource, ResourceFormat format) noexcept
+	void CommandContext::ResolveResource(Texture* pSource, uint32 sourceSubResource, Texture* pTarget, uint32 targetSubResource, ResourceFormat format) noexcept
 	{
 		FlushResourceBarriers();
 		m_pCommandList->ResolveSubresource(pTarget->GetResource(), targetSubResource, pSource->GetResource(), sourceSubResource, D3D::ConvertFormat(format));

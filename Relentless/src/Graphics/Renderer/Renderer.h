@@ -34,7 +34,7 @@ namespace Relentless
 		static void DrawScene(CommandContext& context, Span<const Batch> batches, Batch::Blending blendMode) noexcept;
 		
 		[[nodiscard]] Span<const Batch> GetBatches() const noexcept;
-		void Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<TextureEx> pTarget) noexcept;
+		void Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept;
 		
 		Broadcaster<void(uint32 readbackResult)> OnEntityIDReadbackDone;
 		
@@ -73,9 +73,9 @@ namespace Relentless
 
 		AssetHandle m_BRDFLutTextureHandle;
 
-		Ref<TextureEx> m_pEntityIDTexture = nullptr;
+		Ref<Texture> m_pEntityIDTexture = nullptr;
 		
-		Ref<BufferEx> m_EntityIDReadbackBuffer = nullptr;
+		Ref<Buffer> m_EntityIDReadbackBuffer = nullptr;
 		
 		Ref<PipelineState> m_pEntityIdPSO = nullptr;
 		std::queue<SyncPoint> m_EntityIDSyncs;

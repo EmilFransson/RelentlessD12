@@ -11,7 +11,7 @@
 #include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
 #include "../../../vendor/includes/DirectXTK/BufferHelpers.h"
 
-#include "Graphics/RHI/TextureEx.h"
+#include "Graphics/RHI/Texture.h"
 
 namespace Relentless
 {
@@ -19,14 +19,14 @@ namespace Relentless
 
 	//Deserialize
 	std::unordered_map<AssetType, std::function<bool(const std::string&, AssetHandle&)>> DeserializerFuncs = {
-		{AssetType::TextureEx, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<TextureEx>(path, outHandle); }},
+		{AssetType::Texture, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Texture>(path, outHandle); }},
 		{AssetType::Material, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Material>(path, outHandle); }},
 		{AssetType::Mesh, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Mesh>(path, outHandle); }}
 	};
 
 	//Serialize
 	std::unordered_map<AssetType, std::function<bool(const std::string&, const AssetHandle&, bool)>> SerializerFuncs = {
-		{AssetType::TextureEx, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<TextureEx>(assetHandle, path, isABlockingOperation); }},
+		{AssetType::Texture, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<Texture>(assetHandle, path, isABlockingOperation); }},
 		{AssetType::Material, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<Material>(assetHandle, path, isABlockingOperation); }},
 		{AssetType::Mesh, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<Mesh>(assetHandle, path, isABlockingOperation); }}
 	};
@@ -85,7 +85,7 @@ namespace Relentless
 		Ref<Material> material = AssetManager::Get<Material>(assetHandle);
 		
 		MaterialData data{};
-		data.RenderMode = static_cast<uint8_t>(material->GetRenderMode());
+		data.RenderMode = static_cast<uint8_t>(material->GetBlendMode());
 		data.AlbedoColor = material->m_AlbedoColor;
 		data.Metallic = material->m_Metallic;
 		data.EmissionColor = material->m_EmissionColor;
@@ -194,11 +194,11 @@ namespace Relentless
 	}
 
 	template<>
-	bool Serializer::Serialize<TextureEx>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept
+	bool Serializer::Serialize<Texture>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept
 	{
 		RLS_ASSERT(false, "TODO!");
 
-		Ref<TextureEx> texture = AssetManager::Get<TextureEx>(assetHandle);
+		Ref<Texture> texture = AssetManager::Get<Texture>(assetHandle);
 		ID3D12Resource* gpuInterface = texture->GetResource();
 		const D3D12_RESOURCE_DESC textureDescriptor = gpuInterface->GetDesc();
 
@@ -569,7 +569,7 @@ namespace Relentless
 	}
 
 	template<>
-	bool Serializer::Deserialize<TextureEx>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
+	bool Serializer::Deserialize<Texture>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
 	{
 		std::ifstream inFile(filepath, std::ios::binary);
 		RLS_ASSERT(inFile.is_open(), "[Serializer]: Unable to open file with path '{0}'", filepath.string().c_str());
@@ -604,7 +604,7 @@ namespace Relentless
 			return false;
 		}
 
-		RLS_ASSERT(type == AssetType::TextureEx, "[Serializer]: Asset type mismatch encountered.");
+		RLS_ASSERT(type == AssetType::Texture, "[Serializer]: Asset type mismatch encountered.");
 
 		//Move past eventual tag data:
 		inFile.seekg(tagsByteSize, std::ios_base::cur);

@@ -12,13 +12,13 @@ namespace Relentless
 		m_pPostProcessPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "PostProcessShader", "cs_main");
 	}
 
-	void PostProcessing::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<TextureEx> pOutlinesSolidTexture, Ref<TextureEx> pOutlinesBlurredTexture) noexcept
+	void PostProcessing::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<Texture> pOutlinesSolidTexture, Ref<Texture> pOutlinesBlurredTexture) noexcept
 	{
 		const uint32 width = sceneTextures.pColorTarget->GetWidth();
 		const uint32 height = sceneTextures.pColorTarget->GetHeight();
 		const ResourceFormat colorFormat = ResourceFormat::RGB10A2_UNORM;
 
-		Ref<TextureEx> pTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, colorFormat, 1u, TextureFlag::UnorderedAccess), "Linear Color Target");
+		Ref<Texture> pTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, colorFormat, 1u, TextureFlag::UnorderedAccess), "Linear Color Target");
 
 		commandContext.SetPipelineState(m_pPostProcessPSO);
 		commandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());

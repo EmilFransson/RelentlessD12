@@ -10,14 +10,14 @@ namespace Relentless
 	public:
 		Swapchain(GraphicsDevice* pParent, uint32 numFrames, WindowHandle windowHandle) noexcept;
 		virtual ~Swapchain() noexcept override;
-		[[nodiscard]] TextureEx* GetBackBuffer() const noexcept;
+		[[nodiscard]] Texture* GetBackBuffer() const noexcept;
 		void OnResizeOrMove(uint32 width, uint32 height) noexcept;
 		void Present() noexcept;
 		void SetVSync(bool enabled) noexcept;
 	private:
 		void RecreateSwapchain() noexcept;
 	private:
-		std::vector<Ref<TextureEx>> m_Backbuffers;
+		std::vector<Ref<Texture>> m_Backbuffers;
 		uint32 m_Width = 0u;
 		uint32 m_Height = 0u;
 		uint32 m_NumFrames = 0u;

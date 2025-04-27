@@ -3,7 +3,7 @@
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
-#include "Graphics/RHI/TextureEx.h"
+#include "Graphics/RHI/Texture.h"
 
 namespace Relentless
 {
@@ -36,7 +36,7 @@ namespace Relentless
 			ClearBinding(1.0f, 1u),
 			sceneTextures.pDepthTarget->GetSampleCount());
 
-		const Ref<TextureEx> pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
+		const Ref<Texture> pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
 
 		RenderPassInfo info{};
 		info.DepthStencilTarget.pTarget = pDepthTarget;

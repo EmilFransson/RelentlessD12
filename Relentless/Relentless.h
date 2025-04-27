@@ -5,6 +5,7 @@
 #include <src/Core/Core.h>
 #include <src/Core/Time.h>
 #include <src/Core/Any.h>
+#include <src/Core/IAsset.h>
 
 //Logging:
 #include <src/Core/Log.h>
@@ -64,3 +65,6 @@
 
 //Serialization
 #include <src/Scene/SceneSerializer.h>
+
+//Assets
+#include <src/Assets/Factory/ModelFactory.h>

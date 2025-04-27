@@ -3,62 +3,62 @@ namespace Relentless
 {
 	DescriptorManager::DescriptorManager(GraphicsDevice* pDevice) noexcept
 	{
-		m_pRTVDescriptorHeap = new DescriptorHeapEx(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 100'000, false);
-		m_pDSVDescriptorHeap = new DescriptorHeapEx(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 100, false);
-		m_pShaderBindablesDescriptorHeapNV = new DescriptorHeapEx(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, false);
-		m_pShaderBindablesDescriptorHeap = new DescriptorHeapEx(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, true);
-		m_pSamplerDescriptorHeap = new DescriptorHeapEx(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE, true);
+		m_pRTVDescriptorHeap = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 100'000, false);
+		m_pDSVDescriptorHeap = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 100, false);
+		m_pShaderBindablesDescriptorHeapNV = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, false);
+		m_pShaderBindablesDescriptorHeap = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, true);
+		m_pSamplerDescriptorHeap = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE, true);
 	}
 
-	const DescriptorHandleEx DescriptorManager::CreateDescriptorHandle(DescriptorHandleTypeEx descriptorHandleType) noexcept
+	const DescriptorHandle DescriptorManager::CreateDescriptorHandle(DescriptorHandleType descriptorHandleType) noexcept
 	{
 		switch (descriptorHandleType)
 		{
-		case DescriptorHandleTypeEx::RTV:
+		case DescriptorHandleType::RTV:
 		{
-			DescriptorHandleEx handle = m_pRTVDescriptorHeap->AllocateDescriptor();
+			DescriptorHandle handle = m_pRTVDescriptorHeap->AllocateDescriptor();
 			handle.Type = descriptorHandleType;
 			return handle;
 		}
-		case DescriptorHandleTypeEx::DSV:
+		case DescriptorHandleType::DSV:
 		{
-			DescriptorHandleEx handle = m_pDSVDescriptorHeap->AllocateDescriptor();
+			DescriptorHandle handle = m_pDSVDescriptorHeap->AllocateDescriptor();
 			handle.Type = descriptorHandleType;
 			return handle;
 		}
-		case DescriptorHandleTypeEx::SRV_NV:
+		case DescriptorHandleType::SRV_NV:
 		{
-			DescriptorHandleEx handle = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptor();
+			DescriptorHandle handle = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptor();
 			handle.Type = descriptorHandleType;
 			return handle;
 		}
-		case DescriptorHandleTypeEx::CBV_NV:
+		case DescriptorHandleType::CBV_NV:
 		{
-			DescriptorHandleEx handle = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptor();
+			DescriptorHandle handle = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptor();
 			handle.Type = descriptorHandleType;
 			return handle;
 		}
-		case DescriptorHandleTypeEx::UAV_NV:
+		case DescriptorHandleType::UAV_NV:
 		{
-			DescriptorHandleEx handle = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptor();
+			DescriptorHandle handle = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptor();
 			handle.Type = descriptorHandleType;
 			return handle;
 		}
-		case DescriptorHandleTypeEx::SRV:
+		case DescriptorHandleType::SRV:
 		{
-			DescriptorHandleEx handle = m_pShaderBindablesDescriptorHeap->AllocateDescriptor();
+			DescriptorHandle handle = m_pShaderBindablesDescriptorHeap->AllocateDescriptor();
 			handle.Type = descriptorHandleType;
 			return handle;
 		}
-		case DescriptorHandleTypeEx::CBV:
+		case DescriptorHandleType::CBV:
 		{
-			DescriptorHandleEx handle = m_pShaderBindablesDescriptorHeap->AllocateDescriptor();
+			DescriptorHandle handle = m_pShaderBindablesDescriptorHeap->AllocateDescriptor();
 			handle.Type = descriptorHandleType;
 			return handle;
 		}
-		case DescriptorHandleTypeEx::UAV:
+		case DescriptorHandleType::UAV:
 		{
-			DescriptorHandleEx handle = m_pShaderBindablesDescriptorHeap->AllocateDescriptor();
+			DescriptorHandle handle = m_pShaderBindablesDescriptorHeap->AllocateDescriptor();
 			handle.Type = descriptorHandleType;
 			return handle;
 		}
@@ -66,51 +66,51 @@ namespace Relentless
 			RLS_ASSERT(false, "Unreachable.");
 			break;
 		}
-		return DescriptorHandleEx();
+		return DescriptorHandle();
 	}
 
-	const std::vector<DescriptorHandleEx> DescriptorManager::CreateDescriptorHandleBlock(DescriptorHandleTypeEx descriptorHandleType, uint32 blockSize) noexcept
+	const std::vector<DescriptorHandle> DescriptorManager::CreateDescriptorHandleBlock(DescriptorHandleType descriptorHandleType, uint32 blockSize) noexcept
 	{
-		std::vector<DescriptorHandleEx> handles;
+		std::vector<DescriptorHandle> handles;
 
 		switch (descriptorHandleType)
 		{
-		case DescriptorHandleTypeEx::RTV:
+		case DescriptorHandleType::RTV:
 		{
 			handles = m_pRTVDescriptorHeap->AllocateDescriptorBlock(blockSize);
 			break;
 		}
-		case DescriptorHandleTypeEx::DSV:
+		case DescriptorHandleType::DSV:
 		{
 			handles = m_pDSVDescriptorHeap->AllocateDescriptorBlock(blockSize);
 			break;
 		}
-		case DescriptorHandleTypeEx::SRV_NV:
+		case DescriptorHandleType::SRV_NV:
 		{
 			handles = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptorBlock(blockSize);
 			break;
 		}
-		case DescriptorHandleTypeEx::CBV_NV:
+		case DescriptorHandleType::CBV_NV:
 		{
 			handles = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptorBlock(blockSize);
 			break;
 		}
-		case DescriptorHandleTypeEx::UAV_NV:
+		case DescriptorHandleType::UAV_NV:
 		{
 			handles = m_pShaderBindablesDescriptorHeapNV->AllocateDescriptorBlock(blockSize);
 			break;
 		}
-		case DescriptorHandleTypeEx::SRV:
+		case DescriptorHandleType::SRV:
 		{
 			handles = m_pShaderBindablesDescriptorHeap->AllocateDescriptorBlock(blockSize);
 			break;
 		}
-		case DescriptorHandleTypeEx::CBV:
+		case DescriptorHandleType::CBV:
 		{
 			handles = m_pShaderBindablesDescriptorHeap->AllocateDescriptorBlock(blockSize);
 			break;
 		}
-		case DescriptorHandleTypeEx::UAV:
+		case DescriptorHandleType::UAV:
 		{
 			handles = m_pShaderBindablesDescriptorHeap->AllocateDescriptorBlock(blockSize);
 			break;
@@ -120,7 +120,7 @@ namespace Relentless
 			break;
 		}
 
-		std::for_each(handles.begin(), handles.end(), [&descriptorHandleType](DescriptorHandleEx& handle)
+		std::for_each(handles.begin(), handles.end(), [&descriptorHandleType](DescriptorHandle& handle)
 			{
 				handle.Type = descriptorHandleType;
 			});
@@ -128,24 +128,24 @@ namespace Relentless
 		return handles;
 	}
 
-	void DescriptorManager::DeferReleaseDescriptorHandle(const DescriptorHandleEx& descriptorHandle, const SyncPoint& syncPoint) noexcept
+	void DescriptorManager::DeferReleaseDescriptorHandle(const DescriptorHandle& descriptorHandle, const SyncPoint& syncPoint) noexcept
 	{
 		switch (descriptorHandle.Type)
 		{
-		case DescriptorHandleTypeEx::RTV:
+		case DescriptorHandleType::RTV:
 			m_pRTVDescriptorHeap->FreeDescriptor(descriptorHandle, syncPoint);
 			break;
-		case DescriptorHandleTypeEx::DSV:
+		case DescriptorHandleType::DSV:
 			m_pDSVDescriptorHeap->FreeDescriptor(descriptorHandle, syncPoint);
 			break;
-		case DescriptorHandleTypeEx::CBV:
-		case DescriptorHandleTypeEx::SRV:
-		case DescriptorHandleTypeEx::UAV:
+		case DescriptorHandleType::CBV:
+		case DescriptorHandleType::SRV:
+		case DescriptorHandleType::UAV:
 			m_pShaderBindablesDescriptorHeap->FreeDescriptor(descriptorHandle, syncPoint);
 			break;
-		case DescriptorHandleTypeEx::CBV_NV:
-		case DescriptorHandleTypeEx::SRV_NV:
-		case DescriptorHandleTypeEx::UAV_NV:
+		case DescriptorHandleType::CBV_NV:
+		case DescriptorHandleType::SRV_NV:
+		case DescriptorHandleType::UAV_NV:
 			m_pShaderBindablesDescriptorHeapNV->FreeDescriptor(descriptorHandle, syncPoint);
 			break;
 		}

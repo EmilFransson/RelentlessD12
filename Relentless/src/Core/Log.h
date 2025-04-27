@@ -45,8 +45,10 @@ namespace Relentless
 
 #if defined(RLS_DEBUG)
 	#define RLS_ASSERT(x, ...) {if (!(x)) {RLS_CORE_ERROR("Assertion failed: {0}", __VA_ARGS__); __debugbreak(); } }
+	#define RLS_DEBUG_ONLY(x) x;
 #else
 	#define RLS_ASSERT(x, ...)
+	#define RLS_DEBUG_ONLY(x)
 #endif
 
 

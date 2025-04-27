@@ -13,6 +13,7 @@ typedef int64_t		int64;
 template<typename T>
 using UniquePtr = std::unique_ptr<T>;
 
+using Path = std::filesystem::path;
 using String = std::string;
 
 #define DECLARE_BITMASK_TYPE(Enum) \

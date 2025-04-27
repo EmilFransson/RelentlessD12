@@ -16,7 +16,7 @@ namespace Relentless
 	{
 	}
 
-	Mesh::Mesh(Ref<BufferEx> pVertexBuffer, Ref<BufferEx> pIndexBuffer, const std::string& name /*= "Unnamed"*/) noexcept
+	Mesh::Mesh(Ref<Buffer> pVertexBuffer, Ref<Buffer> pIndexBuffer, const std::string& name /*= "Unnamed"*/) noexcept
 		: m_pVertexBuffer{ pVertexBuffer }, m_pIndexBuffer{ pIndexBuffer }, m_Name{ name }
 	{
 	}
@@ -56,15 +56,26 @@ namespace Relentless
 		return m_OffsetTransform;
 	}
 
-	BufferEx* Mesh::GetVertexBuffer() const noexcept
+	const Relentless::AssetHandle& Mesh::GetDefaultMaterialHandle() noexcept
+	{
+		return m_DefaultMaterialHandle;
+	}
+
+	Buffer* Mesh::GetVertexBuffer() const noexcept
 	{
 		RLS_ASSERT(m_pVertexBuffer, "[Mesh::GetVertexBuffer] Vertex Buffer Is Invalid.");
 		return m_pVertexBuffer;
 	}
 
-	BufferEx* Mesh::GetIndexBuffer() const noexcept
+	Buffer* Mesh::GetIndexBuffer() const noexcept
 	{
 		RLS_ASSERT(m_pIndexBuffer, "[Mesh::GetIndexBuffer] Index Buffer Is Invalid.");
 		return m_pIndexBuffer;
 	}
+
+	void Mesh::SetDefaultMaterial(const AssetHandle& handle) noexcept
+	{
+		m_DefaultMaterialHandle = handle;
+	}
+
 }

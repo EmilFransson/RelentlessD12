@@ -12,7 +12,7 @@ namespace Relentless
 	{
 		Undefined = 0u,
 		Material,
-		TextureEx,
+		Texture,
 		Mesh,
 		Scene,
 		Count

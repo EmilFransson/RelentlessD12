@@ -16,8 +16,8 @@ namespace Relentless
 		CustomHeap.new_ = ::operator new;
 		CustomHeap.delete_ = ::operator delete;
 
-		m_ShaderBindableHandles = m_pDevice->RegisterGlobalDescriptorBlock(DescriptorHandleTypeEx::CBV, 64);
-		m_RTVHandles = m_pDevice->RegisterGlobalDescriptorBlock(DescriptorHandleTypeEx::RTV, 64);
+		m_ShaderBindableHandles = m_pDevice->RegisterGlobalDescriptorBlock(DescriptorHandleType::CBV, 64);
+		m_RTVHandles = m_pDevice->RegisterGlobalDescriptorBlock(DescriptorHandleType::RTV, 64);
 
 		GFSDK_SSAO_DescriptorHeaps_D3D12 DescriptorHeaps{};
 		DescriptorHeaps.CBV_SRV_UAV.pDescHeap = m_pDevice->GetGlobalShaderBindableHeap()->GetDescriptorHeapInterface();
@@ -25,7 +25,7 @@ namespace Relentless
 		DescriptorHeaps.RTV.pDescHeap = m_pDevice->GetRenderTargetViewDescriptorHeap()->GetDescriptorHeapInterface();
 		DescriptorHeaps.RTV.BaseIndex = m_RTVHandles[0].Index;
 
-		GFSDK_SSAO_Status status = GFSDK_SSAO_CreateContext_D3D12
+		const GFSDK_SSAO_Status status = GFSDK_SSAO_CreateContext_D3D12
 		(
 			m_pDevice->GetDevice(),
 			1u,
@@ -76,7 +76,7 @@ namespace Relentless
 
 		commandContext.SetViewport(FloatRect(0, 0, (float)width, (float)height), 0.0f, 1.0f);
 
-		GFSDK_SSAO_Status status = m_pSSAOContext->RenderAO(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue(), commandContext.GetCommandList(), inputData, parameters, output, renderMask);
+		const GFSDK_SSAO_Status status = m_pSSAOContext->RenderAO(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue(), commandContext.GetCommandList(), inputData, parameters, output, renderMask);
 		RLS_VERIFY(status == GFSDK_SSAO_OK, "Failed To Issue HBAOPlus Render Command.");
 	}
 }

@@ -10,7 +10,6 @@ namespace Relentless
 	class Material;
 	struct RassetHeader_1;
 	class Scene;
-	class Texture2D;
 
 #pragma pack(push, 1)
 	struct MeshDataHeader
@@ -68,7 +67,7 @@ namespace Relentless
 	bool Serializer::Serialize<Material>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept;
 
 	template<>
-	bool Serializer::Serialize<TextureEx>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept;
+	bool Serializer::Serialize<Texture>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept;
 
 	template<>
 	bool Serializer::Serialize<Mesh>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept;
@@ -77,7 +76,7 @@ namespace Relentless
 	bool Serializer::Deserialize<Mesh>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept;
 
 	template<>
-	bool Serializer::Deserialize<TextureEx>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept;
+	bool Serializer::Deserialize<Texture>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept;
 
 	template<>
 	bool Serializer::Deserialize<Material>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept;

@@ -40,8 +40,8 @@ namespace Relentless
 	{
 		struct RenderTargetInfo
 		{
-			TextureEx* pTarget = nullptr;
-			TextureEx* pResolveTarget = nullptr;
+			Texture* pTarget = nullptr;
+			Texture* pResolveTarget = nullptr;
 
 			RenderTargetAccessFlags BeginAccessFlags = RenderTargetAccessFlags::None;
 			RenderTargetAccessFlags EndAccessFlags = RenderTargetAccessFlags::None;
@@ -49,14 +49,14 @@ namespace Relentless
 
 		struct DepthTargetInfo
 		{
-			TextureEx* pTarget = nullptr;
+			Texture* pTarget = nullptr;
 			DepthTargetAccessFlags BeginAccessFlags = DepthTargetAccessFlags::None;
 			DepthTargetAccessFlags EndAccessFlags = DepthTargetAccessFlags::None;
 		};
 
 		RenderPassInfo() = default;
 
-		RenderPassInfo(TextureEx* pRenderTarget, RenderTargetAccessFlags beginAccessFlags, RenderTargetAccessFlags endAccessFlags, TextureEx* pDepthTarget, DepthTargetAccessFlags beginDepthTargetFlags, DepthTargetAccessFlags endDepthTargetFlags) noexcept
+		RenderPassInfo(Texture* pRenderTarget, RenderTargetAccessFlags beginAccessFlags, RenderTargetAccessFlags endAccessFlags, Texture* pDepthTarget, DepthTargetAccessFlags beginDepthTargetFlags, DepthTargetAccessFlags endDepthTargetFlags) noexcept
 			: RenderTargetCount{ 1u }
 		{
 			RenderTargets[0].pTarget = pRenderTarget;
@@ -68,7 +68,7 @@ namespace Relentless
 			DepthStencilTarget.EndAccessFlags = endDepthTargetFlags;
 		}
 
-		static [[nodiscard]] RenderPassInfo DepthOnly(TextureEx* pTarget, DepthTargetAccessFlags beginAccessFlags, DepthTargetAccessFlags endAccessFlags) noexcept
+		static [[nodiscard]] RenderPassInfo DepthOnly(Texture* pTarget, DepthTargetAccessFlags beginAccessFlags, DepthTargetAccessFlags endAccessFlags) noexcept
 		{
 			RenderPassInfo renderPassInfo;
 			renderPassInfo.DepthStencilTarget.pTarget = pTarget;
@@ -91,13 +91,13 @@ namespace Relentless
 		void AddBarrier(const D3D12_RESOURCE_BARRIER& barrier) noexcept;
 		ScratchAllocation AllocateScratch(uint64 size, uint32 alignment = 16u) noexcept;
 		void BindRootCBV(uint32 rootIndex, const void* pData, uint32 dataSize) noexcept;
-		void BindRootCBV(uint32 rootIndex, const BufferEx* allocation) noexcept;
+		void BindRootCBV(uint32 rootIndex, const Buffer* allocation) noexcept;
 		void BeginRenderPass(const RenderPassInfo& renderPassInfo) noexcept;
-		void CopyBuffer(const BufferEx* pSource, const BufferEx* pTarget, uint64 size, uint64 sourceOffset, uint64 destinationOffset) noexcept;
+		void CopyBuffer(const Buffer* pSource, const Buffer* pTarget, uint64 size, uint64 sourceOffset, uint64 destinationOffset) noexcept;
 		void ClearState() noexcept;
 		void CopyResource(const DeviceResource* pSource, const DeviceResource* pTarget) noexcept;
-		void CopyTexture(const TextureEx* pSource, const BufferEx* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource = 0u, uint32 destinationOffset = 0u) noexcept;
-		void CopyTexture(const TextureEx* pSource, const TextureEx* pDestination, const D3D12_BOX& sourceRegion, const D3D12_BOX& destinationRegion, uint32 sourceSubresource = 0, uint32 destinationSubresource = 0) noexcept;
+		void CopyTexture(const Texture* pSource, const Buffer* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource = 0u, uint32 destinationOffset = 0u) noexcept;
+		void CopyTexture(const Texture* pSource, const Texture* pDestination, const D3D12_BOX& sourceRegion, const D3D12_BOX& destinationRegion, uint32 sourceSubresource = 0, uint32 destinationSubresource = 0) noexcept;
 		void Dispatch(uint32 groupCountX, uint32 groupCountY = 1, uint32 groupCountZ = 1) noexcept;
 		void Dispatch(const Vector3i groupCount) noexcept;
 		void InsertResourceBarrier(DeviceResource* pResource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState, uint32 subResource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) noexcept;
@@ -112,7 +112,7 @@ namespace Relentless
 		[[nodiscard]] D3D12_COMMAND_LIST_TYPE GetType() const noexcept;
 		void Reset() noexcept;
 		void ResolvePendingBarriers(CommandContext& resolveContext);
-		void ResolveResource(TextureEx* pSource, uint32 sourceSubResource, TextureEx* pTarget, uint32 targetSubResource, ResourceFormat format) noexcept;
+		void ResolveResource(Texture* pSource, uint32 sourceSubResource, Texture* pTarget, uint32 targetSubResource, ResourceFormat format) noexcept;
 		void SetGraphicsRootSignature(RootSignature* pRootSignature) noexcept;
 		void SetComputeRootSignature(RootSignature* pRootSignature) noexcept;
 		void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY topology) noexcept;

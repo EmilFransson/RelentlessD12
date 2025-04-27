@@ -18,19 +18,17 @@ namespace Relentless
 	public:
 		ImguiLayer(GraphicsDevice* pDevice) noexcept;
 		virtual ~ImguiLayer() noexcept override final = default;
-		static void BeginFrame(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept;
 
-		void BeginFrameEx(Ref<TextureEx> pTarget, CommandContext* pCommandContext) noexcept;
-		void EndFrameEx(Ref<TextureEx> pTarget, CommandContext* pCommandContext) noexcept;
+		void BeginFrame(Ref<Texture> pTarget, CommandContext* pCommandContext) noexcept;
+		void EndFrame(Ref<Texture> pTarget, CommandContext* pCommandContext) noexcept;
 
-		static void EndFrame(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept;
 		virtual void OnImGuiRender() noexcept override final;
 	private:
 		virtual void OnAttach() override final;
 		virtual void OnDetach() override final;
 	private:
 		GraphicsDevice* m_pDevice = nullptr;
-		UniquePtr<DescriptorHeapEx> m_pDescriptorHeap = nullptr;
-		DescriptorHandleEx m_DescriptorHandle;
+		UniquePtr<DescriptorHeap> m_pDescriptorHeap = nullptr;
+		DescriptorHandle m_DescriptorHandle;
 	};
 }

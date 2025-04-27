@@ -4,7 +4,7 @@
 
 #include "Graphics/RHI/Buffer.h"
 #include "Graphics/RHI/DescriptorHeap.h"
-#include "Graphics/RHI/TextureEx.h"
+#include "Graphics/RHI/Texture.h"
 #include "Graphics/Shaders/Interop/ShaderInterop.h"
 
 namespace Relentless
@@ -52,7 +52,7 @@ namespace Relentless
 	struct ViewportRenderView : public ViewTransform
 	{
 		Vector2i MouseHoverCoordinates = Vector2i(-1, -1);
-		Ref<TextureEx> pTarget = nullptr;
+		Ref<Texture> pTarget = nullptr;
 		bool DrawGrid = true;
 		RenderModeEx RenderMode = RenderModeEx::Solid;
 	};
@@ -62,7 +62,7 @@ namespace Relentless
 		Renderer* pRenderer = nullptr;
 		Scene* pScene = nullptr;
 
-		Ref<BufferEx> ViewCB = nullptr;
+		Ref<Buffer> ViewCB = nullptr;
 	};
 
 	struct Batch
@@ -73,21 +73,21 @@ namespace Relentless
 		uint32 InstanceID = std::numeric_limits<uint32>::max();
 		Blending BlendMode = Blending::Opaque;
 		Mesh* pMesh = nullptr;
-		uint32 MaterialIndex = DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
-		uint32 MeshIndex = DescriptorHeapEx::INVALID_DESCRIPTOR_INDEX;
+		uint32 MaterialIndex = DescriptorHeap::INVALID_DESCRIPTOR_INDEX;
+		uint32 MeshIndex = DescriptorHeap::INVALID_DESCRIPTOR_INDEX;
 		entity EntityID = NULL_ENTITY;
 	};
 	DECLARE_BITMASK_TYPE(Batch::Blending)
 
 	struct SceneTextures
 	{
-		Ref<TextureEx> pColorTarget = nullptr;
-		Ref<TextureEx> pDepthTarget = nullptr;
+		Ref<Texture> pColorTarget = nullptr;
+		Ref<Texture> pDepthTarget = nullptr;
 	};
 
 	struct SceneBuffer
 	{
-		Ref<BufferEx> pBuffer = nullptr;
+		Ref<Buffer> pBuffer = nullptr;
 		uint32 Count = 0u;
 	};
 

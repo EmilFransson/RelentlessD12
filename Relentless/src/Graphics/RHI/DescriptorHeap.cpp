@@ -4,7 +4,7 @@
 
 namespace Relentless
 {
-	DescriptorHeapEx::DescriptorHeapEx(GraphicsDevice* pParent, const D3D12_DESCRIPTOR_HEAP_TYPE descriptorHeapType, const uint32_t capacity, const bool isShaderVisible) noexcept
+	DescriptorHeap::DescriptorHeap(GraphicsDevice* pParent, const D3D12_DESCRIPTOR_HEAP_TYPE descriptorHeapType, const uint32_t capacity, const bool isShaderVisible) noexcept
 		:
 		DeviceObject(pParent),
 		m_Type{ descriptorHeapType },
@@ -38,7 +38,7 @@ namespace Relentless
 		SetDebugName();
 	}
 
-	DescriptorHandleEx DescriptorHeapEx::AllocateDescriptor() noexcept
+	DescriptorHandle DescriptorHeap::AllocateDescriptor() noexcept
 	{
 		std::lock_guard<std::mutex> lock(m_Mutex);
 
@@ -47,7 +47,7 @@ namespace Relentless
 
 		if (!m_FreeList.empty() && m_FreeList.front().SyncPoint.IsComplete())
 		{
-			const DescriptorHandleEx descriptorHandle = m_FreeList.front().DescriptorHandle;
+			const DescriptorHandle descriptorHandle = m_FreeList.front().DescriptorHandle;
 			m_FreeList.pop();
 			return descriptorHandle;
 		}
@@ -57,7 +57,7 @@ namespace Relentless
 			const uint32_t index = m_FreeHandles[m_CurrentNrOfDescriptors];
 			const uint32_t offset = index * m_DescriptorSize;
 
-			DescriptorHandleEx descriptorHandleToReturn{};
+			DescriptorHandle descriptorHandleToReturn{};
 			descriptorHandleToReturn.CPUHandle.ptr = m_CpuHandleStart.ptr + offset;
 			if (IsShaderVisible())
 			{
@@ -72,21 +72,21 @@ namespace Relentless
 		}
 	}
 
-	std::vector<DescriptorHandleEx> DescriptorHeapEx::AllocateDescriptorBlock(uint32 blockSize) noexcept
+	std::vector<DescriptorHandle> DescriptorHeap::AllocateDescriptorBlock(uint32 blockSize) noexcept
 	{
 		std::lock_guard<std::mutex> lock(m_Mutex);
 
 		RLS_ASSERT(m_pDescriptorHeap, "D3D12 Descriptor heap interface is not initialized.");
 		RLS_ASSERT(m_CurrentNrOfDescriptors != m_Capacity, "Descriptor heap capacity reached.");
 
-		std::vector<DescriptorHandleEx> descriptorBlock;
+		std::vector<DescriptorHandle> descriptorBlock;
 		descriptorBlock.reserve(blockSize);
 			
 		for (uint32 i = 0u; i < blockSize; ++i)
 		{
 			if (!m_FreeList.empty() && m_FreeList.front().SyncPoint.IsComplete())
 			{
-				const DescriptorHandleEx descriptorHandle = m_FreeList.front().DescriptorHandle;
+				const DescriptorHandle descriptorHandle = m_FreeList.front().DescriptorHandle;
 				m_FreeList.pop();
 				descriptorBlock.push_back(descriptorHandle);
 			}
@@ -96,7 +96,7 @@ namespace Relentless
 				const uint32_t index = m_FreeHandles[m_CurrentNrOfDescriptors];
 				const uint32_t offset = index * m_DescriptorSize;
 
-				DescriptorHandleEx descriptorHandle{};
+				DescriptorHandle descriptorHandle{};
 				descriptorHandle.CPUHandle.ptr = m_CpuHandleStart.ptr + offset;
 				if (IsShaderVisible())
 				{
@@ -114,7 +114,7 @@ namespace Relentless
 		return descriptorBlock;
 	}
 
-	void DescriptorHeapEx::FreeDescriptor(const DescriptorHandleEx& descriptorHandle, const SyncPoint& syncPoint) noexcept
+	void DescriptorHeap::FreeDescriptor(const DescriptorHandle& descriptorHandle, const SyncPoint& syncPoint) noexcept
 	{
 		std::lock_guard<std::mutex> lock(m_Mutex);
 		RLS_ASSERT(m_pDescriptorHeap, "D3D12 Descriptor heap interface is not initialized.");
@@ -125,7 +125,7 @@ namespace Relentless
 		m_FreeList.push(FencedDescriptorHandle(descriptorHandle, syncPoint));
 	}
 
-	void DescriptorHeapEx::SetDebugName() noexcept
+	void DescriptorHeap::SetDebugName() noexcept
 	{
 		std::string debugName = "Descriptor_Heap_";
 		switch (m_Type)

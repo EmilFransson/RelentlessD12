@@ -136,7 +136,7 @@ namespace Relentless
 				});
 		}
 
-		Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), importRequests).wait();
+		//Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), importRequests).wait();
 
 
 		SetupOutlinerTable();
@@ -260,7 +260,7 @@ namespace Relentless
 			{
 				ImGui::BeginTooltip();
 				
-				const Ref<TextureEx> pDragDropTexture = AssetManager::Get<TextureEx>(m_DragDropTooltipIcon);
+				const Ref<Texture> pDragDropTexture = AssetManager::Get<Texture>(m_DragDropTooltipIcon);
 				ImGui::Image((ImTextureID)pDragDropTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(static_cast<float>(pDragDropTexture->GetWidth()), static_cast<float>(pDragDropTexture->GetHeight())));
 				ImGui::SameLine();
 				ImGui::Text(m_DragDropTooltip.c_str());

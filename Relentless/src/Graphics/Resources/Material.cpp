@@ -36,7 +36,7 @@ namespace Relentless
 		  m_UseNormalMap{true},
 		  m_UseAmbientOcclusionTexture{ true },
 	 	  m_UseEmissionTexture{ true },
-		  m_RenderMode{ RenderMode::Opaque }
+		  m_BlendMode{ EBlendMode::Opaque }
 	{
 	}
 
@@ -74,7 +74,7 @@ namespace Relentless
 		m_UseNormalMap = otherMaterial.m_UseNormalMap;
 		m_UseAmbientOcclusionTexture = otherMaterial.m_UseAmbientOcclusionTexture;
 		m_UseEmissionTexture = otherMaterial.m_UseEmissionTexture;
-		m_RenderMode = otherMaterial.m_RenderMode;
+		m_BlendMode = otherMaterial.m_BlendMode;
 	}
 
 	Material& Material::operator=(const Material& otherMaterial) noexcept
@@ -113,7 +113,7 @@ namespace Relentless
 			m_UseNormalMap = otherMaterial.m_UseNormalMap;
 			m_UseAmbientOcclusionTexture = otherMaterial.m_UseAmbientOcclusionTexture;
 			m_UseEmissionTexture = otherMaterial.m_UseEmissionTexture;
-			m_RenderMode = otherMaterial.m_RenderMode;
+			m_BlendMode = otherMaterial.m_BlendMode;
 		}
 
 		return *this;
@@ -153,7 +153,7 @@ namespace Relentless
 		m_UseNormalMap = std::move(otherMaterial.m_UseNormalMap);
 		m_UseAmbientOcclusionTexture = std::move(otherMaterial.m_UseAmbientOcclusionTexture);
 		m_UseEmissionTexture = std::move(otherMaterial.m_UseEmissionTexture);
-		m_RenderMode = std::move(otherMaterial.m_RenderMode);
+		m_BlendMode = std::move(otherMaterial.m_BlendMode);
 	}
 
 	Material& Material::operator=(Material&& otherMaterial) noexcept
@@ -192,7 +192,7 @@ namespace Relentless
 			m_UseNormalMap = std::move(otherMaterial.m_UseNormalMap);
 			m_UseAmbientOcclusionTexture = std::move(otherMaterial.m_UseAmbientOcclusionTexture);
 			m_UseEmissionTexture = std::move(otherMaterial.m_UseEmissionTexture);
-			m_RenderMode = std::move(otherMaterial.m_RenderMode);
+			m_BlendMode = std::move(otherMaterial.m_BlendMode);
 		}
 
 		return *this;
@@ -201,7 +201,7 @@ namespace Relentless
 	void Material::SetAlbedoTexture(const AssetHandle& albedoTextureHandle) noexcept
 	{
 		RLS_ASSERT(albedoTextureHandle != NULL_HANDLE, "Albedo texture handle is invalid.");
-		Ref<TextureEx> albedoTexture = AssetManager::Get<TextureEx>(albedoTextureHandle);
+		Ref<Texture> albedoTexture = AssetManager::Get<Texture>(albedoTextureHandle);
 
 		RLS_ASSERT(albedoTexture->GetResource(), "Albedo texture is invalid.");
 		RLS_ASSERT(albedoTexture->GetSRVIndex() != static_cast<uint32_t>(-1), "Albedo texture descriptor index is invalid.");
@@ -213,7 +213,7 @@ namespace Relentless
 	void Material::SetMetallicTexture(const AssetHandle& metallicTextureHandle) noexcept
 	{
 		RLS_ASSERT(metallicTextureHandle != NULL_HANDLE, "Metallic texture handle is invalid.");
-		Ref<TextureEx> metallicTexture = AssetManager::Get<TextureEx>(metallicTextureHandle);
+		Ref<Texture> metallicTexture = AssetManager::Get<Texture>(metallicTextureHandle);
 
 		RLS_ASSERT(metallicTexture->GetResource(), "Metallic texture is invalid.");
 		RLS_ASSERT(metallicTexture->GetSRVIndex() != static_cast<uint32_t>(-1), "Metallic texture descriptor index is invalid.");
@@ -225,7 +225,7 @@ namespace Relentless
 	void Material::SetRoughnessTexture(const AssetHandle& roughnessTextureHandle) noexcept
 	{
 		RLS_ASSERT(roughnessTextureHandle != NULL_HANDLE, "Roughness texture handle is invalid.");
-		Ref<TextureEx> roughnessTexture = AssetManager::Get<TextureEx>(roughnessTextureHandle);
+		Ref<Texture> roughnessTexture = AssetManager::Get<Texture>(roughnessTextureHandle);
 
 		RLS_ASSERT(roughnessTexture->GetResource(), "Roughness texture is invalid.");
 		RLS_ASSERT(roughnessTexture->GetSRVIndex() != static_cast<uint32_t>(-1), "Roughness texture descriptor index is invalid.");
@@ -237,7 +237,7 @@ namespace Relentless
 	void Material::SetNormalMap(const AssetHandle& normalMapHandle) noexcept
 	{
 		RLS_ASSERT(normalMapHandle != NULL_HANDLE, "Normal map handle is invalid.");
-		Ref<TextureEx> normalMap = AssetManager::Get<TextureEx>(normalMapHandle);
+		Ref<Texture> normalMap = AssetManager::Get<Texture>(normalMapHandle);
 
 		RLS_ASSERT(normalMap->GetResource(), "Normal map is invalid.");
 		RLS_ASSERT(normalMap->GetSRVIndex() != static_cast<uint32_t>(-1), "Normal map descriptor index is invalid.");
@@ -249,7 +249,7 @@ namespace Relentless
 	void Material::SetHeightMap(const AssetHandle& heightMapHandle) noexcept
 	{
 		RLS_ASSERT(heightMapHandle != NULL_HANDLE, "Height map handle is invalid.");
-		Ref<TextureEx> heightMap = AssetManager::Get<TextureEx>(heightMapHandle);
+		Ref<Texture> heightMap = AssetManager::Get<Texture>(heightMapHandle);
 
 		RLS_ASSERT(heightMap->GetResource(), "Height map is invalid.");
 		RLS_ASSERT(heightMap->GetSRVIndex() != static_cast<uint32_t>(-1), "Height map descriptor index is invalid.");
@@ -261,7 +261,7 @@ namespace Relentless
 	void Material::SetAmbientOcclusionTexture(const AssetHandle& ambientOcclusionTextureHandle) noexcept
 	{
 		RLS_ASSERT(ambientOcclusionTextureHandle != NULL_HANDLE, "Ambient occlusion texture handle is invalid.");
-		Ref<TextureEx> ambientOcclusionTexture = AssetManager::Get<TextureEx>(ambientOcclusionTextureHandle);
+		Ref<Texture> ambientOcclusionTexture = AssetManager::Get<Texture>(ambientOcclusionTextureHandle);
 
 		RLS_ASSERT(ambientOcclusionTexture->GetResource(), "Ambient occlusion texture is invalid.");
 		RLS_ASSERT(ambientOcclusionTexture->GetSRVIndex() != static_cast<uint32_t>(-1), "Ambient occlusion texture descriptor index is invalid.");
@@ -273,7 +273,7 @@ namespace Relentless
 	void Material::SetEmissionTexture(const AssetHandle& emissionTextureHandle) noexcept
 	{
 		RLS_ASSERT(emissionTextureHandle != NULL_HANDLE, "Emission texture handle is invalid.");
-		Ref<TextureEx> emissionTexture = AssetManager::Get<TextureEx>(emissionTextureHandle);
+		Ref<Texture> emissionTexture = AssetManager::Get<Texture>(emissionTextureHandle);
 
 		RLS_ASSERT(emissionTexture->GetResource(), "Emission texture is invalid.");
 		RLS_ASSERT(emissionTexture->GetSRVIndex() != static_cast<uint32_t>(-1), "Emission texture descriptor index is invalid.");
@@ -336,11 +336,14 @@ namespace Relentless
 		m_Name = materialName; 
 	}
 
-	void Material::SetRenderMode(const RenderMode renderMode) noexcept
+	void Material::SetBlendMode(const EBlendMode blendMode) noexcept
 	{
-		RLS_ASSERT(renderMode < RenderMode::Count, "Unknown render mode encountered.");
+		m_BlendMode = blendMode;
+	}
 
-		m_RenderMode = renderMode;
+	void Material::SetIsTwoSided(bool state) noexcept
+	{
+		m_IsTwoSided = state;
 	}
 
 	bool Material::HasAlbedoTexture() const noexcept
@@ -378,44 +381,44 @@ namespace Relentless
 		return m_EmissionTextureHandle != NULL_HANDLE;
 	}
 
-	Ref<TextureEx> Material::GetAlbedoTexture() const noexcept
+	Ref<Texture> Material::GetAlbedoTexture() const noexcept
 	{
-		return AssetManager::Get<TextureEx>(m_AlbedoTextureHandle);
+		return AssetManager::Get<Texture>(m_AlbedoTextureHandle);
 	}
 
-	Ref<TextureEx> Material::GetMetallicTexture() const noexcept
+	Ref<Texture> Material::GetMetallicTexture() const noexcept
 	{
-		return AssetManager::Get<TextureEx>(m_MetallicTextureHandle);
+		return AssetManager::Get<Texture>(m_MetallicTextureHandle);
 	}
 
-	Ref<TextureEx> Material::GetRoughnessTexture() const noexcept
+	Ref<Texture> Material::GetRoughnessTexture() const noexcept
 	{
-		return AssetManager::Get<TextureEx>(m_RoughnessTextureHandle);
+		return AssetManager::Get<Texture>(m_RoughnessTextureHandle);
 	}
 
-	Ref<TextureEx> Material::GetNormalMap() const noexcept
+	Ref<Texture> Material::GetNormalMap() const noexcept
 	{
-		return AssetManager::Get<TextureEx>(m_NormalMapHandle);
+		return AssetManager::Get<Texture>(m_NormalMapHandle);
 	}
 
-	Ref<TextureEx> Material::GetHeightMap() const noexcept
+	Ref<Texture> Material::GetHeightMap() const noexcept
 	{
-		return AssetManager::Get<TextureEx>(m_HeightMapHandle);
+		return AssetManager::Get<Texture>(m_HeightMapHandle);
 	}
 
-	Ref<TextureEx> Material::GetAmbientOcclusionTexture() const noexcept
+	Ref<Texture> Material::GetAmbientOcclusionTexture() const noexcept
 	{
-		return AssetManager::Get<TextureEx>(m_AmbientOcclusionTextureHandle);
+		return AssetManager::Get<Texture>(m_AmbientOcclusionTextureHandle);
 	}
 
-	Ref<TextureEx> Material::GetEmissionTexture() const noexcept
+	Ref<Texture> Material::GetEmissionTexture() const noexcept
 	{
-		return AssetManager::Get<TextureEx>(m_EmissionTextureHandle);
+		return AssetManager::Get<Texture>(m_EmissionTextureHandle);
 	}
 
-	[[nodiscard]] const RenderMode Material::GetRenderMode() const noexcept
+	[[nodiscard]] const EBlendMode Material::GetBlendMode() const noexcept
 	{
-		return m_RenderMode;
+		return m_BlendMode;
 	}
 
 	void Material::ToggleAlbedoTextureUsage() noexcept
@@ -425,7 +428,7 @@ namespace Relentless
 		{
 			if (m_AlbedoTextureHandle != NULL_HANDLE)
 			{
-				m_AlbedoTextureIndex = AssetManager::Get<TextureEx>(m_AlbedoTextureHandle)->GetSRVIndex();
+				m_AlbedoTextureIndex = AssetManager::Get<Texture>(m_AlbedoTextureHandle)->GetSRVIndex();
 			}
 		}
 		else
@@ -441,7 +444,7 @@ namespace Relentless
 		{
 			if (m_MetallicTextureHandle != NULL_HANDLE)
 			{
-				m_MetallicTextureIndex = AssetManager::Get<TextureEx>(m_MetallicTextureHandle)->GetSRVIndex();
+				m_MetallicTextureIndex = AssetManager::Get<Texture>(m_MetallicTextureHandle)->GetSRVIndex();
 			}
 		}
 		else
@@ -457,7 +460,7 @@ namespace Relentless
 		{
 			if (m_RoughnessTextureHandle != NULL_HANDLE)
 			{
-				m_RoughnessTextureIndex = AssetManager::Get<TextureEx>(m_RoughnessTextureHandle)->GetSRVIndex();
+				m_RoughnessTextureIndex = AssetManager::Get<Texture>(m_RoughnessTextureHandle)->GetSRVIndex();
 			}
 		}
 		else
@@ -473,7 +476,7 @@ namespace Relentless
 		{
 			if (m_NormalMapHandle != NULL_HANDLE)
 			{
-				m_NormalMapIndex = AssetManager::Get<TextureEx>(m_NormalMapHandle)->GetSRVIndex();
+				m_NormalMapIndex = AssetManager::Get<Texture>(m_NormalMapHandle)->GetSRVIndex();
 			}
 		}
 		else
@@ -489,7 +492,7 @@ namespace Relentless
 		{
 			if (m_HeightMapHandle != NULL_HANDLE)
 			{
-				m_HeightMapIndex = AssetManager::Get<TextureEx>(m_HeightMapHandle)->GetSRVIndex();
+				m_HeightMapIndex = AssetManager::Get<Texture>(m_HeightMapHandle)->GetSRVIndex();
 			}
 		}
 		else
@@ -505,7 +508,7 @@ namespace Relentless
 		{
 			if (m_EmissionTextureHandle != NULL_HANDLE)
 			{
-				m_EmissionTextureIndex = AssetManager::Get<TextureEx>(m_EmissionTextureHandle)->GetSRVIndex();
+				m_EmissionTextureIndex = AssetManager::Get<Texture>(m_EmissionTextureHandle)->GetSRVIndex();
 			}
 		}
 		else
@@ -521,7 +524,7 @@ namespace Relentless
 		{
 			if (m_AmbientOcclusionTextureHandle != NULL_HANDLE)
 			{
-				m_AmbientOcclusionTextureIndex = AssetManager::Get<TextureEx>(m_AmbientOcclusionTextureHandle)->GetSRVIndex();
+				m_AmbientOcclusionTextureIndex = AssetManager::Get<Texture>(m_AmbientOcclusionTextureHandle)->GetSRVIndex();
 			}
 		}
 		else

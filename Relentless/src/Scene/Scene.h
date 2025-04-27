@@ -12,7 +12,7 @@ namespace Relentless
 	public:
 		explicit Scene(const char* name = "Sample Scene") noexcept;
 		~Scene() noexcept = default;
-		[[nodidscard]] bool AnyEntityHasName(const char* pName) const noexcept;
+		[[nodiscard]] bool AnyEntityHasName(const char* pName) const noexcept;
 		void SetName(const std::string& name) noexcept;
 		void OnUpdate(const float deltaTime) noexcept;
 		entity CopyEntity(entity entityToCopy, bool preserveHierarchy) noexcept;

@@ -7,19 +7,19 @@ namespace Relentless
 	public:
 		DescriptorManager(GraphicsDevice* pDevice) noexcept;
 		~DescriptorManager() noexcept = default;
-		[[nodiscard]] const DescriptorHandleEx CreateDescriptorHandle(DescriptorHandleTypeEx descriptorHandleType) noexcept;
-		[[nodiscard]] const std::vector<DescriptorHandleEx> CreateDescriptorHandleBlock(DescriptorHandleTypeEx descriptorHandleType, uint32 blockSize) noexcept;
-		void DeferReleaseDescriptorHandle(const DescriptorHandleEx& descriptorHandle, const SyncPoint& syncPoint) noexcept;
-		[[nodiscard]] DescriptorHeapEx* GetShaderBindableDescriptorHeap() const noexcept { return m_pShaderBindablesDescriptorHeap; }
-		[[nodiscard]] DescriptorHeapEx* GetCBVSRVUAVDescriptorHeap() const noexcept { return m_pShaderBindablesDescriptorHeapNV; }
-		[[nodiscard]] DescriptorHeapEx* GetRTVDescriptorHeap() const noexcept { return m_pRTVDescriptorHeap; }
-		[[nodiscard]] DescriptorHeapEx* GetDSVDescriptorHeap() const noexcept { return m_pDSVDescriptorHeap; }
-		[[nodiscard]] DescriptorHeapEx* GetSamplerDescriptorHeap() const noexcept { return m_pSamplerDescriptorHeap; }
+		[[nodiscard]] const DescriptorHandle CreateDescriptorHandle(DescriptorHandleType descriptorHandleType) noexcept;
+		[[nodiscard]] const std::vector<DescriptorHandle> CreateDescriptorHandleBlock(DescriptorHandleType descriptorHandleType, uint32 blockSize) noexcept;
+		void DeferReleaseDescriptorHandle(const DescriptorHandle& descriptorHandle, const SyncPoint& syncPoint) noexcept;
+		[[nodiscard]] DescriptorHeap* GetShaderBindableDescriptorHeap() const noexcept { return m_pShaderBindablesDescriptorHeap; }
+		[[nodiscard]] DescriptorHeap* GetCBVSRVUAVDescriptorHeap() const noexcept { return m_pShaderBindablesDescriptorHeapNV; }
+		[[nodiscard]] DescriptorHeap* GetRTVDescriptorHeap() const noexcept { return m_pRTVDescriptorHeap; }
+		[[nodiscard]] DescriptorHeap* GetDSVDescriptorHeap() const noexcept { return m_pDSVDescriptorHeap; }
+		[[nodiscard]] DescriptorHeap* GetSamplerDescriptorHeap() const noexcept { return m_pSamplerDescriptorHeap; }
 	private:
-		Ref<DescriptorHeapEx> m_pRTVDescriptorHeap = nullptr;
-		Ref<DescriptorHeapEx> m_pDSVDescriptorHeap = nullptr;
-		Ref<DescriptorHeapEx> m_pShaderBindablesDescriptorHeapNV = nullptr;
-		Ref<DescriptorHeapEx> m_pShaderBindablesDescriptorHeap = nullptr;
-		Ref<DescriptorHeapEx> m_pSamplerDescriptorHeap = nullptr;
+		Ref<DescriptorHeap> m_pRTVDescriptorHeap = nullptr;
+		Ref<DescriptorHeap> m_pDSVDescriptorHeap = nullptr;
+		Ref<DescriptorHeap> m_pShaderBindablesDescriptorHeapNV = nullptr;
+		Ref<DescriptorHeap> m_pShaderBindablesDescriptorHeap = nullptr;
+		Ref<DescriptorHeap> m_pSamplerDescriptorHeap = nullptr;
 	};
 }

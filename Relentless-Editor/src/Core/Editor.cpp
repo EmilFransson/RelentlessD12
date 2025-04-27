@@ -97,13 +97,30 @@ namespace Relentless
 		m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
 		SetActiveScene(std::make_shared<Scene>());
 
+		{
+			Ref<ModelFactory> pFactory = new ModelFactory();
+			pFactory->OnDone.Connect([](const std::vector<ImportedAsset>& assets, bool success)
+				{
+					RLS_CORE_INFO("SUCCEEDED!");
+				});
+
+			std::vector<AssetImportTask> tasks;
+			AssetImportTask& task = tasks.emplace_back();
+			task.FilePath = "C:/Users/emilf/Downloads/main_sponza/Main.1_Sponza/NewSponza_Main_glTF_002.gltf";
+			task.pFactory = pFactory;
+			
+			std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), tasks);
+			fut.wait();
+		}
+
+
 		entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
 		auto& dlc = m_pActiveScene->GetEntityManager().Add<DirectionalLightComponent>(dirEntity);
 		dlc.Color = Math::MakeFromColorTemperature(5'900.0f);
 		dlc.Intensity = 3.0f;
 
 		Ref<Material> pWhiteMaterial = new Material();
-		pWhiteMaterial->SetRenderMode(RenderMode::Opaque);
+		pWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
 		pWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 		pWhiteMaterial->m_Metallic = 0.0f;
 		pWhiteMaterial->m_Roughness = 0.5f;
@@ -112,7 +129,7 @@ namespace Relentless
 		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Material);
 		
 		Ref<Material> pNewWhiteMaterial = new Material();
-		pNewWhiteMaterial->SetRenderMode(RenderMode::Opaque);
+		pNewWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
 		pNewWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 		pNewWhiteMaterial->m_Metallic = 0.0f;
 		pNewWhiteMaterial->m_Roughness = 1.0f;
@@ -247,8 +264,8 @@ namespace Relentless
 
 			Ref<ImporterFeedbackContext> pFeedback = new ImporterFeedbackContext();
 		
-			std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
-			fut.wait();
+			//std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
+			//fut.wait();
 		}
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
@@ -768,7 +785,7 @@ namespace Relentless
 
 	void Editor::OnViewportEntityDuplicationRequest() noexcept
 	{
-		const std::vector<entity> selectedEntities = m_pSelection->GetSelectedEntities();
+		const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
 		if (selectedEntities.empty())
 			return;
 

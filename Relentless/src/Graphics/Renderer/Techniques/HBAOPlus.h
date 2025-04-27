@@ -14,8 +14,8 @@ namespace Relentless
 		HBAOPlus(GraphicsDevice* pDevice) noexcept;
 		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept;
 	private:
-		std::vector<DescriptorHandleEx> m_ShaderBindableHandles;
-		std::vector<DescriptorHandleEx> m_RTVHandles;
+		std::vector<DescriptorHandle> m_ShaderBindableHandles;
+		std::vector<DescriptorHandle> m_RTVHandles;
 
 		GraphicsDevice* m_pDevice = nullptr;
 		GFSDK_SSAO_Context_D3D12* m_pSSAOContext = nullptr;

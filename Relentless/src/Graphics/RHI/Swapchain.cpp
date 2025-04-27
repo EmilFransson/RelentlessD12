@@ -2,7 +2,7 @@
 #include "Device.h"
 #include "D3D.h"
 #include "Fence.h"
-#include "TextureEx.h"
+#include "Texture.h"
 
 namespace Relentless
 {
@@ -19,7 +19,7 @@ namespace Relentless
 		m_pSwapchain->SetFullscreenState(false, nullptr);
 	}
 
-	TextureEx* Swapchain::GetBackBuffer() const noexcept
+	Texture* Swapchain::GetBackBuffer() const noexcept
 	{
 		return m_Backbuffers[m_CurrentImage];
 	}
