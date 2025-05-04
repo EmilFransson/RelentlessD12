@@ -319,7 +319,7 @@ namespace Relentless
 			const uint32 height = textureDesc.Height;
 			const DXGI_FORMAT format = D3D::ConvertFormat(textureDesc.Format);
 
-			D3D12_RESOURCE_DESC d3d12Desc;
+			D3D12_RESOURCE_DESC d3d12Desc{};
 			switch (textureDesc.Type)
 			{
 			case TextureType::Texture2D:

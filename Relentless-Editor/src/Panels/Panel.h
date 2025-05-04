@@ -6,6 +6,8 @@ namespace Relentless
 	class IPanel
 	{
 	public:
+		virtual ~IPanel() noexcept = default;
+
 		virtual void Render() noexcept = 0;
 		virtual void Update() noexcept {};
 		[[nodiscard]] virtual bool OnEvent(IEvent&) noexcept;
@@ -24,8 +26,7 @@ namespace Relentless
 	{
 	public:
 		PanelBase(const char* pName, ImGuiWindowFlags flags) noexcept;
-		virtual void Render() noexcept override final;
-		virtual void Update() noexcept override {};
+		virtual ~PanelBase() noexcept override = default;
 
 		[[nodiscard]] const Vector2u& GetContentRegionAvail() const noexcept;
 		[[nodiscard]] const Vector2u& GetContentRegionMin() const noexcept;
@@ -39,6 +40,9 @@ namespace Relentless
 		[[nodiscard]] bool IsFocused() const noexcept;
 		[[nodiscard]] bool IsHovered() const noexcept;
 		[[nodiscard]] bool IsVisible() const noexcept;
+	
+		virtual void Render() noexcept override final;
+		virtual void Update() noexcept override {};
 
 		Broadcaster<void()> OnPostRender;
 		Broadcaster<void(PanelBase*)> OnGainedFocus;
@@ -50,6 +54,7 @@ namespace Relentless
 		virtual void OnRender() noexcept = 0;
 		virtual void PostRender() noexcept {}
 
+		void SetRoot(Ref<IWidget> pRoot) noexcept;
 	private:
 		std::string m_Name{};
 		ImGuiWindowFlags m_Flags = ImGuiWindowFlags_None;
@@ -66,5 +71,7 @@ namespace Relentless
 		bool m_IsFocused	= false;
 		bool m_IsHovered	= false;
 		bool m_IsVisible	= false;
+
+		Ref<IWidget> m_pRoot = nullptr;
 	};
 }

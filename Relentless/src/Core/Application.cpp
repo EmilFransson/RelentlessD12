@@ -213,7 +213,10 @@ namespace Relentless
 				pLayer->OnUpdate(Time::GetDeltaTime());
 		}
 
-		Update();
+		{
+			PROFILE_SCOPE("Application::Update_Internal::Update");
+			Update();
+		}
 
 		{
 			PROFILE_SCOPE("Application::Update_Internal::OnImGuiRender");

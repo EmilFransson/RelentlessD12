@@ -28,13 +28,25 @@
 #include <src/EventSystem/MouseEvents.h>
 
 //UI:
-#include <src/UI/UI.h>
+#include <src/UI/Button.h>
+#include <src/UI/ColorPicker.h>
+#include <src/UI/CheckBox.h>
+#include <src/UI/CollapsibleSection.h>
+#include <src/UI/ComboBox.h>
+#include <src/UI/DragDropBehavior.h>
+#include <src/UI/FloatDrag.h>
+#include <src/UI/FloatSlider.h>
+#include <src/UI/HorizontalBox.h>
+#include <src/UI/IWidget.h>
+#include <src/UI/Label.h>
+#include <src/UI/Table.h>
 #include <src/UI/Tree/Tree.h>
 #include <src/UI/Tree/TreeItem.h>
 #include <src/UI/Tree/TreeStyle.h>
 #include <src/UI/Tree/TreeInteraction.h>
 #include <src/UI/Tree/TreeTypes.h>
-#include <src/UI/DragDropBehavior.h>
+#include <src/UI/UI.h>
+#include <src/UI/VerticalBox.h>
 
 //Graphics:
 #include <src/Graphics/Renderer/SceneRenderer.h>
@@ -68,3 +80,4 @@
 
 //Assets
 #include <src/Assets/Factory/ModelFactory.h>
+#include <src/Assets/Factory/TextureFactory.h>

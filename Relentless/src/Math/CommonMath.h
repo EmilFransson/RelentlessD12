@@ -78,6 +78,21 @@ namespace Relentless
 			return radians * DEGREES_PER_RADIANS;
 		}
 
+		inline [[nodiscard]] static Vector3 RadToDeg(Vector3 radians) noexcept
+		{
+			constexpr float DEGREES_PER_RADIANS = 180.0f / PI;
+			return Vector3(radians.x * DEGREES_PER_RADIANS, radians.y * DEGREES_PER_RADIANS, radians.z * DEGREES_PER_RADIANS);
+		}
+
+		inline [[nodiscard]] static float RadToDeg360(float radians) noexcept
+		{
+			float degrees = RadToDeg(radians);
+			degrees = fmodf(degrees, 360.0f);
+			if (degrees < 0.0f)
+				degrees += 360.0f;
+			return degrees;
+		}
+
 		inline [[nodiscard]] constexpr static float DegToRad(float degrees) noexcept
 		{
 			constexpr float RADIANS_PER_DEGREE = PI / 180.0f;

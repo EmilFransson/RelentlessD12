@@ -14,7 +14,7 @@ namespace Relentless
 	{
 	public:
 		ViewportPanel(const char* pName, ImGuiWindowFlags flags, Editor* pEditor, uint32 renderViewIndex) noexcept;
-		virtual ~ViewportPanel() = default;
+		virtual ~ViewportPanel() noexcept override = default;
 
 		[[nodiscard]] std::shared_ptr<PerspectiveCamera> GetCamera() const noexcept;
 		[[nodiscard]] uint32 GetRenderViewIndex() const noexcept;

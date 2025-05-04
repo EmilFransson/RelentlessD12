@@ -47,7 +47,12 @@ namespace Relentless
 		m_IsVisible = window && !window->Hidden;
 
 		if (m_IsVisible)
+		{
 			OnRender();
+
+			if (m_pRoot)
+				m_pRoot->Render();
+		}
 
 		m_IsDocked = ImGui::IsWindowDocked();
 
@@ -137,6 +142,11 @@ namespace Relentless
 	bool PanelBase::IsVisible() const noexcept
 	{
 		return m_IsVisible;
+	}
+
+	void PanelBase::SetRoot(Ref<IWidget> pRoot) noexcept
+	{
+		m_pRoot = pRoot;
 	}
 
 }

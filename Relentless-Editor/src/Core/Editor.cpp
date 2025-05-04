@@ -81,6 +81,21 @@ namespace Relentless
 		//m_PropertiesPanel.OnImGuiRender(m_DisplayPropertiesPanel && !m_ImmersiveModeEnabled);
 		//m_ContentBrowserPanel.OnImGuiRender(m_DisplayContentBrowserPanel && !m_ImmersiveModeEnabled);
 		//m_MetricsPanel.OnImGuiRender(m_DisplayMetricsPanel && !m_ImmersiveModeEnabled);
+
+		ImGui::Begin("TEST");
+
+		ImGui::Text("FPS: %d", Time::GetFramesPerSecond());
+
+		std::sort(ProfilerManager::ProfilerMetrics.begin(), ProfilerManager::ProfilerMetrics.end(), [](const ProfilerMetrics& a, const ProfilerMetrics& b)
+			{
+				return a.durationInMilliSeconds > b.durationInMilliSeconds;
+			});
+
+		for (auto& p : ProfilerManager::ProfilerMetrics)
+			ImGui::Text("Func: %s: MS: %f", p.ContextName, p.durationInMilliSeconds);
+
+		ProfilerManager::ClearData();
+		ImGui::End();
 	}
 
 	void Editor::OnCreate() noexcept
@@ -92,181 +107,12 @@ namespace Relentless
 		m_pEntityFiltersManager = std::make_unique<EntityFiltersManager>();
 
 		SpawnViewport();
-		//SpawnViewport();
 
 		m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
+		CreateDetailsPanel();
+		
 		SetActiveScene(std::make_shared<Scene>());
-
-		{
-			Ref<ModelFactory> pFactory = new ModelFactory();
-			pFactory->OnDone.Connect([](const std::vector<ImportedAsset>& assets, bool success)
-				{
-					RLS_CORE_INFO("SUCCEEDED!");
-				});
-
-			std::vector<AssetImportTask> tasks;
-			AssetImportTask& task = tasks.emplace_back();
-			task.FilePath = "C:/Users/emilf/Downloads/main_sponza/Main.1_Sponza/NewSponza_Main_glTF_002.gltf";
-			task.pFactory = pFactory;
-			
-			std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), tasks);
-			fut.wait();
-		}
-
-
-		entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
-		auto& dlc = m_pActiveScene->GetEntityManager().Add<DirectionalLightComponent>(dirEntity);
-		dlc.Color = Math::MakeFromColorTemperature(5'900.0f);
-		dlc.Intensity = 3.0f;
-
-		Ref<Material> pWhiteMaterial = new Material();
-		pWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
-		pWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-		pWhiteMaterial->m_Metallic = 0.0f;
-		pWhiteMaterial->m_Roughness = 0.5f;
-
-		const uint32 index = AssetManager::GetStorage<Material>().Add(pWhiteMaterial);
-		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Material);
-		
-		Ref<Material> pNewWhiteMaterial = new Material();
-		pNewWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
-		pNewWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-		pNewWhiteMaterial->m_Metallic = 0.0f;
-		pNewWhiteMaterial->m_Roughness = 1.0f;
-		const uint32 index2 = AssetManager::GetStorage<Material>().Add(pNewWhiteMaterial);
-		auto [handle2, __] = AssetManager::InsertMetaData(CreateUUID(), index2, AssetType::Material);
-
-		entity ground = m_pActiveScene->CreateEntity("Ground");
-
-		m_pActiveScene->AddWorldOffset(ground, Vector3(0.0f, -1.0f, 0.0f));
-		m_pActiveScene->SetWorldScale(ground, Vector3(4.0f, 0.5f, 4.0f));
-
-		{
-			auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(ground);
-			mrc.AssetHandle = handle2->second;
-		}
-
-		entity e = m_pActiveScene->CreateEntity("Sphere");
-		m_pActiveScene->GetEntityManager().Add<RotatorComponent>(e);
-
-		auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(e);
-		mrc.AssetHandle = handle->second;
-
-		{
-			TextureImportSettings textureImportSettings;
-			textureImportSettings.GenerateMipMaps = true;
-			textureImportSettings.TextureCompressionType = ETextureCompressionType::Uncompressed;
-			textureImportSettings.IsSRGB = true;
-			textureImportSettings.IsHDR = false;
-
-			std::vector<ImportRequest> requests;
-			
-			{
-				MeshImportSettings meshImportSettings;
-				meshImportSettings.OptimizeMesh = true;
-
-				ImportRequest& request = requests.emplace_back();
-				request.ImportSettings = meshImportSettings;
-				request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Sphere.obj");
-				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool)
-					{
-						auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(e);
-						mfc.AssetHandle = assetHandle;
-					});
-			}
-			{
-				MeshImportSettings meshImportSettings;
-				meshImportSettings.OptimizeMesh = true;
-
-				ImportRequest& request = requests.emplace_back();
-				request.ImportSettings = meshImportSettings;
-				request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Cube.obj");
-				request.OnAssetImported.Connect([this, ground](const AssetHandle& assetHandle, bool)
-					{
-						auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(ground);
-						mfc.AssetHandle = assetHandle;
-					});
-			}
-			{
-				ImportRequest& request = requests.emplace_back();
-				request.ImportSettings = textureImportSettings;
-				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_albedo.png");
-				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool)
-					{
-						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
-						AssetManager::Get<Material>(mrc.AssetHandle)->SetAlbedoTexture(assetHandle);
-					});
-			}
-			{
-				ImportRequest& request = requests.emplace_back();
-				request.ImportSettings = textureImportSettings;
-				textureImportSettings.IsSRGB = false;
-
-				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_metallic.png");
-				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool)
-					{
-						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
-						AssetManager::Get<Material>(mrc.AssetHandle)->SetMetallicTexture(assetHandle);
-					});
-			}
-			{
-				ImportRequest& request = requests.emplace_back();
-				request.ImportSettings = textureImportSettings;
-				textureImportSettings.IsSRGB = false;
-
-				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_roughness.png");
-				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
-					{
-						RLS_ASSERT(success, "FAILED!");
-						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
-						AssetManager::Get<Material>(mrc.AssetHandle)->SetRoughnessTexture(assetHandle);
-					});
-			}
-			{
-				ImportRequest& request = requests.emplace_back();
-				request.ImportSettings = textureImportSettings;
-				textureImportSettings.IsSRGB = false;
-
-				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_ao.png");
-				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
-					{
-						RLS_ASSERT(success, "FAILED!");
-						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
-						AssetManager::Get<Material>(mrc.AssetHandle)->SetAmbientOcclusionTexture(assetHandle);
-					});
-			}
-			{
-				ImportRequest& request = requests.emplace_back();
-				request.ImportSettings = textureImportSettings;
-				textureImportSettings.IsSRGB = false;
-
-				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_normal-dx.png");
-				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
-					{
-						RLS_ASSERT(success, "FAILED!");
-						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
-						AssetManager::Get<Material>(mrc.AssetHandle)->SetNormalMap(assetHandle);
-					});
-			}
-			{
-				ImportRequest& request = requests.emplace_back();
-				request.ImportSettings = textureImportSettings;
-				textureImportSettings.IsSRGB = false;
-
-				request.Filepath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/rusty-metal-ue/rusty-metal_height.png");
-				request.OnAssetImported.Connect([this, e](const AssetHandle& assetHandle, bool success)
-					{
-						RLS_ASSERT(success, "FAILED!");
-						auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(e);
-						AssetManager::Get<Material>(mrc.AssetHandle)->SetHeightMap(assetHandle);
-					});
-			}
-
-			Ref<ImporterFeedbackContext> pFeedback = new ImporterFeedbackContext();
-		
-			//std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
-			//fut.wait();
-		}
+		CreateStartScene();
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 		app.GetRenderer()->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
@@ -274,8 +120,22 @@ namespace Relentless
 		m_pSelection->OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
 		
 		//LoadStarterMeshes();
-		//CreateStartScene();
 		
+// 		m_pDragger = new FloatDrag("##FloatFragger", 0.0f, 0.01f, -FLT_MAX, FLT_MAX, "%.3f");
+// 		m_pDragger->OnActiveChanged.Connect([](bool isActive)
+// 			{
+// 				if (isActive)
+// 				{
+// 					const Vector2 cursorScreenPosition = Vector2(static_cast<float>(Mouse::GetCursorScreenPosition().x), static_cast<float>(Mouse::GetCursorScreenPosition().y));
+// 					Mouse::ConfineCursor(cursorScreenPosition.x-1, cursorScreenPosition.x, cursorScreenPosition.y-1, cursorScreenPosition.y);
+// 					Mouse::HideCursor();
+// 				}
+// 				else
+// 				{
+// 					Mouse::FreeCursor();
+// 					Mouse::ShowCursor();
+// 				}
+// 			});
 
 		//
 		//m_ContentBrowserPanel.SetOnAssetSelectedCallback([this](const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)
@@ -330,6 +190,8 @@ namespace Relentless
 
 	void Editor::OnUpdate(const float deltaTime) noexcept
 	{
+		PROFILE_SCOPE("Editor::OnUpdate");
+
 		for (auto& panel : m_PanelStack)
 			panel->Update();
 
@@ -485,18 +347,161 @@ namespace Relentless
 		}
 	}
 
+	void Editor::CreateDetailsPanel() noexcept
+	{
+		m_pDetailsPanel = std::make_unique<DetailsPanel>("Details", ImGuiWindowFlags_None, this);
+		OnPanelCreated(m_pDetailsPanel.get());
+	}
+
 	void Editor::CreateStartScene() noexcept
 	{
-		const entity parent = m_pActiveScene->CreateShape(Shape::Cube);
-		const entity child = m_pActiveScene->CreateShape(Shape::Torus);
-		const entity otherCube = m_pActiveScene->CreateShape(Shape::Capsule);
-		const entity other = m_pActiveScene->CreateShape(Shape::Sphere);
-		m_pActiveScene->SetWorldLocation(parent, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
-		m_pActiveScene->SetWorldLocation(child, DirectX::XMFLOAT3(5.0f, 0.0f, 0.0f));
-		m_pActiveScene->SetWorldLocation(otherCube, DirectX::XMFLOAT3(-5.0f, 0.0f, 0.0f));
-		m_pActiveScene->SetWorldLocation(other, DirectX::XMFLOAT3(-8.0f, 0.0f, 0.0f));
+		//{
+		//	Ref<ModelFactory> pFactory = new ModelFactory();
+		//	pFactory->OnDone.Connect([this](const std::vector<ImportedAsset>& assets, bool success)
+		//		{
+		//			RLS_VERIFY(success, "[Editor::CreateStartScene] Failed to import Sponza.");
+		//
+		//			EntityManager& entityManager = m_pActiveScene->GetEntityManager();
+		//
+		//			for (auto& asset : assets)
+		//			{
+		//				if (asset.Type != AssetType::Mesh)
+		//					continue;
+		//
+		//				Ref<Mesh> pMesh = AssetManager::Get<Mesh>(asset.Handle);
+		//				const entity newEntity = m_pActiveScene->CreateEntity(pMesh->GetName().c_str());
+		//
+		//				MeshRendererComponent& mrc = entityManager.Add<MeshRendererComponent>(newEntity);
+		//				mrc.AssetHandle = pMesh->GetDefaultMaterialHandle();
+		//				RLS_VERIFY(mrc.AssetHandle != NULL_HANDLE, "[Editor::CreateStartScene] AssetHandle Is invalid.");
+		//
+		//				MeshFilterComponent& mfc = entityManager.Add<MeshFilterComponent>(newEntity);
+		//				mfc.AssetHandle = asset.Handle;
+		//
+		//				const Transform& transform = pMesh->GetOffsetTransform();
+		//
+		//				auto& tc = entityManager.Get<TransformComponent>(newEntity);
+		//				m_pActiveScene->SetWorldTransform(newEntity, transform.Matrix);
+		//			}
+		//		});
+		//
+		//	std::vector<AssetImportTask> tasks;
+		//	AssetImportTask& task = tasks.emplace_back();
+		//	task.FilePath = "C:/Users/emilf/Downloads/main_sponza/Main.1_Sponza/NewSponza_Main_glTF_002.gltf";
+		//	task.pFactory = pFactory;
+		//
+		//	Importer::RequestAsyncLoad(tasks).Wait();
+		//}
 
-		m_pEntityFiltersManager->CreateFilter("StarterContent/Shapes/Cubes/Another/Last");
+		entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
+		auto& dlc = m_pActiveScene->GetEntityManager().Add<DirectionalLightComponent>(dirEntity);
+		dlc.Color = Math::MakeFromColorTemperature(5'900.0f);
+		dlc.Intensity = 3.0f;
+
+		Ref<Material> pWhiteMaterial = new Material();
+		pWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
+		pWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		pWhiteMaterial->m_Metallic = 0.0f;
+		pWhiteMaterial->m_Roughness = 0.5f;
+
+		const uint32 index = AssetManager::GetStorage<Material>().Add(pWhiteMaterial);
+		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Material);
+
+		Ref<Material> pNewWhiteMaterial = new Material();
+		pNewWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
+		pNewWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+		pNewWhiteMaterial->m_Metallic = 0.0f;
+		pNewWhiteMaterial->m_Roughness = 1.0f;
+		const uint32 index2 = AssetManager::GetStorage<Material>().Add(pNewWhiteMaterial);
+		auto [handle2, __] = AssetManager::InsertMetaData(CreateUUID(), index2, AssetType::Material);
+
+		entity ground = m_pActiveScene->CreateEntity("Ground");
+
+		m_pActiveScene->AddWorldOffset(ground, Vector3(0.0f, -1.0f, 0.0f));
+		m_pActiveScene->SetWorldScale(ground, Vector3(4.0f, 0.5f, 4.0f));
+
+		{
+			auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(ground);
+			mrc.AssetHandle = handle2->second;
+		}
+
+		entity e = m_pActiveScene->CreateEntity("Sphere");
+		m_pActiveScene->GetEntityManager().Add<RotatorComponent>(e);
+
+		auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(e);
+		mrc.AssetHandle = handle->second;
+
+		{
+			std::vector<AssetImportTask> tasks;
+
+			auto&& CreateTextureImportTask = [&tasks, this](const Path& relativePath, entity entity, bool srgb, auto SetTextureFunc)
+				{
+					Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
+					pFactory->SetImportAsSRGB(srgb);
+
+					pFactory->OnDone.Connect([this, entity, SetTextureFunc](const ImportedAsset& asset, bool success)
+						{
+							RLS_VERIFY(success, "[Editor::OnCreate] Asset import failed.");
+
+							auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(entity);
+							Ref<Material> pMaterial = AssetManager::Get<Material>(mrc.AssetHandle);
+							(pMaterial.Get()->*SetTextureFunc)(asset.Handle);
+						});
+
+					AssetImportTask& task = tasks.emplace_back();
+					task.FilePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, relativePath);
+					task.pFactory = pFactory;
+				};
+
+			std::mutex entityManagerAccessMutex;
+			auto&& CreateModelImportTask = [&tasks, this, &entityManagerAccessMutex](const Path& relativePath, entity entity)
+				{
+					Ref<ModelFactory> pFactory = RLS_NEW ModelFactory();
+					pFactory->OnDone.Connect([this, entity, &entityManagerAccessMutex](const std::vector<ImportedAsset>& assets, bool success)
+						{
+							RLS_VERIFY(success, "[Editor::OnCreate] Asset import failed.");
+
+							std::lock_guard guard(entityManagerAccessMutex);
+							auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(entity);
+
+							for (auto& asset : assets)
+							{
+								if (asset.Type == AssetType::Mesh)
+								{
+									mfc.AssetHandle = asset.Handle;
+									break;
+								}
+							}
+						});
+
+					AssetImportTask& task = tasks.emplace_back();
+					task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), relativePath);
+					task.pFactory = pFactory;
+				};
+
+			CreateModelImportTask("Assets/Models/StarterContent/Sphere.obj", e);
+			CreateModelImportTask("Assets/Models/StarterContent/Cube.obj", ground);
+
+			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_albedo.png", e, true, &Material::SetAlbedoTexture);
+			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_metallic.png", e, false, &Material::SetMetallicTexture);
+			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_roughness.png", e, false, &Material::SetRoughnessTexture);
+			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_ao.png", e, false, &Material::SetAmbientOcclusionTexture);
+			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_normal-dx.png", e, false, &Material::SetNormalMap);
+			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_height.png", e, false, &Material::SetHeightMap);
+
+			Importer::RequestAsyncLoad(tasks).Wait();
+		}
+
+		//const entity parent = m_pActiveScene->CreateShape(Shape::Cube);
+		//const entity child = m_pActiveScene->CreateShape(Shape::Torus);
+		//const entity otherCube = m_pActiveScene->CreateShape(Shape::Capsule);
+		//const entity other = m_pActiveScene->CreateShape(Shape::Sphere);
+		//m_pActiveScene->SetWorldLocation(parent, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+		//m_pActiveScene->SetWorldLocation(child, DirectX::XMFLOAT3(5.0f, 0.0f, 0.0f));
+		//m_pActiveScene->SetWorldLocation(otherCube, DirectX::XMFLOAT3(-5.0f, 0.0f, 0.0f));
+		//m_pActiveScene->SetWorldLocation(other, DirectX::XMFLOAT3(-8.0f, 0.0f, 0.0f));
+		//
+		//m_pEntityFiltersManager->CreateFilter("StarterContent/Shapes/Cubes/Another/Last");
 	}
 
 	void Editor::UI_DrawStatisticsPanel() noexcept

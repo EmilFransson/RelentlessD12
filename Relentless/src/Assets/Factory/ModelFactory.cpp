@@ -9,7 +9,6 @@
 #include "Utility/FilepathUtils.h"
 #include "Graphics/Resources/Material.h"
 
-
 #include "../../../vendor/includes/DirectXTK/WICTextureLoader.h"
 #include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
 #include "../../../vendor/includes/directxtex/DirectXTex.h"
@@ -17,7 +16,6 @@
 
 namespace Relentless
 {
-	enum class EExtensionType : uint8_t { UNKNOWN = 0, TGA, JPG, JPEG, PNG, BMP, DDS, TIFF, HDR, EXR, FBX, OBJ, GLTF };
 
 	static Matrix ConvertMatrix(aiMatrix4x4& inMat)
 	{
@@ -90,7 +88,7 @@ namespace Relentless
 		if (hr != S_OK)
 		{
 			const _com_error error(hr);
-			RLS_CORE_ERROR("[Importer]: Failed to {0} file with path '{1}'; operation failed with message '{2}'", contextualString.c_str(), srcFilepath.string().c_str(), error.ErrorMessage());
+			RLS_CORE_ERROR("[ModelFactory]: Failed to {0} file with path '{1}'; operation failed with message '{2}'", contextualString.c_str(), srcFilepath.string().c_str(), error.ErrorMessage());
 		}
 	}
 
@@ -273,7 +271,7 @@ namespace Relentless
 			textureFuture.wait();
 	}
 
-	bool ModelFactory::ImportTexture(const Path& absolutePath, bool srgb, Ref<Texture>& pOutTexture, AssetHandle& outAssetHandle)
+	bool ModelFactory::ImportTexture(const Path& absolutePath, bool srgb, Ref<Texture>& pOutTexture, AssetHandle& outAssetHandle) noexcept
 	{
 		DirectX::ScratchImage image;
 		HRESULT result = S_OK;
@@ -676,7 +674,6 @@ namespace Relentless
 			const AssetHandle assetHandle = GetMeshAssetHandle(pMesh);
 			if (assetHandle != NULL_HANDLE)
 				AssetManager::Get<Mesh>(assetHandle)->SetOffsetTransform(transform);
-
 		}
 	}
 

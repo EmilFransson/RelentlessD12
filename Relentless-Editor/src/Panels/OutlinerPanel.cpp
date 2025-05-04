@@ -1,4 +1,5 @@
 #include "OutlinerPanel.h"
+
 #include "../Core/Editor.h"
 
 namespace Relentless
@@ -62,82 +63,34 @@ namespace Relentless
 		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilteropen.rasset"), m_EntityFilterOpenTextureIconHandle), "Core engine icon missing.");
 		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilterclosed.rasset"), m_EntityFilterClosedTextureIconHandle), "Core engine icon missing.");
 		
-		std::vector<ImportRequest> importRequests;
-		{
-			ImportRequest& request = importRequests.emplace_back();
-			request.ImportSettings = TextureImportSettings();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\showicon.png");
-			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
-				{
-					m_ShowEntityTextureIconHandle = handle;
-				});
-		}
-		{
-			ImportRequest& request = importRequests.emplace_back();
-			request.ImportSettings = TextureImportSettings();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\hideicon.png");
-			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
-				{
-					m_HideEntityTextureIconHandle = handle;
-				});
-		}
-		{
-			ImportRequest& request = importRequests.emplace_back();
-			request.ImportSettings = TextureImportSettings();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\png_icbfo.png");
-			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
-				{
-					m_EntityTextureIconHandle = handle;
-				});
-		}
-		{
-			ImportRequest& request = importRequests.emplace_back();
-			request.ImportSettings = TextureImportSettings();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\png_o2wr5.png");
-			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
-				{
-					m_SceneTextureIconHandle = handle;
-				});
-		}
-		{
-			ImportRequest& request = importRequests.emplace_back();
-			request.ImportSettings = TextureImportSettings();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\check.png");
-			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
-				{
-					m_CheckTextureIconHandle = handle;
-				});
-		}
-		{
-			ImportRequest& request = importRequests.emplace_back();
-			request.ImportSettings = TextureImportSettings();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\not_allowed.png");
-			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
-				{
-					m_NotAllowedTextureIconHandle = handle;
-				});
-		}
-		{
-			ImportRequest& request = importRequests.emplace_back();
-			request.ImportSettings = TextureImportSettings();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilteropen.png");
-			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
-				{
-					m_EntityFilterOpenTextureIconHandle = handle;
-				});
-		}
-		{
-			ImportRequest& request = importRequests.emplace_back();
-			request.ImportSettings = TextureImportSettings();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\entityfilterclosed.png");
-			request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
-				{
-					m_EntityFilterClosedTextureIconHandle = handle;
-				});
-		}
+		std::vector<AssetImportTask> importTasks;
+		importTasks.reserve(8);
 
-		//Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), importRequests).wait();
+		auto&& CreateUIImportTask = [&importTasks](const Path& srcPath, AssetHandle& handleToSet)
+			{
+				Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
+				pTextureFactory->SetImportAsSRGB(true);
+				pTextureFactory->OnDone.Connect([&](const ImportedAsset& asset, bool success)
+					{
+						RLS_VERIFY(success, "[OutlinerPanel] Error importing UI texture asset.");
+						handleToSet = asset.Handle;
+					});
 
+				AssetImportTask& importTask = importTasks.emplace_back();
+				importTask.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, srcPath);
+				importTask.pFactory = pTextureFactory;
+			};
+
+		CreateUIImportTask("Textures\\Icons\\showicon.png", m_ShowEntityTextureIconHandle);
+		CreateUIImportTask("Textures\\Icons\\hideicon.png", m_HideEntityTextureIconHandle);
+		CreateUIImportTask("Textures\\Icons\\png_icbfo.png", m_EntityTextureIconHandle);
+		CreateUIImportTask("Textures\\Icons\\png_o2wr5.png", m_SceneTextureIconHandle);
+		CreateUIImportTask("Textures\\Icons\\check.png", m_CheckTextureIconHandle);
+		CreateUIImportTask("Textures\\Icons\\not_allowed.png", m_NotAllowedTextureIconHandle);
+		CreateUIImportTask("Textures\\Icons\\entityfilteropen.png", m_EntityFilterOpenTextureIconHandle);
+		CreateUIImportTask("Textures\\Icons\\entityfilterclosed.png", m_EntityFilterClosedTextureIconHandle);
+
+		Importer::RequestAsyncLoad(importTasks).Wait();
 
 		SetupOutlinerTable();
 	}

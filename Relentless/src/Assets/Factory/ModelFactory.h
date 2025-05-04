@@ -1,8 +1,6 @@
 #pragma once
-#include "Assets/AssetMeta.h"
-#include "Assets/ImportSettings.h"
 #include "Callback/Broadcaster.h"
-#include "Core/IAsset.h"
+#include "Graphics/RHI/RHI.h"
 #include "IFactory.h"
 
 #include "../../../vendor/includes/Assimp/Importer.hpp"
@@ -11,15 +9,6 @@
 
 namespace Relentless
 {
-	class GraphicsDevice;
-
-	struct ImportedAsset
-	{
-		IAsset* pAsset = nullptr;
-		AssetHandle Handle = NULL_HANDLE;
-		AssetType Type = AssetType::Undefined;
-	};
-
 	class ModelFactory : public IFactory
 	{
 	public:
@@ -68,7 +57,7 @@ namespace Relentless
 		void ImportMaterials() noexcept;
 		void ImportModel() noexcept;
 		void ImportTextures() noexcept;
-		[[nodiscard]] bool ImportTexture(const Path& absolutePath, bool srgb, Ref<Texture>& pOutTexture, AssetHandle& outAssetHandle);
+		[[nodiscard]] bool ImportTexture(const Path& absolutePath, bool srgb, Ref<Texture>& pOutTexture, AssetHandle& outAssetHandle) noexcept;
 		void ImportMeshes() noexcept;
 		[[nodiscard]] bool ImportMesh(const aiMesh* pMesh, Ref<Mesh>& pOutMesh, AssetHandle& outHandle) noexcept;
 		void IncreaseProgress() noexcept;

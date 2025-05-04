@@ -63,13 +63,9 @@ namespace Relentless
 
 	struct PointLightComponent
 	{
-		explicit PointLightComponent(const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f))
-			:Intensity{ 1.0f },
-			 Color{ color }
-		{}
-
-		float Intensity;
-		DirectX::XMFLOAT3 Color;
+		Vector3 Color = Vector3::One;
+		float Intensity = 1.0f;
+		float Range = 10.0f;
 	};
 
 	struct CameraComponent

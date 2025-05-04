@@ -1,6 +1,7 @@
 #include "Renderer.h"
 
 #include "Assets/AssetManager.h"
+#include "Assets/Factory/TextureFactory.h"
 #include "Core/Time.h"
 #include "ECS/Component.h"
 #include "File/FilePath.h"
@@ -25,30 +26,27 @@ namespace Relentless
 
 		m_EntityIDReadbackBuffer = m_pDevice->CreateBuffer(BufferDesc::CreateReadback(sizeof(float)), "Entity ID Readback Buffer");
 
-		std::vector<ImportRequest> requests;
-		ImportRequest& request = requests.emplace_back();
-		
-		TextureImportSettings importSettings;
-		importSettings.GenerateMipMaps = false;
-		importSettings.IsSRGB = false;
-		importSettings.TextureCompressionType = ETextureCompressionType::Uncompressed;
-		importSettings.IsHDR = false;
-		
-		request.ImportSettings = importSettings;
-
-		request.Filepath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
-		Ref<ImporterFeedbackContext> pFeedback = new ImporterFeedbackContext();
-		request.OnAssetImported.Connect([this](const AssetHandle& handle, bool)
+		Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
+		pFactory->SetImportAsSRGB(true);
+		pFactory->SetGenerateMipmaps(false);
+		pFactory->OnDone.Connect([this](const ImportedAsset& asset, bool success)
 			{
-				m_BRDFLutTextureHandle = handle;
+				RLS_VERIFY(success, "[Renderer] Failed to import BRDF LUT.");
+				m_BRDFLutTextureHandle = asset.Handle;
 			});
 
-		//std::future<void> fut = Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests, pFeedback);
-		//fut.wait();
+		std::vector<AssetImportTask> tasks;
+		AssetImportTask& task = tasks.emplace_back();
+		task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
+		task.pFactory = pFactory;
+
+		Importer::RequestAsyncLoad(tasks).Wait();
 	}
 
 	void Renderer::Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept
 	{
+		PROFILE_SCOPE("Renderer::Render");
+
 		if (!m_EntityIDSyncs.empty() && m_EntityIDSyncs.front().IsComplete())
 		{
 			m_EntityIDReadbackBuffer->Map(0u, nullptr);
@@ -98,6 +96,8 @@ namespace Relentless
 		m_SceneTextures.pDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS), "Depth Target");
 
 		{
+			PROFILE_SCOPE("Renderer::Render::SyncRingBuffer");
+
 			m_pDevice->GetRingBuffer()->Sync();
 		}
 		
@@ -139,6 +139,8 @@ namespace Relentless
 
 		//Pre-Z
 		{
+			PROFILE_SCOPE("Renderer::Render::Pre-Z");
+
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			m_pDepthPrePass->Render(*pCommandContext, m_MainView, m_SceneTextures);
 			pCommandContext->Execute();
@@ -146,6 +148,8 @@ namespace Relentless
 
 		//Forward
 		{
+			PROFILE_SCOPE("Renderer::Render::Forward");
+
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			m_pForwardRenderer->Render(*pCommandContext, m_MainView, m_SceneTextures, renderMode);
 			pCommandContext->Execute();
@@ -153,6 +157,8 @@ namespace Relentless
 
 		//HBAO+
 		{
+			PROFILE_SCOPE("Renderer::Render::HBAO+");
+
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			m_pHBAOPlus->Render(*pCommandContext, m_MainView, m_SceneTextures);
 			pCommandContext->Execute();
@@ -161,6 +167,8 @@ namespace Relentless
 		//Editor Grid:
 		if (drawGrid)
 		{
+			PROFILE_SCOPE("Renderer::Render::Editor Grid");
+
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			m_pEditorGrid->Render(*pCommandContext, m_MainView, m_SceneTextures);
 			pCommandContext->Execute();
@@ -168,6 +176,8 @@ namespace Relentless
 
 		//Entity IDs
 		{
+			PROFILE_SCOPE("Renderer::Render::Entity IDs");
+
 			const uint32 width = m_SceneTextures.pColorTarget->GetWidth();
 			const uint32 height = m_SceneTextures.pColorTarget->GetHeight();
 			const ResourceFormat colorFormat = ResourceFormat::R32_FLOAT;
@@ -259,6 +269,8 @@ namespace Relentless
 
 		//Outlines
 		{
+			PROFILE_SCOPE("Renderer::Render::Outlines");
+
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			m_pOutlines->Render(*pCommandContext, m_MainView, m_SceneTextures, m_pEntityIDTexture);
 			pCommandContext->Execute();
@@ -266,6 +278,8 @@ namespace Relentless
 
 		//Post processing:
 		{
+			PROFILE_SCOPE("Renderer::Render::Post Process");
+
 			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
 
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(D3D12_COMMAND_LIST_TYPE_COMPUTE);
@@ -275,7 +289,10 @@ namespace Relentless
 			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
 		}
 
+		//Blit:
 		{
+			PROFILE_SCOPE("Renderer::Render::Blit");
+
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 
 			pCommandContext->InsertResourceBarrier(pTarget, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -297,6 +314,8 @@ namespace Relentless
 
 	void Renderer::DrawScene(CommandContext& context, Span<const Batch> batches, Batch::Blending blendMode) noexcept
 	{
+		PROFILE_SCOPE("Renderer::DrawScene");
+
 		for (const Batch& batch : batches)
 		{
 			if (EnumHasAllFlags(batch.BlendMode, blendMode))
@@ -381,6 +400,8 @@ namespace Relentless
 
 	void Renderer::UploadSceneData(CommandContext& commandContext) noexcept
 	{
+		PROFILE_SCOPE("Renderer::UploadSceneData");
+
 		GraphicsDevice* pDevice = m_pDevice;
 
 		auto&& CopyBufferData = [&](uint32 numElements, uint32 stride, const char* pName, const void* pSource, SceneBuffer& target)
@@ -539,6 +560,7 @@ namespace Relentless
 					light.Color = plc.Color;
 					light.Position = m_pCurrentScene->GetWorldLocation(e);
 					light.IsEnabled = plc.Intensity > 0.0f;
+					light.Range = plc.Range;
 				});
 
 			CopyBufferData((uint32)lights.size(), sizeof(ShaderInterop::Light), "Lights", lights.data(), m_LightsBuffer);

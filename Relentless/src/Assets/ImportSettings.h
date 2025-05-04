@@ -6,7 +6,7 @@
 
 namespace Relentless
 {
-
+	class IFactory;
 
 	enum class ETextureCompressionType : uint8_t
 	{

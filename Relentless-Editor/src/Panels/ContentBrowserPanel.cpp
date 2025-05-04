@@ -1418,8 +1418,8 @@ namespace Relentless
 		if (filepaths.empty())
 			return;
 
-		for (auto& filePath : filepaths)
-			Importer::RequestAsyncLoadFromFile(filePath, currentDirectory);
+		//for (auto& filePath : filepaths)
+			//Importer::RequestAsyncLoadFromFile(filePath, currentDirectory);
 	}
 
 	void ContentBrowserPanel::DetermineEntryDragDropSource() noexcept

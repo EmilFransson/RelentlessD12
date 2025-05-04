@@ -1,5 +1,6 @@
 #include "UI.h"
 #include "Assets/AssetManager.h"
+#include "Assets/Factory/TextureFactory.h"
 #include "Graphics/RHI/ResourceViews.h"
 
 namespace Relentless
@@ -252,37 +253,29 @@ namespace Relentless
 		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\cancelicon.rasset", s_GlobalData.CancelIconTextureHandle), "Core engine icon missing.");
 		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", s_GlobalData.ArrowDownIconTextureHandle), "Core engine icon missing.");
 
-		std::vector<ImportRequest> requests;
+		std::vector<AssetImportTask> importTasks;
+		importTasks.reserve(3);
+		
+		auto&& CreateUIImportTask = [&importTasks](const Path& srcPath, AssetHandle& handleToSet)
+			{
+				Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
+				pTextureFactory->SetImportAsSRGB(true);
+				pTextureFactory->OnDone.Connect([&](const ImportedAsset& asset, bool success)
+					{
+						RLS_VERIFY(success, "[OutlinerPanel] Error importing UI texture asset.");
+						handleToSet = asset.Handle;
+					});
 
-		{
-			ImportRequest& request =  requests.emplace_back();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\searchicon.png");
-			request.ImportSettings = TextureImportSettings();
-			request.OnAssetImported.Connect([](const AssetHandle& handle, bool)
-				{
-					s_GlobalData.SearchIconTextureHandle = handle;
-				});
-		}
-		{
-			ImportRequest& request = requests.emplace_back();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\cancelicon.png");
-			request.ImportSettings = TextureImportSettings();
-			request.OnAssetImported.Connect([](const AssetHandle& handle, bool)
-				{
-					s_GlobalData.CancelIconTextureHandle = handle;
-				});
-		}
-		{
-			ImportRequest& request = requests.emplace_back();
-			request.Filepath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\arrowdownicon.png");
-			request.ImportSettings = TextureImportSettings();
-			request.OnAssetImported.Connect([](const AssetHandle& handle, bool)
-				{
-					s_GlobalData.ArrowDownIconTextureHandle = handle;
-				});
-		}
+				AssetImportTask& importTask = importTasks.emplace_back();
+				importTask.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, srcPath);
+				importTask.pFactory = pTextureFactory;
+			};
 
-		//Importer::RequestAsyncLoad(Application::Get().GetGraphicsDevice(), requests).wait();
+		CreateUIImportTask("Textures\\Icons\\searchicon.png", s_GlobalData.SearchIconTextureHandle);
+		CreateUIImportTask("Textures\\Icons\\cancelicon.png", s_GlobalData.CancelIconTextureHandle);
+		CreateUIImportTask("Textures\\Icons\\arrowdownicon.png", s_GlobalData.ArrowDownIconTextureHandle);
+
+		Importer::RequestAsyncLoad(importTasks).Wait();
 	}
 
 	std::string UI::SearchBar(const char* uniqueID, const char* hintText, bool displaySearchHistory, float width) noexcept

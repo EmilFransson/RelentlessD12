@@ -538,7 +538,7 @@ namespace Relentless
 		const Quaternion rotationIncrementQuat = Quaternion::CreateFromYawPitchRoll(yawRadians, pitchRadians, rollRadians);
 		
 		const Quaternion localRotation = GetLocalRotation(e);
-		Quaternion newLocalRotationQuat = localRotation * rotationIncrementQuat;
+		Quaternion newLocalRotationQuat =  rotationIncrementQuat * localRotation;
 		newLocalRotationQuat.Normalize();
 
 		SetLocalRotation(e, newLocalRotationQuat);
@@ -654,7 +654,7 @@ namespace Relentless
 
 		const Quaternion rollPitchYawQuat = Quaternion::CreateFromYawPitchRoll(yawRadians, pitchRadians, rollRadians);
 		const Quaternion currentRotation = GetWorldRotation(e);
-		Quaternion desiredWorldRotationQuat = rollPitchYawQuat * currentRotation;
+		Quaternion desiredWorldRotationQuat =  currentRotation * rollPitchYawQuat;
 		desiredWorldRotationQuat.Normalize();
 
 		Quaternion parentRotation = Quaternion::Identity;

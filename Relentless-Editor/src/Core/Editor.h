@@ -3,6 +3,7 @@
 #include "../Panels/OutlinerPanel.h"
 #include "../Panels/PropertiesPanel.h"
 #include "../Panels/ContentBrowserPanel.h"
+#include "../Panels/DetailsPanel.h"
 #include "../Panels/MetricsPanel.h" 
 #include "../Panels/SceneRendererPanel.h"
 #include "../Panels/InspectorPanel.h"
@@ -47,6 +48,8 @@ namespace Relentless
 
 		void SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept;
 		void LoadStarterMeshes() noexcept;
+
+		void CreateDetailsPanel() noexcept;
 		void CreateStartScene() noexcept;
 
 		void UI_DrawStatisticsPanel() noexcept;
@@ -89,7 +92,8 @@ namespace Relentless
 
 		std::shared_ptr<UtilityRenderer> m_pUtilityRenderer = nullptr;
 		
-		std::unique_ptr<OutlinerPanel> m_pOutlinerPanel = nullptr;
+		UniquePtr<OutlinerPanel> m_pOutlinerPanel = nullptr;
+		UniquePtr<DetailsPanel> m_pDetailsPanel = nullptr;
 
 		bool m_DisplayOutlinerPanel = true;
 		bool m_DisplayContentBrowserPanel = true;
@@ -111,5 +115,8 @@ namespace Relentless
 		ESceneState m_SceneState = ESceneState::Edit;
 
 		std::shared_ptr<TextureCube> m_SkyBox = nullptr;
+
+		Ref<CollapsibleSection> m_pSection = nullptr;
+		Ref<FloatDrag> m_pDragger = nullptr;
 	};
 }

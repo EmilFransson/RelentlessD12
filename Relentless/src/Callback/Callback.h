@@ -11,21 +11,19 @@ namespace Relentless
 	public:
 		Callback() noexcept = default;
 		
-		template<typename Func>
-		explicit Callback(Func&& func) noexcept : m_CallbackFunc(std::make_shared<std::function<RetVal(Args...)>>(std::forward<Func>(func))) {}
-
 		template<typename Func, typename = typename std::enable_if<
 			!std::is_same<typename std::decay<Func>::type, Callback>::value>::type>
 		Callback(Func&& func)
-			: m_CallbackFunc(std::make_shared<std::function<RetVal(Args...)>>(std::forward<Func>(func))) {}
-		
+			: m_CallbackFunc(std::make_shared<std::function<RetVal(Args...)>>(std::forward<Func>(func))) {
+		}
+
 		template<typename Func, typename = typename std::enable_if<
 			!std::is_same<typename std::decay<Func>::type, Callback>::value>::type>
-		[[nodiscard]] Callback& operator=(Func&& func) 
+		[[nodiscard]] Callback& operator=(Func&& func)
 		{
 			if (&func != this)
 				m_CallbackFunc = std::make_shared<std::function<RetVal(Args...)>>(std::forward<Func>(func));
-			
+
 			return *this;
 		}
 
