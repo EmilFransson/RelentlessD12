@@ -1,5 +1,4 @@
 #include "UI.h"
-#include "Assets/AssetManager.h"
 #include "Assets/Factory/TextureFactory.h"
 #include "Graphics/RHI/ResourceViews.h"
 
@@ -13,14 +12,9 @@ namespace Relentless
 		constexpr const ImU32 WIDGET_HOVERED = IM_COL32(100, 100, 100, 200);
 	}
 
-	struct GlobalData
-	{
-		AssetHandle SearchIconTextureHandle = NULL_HANDLE;
-		AssetHandle CancelIconTextureHandle = NULL_HANDLE;
-		AssetHandle ArrowDownIconTextureHandle = NULL_HANDLE;
-	};
-
-	static GlobalData s_GlobalData;
+	AssetHandle UI::SearchIconTextureHandle		= NULL_HANDLE;
+	AssetHandle UI::CancelIconTextureHandle		= NULL_HANDLE;
+	AssetHandle UI::ArrowDownIconTextureHandle	= NULL_HANDLE;
 
 	std::string SearchBar::Draw(float width, const char* hintText, bool enableSearchHistory) noexcept
 	{
@@ -140,7 +134,7 @@ namespace Relentless
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-		const Ref<Texture> texture = AssetManager::Get<Texture>(s_GlobalData.SearchIconTextureHandle);
+		const Ref<Texture> texture = AssetManager::Get<Texture>(UI::SearchIconTextureHandle);
 		const ImVec4 tintCol = m_IsActive ? ImVec4(0.9f, 0.9f, 0.9f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
 		ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(24.0f, 24.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
 		
@@ -155,7 +149,7 @@ namespace Relentless
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-		const Ref<Texture> texture = AssetManager::Get<Texture>(s_GlobalData.CancelIconTextureHandle);
+		const Ref<Texture> texture = AssetManager::Get<Texture>(UI::CancelIconTextureHandle);
 		const ImVec4 tintCol = m_CancelIconHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
 		ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(15.0f, 15.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
 
@@ -176,7 +170,7 @@ namespace Relentless
 	void SearchBar::DrawSearchHistoryPopupIcon() noexcept
 	{
 		const ImVec4 tintCol = m_ArrowDownIconHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		const Ref<Texture> texture = AssetManager::Get<Texture>(s_GlobalData.ArrowDownIconTextureHandle);
+		const Ref<Texture> texture = AssetManager::Get<Texture>(UI::ArrowDownIconTextureHandle);
 
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
@@ -271,9 +265,9 @@ namespace Relentless
 				importTask.pFactory = pTextureFactory;
 			};
 
-		CreateUIImportTask("Textures\\Icons\\searchicon.png", s_GlobalData.SearchIconTextureHandle);
-		CreateUIImportTask("Textures\\Icons\\cancelicon.png", s_GlobalData.CancelIconTextureHandle);
-		CreateUIImportTask("Textures\\Icons\\arrowdownicon.png", s_GlobalData.ArrowDownIconTextureHandle);
+		CreateUIImportTask("Textures\\Icons\\searchicon.png", UI::SearchIconTextureHandle);
+		CreateUIImportTask("Textures\\Icons\\cancelicon.png", UI::CancelIconTextureHandle);
+		CreateUIImportTask("Textures\\Icons\\arrowdownicon.png", UI::ArrowDownIconTextureHandle);
 
 		Importer::RequestAsyncLoad(importTasks).Wait();
 	}

@@ -96,12 +96,42 @@ namespace Relentless
 
 		ProfilerManager::ClearData();
 		ImGui::End();
+
+		ImGui::Begin("UI TESTS");
+		//m_pHorizontalBox->Render();
+		ImGui::End();
 	}
 
 	void Editor::OnCreate() noexcept
 	{
 		//TODO: Change ffs.
 		UI::Initialize();
+
+		m_pHorizontalBox = new HorizontalBox("##TestHorizontalBox");
+
+		Ref<Table> pTable = new Table("##GYUSGVU");
+		pTable->Add(new Label("COLUMN 0"), 0,0);
+		pTable->Add(new Label("COLUMN 1"), 1, 0);
+
+		m_pHorizontalBox->Add(pTable);
+		//Ref<FloatDrag> fd = new FloatDrag("##fsg");
+		//fd->OnValueChanged([](float aval) {})
+		//	->Value([]() { return 3.0f; });
+		//
+		//m_pHorizontalBox->Add(fd);
+		//m_pHorizontalBox->Add(new Label("Center Test"));
+		//
+		//Ref<FloatDrag> fd2 = new FloatDrag("##fsg");
+		//fd2->OnValueChanged([](float aval) {})
+		//	->Value([]() { return 3.0f; });
+		//
+		//m_pHorizontalBox->Add(fd2);
+
+		//Ref<ComboBox> pCombo = new ComboBox("##HB");
+		//pCombo->AddSelectables({"First", "Second", "Third"});
+		//m_pHorizontalBox->Add(pCombo);
+
+		m_pHorizontalBox->SetAlignmentPolicy(EAlignmentPolicy::Left);
 
 		m_pSelection = std::make_unique<Selection>();
 		m_pEntityFiltersManager = std::make_unique<EntityFiltersManager>();
@@ -349,7 +379,9 @@ namespace Relentless
 
 	void Editor::CreateDetailsPanel() noexcept
 	{
-		m_pDetailsPanel = std::make_unique<DetailsPanel>("Details", ImGuiWindowFlags_None, this);
+		m_pDetailsPanel = std::make_unique<DetailsPanel>(ICON_FA_LINES_LEANING " Details", ImGuiWindowFlags_None, this);
+		m_pDetailsPanel->SetPadding(Vector2(2.0f, 0.0f));
+
 		OnPanelCreated(m_pDetailsPanel.get());
 	}
 

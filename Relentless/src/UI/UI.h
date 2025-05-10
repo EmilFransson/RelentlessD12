@@ -1,5 +1,6 @@
 #pragma once
 #include "ImGui/ImguiLayer.h"
+#include "Assets/AssetManager.h"
 
 namespace Relentless
 {
@@ -23,8 +24,8 @@ namespace Relentless
 			SearchBar* OwningObject = nullptr;
 		} m_CallbackUserData;
 
-		char m_FullInputBuffer[128] = "        ";
 		std::vector<std::string> m_SearchHistory;
+		char m_FullInputBuffer[128] = "        ";
 		bool m_IsActive = false;
 		bool m_IsHovered = false;
 		bool m_SearchIconHovered = false;
@@ -41,6 +42,10 @@ namespace Relentless
 		static void Initialize() noexcept;
 		static [[nodiscard]] std::string SearchBar(const char* uniqueID, const char* hintText, bool displaySearchHistory = false, float width = ImGui::GetContentRegionAvail().x) noexcept;
 		
+		static AssetHandle SearchIconTextureHandle;
+		static AssetHandle CancelIconTextureHandle;
+		static AssetHandle ArrowDownIconTextureHandle;
+
 		class Utility
 		{
 		public:

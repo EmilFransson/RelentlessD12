@@ -101,5 +101,7 @@ namespace Relentless
 		bool m_CameraValidAreaHovered = false;
 
 		EViewportState m_CurrentState = EViewportState::None;
+
+		Ref<HorizontalBox> m_pToolbarBox = nullptr;
 	};
 }

@@ -2,9 +2,18 @@
 
 namespace Relentless
 {
-	Label::Label(std::string_view id) noexcept
-		: IWidget{ id }, m_Text{id}
+	Label::Label(std::string_view id, ImFont* pFont) noexcept
+		: IStylableWidget{ id }, m_Text{id}
 	{
+		if (pFont)
+			SetFont(pFont);
+		else
+			SetFont(ImGui::GetIO().Fonts->Fonts[0]);
+	}
+
+	float Label::CalcDesiredWidth() const noexcept
+	{
+		return ImGui::CalcTextSize(m_Text.c_str()).x;
 	}
 
 	void Label::OnRender() noexcept

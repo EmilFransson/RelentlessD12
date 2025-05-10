@@ -17,6 +17,8 @@ namespace Relentless
 	protected:
 		virtual void OnRender() noexcept override {}
 	private:
+		[[nodiscard]] Ref<IWidget> CreateBaseSection(const std::vector<entity>& entities) noexcept;
+
 		template<typename ComponentType>
 		[[nodiscard]] Ref<IWidget> CreateComponentSection(const std::vector<entity>& selectedEntities) noexcept;
 

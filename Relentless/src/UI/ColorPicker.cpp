@@ -3,46 +3,36 @@
 namespace Relentless
 {
 	ColorPicker::ColorPicker(std::string_view id, const Color& initialColor, const Vector2& size, int flags) noexcept
-		:IWidget{id}
+		:IStylableWidget{id}
 		,m_Color{initialColor}
 		,m_Size{size}
 	{
 		SetFlags(flags);
+
+		SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
+		SetBorderSize(2.0f);
+		SetFrameRounding(3.0f);
+		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
+	}
+
+	float ColorPicker::CalcDesiredWidth() const noexcept
+	{
+		return 0.0f;
 	}
 
 	void ColorPicker::OnRender() noexcept
 	{
-		ImGui::GetWindowDrawList()->ChannelsSplit(2);
+		if (m_IsHovered)
+			SetBorderColor(Colors::Normalize(75.0f, 75.0f, 75.0f, 255.0f));
+		else
+			SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 
-		auto curPos = ImGui::GetCursorScreenPos();
+		const float width = Math::Min(ImGui::GetContentRegionAvail().x, m_Size.x);
 
-		{
-			ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
+		if (ImGui::ColorButton(m_ID.c_str(), ImVec4(m_Color.R(), m_Color.G(), m_Color.B(), m_Color.A()), GetFlags(), ImVec2(width, 0.0f)))
+			ImGui::OpenPopup("ColorPickerPopup");
 
-			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-
-			constexpr float horizontalPadding = 4.0f;
-			const float width = Math::Min(ImGui::GetContentRegionAvail().x - horizontalPadding, m_Size.x);
-
-			if (ImGui::ColorButton(m_ID.c_str(), ImVec4(m_Color.R(), m_Color.G(), m_Color.B(), m_Color.A()), GetFlags(), ImVec2(width, m_Size.y)))
-				ImGui::OpenPopup("ColorPickerPopup");
-
-			m_IsHovered = ImGui::IsItemHovered();
-			ImGui::PopStyleVar();
-		}
-
-		const ImVec2 size = ImGui::GetItemRectSize();
-
-		{
-			ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
-
-			const ImVec2 min = ImVec2(curPos.x - 2, curPos.y - 2);
-			const ImVec2 max = ImVec2(min.x + size.x + 4.0f, min.y + size.y + 4.0f);
-			ImGui::GetWindowDrawList()->AddRectFilled(min, max, m_IsHovered ? IM_COL32(75, 75, 75, 255) : IM_COL32(50, 50, 50, 255), 6);
-		}
-
-
-		ImGui::GetWindowDrawList()->ChannelsMerge();
+		m_IsHovered = ImGui::IsItemHovered();
 
 		if (ImGui::BeginPopup("ColorPickerPopup"))
 		{

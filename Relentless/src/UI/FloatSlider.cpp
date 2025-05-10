@@ -2,15 +2,43 @@
 
 namespace Relentless
 {
-
 	FloatSlider::FloatSlider(std::string_view id, float startValue, float min, float max, const char* pFormat, int flags) noexcept
-		:IWidget{ id }
+		:IStylableWidget{ id }
 		,m_Format{pFormat}
 		,m_Value{ startValue }
 		,m_Min{ min }
 		,m_Max{ max }
 	{
 		SetFlags(flags);
+
+		const Color defaultFrameColor = Colors::Normalize(12.5f, 12.5f, 12.5f, 255.0f);
+		SetBackgroundColor(defaultFrameColor);
+		SetHoverColor(defaultFrameColor);
+		SetActiveColor(defaultFrameColor);
+		SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
+		SetHandleColor(Colors::Normalize(90.0f, 90.0f, 90.0f, 255.0f));
+
+		SetHandleSize(20.0f);
+		SetFrameRounding(6.0f);
+		SetBorderSize(2.0f);
+		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
+	}
+
+	float FloatSlider::CalcDesiredWidth() const noexcept
+	{
+		const float grabSize = ImGui::GetStyle().GrabMinSize;
+		const float padding = ImGui::GetStyle().FramePadding.x * 2.0f;
+
+		float valueTextWidth = ImGui::CalcTextSize(m_Format.c_str()).x + padding;
+		float labelTextWidth = 0.0f;
+
+		// Only include label width if it's visible (not just an ID)
+		const char* visibleLabel = ImGui::FindRenderedTextEnd(m_ID.c_str());
+		if (visibleLabel[0] != '\0')
+			labelTextWidth = ImGui::CalcTextSize(m_ID.c_str()).x + padding;
+
+		// Final width: label + value + grab + spacing
+		return labelTextWidth + valueTextWidth + grabSize + 8.0f;
 	}
 
 	float FloatSlider::GetValue() const noexcept
@@ -26,54 +54,29 @@ namespace Relentless
 
 	void FloatSlider::OnRender() noexcept
 	{
-		ImGui::GetWindowDrawList()->ChannelsSplit(2);
+		if (m_IsActive)
+			SetBorderColor(Colors::Normalize(66.0f, 150.0f, 250.0f, 255.0f));
+		else if (m_IsHovered)
+			SetBorderColor(Colors::Normalize(75.0f, 75.0f, 75.0f, 255.0f));
+		else
+			SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 
-		auto curPos = ImGui::GetCursorScreenPos();
+		m_IsUsing = ImGui::SliderFloat(m_ID.c_str(), &m_Value, m_Min, m_Max, m_Format.c_str(), GetFlags());
 
-		{
-			ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
+		if (m_IsUsing)
+			OnChanged(m_Value);
 
-			const float currentMinSize = ImGui::GetStyle().GrabMinSize;
-			ImGui::GetStyle().GrabMinSize = 20.0f;
-
-			SetColorsAndStyles();
-
-			m_IsUsing = ImGui::SliderFloat(m_ID.c_str(), &m_Value, m_Min, m_Max, m_Format.c_str(), GetFlags());
-
-			if (m_IsUsing)
-				OnChanged(m_Value);
-
-			m_IsHovered = ImGui::IsItemHovered();
-			m_IsActive = ImGui::IsItemActive();
-
-			DiscardAllStylesAndColors();
-			ImGui::GetStyle().GrabMinSize = currentMinSize;
-		}
-
-		const ImVec2 size = ImGui::GetItemRectSize();
-
-		{
-			ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
-
-			const ImVec2 min = ImVec2(curPos.x - 2, curPos.y - 2);
-			const ImVec2 max = ImVec2(min.x + size.x + 4.0f, min.y + size.y + 4.0f);
-			ImGui::GetWindowDrawList()->AddRectFilled(min, max, m_IsActive ? IM_COL32(66, 150, 250, 255) : m_IsHovered ? IM_COL32(75, 75, 75, 255) : IM_COL32(50, 50, 50, 255), 6);
-		}
-
-
-		ImGui::GetWindowDrawList()->ChannelsMerge();
+		m_IsHovered = ImGui::IsItemHovered();
+		m_IsActive = ImGui::IsItemActive();
 	}
 
-	void FloatSlider::SetColorsAndStyles() noexcept
+	void FloatSlider::SetHandleColor(const Color& color) noexcept
 	{
-		SetStyleColors
-		({
-			{ImGuiCol_FrameBg, ImVec4(0.05f, 0.05f, 0.05f, 1.0f)},
-			{ImGuiCol_FrameBgHovered, ImVec4(0.05f, 0.05f, 0.05f, 1.0f)},
-			{ImGuiCol_FrameBgActive, ImVec4(0.05f, 0.05f, 0.05f, 1.0f)},
-			{ImGuiCol_SliderGrab, ImVec4(0.35f, 0.35f, 0.35f, 1.0f)}
-		});
+		m_Style.SetStyleColor(ImGuiCol_SliderGrab, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
 
-		SetStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+	void FloatSlider::SetHandleSize(float size) noexcept
+	{
+		m_Style.SetStyleVar(ImGuiStyleVar_GrabMinSize, size);
 	}
 }

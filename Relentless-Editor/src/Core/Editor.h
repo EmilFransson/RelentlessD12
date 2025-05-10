@@ -115,6 +115,8 @@ namespace Relentless
 		ESceneState m_SceneState = ESceneState::Edit;
 
 		std::shared_ptr<TextureCube> m_SkyBox = nullptr;
+		
+		Ref<HorizontalBox> m_pHorizontalBox = nullptr;
 
 		Ref<CollapsibleSection> m_pSection = nullptr;
 		Ref<FloatDrag> m_pDragger = nullptr;

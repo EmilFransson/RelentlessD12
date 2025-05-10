@@ -17,18 +17,23 @@ namespace std {
 
 namespace Relentless
 {
-	class Table : public IWidget
+	class Table : public IStylableWidget
 	{
 	public:
 		Table(std::string_view id) noexcept;
 
 		void Add(Ref<IWidget> pWidget, uint32 column, uint32 row) noexcept;
+		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 
 		[[nodiscard]] bool HasWidget(Ref<IWidget> pWidget) const noexcept;
+
+		void SetCellPadding(const Vector2& padding) noexcept;
+		void SetBorderLightColor(const Color& color) noexcept;
+		void SetSeparatorColor(const Color& color) noexcept;
+		void SetSeparatorHoverColor(const Color& color) noexcept;
+		void SetSeparatorActiveColor(const Color& color) noexcept;
 	protected:
 		virtual void OnRender() noexcept override;
-	private:
-		void SetColorsAndStyles() noexcept;
 	private:
 		std::unordered_map<std::pair<uint32, uint32>, std::vector<Ref<IWidget>>> m_Cells;
 

@@ -1,4 +1,4 @@
-#include "ImguiLayer.h"
+﻿#include "ImguiLayer.h"
 #include "Core/Application.h"
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
@@ -109,10 +109,52 @@ namespace Relentless
 
 		ImGui::StyleColorsDark();
 		
-		std::string openSansFontPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("/Fonts/opensans/");
-		RLS_VERIFY(io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Bold.ttf")).c_str(), 22.0f), "Failed to load ImGui Font");
-		RLS_VERIFY(io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Bold.ttf")).c_str(), 26.0f), "Failed to load ImGui Font");
-		io.FontDefault = io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Regular.ttf")).c_str(), 22.0f);
+		ImFontConfig config;
+		config.PixelSnapH = true;
+
+		std::string openSansFontPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Fonts\\opensans\\");
+		//RLS_VERIFY(io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Bold.ttf")).c_str(), 22.0f), "Failed to load ImGui Font");
+		//RLS_VERIFY(io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Bold.ttf")).c_str(), 26.0f), "Failed to load ImGui Font");
+		io.FontDefault = io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Regular.ttf")).c_str(), 22.0f, &config);
+
+		const std::string fontAwesomePath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("/Fonts/fontawesome/");
+		static const ImWchar iconRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+		// === Load 22pt font set ===
+		ImFontConfig config22;
+		config22.PixelSnapH = true;
+
+		std::string fullFontPath = openSansFontPath + "OpenSans-Regular.ttf";
+		ImFont* font22 = io.Fonts->AddFontFromFileTTF(
+			fullFontPath.c_str(),
+			22.0f, &config22);
+
+		ImFontConfig iconConfig22;
+		iconConfig22.MergeMode = true;
+		iconConfig22.PixelSnapH = true;
+
+		fullFontPath = fontAwesomePath + "fa-solid-900.ttf";
+		io.Fonts->AddFontFromFileTTF(fullFontPath.c_str()
+			,
+			22.0f, &iconConfig22, iconRanges);
+
+		io.FontDefault = font22; // ✅ Set the merged font as default
+
+		// === Load 26pt font set ===
+		ImFontConfig config26;
+		config26.PixelSnapH = true;
+
+		fullFontPath = openSansFontPath + "OpenSans-Regular.ttf";
+		ImFont* font26 = io.Fonts->AddFontFromFileTTF(fullFontPath.c_str()
+			,
+			26.0f, &config26);
+
+		ImFontConfig iconConfig26;
+		iconConfig26.MergeMode = true;
+		iconConfig26.PixelSnapH = true;
+
+		io.Fonts->AddFontFromFileTTF(
+			(fontAwesomePath + "fa-solid-900.ttf").c_str(),
+			20.0f, &iconConfig26, iconRanges);
 
 		ImGuiStyle& style = ImGui::GetStyle();
 		if (io.ConfigFlags & ImGuiConfigFlags_::ImGuiConfigFlags_ViewportsEnable)

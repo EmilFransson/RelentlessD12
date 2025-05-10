@@ -3,9 +3,17 @@
 namespace Relentless
 {
 	Table::Table(std::string_view id) noexcept
-		: IWidget{id}
+		: IStylableWidget{id}
 	{
 		SetFlags(ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersH | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoPadOuterX);
+	
+		SetBorderLightColor(Colors::Normalize(20.0f, 20.0f, 20.0f, 255.0f));
+		SetSeparatorColor(Color(0.0f, 0.0f, 0.0f, 1.0f));
+		SetSeparatorHoverColor(Colors::Normalize(90.0f, 90.0f, 90.0f, 255.0f));
+		SetSeparatorActiveColor(Colors::Normalize(110.0f, 110.0f, 110.0f, 255.0f));
+
+		SetCellPadding(Vector2(20.0f, 4.0f));
+		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	void Table::Add(Ref<IWidget> pWidget, uint32 column, uint32 row) noexcept
@@ -17,12 +25,68 @@ namespace Relentless
 		m_NumColumns = Math::Max(m_NumColumns, column + 1);
 	}
 
+	float Table::CalcDesiredWidth() const noexcept
+	{
+		if (m_Cells.empty())
+			return 0.0f;
+
+		std::vector<float> columnWidths(m_NumColumns, 0.0f);
+
+		for (const auto& [pos, widgets] : m_Cells)
+		{
+			const uint32 column = pos.first;
+
+			for (const auto& widget : widgets)
+			{
+				if (widget && widget->GetSizePolicy() != ESizePolicy::Stretch)
+				{
+					columnWidths[column] = ImMax(columnWidths[column], widget->CalcDesiredWidth());
+				}
+			}
+		}
+
+		float spacing = ImGui::GetStyle().CellPadding.x * 2.0f + ImGui::GetStyle().ItemSpacing.x;
+		float total = 0.0f;
+
+		for (uint32 i = 0; i < m_NumColumns; ++i)
+			total += columnWidths[i];
+
+		total += spacing * (m_NumColumns - 1); // spacing between columns
+
+		return total;
+	}
+
 	bool Table::HasWidget(Ref<IWidget> pWidget) const noexcept
 	{
 		return std::any_of(m_Cells.begin(), m_Cells.end(), [&](const auto& cell)
 		{
-				return std::find(cell.second.begin(), cell.second.end(), pWidget) != cell.second.end();
+			return std::find(cell.second.begin(), cell.second.end(), pWidget) != cell.second.end();
 		});
+	}
+
+	void Table::SetCellPadding(const Vector2& padding) noexcept
+	{
+		m_Style.SetStyleVar(ImGuiStyleVar_CellPadding, ImVec2(padding.x, padding.y));
+	}
+
+	void Table::SetBorderLightColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_TableBorderLight, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
+	void Table::SetSeparatorColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_Separator, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
+	void Table::SetSeparatorHoverColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_SeparatorHovered, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
+	void Table::SetSeparatorActiveColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_SeparatorActive,  ImVec4(color.R(), color.G(), color.B(), color.A()));
 	}
 
 	void Table::OnRender() noexcept
@@ -30,7 +94,6 @@ namespace Relentless
 		if (m_Cells.empty())
 			return;
 
-		SetColorsAndStyles();
 		const bool isValid = ImGui::BeginTable(m_ID.c_str(), m_NumColumns, GetFlags());
 
 		if (isValid)
@@ -73,24 +136,8 @@ namespace Relentless
 						ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_Header));
 				}
 			}
-
 			ImGui::EndGroup();
 			ImGui::EndTable();
 		}
-		
-		DiscardAllStylesAndColors();
-	}
-
-	void Table::SetColorsAndStyles() noexcept
-	{
-		SetStyleColors
-		({
-			{ImGuiCol_Separator, ImVec4(0, 0, 0, 255)},
-			{ImGuiCol_SeparatorHovered, ImVec4(90, 90, 90, 255)},
-			{ImGuiCol_SeparatorActive, ImVec4(110, 110, 110, 255)},
-			{ImGuiCol_TableBorderLight, ImVec4(20.0f / 255.0f, 20.0f / 255.0f, 20.0f / 255.0f, 255)}
-		});
-
-		SetStyleVars({{ImGuiStyleVar_CellPadding, ImVec2(20.0f, 4.0f)}});
 	}
 }

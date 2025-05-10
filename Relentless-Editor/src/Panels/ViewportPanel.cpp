@@ -28,6 +28,22 @@ namespace Relentless
 
 		m_ViewportID = std::format("{}_Viewport_{}", pName, renderViewIndex + 1);
 		m_ToolbarID = std::format("{}_Toolbar_{}", pName, renderViewIndex + 1);
+
+		m_pToolbarBox = new HorizontalBox(m_ToolbarID.c_str(), true, Vector2(0, 40));
+		m_pToolbarBox->SetFlags(ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse);
+
+		Ref<Button> m_pWireFrameButton = new Button("Wireframe", Vector2(0, 40));
+
+		Ref<Button> m_pSolidButton = new Button("Solid", Vector2(0, 40));
+
+		Ref<Button> m_pTSnappingButton = new Button("T-Snap", Vector2(0, 40));
+
+		Ref<Button> m_pRSnappingButton = new Button("R-Snap", Vector2(0, 40));
+
+		m_pToolbarBox->Add(m_pWireFrameButton);
+		m_pToolbarBox->Add(m_pSolidButton);
+		m_pToolbarBox->Add(m_pTSnappingButton);
+		m_pToolbarBox->Add(m_pRSnappingButton);
 	}
 
 	std::shared_ptr<PerspectiveCamera> ViewportPanel::GetCamera() const noexcept
@@ -155,6 +171,9 @@ namespace Relentless
 
 	void ViewportPanel::DrawToolbar(ViewportRenderView& renderView) noexcept
 	{
+		m_pToolbarBox->Render();
+		return;
+
 		ImGui::BeginChild(m_ToolbarID.c_str(), ImVec2(0, 40), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse);
 
 		if (ImGui::Button("Wireframe"))

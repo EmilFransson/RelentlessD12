@@ -42,6 +42,9 @@ namespace Relentless
 		[[nodiscard]] bool IsVisible() const noexcept;
 	
 		virtual void Render() noexcept override final;
+
+		void SetPadding(const Vector2& padding);
+
 		virtual void Update() noexcept override {};
 
 		Broadcaster<void()> OnPostRender;
@@ -57,7 +60,7 @@ namespace Relentless
 		void SetRoot(Ref<IWidget> pRoot) noexcept;
 	private:
 		std::string m_Name{};
-		ImGuiWindowFlags m_Flags = ImGuiWindowFlags_None;
+		std::unordered_map<ImGuiStyleVar, ImVec2> m_Styles;
 
 		Vector2u m_ContentRegionAvail	= Vector2u::Zero();
 		Vector2u m_ContentRegionMin		= Vector2u::Zero();
@@ -65,6 +68,7 @@ namespace Relentless
 		Vector2u m_Position				= Vector2u::Zero();
 		Vector2u m_Size					= Vector2u::Zero();
 
+		ImGuiWindowFlags m_Flags = ImGuiWindowFlags_None;
 		uint32 m_LastFrameFocused = std::numeric_limits<uint32>::max();
 
 		bool m_IsDocked		= false;

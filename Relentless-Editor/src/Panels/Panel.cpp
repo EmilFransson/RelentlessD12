@@ -28,7 +28,13 @@ namespace Relentless
 		PreRender();
 		
 		bool open = true;
+		
+		for (const auto& [style, value] : m_Styles)
+			ImGui::PushStyleVar(style, value);
+
 		ImGui::Begin(m_Name.c_str(), &open, m_Flags);
+
+		ImGui::PopStyleVar(m_Styles.size());
 
 		m_ContentRegionAvail = Vector2u((uint32)ImGui::GetContentRegionAvail().x, (uint32)ImGui::GetContentRegionAvail().y);
 		m_ContentRegionMin = Vector2u((uint32)ImGui::GetWindowContentRegionMin().x, (uint32)ImGui::GetWindowContentRegionMin().y);
@@ -76,6 +82,11 @@ namespace Relentless
 		OnPostRender();
 
 		ImGui::End();
+	}
+
+	void PanelBase::SetPadding(const Vector2& padding)
+	{
+		m_Styles[ImGuiStyleVar_WindowPadding] = ImVec2(padding.x, padding.y);
 	}
 
 	const Vector2u& PanelBase::GetContentRegionAvail() const noexcept

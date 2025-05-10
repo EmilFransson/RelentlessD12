@@ -16,6 +16,16 @@ namespace Relentless
 		constexpr Color Cyan = Color(0.0f, 1.0f, 1.0f, 1.0f);
 		constexpr Color Gray = Color(0.5f, 0.5f, 0.5f, 1.0f);
 		constexpr Color LightSkyBlue = Color(0.529411793f, 0.807843208f, 0.980392218f, 1.0f);
+
+		inline static [[nodiscard]] Color Normalize(const Color& color) noexcept
+		{
+			return Color(color.R() / 255.0f, color.G() / 255.0f, color.B() / 255.0f, color.A() / 255.0f);
+		}
+
+		inline static [[nodiscard]] Color Normalize(float r, float g, float b, float a) noexcept
+		{
+			return Color(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
+		}
 	};
 
 	namespace Math

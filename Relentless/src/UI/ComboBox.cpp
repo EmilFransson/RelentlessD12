@@ -3,9 +3,29 @@
 namespace Relentless
 {
 	ComboBox::ComboBox(std::string_view id, int flags) noexcept
-		: IWidget{ id }
+		: IStylableWidget{ id }
 	{
 		SetFlags(flags);
+
+		//Frame
+		const Color color = Colors::Normalize(12.5f, 12.5f, 12.5f, 255.0f);
+		SetBackgroundColor(color);
+		SetHoverColor(color);
+		SetActiveColor(color);
+
+		//Button:
+		SetDropDownButtonColor(color);
+		SetDropDownButtonActiveColor(color);
+		SetDropDownButtonHoveredColor(color);
+
+		//Selectables:
+		SetSelectableBackgroundColor(Colors::Normalize(66.0f, 150.0f, 250.0f, 255.0f));
+
+		SetFrameRounding(6.0f);
+		SetPadding(Vector2(6.0f, 5.0f));
+		SetBorderSize(2.0f);
+		SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
+		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	void ComboBox::AddSelectables(Span<const char*> selectables) noexcept
@@ -13,9 +33,46 @@ namespace Relentless
 		m_Selectables = selectables.Copy();
 	}
 
+	float ComboBox::CalcDesiredWidth() const noexcept
+	{
+		float maxTextWidth = 0.0f;
+
+		for (const auto& item : m_Selectables)
+		{
+			const ImVec2 size = ImGui::CalcTextSize(item);
+			maxTextWidth = Math::Max(maxTextWidth, size.x);
+		}
+
+		// Add padding to account for ImGui's internal spacing and arrow icon
+		const float padding = ImGui::GetStyle().FramePadding.x * 2.0f;
+		const float arrowWidth = ImGui::GetFrameHeight(); // Approx width of arrow dropdown
+
+		return maxTextWidth + padding + arrowWidth;
+	}
+
 	int ComboBox::GetSelectedIndex() const
 	{
 		return m_Selected;
+	}
+
+	void ComboBox::SetDropDownButtonColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_Button, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
+	void ComboBox::SetDropDownButtonActiveColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_ButtonActive, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
+	void ComboBox::SetDropDownButtonHoveredColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
+	void ComboBox::SetSelectableBackgroundColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.R(), color.G(), color.B(), color.A()));
 	}
 
 	void ComboBox::OnPreRender() noexcept
@@ -29,69 +86,31 @@ namespace Relentless
 		if (m_Selectables.empty())
 			return;
 		
-		ImGui::GetWindowDrawList()->ChannelsSplit(2);
+		if (m_IsHovered)
+			SetBorderColor(Colors::Normalize(75.0f, 75.0f, 75.0f, 255.0f));
+		else
+			SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 
-		SetColorsAndStyles();
-		
-		auto curPos = ImGui::GetCursorScreenPos();
+		if (ImGui::BeginCombo(m_ID.c_str(), m_Selectables[m_Selected]))
 		{
-			ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
-
-			if (ImGui::BeginCombo(m_ID.c_str(), m_Selectables[m_Selected]))
+			for (int i = 0; i < m_Selectables.size(); ++i)
 			{
-				for (int i = 0; i < m_Selectables.size(); ++i)
+				const bool isSelected = m_Selected == i;
+				if (ImGui::Selectable(m_Selectables[i], isSelected))
 				{
-					const bool isSelected = m_Selected == i;
-					if (ImGui::Selectable(m_Selectables[i], isSelected))
+					if (m_Selected != i)
 					{
-						if (m_Selected != i)
-						{
-							m_Selected = i;
-							OnChanged(m_Selected);
-						}
+						m_Selected = i;
+						OnChanged(m_Selected);
 					}
-
-					if (isSelected)
-						ImGui::SetItemDefaultFocus();
 				}
-				ImGui::EndCombo();
+
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
 			}
-
-			m_IsHovered = ImGui::IsItemHovered();
-
-			DiscardAllStylesAndColors();
+			ImGui::EndCombo();
 		}
 
-		const ImVec2 size = ImGui::GetItemRectSize();
-
-		{
-			ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
-
-			const ImVec2 min = ImVec2(curPos.x - 2, curPos.y - 2);
-			const ImVec2 max = ImVec2(min.x + size.x + 4.0f, min.y + size.y + 4.0f);
-			ImGui::GetWindowDrawList()->AddRectFilled(min, max, m_IsHovered ? IM_COL32(75, 75, 75, 255) : IM_COL32(50, 50, 50, 255), 6);
-		}
-
-		ImGui::GetWindowDrawList()->ChannelsMerge();
+		m_IsHovered = ImGui::IsItemHovered();
 	}
-
-	void ComboBox::SetColorsAndStyles() noexcept
-	{
-		SetStyleColors
-		({
-			{ImGuiCol_FrameBg, ImVec4(0.05f, 0.05f, 0.05f, 1.0f)},
-			{ImGuiCol_FrameBgHovered, ImVec4(0.05f, 0.05f, 0.05f, 1.0f)},
-			{ImGuiCol_FrameBgActive, ImVec4(0.05f, 0.05f, 0.05f, 1.0f)},
-			{ImGuiCol_Button, ImVec4(0.05f, 0.05f, 0.05f, 1.0f)},
-			{ImGuiCol_ButtonHovered, ImVec4(0.05f, 0.05f, 0.05f, 1.0f)},
-			{ImGuiCol_ButtonActive, ImVec4(0.05f, 0.05f, 0.05f, 1.0f)},
-			{ImGuiCol_HeaderHovered, ImVec4(66.0f / 255.0f, 150.0f / 250.0f, 250.0f / 255.0f, 1.0f)}
-		});
-
-		SetStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-		SetStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 5.0f));
-	}
-
 }
-
-

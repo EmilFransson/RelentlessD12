@@ -188,8 +188,6 @@ namespace Relentless
 		AssetRegistry::RecursiveScanDirectoryForAssets(EDITOR_ASSET_DIRECTORY);
 		//AssetManager::Initialize();
 
-		//UI::Initialize();
-
 		m_pImGuiLayer = std::make_unique<ImguiLayer>(m_pGraphicsDevice);
 		PushOverlay(m_pImGuiLayer.get());
 

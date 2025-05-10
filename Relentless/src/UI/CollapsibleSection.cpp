@@ -1,11 +1,19 @@
-#include "CollapsibleSection.h"
+﻿#include "CollapsibleSection.h"
 
 namespace Relentless
 {
 	CollapsibleSection::CollapsibleSection(std::string_view id) noexcept
-		:IWidget{id}
+		:IStylableWidget{id}
 	{
-		SetFlags(ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+		SetFlags(ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_OpenOnArrow);
+		SetSizePolicy(ESizePolicy::Stretch);
+		
+		const ImVec4& frameColor = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+		SetActiveColor(Color(frameColor.x, frameColor.y, frameColor.z, frameColor.w));
+		SetHoverColor(Color(frameColor.x, frameColor.y, frameColor.z, frameColor.w));
+		SetFont(ImGui::GetIO().Fonts->Fonts[2]);
+
+		SetPadding(Vector2(5.0f, 6.0f));
 	}
 
 	void CollapsibleSection::Add(Ref<IWidget> pWidget) noexcept
@@ -14,17 +22,43 @@ namespace Relentless
 		m_Children.push_back(pWidget);
 	}
 
+	float CollapsibleSection::CalcDesiredWidth() const noexcept
+	{
+		return 0.0f;
+	}
+
 	bool CollapsibleSection::HasWidget(Ref<IWidget> pWidget) const noexcept
 	{
 		return std::find(m_Children.begin(), m_Children.end(), pWidget) != m_Children.end();
 	}
 
+	void CollapsibleSection::SetActiveColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_HeaderActive, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
+	void CollapsibleSection::SetBackgroundColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_Header, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
+	void CollapsibleSection::SetHoverColor(const Color& color) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
 	void CollapsibleSection::OnRender() noexcept
 	{
-		SetColorsAndStyles();
 		const bool isOpen = ImGui::CollapsingHeader(m_ID.c_str(), GetFlags());
-		DiscardAllStylesAndColors();
-		
+
+		const float fullWidth = ImGui::GetContentRegionAvail().x;
+		const float iconWidth = ImGui::CalcTextSize(ICON_FA_GEAR).x;
+		constexpr float edgeOffset = 10.0f;
+
+		ImGui::SameLine(fullWidth - iconWidth - edgeOffset);
+
+		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.5f), ICON_FA_GEAR);
+
 		DetermineOpenState(isOpen);
 
 		if (m_IsOpen)
@@ -43,21 +77,4 @@ namespace Relentless
 
 		m_IsOpen = isOpenThisFrame;
 	}
-
-	void CollapsibleSection::SetColorsAndStyles() noexcept
-	{
-		SetStyleVars
-		({
-			{ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f)},
-			{ImGuiStyleVar_FramePadding, ImVec2(5.0f, 8.0f)},
-			{ImGuiStyleVar_ItemSpacing, ImVec2(0, 0)}
-		});
-
-		SetStyleColors
-		({
-			{ImGuiCol_HeaderHovered, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)},
-			{ImGuiCol_HeaderActive, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)}
-		});
-	}
-
 }

@@ -3,55 +3,46 @@
 namespace Relentless
 {
 	CheckBox::CheckBox(std::string_view id) noexcept
-		: IWidget(id)
+		: IStylableWidget(id)
 	{
+		SetBackgroundColor(Colors::Normalize(15.0f, 15.0f, 15.0f, 255.0f));
+		SetHoverColor(Colors::Normalize(15.0f, 15.0f, 15.0f, 255.0f));
+		SetActiveColor(Colors::Normalize(15.0f, 15.0f, 15.0f, 255.0f));
+		SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
+
+		SetFrameRounding(3.0f);
+		SetBorderSize(2.0f);
+		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
+	}
+
+	float CheckBox::CalcDesiredWidth() const noexcept
+	{
+		const float frameHeight = ImGui::GetFrameHeight(); // checkbox square
+
+		const char* visibleLabel = ImGui::FindRenderedTextEnd(m_ID.c_str());
+		const bool hasText = (visibleLabel[0] != '\0');
+
+		if (hasText)
+		{
+			const float spacing = ImGui::GetStyle().ItemInnerSpacing.x; // space between checkbox and label
+			const float labelWidth = ImGui::CalcTextSize(m_ID.c_str()).x;
+			return frameHeight + spacing + labelWidth;
+		}
+		else
+		{
+			return frameHeight;
+		}
 	}
 
 	void CheckBox::OnRender() noexcept
 	{
-		ImGui::GetWindowDrawList()->ChannelsSplit(2);
+		if (ImGui::Checkbox(m_ID.c_str(), &m_State))
+			OnCheckStateChanged(m_State);
 
-		auto curPos = ImGui::GetCursorScreenPos();
-		ImGui::SetCursorScreenPos(ImVec2(curPos.x, curPos.y + ImGui::GetFrameHeightWithSpacing() - ImGui::GetFrameHeight()));
-		curPos = ImGui::GetCursorScreenPos();
-
-		{
-			ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
-
-			SetColorsAndStyles();
-
-			if (ImGui::Checkbox(m_ID.c_str(), &m_State))
-				OnCheckStateChanged(m_State);
-
-			m_Hovered = ImGui::IsItemHovered();
-		
-			DiscardAllStylesAndColors();
-		}
-		
-		const ImVec2 size = ImGui::GetItemRectSize();
-
-		{
-			ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
-
-			const ImVec2 min = ImVec2(curPos.x - 2, curPos.y - 2);
-			const ImVec2 max = ImVec2(min.x + size.x + 4.0f, min.y + size.y + 4.0f);
-			ImGui::GetWindowDrawList()->AddRectFilled(min, max, m_Hovered ? IM_COL32(75, 75, 75, 255) : IM_COL32(50, 50, 50, 255), 3);
-		}
-
-		ImGui::GetWindowDrawList()->ChannelsMerge();
+		m_Hovered = ImGui::IsItemHovered();
+		if (m_Hovered)
+			SetBorderColor(Colors::Normalize(75.0f, 75.0f, 75.0f, 255.0f));
+		else
+			SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 	}
-
-	void CheckBox::SetColorsAndStyles() noexcept
-	{
-		SetStyleColors
-		({
-			{ImGuiCol_FrameBg, IM_COL32(15.0f, 15.0f, 15.0f, 255.0f)},
-			{ImGuiCol_FrameBgHovered, IM_COL32(15.0f, 15.0f, 15.0f, 255.0f)},
-			{ImGuiCol_FrameBgActive, IM_COL32(15.0f, 15.0f, 15.0f, 255.0f)}
-		});
-
-		SetStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
-		SetStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-	}
-
 }

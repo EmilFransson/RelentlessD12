@@ -19,6 +19,46 @@ namespace Relentless
 		}
 	}
 
+	Ref<IWidget> DetailsPanel::CreateBaseSection(const std::vector<entity>& entities) noexcept
+	{
+		EntityManager& entityManager = m_pEditor->GetActiveScene()->GetEntityManager();
+		
+		Ref<HorizontalBox> topBox = new HorizontalBox("##BaseTopBox");
+		topBox->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 0.0f));
+
+		Ref<HorizontalBox> topLeftBox = new HorizontalBox("##BaseTopLeftBox");
+		topLeftBox->SetMargin(FloatRect(10.0f, 0.0f, 0.0f, 0.0f));
+		
+		Ref<HorizontalBox> topRightBox = new HorizontalBox("##BaseTopRightBox");
+		topRightBox->SetAlignmentPolicy(EAlignmentPolicy::Right);
+		topRightBox->SetMargin(FloatRect(0.0f, 0.0f, 10.0f, 0.0f));
+
+		Ref<Button> pAddButton = new Button(ICON_FA_PLUS " Add", Vector2(80, 30));
+		pAddButton->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
+
+		topRightBox->Add(pAddButton);
+
+		Ref<Label> pNameLabel = new Label(std::format("{}  {}", ICON_FA_TAG, entityManager.Get<NameComponent>(entities[0]).Name), ImGui::GetIO().Fonts->Fonts[2]);
+		topLeftBox->Add(pNameLabel);
+
+		topBox->Add(topLeftBox);
+		topBox->Add(topRightBox);
+
+		Ref<SearchBarEx> pSearchBar = new SearchBarEx("##ComponentsSearchBar", "Search...");
+		pSearchBar->SetSizePolicy(ESizePolicy::Stretch);
+
+		Ref<HorizontalBox> pHBox = new HorizontalBox("##MainSearchbarbox", false);
+		pHBox->SetMargin(FloatRect(0.0f, 0.0f, 0.0f, 0.0f));
+		pHBox->Add(pSearchBar);
+
+		Ref<VerticalBox> pSection = new VerticalBox("##BaseSection", Vector2(0, 80.0f), true);
+		
+		pSection->Add(topBox);
+		pSection->Add(pHBox);
+
+		return pSection;
+	}
+
 	Vector3 DetailsPanel::GetLocation(ComboBox* pTransformSpaceComboBox) const noexcept
 	{
 		const ETransformSpace transformSpace = static_cast<ETransformSpace>(pTransformSpaceComboBox->GetSelectedIndex());
@@ -161,8 +201,14 @@ namespace Relentless
 		EntityManager& entityManager = m_pEditor->GetActiveScene()->GetEntityManager();
 
 		Ref<VerticalBox> pRoot = new VerticalBox("##DetailsPanel Root");
-		ConditionallyCreateSection<TransformComponent>(pRoot, entityManager, selectedEntities);
-		ConditionallyCreateSection<DirectionalLightComponent>(pRoot, entityManager, selectedEntities);
+		pRoot->Add(CreateBaseSection(selectedEntities));
+		
+		Ref<VerticalBox> pComponentsSection = new VerticalBox("##DetailsPanel ComponentsSection", Vector2(0.0f, 0.0f), true);
+
+		ConditionallyCreateSection<TransformComponent>(pComponentsSection, entityManager, selectedEntities);
+		ConditionallyCreateSection<DirectionalLightComponent>(pComponentsSection, entityManager, selectedEntities);
+
+		pRoot->Add(pComponentsSection);
 
 		SetRoot(pRoot);
 	}
@@ -235,7 +281,7 @@ namespace Relentless
 		pTable->Add(pTemperatureSlider, 1, currentRow);
 		currentRow++;
 
-		Ref<CollapsibleSection> pLightSection = new CollapsibleSection("Light");
+		Ref<CollapsibleSection> pLightSection = new CollapsibleSection(std::format("{}  Light", ICON_FA_LIGHTBULB));
 		pLightSection->Add(pTable);
 
 		return pLightSection;
@@ -256,19 +302,22 @@ namespace Relentless
 			pLocationDragFloatX
 				->Value([this, pComboBox = pLocationComboBox.Get()]() { return GetLocation(pComboBox).x; })
 				->OnValueChanged([this, pComboBox = pLocationComboBox.Get()](float value) {  OnLocationChanged(value, EAxis::X, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::Red);
+				->SetIndicatorColor(Colors::Normalize(200.0f, 0.0f, 0.0f, 255.0f));
+			pLocationDragFloatX->SetSizePolicy(ESizePolicy::Stretch);
 
 			Ref<FloatDrag> pLocationDragFloatY = new FloatDrag("##LocationDragFloatY", 0.01f, -FLT_MAX, FLT_MAX, "%.2f");
 			pLocationDragFloatY
 				->Value([this, pComboBox = pLocationComboBox.Get()]() { return GetLocation(pComboBox).y; })
 				->OnValueChanged([this, pComboBox = pLocationComboBox.Get()](float value) {  OnLocationChanged(value, EAxis::Y, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::Green);
+				->SetIndicatorColor(Colors::Normalize(0.0f, 200.0f, 0.0f, 255.0f));
+			pLocationDragFloatY->SetSizePolicy(ESizePolicy::Stretch);
 
 			Ref<FloatDrag> pLocationDragFloatZ = new FloatDrag("##LocationDragFloatZ", 0.01f, -FLT_MAX, FLT_MAX, "%.2f");
 			pLocationDragFloatZ
 				->Value([this, pComboBox = pLocationComboBox.Get()]() { return GetLocation(pComboBox).z; })
 				->OnValueChanged([this, pComboBox = pLocationComboBox.Get()](float value) {  OnLocationChanged(value, EAxis::Z, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::Blue);
+				->SetIndicatorColor(Colors::Normalize(0.0f, 0.0f, 200.0f, 255.0f));
+			pLocationDragFloatZ->SetSizePolicy(ESizePolicy::Stretch);
 
 			Ref<HorizontalBox> pLocationHorizontalBox = new HorizontalBox("##LocationHorizontalBox");
 			pLocationHorizontalBox->Add(pLocationDragFloatX);
@@ -289,18 +338,21 @@ namespace Relentless
 				->Value([this, pComboBox = pRotationComboBox.Get()]() { return Math::RadToDeg360(GetRotation(pComboBox).x); })
 				->OnValueChanged([this, pComboBox = pRotationComboBox.Get()](float value) { OnRotationChanged(value, EAxis::X, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
 				->SetIndicatorColor(Colors::Red);
+			pRotationDragFloatX->SetSizePolicy(ESizePolicy::Stretch);
 
 			Ref<FloatDrag> pRotationDragFloatY = new FloatDrag("##RotationDragFloatY", 1.0f, -FLT_MAX, FLT_MAX, "%.2f\xC2\xB0");
 			pRotationDragFloatY
 				->Value([this, pComboBox = pRotationComboBox.Get()]() { return Math::RadToDeg360(GetRotation(pComboBox).y); })
 				->OnValueChanged([this, pComboBox = pRotationComboBox.Get()](float value) { OnRotationChanged(value, EAxis::Y, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
 				->SetIndicatorColor(Colors::Green);
+			pRotationDragFloatY->SetSizePolicy(ESizePolicy::Stretch);
 
 			Ref<FloatDrag> pRotationDragFloatZ = new FloatDrag("##RotationDragFloatZ", 1.0f, -FLT_MAX, FLT_MAX, "%.2f\xC2\xB0");
 			pRotationDragFloatZ
 				->Value([this, pComboBox = pRotationComboBox.Get()]() { return Math::RadToDeg360(GetRotation(pComboBox).z); })
 				->OnValueChanged([this, pComboBox = pRotationComboBox.Get()](float value) { OnRotationChanged(value, EAxis::Z, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
 				->SetIndicatorColor(Colors::Blue);
+			pRotationDragFloatZ->SetSizePolicy(ESizePolicy::Stretch);
 
 			Ref<HorizontalBox> pRotationHorizontalBox = new HorizontalBox("##RotationHorizontalBox");
 			pRotationHorizontalBox->Add(pRotationDragFloatX);
@@ -321,18 +373,21 @@ namespace Relentless
 				->Value([this, pComboBox = pScaleComboBox.Get()]() { return GetScale(pComboBox).x; })
 				->OnValueChanged([this, pComboBox = pScaleComboBox.Get()](float value) {  OnScaleChanged(value, EAxis::X, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
 				->SetIndicatorColor(Colors::Red);
+			pScaleDragFloatX->SetSizePolicy(ESizePolicy::Stretch);
 
 			Ref<FloatDrag> pScaleDragFloatY = new FloatDrag("##ScaleDragFloatY", 0.01f, 0.01, FLT_MAX, "%.2f");
 			pScaleDragFloatY
 				->Value([this, pComboBox = pScaleComboBox.Get()]() { return GetScale(pComboBox).y; })
 				->OnValueChanged([this, pComboBox = pScaleComboBox.Get()](float value) {  OnScaleChanged(value, EAxis::Y, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
 				->SetIndicatorColor(Colors::Green);
+			pScaleDragFloatY->SetSizePolicy(ESizePolicy::Stretch);
 
 			Ref<FloatDrag> pScaleDragFloatZ = new FloatDrag("##ScaleDragFloatZ", 0.01f, 0.01, FLT_MAX, "%.2f");
 			pScaleDragFloatZ
 				->Value([this, pComboBox = pScaleComboBox.Get()]() { return GetScale(pComboBox).z; })
 				->OnValueChanged([this, pComboBox = pScaleComboBox.Get()](float value) {  OnScaleChanged(value, EAxis::Z, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
 				->SetIndicatorColor(Colors::Blue);
+			pScaleDragFloatZ->SetSizePolicy(ESizePolicy::Stretch);
 
 			Ref<HorizontalBox> pScaleHorizontalBox = new HorizontalBox("##ScaleHorizontalBox");
 			pScaleHorizontalBox->Add(pScaleDragFloatX);
@@ -344,7 +399,7 @@ namespace Relentless
 			currentRow++;
 		}
 
-		Ref<CollapsibleSection> pLightSection = new CollapsibleSection("Transform");
+		Ref<CollapsibleSection> pLightSection = new CollapsibleSection(ICON_FA_ROTATE "  Transform");
 		pLightSection->Add(pTable);
 
 		return pLightSection;

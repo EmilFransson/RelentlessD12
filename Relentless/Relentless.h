@@ -39,6 +39,7 @@
 #include <src/UI/HorizontalBox.h>
 #include <src/UI/IWidget.h>
 #include <src/UI/Label.h>
+#include <src/UI/SearchBar.h>
 #include <src/UI/Table.h>
 #include <src/UI/Tree/Tree.h>
 #include <src/UI/Tree/TreeItem.h>

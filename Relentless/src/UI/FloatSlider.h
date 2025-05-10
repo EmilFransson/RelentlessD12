@@ -3,18 +3,21 @@
 
 namespace Relentless
 {
-	class FloatSlider : public IWidget
+	class FloatSlider : public IStylableWidget
 	{
 	public:
 		FloatSlider(std::string_view id, float startValue, float min, float max, const char* pFormat = "", int flags = 0) noexcept;
 
+		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 		[[nodiscard]] float GetValue() const noexcept;
-		virtual void OnPreRender() noexcept override;
-		virtual void OnRender() noexcept override;
+
+		void SetHandleColor(const Color& color) noexcept;
+		void SetHandleSize(float size) noexcept;
 
 		Broadcaster<void(float value)> OnChanged;
-	private:
-		void SetColorsAndStyles() noexcept;
+	protected:
+		virtual void OnPreRender() noexcept override;
+		virtual void OnRender() noexcept override;
 	private:
 		String m_Format;
 

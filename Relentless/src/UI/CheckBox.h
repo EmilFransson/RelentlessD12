@@ -4,16 +4,16 @@
 
 namespace Relentless
 {
-	class CheckBox : public IWidget
+	class CheckBox : public IStylableWidget
 	{
 	public:
 		CheckBox(std::string_view id) noexcept;
 
-		virtual void OnRender() noexcept override;
+		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 
 		Broadcaster<void(bool isChecked)> OnCheckStateChanged;
-	private:
-		void SetColorsAndStyles() noexcept;
+	protected:
+		virtual void OnRender() noexcept override;
 	private:
 		bool m_State = false;
 		bool m_Hovered = false;

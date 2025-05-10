@@ -3,10 +3,12 @@
 
 namespace Relentless
 {
-	class ColorPicker : public IWidget
+	class ColorPicker : public IStylableWidget
 	{
 	public:
 		ColorPicker(std::string_view id, const Color& initialColor, const Vector2& size = Vector2(0.0f, 0.0f), int flags = 0) noexcept;
+
+		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 
 		virtual void OnRender() noexcept override;
 

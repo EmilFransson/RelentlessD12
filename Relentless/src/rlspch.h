@@ -14,6 +14,8 @@
 #include "../vendor/includes/DirectXShaderCompiler/dxcapi.h"
 #include "../vendor/includes/DirectXShaderCompiler/d3d12shader.h"
 
+#include "../vendor/includes/FontAwesome/IconsFontAwesome6.h"
+
 using ID3D12DeviceX = ID3D12Device14;
 using ID3D12GraphicsCommandListX = ID3D12GraphicsCommandList10;
 using ID3D12ResourceX = ID3D12Resource2;

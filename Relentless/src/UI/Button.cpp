@@ -3,51 +3,45 @@
 namespace Relentless
 {
 	Button::Button(std::string_view id, const Vector2& size) noexcept
-		: IWidget{ id }
-		,m_Size{size}
+		: IStylableWidget{ id }
+		, m_Size{size}
 	{
+		SetBackgroundColor(Colors::Normalize(56.0f, 56.0f, 56.0f, 255.0f));
+		SetBorderColor(Colors::Normalize(20.0f, 20.0f, 20.0f, 255.0f));
+
+		SetBorderSize(2.0f);
+		SetFrameRounding(4.0f);
+		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
-	void Button::OnRender() noexcept
+	float Button::CalcDesiredWidth() const noexcept
 	{
-		SetColorsAndStyles();
-
-		if (ImGui::Button(m_ID.c_str(), ImVec2(m_Size.x, m_Size.y)))
-			OnClicked();
-
-		DiscardAllStylesAndColors();
+		return m_Size.x;
 	}
 
 	void Button::SetActiveColor(const Color& color) noexcept
 	{
-		m_Color = color;
+		m_Style.SetStyleColor(ImGuiCol_ButtonActive, ImVec4(color.R(), color.G(), color.B(), color.A()));
 	}
 
-	void Button::SetColor(const Color& color) noexcept
+	void Button::SetBackgroundColor(const Color& color) noexcept
 	{
-		m_Color = color;
+		m_Style.SetStyleColor(ImGuiCol_Button, ImVec4(color.R(), color.G(), color.B(), color.A()));
 	}
 
 	void Button::SetHoverColor(const Color& color) noexcept
 	{
-		m_Color = color;
+		m_Style.SetStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
+	void Button::OnRender() noexcept
+	{
+		if (ImGui::Button(m_ID.c_str(), ImVec2(m_Size.x, m_Size.y)))
+			OnClicked();
 	}
 
 	void Button::SetSize(const Vector2& size) noexcept
 	{
 		m_Size = size;
 	}
-
-	void Button::SetColorsAndStyles() noexcept
-	{
-		SetStyleColors
-		({
-			{ImGuiCol_Button,			ImVec4(m_Color.R(), m_Color.G(), m_Color.B(), m_Color.A())},
-			{ImGuiCol_ButtonHovered,	ImVec4(m_HoverColor.R(), m_HoverColor.G(), m_HoverColor.B(), m_HoverColor.A())},
-			{ImGuiCol_ButtonActive,		ImVec4(m_ActiveColor.R(), m_ActiveColor.G(), m_ActiveColor.B(), m_ActiveColor.A())},
-		});
-
-		SetStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-	}
-
 }
