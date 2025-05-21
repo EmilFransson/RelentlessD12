@@ -81,13 +81,16 @@ void cs_main(uint3 threadId : SV_DispatchThreadID)
     const float blurredEntityID = blurredTexture.Load(int3(threadId.xy, 0));
     const float EntityID = solidTexture.Load(int3(threadId.xy, 0));
     
+    const float exposureMultiplier = 1.0f;
+    hdrTextureColor.xyz *= cView.Exposure;
+    
     if (abs(blurredEntityID - EntityID) > 0.15f)
     {
         hdrTextureColor = float4(float3(0.9, 0.35, 0.0), 1.0f);
     }
     
-    float3 sdr = saturate(aces_fitted(hdrTextureColor.xyz));
-    float3 sRGB = LinearToSRGB(sdr);
+    const float3 sdr = saturate(aces_fitted(hdrTextureColor.xyz));
+    const float3 sRGB = LinearToSRGB(sdr);
     
     targetTexture[threadId.xy] = float4(sRGB, hdrTextureColor.a);
 }

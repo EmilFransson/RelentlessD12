@@ -1,4 +1,8 @@
 #include "Mouse.h"
+
+
+#include "../../../vendor/includes/ImGUI/imgui.h"
+
 namespace Relentless
 {
 	std::bitset<(uint16)RLS_Button::Count> Mouse::s_PersistentStates;
@@ -7,6 +11,9 @@ namespace Relentless
 	Vector2i Mouse::s_DeltaMouseCoords = Vector2i(0,0);
 	float Mouse::s_MouseWheeel = 0.0f;
 	bool Mouse::s_CursorVisible{ true };
+	bool Mouse::s_Confined{ false };
+
+	Broadcaster<void(const Vector2i& delta)> Mouse::OnRawMove;
 
 	[[nodiscard]] RLS_Button Mouse::KeyCodeToButton(uint32 keyCode) noexcept
 	{
@@ -33,6 +40,8 @@ namespace Relentless
 	{
 		s_DeltaMouseCoords.x += deltaCoords.x;
 		s_DeltaMouseCoords.y += deltaCoords.y;
+
+		OnRawMove(s_DeltaMouseCoords);
 	}
 
 	void Mouse::Update() noexcept
@@ -62,11 +71,13 @@ namespace Relentless
 		rect.bottom = static_cast<LONG>(bottom);
 		rect.top = static_cast<LONG>(top);
 		::ClipCursor(&rect);
+		s_Confined = true;
 	}
 
 	void Mouse::FreeCursor() noexcept
 	{
 		::ClipCursor(nullptr);
+		s_Confined = false;
 	}
 
 	void Mouse::ShowCursor() noexcept
@@ -85,6 +96,11 @@ namespace Relentless
 	{
 		while (::ShowCursor(false) >= 0);
 		s_CursorVisible = false;
+	}
+
+	bool Mouse::IsCursorConfined() noexcept
+	{
+		return s_Confined;
 	}
 
 	bool Mouse::IsButtonDown(const RLS_Button button) noexcept

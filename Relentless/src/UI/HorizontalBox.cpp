@@ -9,12 +9,6 @@ namespace Relentless
 	{
 	}
 
-	void HorizontalBox::Add(Ref<IWidget> pWidget) noexcept
-	{
-		RLS_ASSERT(!HasWidget(pWidget), "[HorizontalBox::Add] Widget already assigned as child.");
-		m_Children.push_back(pWidget);
-	}
-
 	float HorizontalBox::CalcDesiredWidth() const noexcept
 	{
 		float totalWidth = 0.0f;
@@ -47,6 +41,11 @@ namespace Relentless
 	void HorizontalBox::SetMargin(const FloatRect& margin) noexcept
 	{
 		m_Margin = margin;
+	}
+
+	void HorizontalBox::SetSize(const Vector2& size) noexcept
+	{
+		m_Size = size;
 	}
 
 	void HorizontalBox::OnRender() noexcept
@@ -113,7 +112,6 @@ namespace Relentless
 			ImGui::EndChild();
 
 		currentPos = ImGui::GetCursorPos();
-		ImGui::SetCursorPosX(currentPos.x + m_Margin.Right);
 		ImGui::SetCursorPosY(currentPos.y + m_Margin.Bottom);
 	}
 

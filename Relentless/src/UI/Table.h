@@ -22,7 +22,12 @@ namespace Relentless
 	public:
 		Table(std::string_view id) noexcept;
 
-		void Add(Ref<IWidget> pWidget, uint32 column, uint32 row) noexcept;
+		template<typename T>
+		T* Add(Ref<T> pWidget, uint32 column, uint32 row) noexcept;
+
+		template<typename T>
+		T* Add(T* pWidget, uint32 column, uint32 row) noexcept;
+
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 
 		[[nodiscard]] bool HasWidget(Ref<IWidget> pWidget) const noexcept;
@@ -40,4 +45,26 @@ namespace Relentless
 		uint32 m_NumColumns = 0u;
 		uint32 m_NumRows = 0u;
 	};
+
+	template<typename T>
+	T* Table::Add(T* pWidget, uint32 column, uint32 row) noexcept
+	{
+		static_assert(std::is_base_of_v<IWidget, T>, "[Table::Add]: Can only Add widgets derived from IWidget");
+
+		Ref<T> widgetRef(pWidget);
+		return Add(widgetRef, column, row);
+	}
+
+	template<typename T>
+	T* Table::Add(Ref<T> pWidget, uint32 column, uint32 row) noexcept
+	{
+		RLS_ASSERT(!HasWidget(pWidget), "[Table::Add] Widget already assigned as child.");
+		m_Cells[{column, row}].push_back(pWidget);
+
+		m_NumRows = Math::Max(m_NumRows, row + 1);
+		m_NumColumns = Math::Max(m_NumColumns, column + 1);
+
+		return pWidget.Get();
+	}
+
 }

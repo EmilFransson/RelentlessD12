@@ -111,5 +111,5 @@ float4 ps_main(in VS_OUT psIn) : SV_TARGET
         finalColor = float3(psIn.Color);
     }
     
-    return float4(finalColor, finalAlpha);
+    return float4(finalColor / cView.Exposure, finalAlpha);
 }

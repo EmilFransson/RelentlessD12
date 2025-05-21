@@ -3,6 +3,7 @@
 //Core:
 #include <src/Core/Application.h>
 #include <src/Core/Core.h>
+#include <src/Core/CoreTypes.h>
 #include <src/Core/Time.h>
 #include <src/Core/Any.h>
 #include <src/Core/IAsset.h>
@@ -29,6 +30,7 @@
 
 //UI:
 #include <src/UI/Button.h>
+#include <src/UI/Canvas.h>
 #include <src/UI/ColorPicker.h>
 #include <src/UI/CheckBox.h>
 #include <src/UI/CollapsibleSection.h>
@@ -37,6 +39,7 @@
 #include <src/UI/FloatDrag.h>
 #include <src/UI/FloatSlider.h>
 #include <src/UI/HorizontalBox.h>
+#include <src/UI/IntSlider.h>
 #include <src/UI/IWidget.h>
 #include <src/UI/Label.h>
 #include <src/UI/SearchBar.h>

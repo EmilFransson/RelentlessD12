@@ -6,7 +6,7 @@ namespace Relentless
 	class IPanel
 	{
 	public:
-		virtual ~IPanel() noexcept = default;
+		virtual ~IPanel() noexcept;
 
 		virtual void Render() noexcept = 0;
 		virtual void Update() noexcept {};
@@ -26,7 +26,7 @@ namespace Relentless
 	{
 	public:
 		PanelBase(const char* pName, ImGuiWindowFlags flags) noexcept;
-		virtual ~PanelBase() noexcept override = default;
+		virtual ~PanelBase() noexcept override;
 
 		[[nodiscard]] const Vector2u& GetContentRegionAvail() const noexcept;
 		[[nodiscard]] const Vector2u& GetContentRegionMin() const noexcept;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "MathTypes.h"
 
 namespace Relentless
@@ -9,8 +9,11 @@ namespace Relentless
 		constexpr Color White = Color(1.0f, 1.0f, 1.0f, 1.0f);
 		constexpr Color Black = Color(0.0f, 0.0f, 0.0f, 1.0f);
 		constexpr Color Red = Color(1.0f, 0.0f, 0.0f, 1.0f);
+		constexpr Color OffRed = Color(0.8f, 0.0f, 0.0f, 1.0f);
 		constexpr Color Green = Color(0.0f, 1.0f, 0.0f, 1.0f);
+		constexpr Color OffGreen = Color(0.0f, 0.8f, 0.0f, 1.0f);
 		constexpr Color Blue = Color(0.0f, 0.0f, 1.0f, 1.0f);
+		constexpr Color OffBlue = Color(0.0f, 0.0f, 0.8f, 1.0f);
 		constexpr Color Yellow = Color(1.0f, 1.0f, 0.0f, 1.0f);
 		constexpr Color Magenta = Color(1.0f, 0.0f, 1.0f, 1.0f);
 		constexpr Color Cyan = Color(0.0f, 1.0f, 1.0f, 1.0f);
@@ -42,6 +45,8 @@ namespace Relentless
 		constexpr uint32_t KilobytesToBytes = 1 << 10;
 		constexpr uint32_t MegaBytesToBytes = 1 << 20;
 		constexpr uint32_t GigaBytesToBytes = 1 << 30;
+
+		constexpr float PhotopicEfficacy = 683.0f; // lm per watt
 
 		template<typename T>
 		T AlignUp(T value, T alignment) noexcept
@@ -109,7 +114,12 @@ namespace Relentless
 			return degrees * RADIANS_PER_DEGREE;
 		}
 
-		inline [[nodiscard]] static float NormalizeDegrees(float degrees) 
+		inline [[nodiscard]] static float Log2f(float value) noexcept
+		{
+			return std::log2f(value);
+		}
+
+		inline [[nodiscard]] static float NormalizeDegrees(float degrees) noexcept
 		{
 			degrees = std::fmod(degrees, 360.0f);
 			if (degrees < 0.0f) 
@@ -117,6 +127,11 @@ namespace Relentless
 				degrees += 360.0f;
 			}
 			return degrees;
+		}
+
+		inline [[nodiscard]] static float Pow2f(float exponent) noexcept
+		{
+			return std::powf(2, exponent);
 		}
 
 		// Create left-handed DX style perspective matrix
@@ -190,6 +205,41 @@ namespace Relentless
 			return frustum;
 		}
 
+		inline constexpr [[nodiscard]] float CandelaToRadiantIntensity(float candela) noexcept
+		{
+			return candela / Math::PhotopicEfficacy;
+		}
+
+		inline constexpr [[nodiscard]] float LumenToRadiantIntensity(float lumen, float solidAngleSr = 4.0f * Math::PI) noexcept
+		{
+			return (lumen / Math::PhotopicEfficacy) / solidAngleSr;
+		}
+
+		inline constexpr [[nodiscard]] float LuxToRadiantIrradiance(float lux) noexcept
+		{
+			return lux / Math::PhotopicEfficacy;
+		}
+
+		inline constexpr [[nodiscard]] float RadiantIrradianceToLux(float radiantIrradiance) noexcept
+		{
+			return radiantIrradiance * Math::PhotopicEfficacy;
+		}
+
+		inline constexpr [[nodiscard]] float RadiantIntensityToCandela(float radiantIntensity) noexcept
+		{
+			return radiantIntensity * Math::PhotopicEfficacy;
+		}
+
+		inline constexpr [[nodiscard]] float RadiantIntensityToLumen(float radiantIntensity, float solidAngleSr = 4.0f * Math::PI) noexcept
+		{
+			return radiantIntensity * solidAngleSr * Math::PhotopicEfficacy;
+		}
+
 		[[nodiscard]] Color MakeFromColorTemperature(float Temp) noexcept;
+
+		inline [[nodiscard]] float SpotLightHalfAngleToSolidAngle(float halfAngleRadians) noexcept
+		{
+			return 2.0f * Math::PI * (1.0f - std::cos(halfAngleRadians));
+		}
 	}
 }

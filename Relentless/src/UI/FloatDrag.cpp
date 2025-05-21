@@ -1,4 +1,5 @@
 #include "FloatDrag.h"
+#include "Input/Mouse.h"
 
 namespace Relentless
 {
@@ -67,18 +68,29 @@ namespace Relentless
 		float value = m_ValueCallback();
 		m_IsUsing = ImGui::DragFloat(m_ID.c_str(), &value, m_Speed, m_Min, m_Max, m_Format.c_str(), GetFlags());
 
+		if (m_Delta != Vector2i::Zero())
+		{
+			value += (m_Speed * m_Delta.x);
+			value = Math::Max(value, m_Min);
+			value = Math::Min(value, m_Max);
+			m_Delta = Vector2i::Zero();
+			m_IsUsing = true;
+		}
+
 		if (m_IsUsing)
 			m_OnChanged(value);
 
 		m_IsHovered = ImGui::IsItemHovered();
+
+		if (m_IsHovered)
+			ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_ResizeEW);
+
 		const bool isActive = ImGui::IsItemActive();
 
 		if (isActive && !m_IsActive)
-			OnActiveChanged(true);
+			SetActive(true);
 		else if (!isActive && m_IsActive)
-			OnActiveChanged(false);
-
-		m_IsActive = isActive;
+			SetActive(false);
 
 		const ImVec2 size = ImGui::GetItemRectSize();
 
@@ -115,4 +127,32 @@ namespace Relentless
 		SetDrawColorIndicator(true);
 		m_IndicatorColor = color;
 	}
+
+	void FloatDrag::SetActive(bool state) noexcept
+	{
+		OnActiveChanged(state);
+		m_IsActive = state;
+
+		if (m_IsActive)
+		{
+			Mouse::HideCursor();
+
+			const Vector2 cursorScreenPosition = Vector2(static_cast<float>(Mouse::GetCursorScreenPosition().x), static_cast<float>(Mouse::GetCursorScreenPosition().y));
+			Mouse::ConfineCursor(cursorScreenPosition.x, cursorScreenPosition.x, cursorScreenPosition.y, cursorScreenPosition.y);
+			Mouse::OnRawMove.Connect(this, &FloatDrag::OnMouseRawMove);
+		}
+		else
+		{
+			Mouse::ShowCursor();
+			Mouse::FreeCursor();
+			Mouse::OnRawMove.Detach(this);
+			m_Delta = Vector2i::Zero();
+		}
+	}
+
+	void FloatDrag::OnMouseRawMove(const Vector2i& delta) noexcept
+	{
+		m_Delta = delta;
+	}
+
 }

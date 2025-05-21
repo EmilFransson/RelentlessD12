@@ -1,18 +1,16 @@
 #include "SearchBar.h"
 
-#include "Assets/AssetManager.h"
 #include "Graphics/RHI/ResourceViews.h"
 #include "Input/Keyboard.h"
-#include "UI.h"
 
 namespace Relentless
 {
-	namespace COLOR
+	namespace SearchBarEx_private
 	{
-		constexpr const Color SEARCHBAR_BACKGROUND = Color(17, 17, 17, 255);
-		constexpr const Color SEARCHBAR_BORDER = Color(60, 60, 60, 200);
-		constexpr const Color WIDGET_SELECTED = Color(30, 120, 255, 200);
-		constexpr const Color WIDGET_HOVERED = Color(100, 100, 100, 200);
+		constexpr const Color SearchbarBackgroundColor	= Color(17.0f, 17.0f, 17.0f, 255.0f);
+		constexpr const Color SearchbarBorderColor		= Color(60.0f, 60.0f, 60.0f, 200.0f);
+		constexpr const Color SearchbarActiveColor		= Color(30.0f, 120.0f, 255.0f, 200.0f);
+		constexpr const Color SearchbarHoveredColor		= Color(100.0f, 100.0f, 100.0f, 200.0f);
 	}
 
 	SearchBarEx::SearchBarEx(std::string_view id, std::string_view hintText, bool enableSearchHistory) noexcept
@@ -25,7 +23,7 @@ namespace Relentless
 		SetPadding({ ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 3.0f });
 		
 		SetBackgroundColor(Colors::Normalize(17.0f, 17.0f, 17.0f, 255.0f));
-		SetBorderColor(Colors::Normalize(COLOR::SEARCHBAR_BORDER));
+		SetBorderColor(Colors::Normalize(SearchBarEx_private::SearchbarBackgroundColor));
 	}
 
 	float SearchBarEx::CalcDesiredWidth() const noexcept
@@ -35,52 +33,24 @@ namespace Relentless
 
 	void SearchBarEx::OnRender() noexcept
 	{
-		//ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
-		//ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 10.0f);
-		//ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
-		//ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 3.0f));
-
-		const Color borderCol = m_IsActive ? COLOR::WIDGET_SELECTED : m_IsHovered ? COLOR::WIDGET_HOVERED : COLOR::SEARCHBAR_BORDER;
+		const Color borderCol = m_IsActive ? SearchBarEx_private::SearchbarActiveColor : m_IsHovered ? SearchBarEx_private::SearchbarHoveredColor : SearchBarEx_private::SearchbarBorderColor;
 		SetBorderColor(Colors::Normalize(borderCol));
 
-
-		//const ImU32 borderColor = m_IsActive ? COLOR::WIDGET_SELECTED : m_IsHovered ? COLOR::WIDGET_HOVERED : COLOR::SEARCHBAR_BORDER;
-		//ImGui::PushStyleColor(ImGuiCol_Border, borderColor);
-		//ImGui::PushStyleColor(ImGuiCol_FrameBg, COLOR::SEARCHBAR_BACKGROUND);
-
-		//ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-		//ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-		//ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-
-		const ImVec2 cursorPositionPreSearchBar = ImGui::GetCursorPos();
+		const ImVec2 cursorStartPosition = ImGui::GetCursorPos();
 		DrawSearchBar();
-		const ImVec2 cursorPositionPostSearchBar = ImGui::GetCursorPos();
 
-		//ImGui::PopStyleVar(3);
-		//ImGui::PopItemWidth();
+		if (!InputFieldContainsText())
+			DrawSearchIcon(cursorStartPosition);
+		else
+			DrawCancelIcon(cursorStartPosition);
+		
+		if (m_EnableSearchHistory)
+		{
+			DrawSearchHistoryPopupIcon(cursorStartPosition);
 
-		//if (!InputFieldContainsText())
-		//{
-		//	ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + 6.0f, cursorPositionPreSearchBar.y + 6.0f));
-		//	DrawSearchIcon();
-		//}
-		//else
-		//{
-		//	ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + 9.0f, cursorPositionPreSearchBar.y + 12.0f));
-		//	DrawCancelIcon();
-		//}
-		//
-		//if (m_EnableSearchHistory)
-		//{
-		//	ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + m_Width - 26.0f, cursorPositionPreSearchBar.y + 9.0f));
-		//	DrawSearchHistoryPopupIcon();
-		//
-		//	ImGui::SetNextWindowPos(ImVec2(ImGui::GetWindowPos().x + cursorPositionPreSearchBar.x, ImGui::GetWindowPos().y + cursorPositionPostSearchBar.y + ImGui::GetStyle().ItemSpacing.y - 3.0f));
-		//	ImGui::SetNextWindowSizeConstraints(ImVec2(m_Width, 0), ImVec2(m_Width, FLT_MAX));
-		//	DrawSearchHistoryPopup();
-		//}
-
-		//ImGui::PopStyleColor(5);
+			if (ImGui::IsPopupOpen("SearchHistoryPopup"))
+				DrawSearchHistoryPopup(cursorStartPosition);
+		}
 	}
 
 	void SearchBarEx::DrawSearchBar() noexcept
@@ -112,20 +82,22 @@ namespace Relentless
 				return 0;
 			}, &m_CallbackUserData);
 
+		const ImVec2 cursorPos = ImGui::GetCursorPos();
+
 		if (inputDone && m_OnTextChanged.IsSet())
 			m_OnTextChanged(m_CallbackUserData.Input.c_str());
 
-		if (ImGui::IsItemDeactivatedAfterEdit())
+		if (ImGui::IsItemDeactivatedAfterEdit() && m_OnTextCommitted.IsSet())
 		{
 			ETextCommitType type = Keyboard::IsKeyDown(RLS_Key::Enter) ? ETextCommitType::OnEnter : ETextCommitType::OnUserMovedFocus;
 			m_OnTextCommitted(m_CallbackUserData.Input.c_str(), type);
 		}
 
-		m_Width = ImGui::GetItemRectSize().x;
+		m_Size = Vector2(ImGui::GetItemRectSize().x, ImGui::GetItemRectSize().y);
 
 		ImGui::SetItemAllowOverlap();
 		m_IsActive = ImGui::IsItemActive();
-		m_IsHovered = ImGui::IsItemHovered() && !m_CancelIconHovered && !m_ArrowDownIconHovered && !m_SearchIconHovered;
+		m_IsHovered = ImGui::IsItemHovered() && !m_CancelIconHovered && !m_ChevronIconHovered && !m_MagnifyingGlassIconHovered;
 		const bool isFocused = ImGui::IsItemFocused() && m_IsActive;
 
 		const ImVec2 inputTextWidgetSize = ImGui::GetItemRectSize();
@@ -153,30 +125,34 @@ namespace Relentless
 			if (m_SearchHistory.size() > 5)
 				m_SearchHistory.pop_back();
 		}
+
+		ImGui::SetCursorPos(cursorPos);
 	}
 
-	void SearchBarEx::DrawSearchIcon() noexcept
+	void SearchBarEx::DrawSearchIcon(const ImVec2& searchBarStartPos) noexcept
 	{
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+		const ImVec2 magnifyingGlassSize = ImGui::CalcTextSize(ICON_FA_MAGNIFYING_GLASS);
+		constexpr float margin = 5.0f;
+		const float magnifyingGlassXPosition = searchBarStartPos.x + margin;
+		const float magnifyingGlassYPosition = searchBarStartPos.y + ((m_Size.y - magnifyingGlassSize.y) * 0.5f);
 
-		const Ref<Texture> texture = AssetManager::Get<Texture>(UI::SearchIconTextureHandle);
-		const ImVec4 tintCol = m_IsActive ? ImVec4(0.9f, 0.9f, 0.9f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(24.0f, 24.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
+		ImGui::SetCursorPos(ImVec2(magnifyingGlassXPosition, magnifyingGlassYPosition));
+		ImGui::TextColored(m_IsActive ? ImVec4(0.9f, 0.9f, 0.9f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FA_MAGNIFYING_GLASS);
 
-		m_SearchIconHovered = ImGui::IsItemHovered();
-		if (m_SearchIconHovered)
+		m_MagnifyingGlassIconHovered = ImGui::IsItemHovered();
+		if (m_MagnifyingGlassIconHovered)
 			ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_Arrow);
-
-		ImGui::PopStyleVar();
 	}
 
-	void SearchBarEx::DrawCancelIcon() noexcept
+	void SearchBarEx::DrawCancelIcon(const ImVec2& searchBarStartPos) noexcept
 	{
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+		const ImVec2 xMarkSize = ImGui::CalcTextSize(ICON_FA_XMARK);
+		constexpr float margin = 5.0f;
+		const float xMarkXPosition = searchBarStartPos.x + margin;
+		const float xMarkYPosition = searchBarStartPos.y + ((m_Size.y - xMarkSize.y) * 0.5f);
 
-		const Ref<Texture> texture = AssetManager::Get<Texture>(UI::CancelIconTextureHandle);
-		const ImVec4 tintCol = m_CancelIconHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		ImGui::ImageButton((ImTextureID)texture->GetSRV()->GetGPUHandle().ptr, ImVec2(15.0f, 15.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
+		ImGui::SetCursorPos(ImVec2(xMarkXPosition, xMarkYPosition));
+		ImGui::TextColored(m_CancelIconHovered ? ImVec4(0.9f, 0.9f, 0.9f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FA_XMARK);
 
 		m_CancelIconHovered = ImGui::IsItemHovered();
 		if (m_CancelIconHovered)
@@ -188,41 +164,39 @@ namespace Relentless
 			m_CallbackUserData.Input.clear();
 			m_CancelIconHovered = false;
 		}
-
-		ImGui::PopStyleVar();
 	}
 
-	void SearchBarEx::DrawSearchHistoryPopupIcon() noexcept
+	void SearchBarEx::DrawSearchHistoryPopupIcon(const ImVec2& searchBarStartPos) noexcept
 	{
-		const ImVec4 tintCol = m_ArrowDownIconHovered ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-		const Ref<Texture> pTexture = AssetManager::Get<Texture>(UI::ArrowDownIconTextureHandle);
+		const ImVec2 chevronSize = ImGui::CalcTextSize(ICON_FA_CHEVRON_DOWN);
+		constexpr float margin = 5.0f;
+		const float chevronXPosition = searchBarStartPos.x + m_Size.x - chevronSize.x - margin;
+		const float chevronYPosition = searchBarStartPos.y + ((m_Size.y - chevronSize.y) * 0.5f);
 
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+		ImGui::SetCursorPos(ImVec2(chevronXPosition, chevronYPosition));
+		ImGui::TextColored(m_ChevronIconHovered ? ImVec4(0.9f, 0.9f, 0.9f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FA_CHEVRON_DOWN);
+		m_ChevronIconHovered = ImGui::IsItemHovered();
 
-		ImGui::ImageButton((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(17.0f, 17.0f), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tintCol);
-
-		bool shouldOpenNew = false;
 		if (ImGui::IsItemClicked())
-		{
-			shouldOpenNew = true;
 			ImGui::OpenPopup("SearchHistoryPopup");
-		}
 
-		m_ArrowDownIconHovered = ImGui::IsItemHovered();
-		if (m_ArrowDownIconHovered)
+		if (m_ChevronIconHovered)
 		{
 			ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_Arrow);
-			ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(240.0f / 255.0f, 240.0f / 255.0f, 240.0f / 255.0f, 1.0f));
+
+			constexpr ImVec4 popupBGColor = ImVec4(240.0f / 255.0f, 240.0f / 255.0f, 240.0f / 255.0f, 1.0f);
+			ImGui::PushStyleColor(ImGuiCol_PopupBg, popupBGColor);
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
 			ImGui::SetTooltip("Click to show the Search History");
 			ImGui::PopStyleColor(2);
 		}
-
-		ImGui::PopStyleVar();
 	}
 
-	void SearchBarEx::DrawSearchHistoryPopup() noexcept
+	void SearchBarEx::DrawSearchHistoryPopup(const ImVec2& searchBarStartPos) noexcept
 	{
+		ImGui::SetNextWindowPos(ImVec2(ImGui::GetWindowPos().x + searchBarStartPos.x, ImGui::GetWindowPos().y + searchBarStartPos.y + m_Size.y));
+		ImGui::SetNextWindowSizeConstraints(ImVec2(m_Size.x, 0), ImVec2(m_Size.x, FLT_MAX));
+
 		if (!ImGui::BeginPopup("SearchHistoryPopup"))
 			return;
 

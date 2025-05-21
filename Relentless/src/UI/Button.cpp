@@ -37,7 +37,7 @@ namespace Relentless
 	void Button::OnRender() noexcept
 	{
 		if (ImGui::Button(m_ID.c_str(), ImVec2(m_Size.x, m_Size.y)))
-			OnClicked();
+			m_OnClickedCallback();
 	}
 
 	void Button::SetSize(const Vector2& size) noexcept

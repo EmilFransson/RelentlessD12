@@ -77,6 +77,9 @@ using float4x4 = Matrix;
 		float3 Direction;
 		float Range;
 		float3 Color;
+		uint Padding;
+
+		float2 SpotlightAngles;
 
 		// flags
 		uint IsEnabled : 1;
@@ -114,6 +117,9 @@ using float4x4 = Matrix;
 		uint MeshesIndex;
 		uint MaterialsIndex;
 		uint LightsIndex;
+
+		float Exposure;
+		float3 Padding;
 	};
 
 	static const uint INVALID_DESCRIPTOR_INDEX = 0xFFFFFFFF;

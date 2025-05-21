@@ -63,6 +63,7 @@ namespace Relentless
 		CopyComponentIfExists<MeshRendererComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<DirectionalLightComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<PointLightComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<SpotLightComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<CameraComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<HiddenInGameComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<RotatorComponent>(entityToCopy, newEntity);

@@ -2,9 +2,8 @@
 
 namespace Relentless
 {
-	ColorPicker::ColorPicker(std::string_view id, const Color& initialColor, const Vector2& size, int flags) noexcept
+	ColorPicker::ColorPicker(std::string_view id, const Vector2& size, int flags) noexcept
 		:IStylableWidget{id}
-		,m_Color{initialColor}
 		,m_Size{size}
 	{
 		SetFlags(flags);
@@ -29,15 +28,16 @@ namespace Relentless
 
 		const float width = Math::Min(ImGui::GetContentRegionAvail().x, m_Size.x);
 
-		if (ImGui::ColorButton(m_ID.c_str(), ImVec4(m_Color.R(), m_Color.G(), m_Color.B(), m_Color.A()), GetFlags(), ImVec2(width, 0.0f)))
+		Color color = m_ValueCallback();
+		if (ImGui::ColorButton(m_ID.c_str(), ImVec4(color.R(), color.G(), color.B(), color.A()), GetFlags(), ImVec2(width, 0.0f)))
 			ImGui::OpenPopup("ColorPickerPopup");
 
 		m_IsHovered = ImGui::IsItemHovered();
 
 		if (ImGui::BeginPopup("ColorPickerPopup"))
 		{
-			if (ImGui::ColorPicker4("##picker", &m_Color.x, m_PickerFlags))
-				OnChanged(m_Color);
+			if (ImGui::ColorPicker4("##picker", &color.x, m_PickerFlags) && m_OnChanged.IsSet())
+				m_OnChanged(color);
 
 			ImGui::EndPopup();
 		}

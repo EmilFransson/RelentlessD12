@@ -3,6 +3,8 @@
 
 namespace Relentless
 {
+	Editor::~Editor() noexcept {}
+
 	void Editor::OnEvent(IEvent& event) noexcept
 	{
 		for (auto& pPanel : m_PanelStack)
@@ -428,7 +430,7 @@ namespace Relentless
 		entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
 		auto& dlc = m_pActiveScene->GetEntityManager().Add<DirectionalLightComponent>(dirEntity);
 		dlc.Color = Math::MakeFromColorTemperature(5'900.0f);
-		dlc.Intensity = 3.0f;
+		dlc.Intensity = Math::LuxToRadiantIrradiance(100'000.0f);
 
 		Ref<Material> pWhiteMaterial = new Material();
 		pWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
@@ -701,9 +703,13 @@ namespace Relentless
 
 	void Editor::OnPanelGainedFocus(PanelBase*) noexcept
 	{
-		std::sort(m_PanelStack.begin(), m_PanelStack.end(), [](PanelBase* pPanelA, PanelBase* pPanelB)
+		//Note: Can be called in the middle of UI evaluation, therefore we defer the sorting
+		Application::Get().SubmitToMainThread([this]() 
 			{
-				return pPanelA->GetLastFrameFocused() > pPanelB->GetLastFrameFocused();
+				std::sort(m_PanelStack.begin(), m_PanelStack.end(), [](PanelBase* pPanelA, PanelBase* pPanelB)
+					{
+						return pPanelA->GetLastFrameFocused() > pPanelB->GetLastFrameFocused();
+					});
 			});
 	}
 
@@ -870,6 +876,7 @@ namespace Relentless
 		UniquePtr<ViewportPanel> pViewport = std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size());
 		pViewport->OnClickedOnViewport.Connect(this, &Editor::OnViewportClicked);
 		pViewport->OnHotkeyPressed.Connect(this, &Editor::OnViewportHotkeyPressed);
+		pViewport->SetPadding(Vector2(2.0f, 0.0f));
 
 		OnPanelCreated(pViewport.get());
 		

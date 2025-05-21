@@ -1,4 +1,4 @@
-#include "Table.h"
+﻿#include "Table.h"
 
 namespace Relentless
 {
@@ -16,14 +16,18 @@ namespace Relentless
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
-	void Table::Add(Ref<IWidget> pWidget, uint32 column, uint32 row) noexcept
-	{
-		RLS_ASSERT(!HasWidget(pWidget), "[Table::Add] Widget already assigned as child.");
-		m_Cells[{column, row}].push_back(pWidget);
+	//IWidget* Table::Add(Ref<IWidget> pWidget, uint32 column, uint32 row) noexcept
+	//{
+	//	RLS_ASSERT(!HasWidget(pWidget), "[Table::Add] Widget already assigned as child.");
+	//	m_Cells[{column, row}].push_back(pWidget);
+	//
+	//	m_NumRows = Math::Max(m_NumRows, row + 1);
+	//	m_NumColumns = Math::Max(m_NumColumns, column + 1);
+	//
+	//	return m_Cells[{column, row}].back().Get();
+	//}
 
-		m_NumRows = Math::Max(m_NumRows, row + 1);
-		m_NumColumns = Math::Max(m_NumColumns, column + 1);
-	}
+	
 
 	float Table::CalcDesiredWidth() const noexcept
 	{

@@ -11,3 +11,13 @@ float RadialAttenuation(float3 surfaceToLight, float range)
     const float windowing = Square(saturate(1 - Square(distSq * Square(rcp(range)))));
     return distanceAttenuation * windowing;
 }
+
+// Angle >= Umbra -> 0
+// Angle < Penumbra -> 1
+//Gradient between Umbra and Penumbra
+float DirectionalAttenuation(float3 L, float3 direction, float cosUmbra, float cosPenumbra)
+{
+    const float cosAngle = dot(-normalize(L), direction);
+    const float falloff = saturate((cosAngle - cosUmbra) / (cosPenumbra - cosUmbra));
+    return falloff * falloff;
+}

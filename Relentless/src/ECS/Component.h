@@ -55,17 +55,30 @@ namespace Relentless
 		UUID UuId;
 	};
 
-	struct DirectionalLightComponent
+	struct LightBaseComponent
 	{
 		Color Color = Colors::White;
-		float Intensity = 1.0f;
+		float Temperature = 6'600.0f;
+		bool UseTemperature = false;
 	};
 
-	struct PointLightComponent
+	struct DirectionalLightComponent : public LightBaseComponent
 	{
-		Vector3 Color = Vector3::One;
-		float Intensity = 1.0f;
-		float Range = 10.0f;
+		float Intensity = Math::LuxToRadiantIrradiance(100'000.0f);
+	};
+
+	struct PointLightComponent : public LightBaseComponent
+	{
+		float AttenuationRadius = 10.0f;
+		float Intensity = Math::CandelaToRadiantIntensity(8.0f);
+	};
+
+	struct SpotLightComponent : public LightBaseComponent
+	{
+		float AttenuationRadius = 10.0f;
+		float Intensity = Math::CandelaToRadiantIntensity(8.0f);
+		float InnerConeAngle = 0.0f;
+		float OuterConeAngle = Math::DegToRad(44.0f);
 	};
 
 	struct CameraComponent

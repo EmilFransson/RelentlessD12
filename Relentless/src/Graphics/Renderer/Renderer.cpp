@@ -67,6 +67,20 @@ namespace Relentless
 		const uint32 width = pTarget->GetWidth();
 		const uint32 height = pTarget->GetHeight();
 
+		bool drawGrid = false;
+		bool drawEntityMask = false;
+		RenderModeEx renderMode = RenderModeEx::Solid;
+		float exposure = 1.0f;
+
+		ViewportRenderView* pViewportRenderView = dynamic_cast<ViewportRenderView*>(pViewTransform);
+		if (pViewportRenderView)
+		{
+			drawGrid = pViewportRenderView->DrawGrid;
+			drawEntityMask = pViewportRenderView->MouseHoverCoordinates != Vector2i(-1, -1);
+			renderMode = pViewportRenderView->RenderMode;
+			exposure = pViewportRenderView->Exposure;
+		}
+
 		//Set up render view:
 		{
 			m_MainView.Viewport				= FloatRect(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
@@ -90,6 +104,8 @@ namespace Relentless
 
 			m_MainView.PerspectiveFrustum	= pViewTransform->PerspectiveFrustum;
 			m_MainView.OrthographicFrustum	= pViewTransform->OrthographicFrustum;
+
+			m_MainView.Exposure				= exposure;
 		}
 																													
 		m_SceneTextures.pColorTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT), "Color Target");
@@ -123,18 +139,6 @@ namespace Relentless
 					return EnumHasAnyFlags(a.BlendMode, Batch::Blending::AlphaBlend) ? bDist < aDist : aDist < bDist;
 				};
 			std::sort(m_Batches.begin(), m_Batches.end(), CompareSort);
-		}
-
-		bool drawGrid			= false;
-		bool drawEntityMask		= false;
-		RenderModeEx renderMode = RenderModeEx::Solid;
-
-		ViewportRenderView* pViewportRenderView = dynamic_cast<ViewportRenderView*>(pViewTransform);
-		if (pViewportRenderView)
-		{
-			drawGrid		= pViewportRenderView->DrawGrid;
-			drawEntityMask	= pViewportRenderView->MouseHoverCoordinates != Vector2i(-1, -1);
-			renderMode		= pViewportRenderView->RenderMode;
 		}
 
 		//Pre-Z
@@ -375,6 +379,8 @@ namespace Relentless
 		outViewUniform.MeshesIndex				= m_MeshesBuffer.pBuffer ? m_MeshesBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 		outViewUniform.MaterialsIndex			= m_MaterialsBuffer.pBuffer ? m_MaterialsBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 		outViewUniform.LightsIndex				= m_LightsBuffer.pBuffer ? m_LightsBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+	
+		outViewUniform.Exposure					= renderView.Exposure;
 	}
 
 	void Renderer::InitializePipelines()
@@ -530,9 +536,10 @@ namespace Relentless
 			EntityManager& entityManager = m_pCurrentScene->GetEntityManager();
 			Collection<DirectionalLightComponent> directionalLightCollection = entityManager.Collect<DirectionalLightComponent>();
 			Collection<PointLightComponent> pointLightCollection = entityManager.Collect<PointLightComponent>();
+			Collection<SpotLightComponent> spotLightCollection = entityManager.Collect<SpotLightComponent>();
 
 			std::vector<ShaderInterop::Light> lights;
-			lights.reserve(directionalLightCollection.Size() + pointLightCollection.Size());
+			lights.reserve(directionalLightCollection.Size() + pointLightCollection.Size() + spotLightCollection.Size());
 
 			directionalLightCollection.Do([&](entity e, DirectionalLightComponent& dlc)
 				{
@@ -544,6 +551,13 @@ namespace Relentless
 					light.IsDirectional = true;
 					light.IsPoint = light.IsSpot = false;
 					light.Color = Vector3(dlc.Color.x, dlc.Color.y, dlc.Color.z);
+					if (dlc.UseTemperature)
+					{
+						const Color tempColor = Math::MakeFromColorTemperature(dlc.Temperature);
+						const Vector3 vTempColor = Vector3(tempColor.x, tempColor.y, tempColor.z);
+						light.Color *= vTempColor;
+					}
+
 					light.Direction = m_pCurrentScene->GetWorldForward(e);
 					light.IsEnabled = dlc.Intensity > 0.0f;
 				});
@@ -557,11 +571,44 @@ namespace Relentless
 					light.Intensity = plc.Intensity;
 					light.IsPoint = true;
 					light.IsDirectional = light.IsSpot = false;
-					light.Color = plc.Color;
+					light.Color = Vector3(plc.Color.x, plc.Color.y, plc.Color.z);
+					if (plc.UseTemperature)
+					{
+						const Color tempColor = Math::MakeFromColorTemperature(plc.Temperature);
+						const Vector3 vTempColor = Vector3(tempColor.x, tempColor.y, tempColor.z);
+						light.Color *= vTempColor;
+					}
+
 					light.Position = m_pCurrentScene->GetWorldLocation(e);
 					light.IsEnabled = plc.Intensity > 0.0f;
-					light.Range = plc.Range;
+					light.Range = plc.AttenuationRadius;
 				});
+
+			spotLightCollection.Do([&](entity e, SpotLightComponent& slc)
+				{
+					if (entityManager.Has<HiddenInGameComponent>(e))
+						return;
+
+					ShaderInterop::Light& light = lights.emplace_back();
+					light.Intensity = slc.Intensity;
+					light.IsSpot = true;
+					light.IsDirectional = light.IsPoint = false;
+					light.Color = Vector3(slc.Color.x, slc.Color.y, slc.Color.z);
+					if (slc.UseTemperature)
+					{
+						const Color tempColor = Math::MakeFromColorTemperature(slc.Temperature);
+						const Vector3 vTempColor = Vector3(tempColor.x, tempColor.y, tempColor.z);
+						light.Color *= vTempColor;
+					}
+
+					light.Position = m_pCurrentScene->GetWorldLocation(e);
+					light.IsEnabled = slc.Intensity > 0.0f;
+					light.Range = slc.AttenuationRadius;
+					light.SpotlightAngles.x = std::cos(slc.InnerConeAngle / 2.0f);
+					light.SpotlightAngles.y = std::cos(slc.OuterConeAngle / 2.0f);
+					light.Direction = m_pCurrentScene->GetWorldForward(e);
+				});
+
 
 			CopyBufferData((uint32)lights.size(), sizeof(ShaderInterop::Light), "Lights", lights.data(), m_LightsBuffer);
 		}
@@ -588,5 +635,4 @@ namespace Relentless
 		
 		commandContext.CopyBuffer(alloc.pBackingResource, view.ViewCB, alloc.Size, alloc.Offset, 0);
 	}
-
 }

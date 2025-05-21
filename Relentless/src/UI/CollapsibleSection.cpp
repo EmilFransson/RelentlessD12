@@ -16,12 +16,6 @@ namespace Relentless
 		SetPadding(Vector2(5.0f, 6.0f));
 	}
 
-	void CollapsibleSection::Add(Ref<IWidget> pWidget) noexcept
-	{
-		RLS_ASSERT(!HasWidget(pWidget), "[CollapsibleSection::Add] Widget already assigned as child.");
-		m_Children.push_back(pWidget);
-	}
-
 	float CollapsibleSection::CalcDesiredWidth() const noexcept
 	{
 		return 0.0f;

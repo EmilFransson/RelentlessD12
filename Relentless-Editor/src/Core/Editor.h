@@ -1,9 +1,9 @@
 #pragma once
 #include <Relentless.h>
+#include "../Panels/DetailsPanel.h"
 #include "../Panels/OutlinerPanel.h"
 #include "../Panels/PropertiesPanel.h"
 #include "../Panels/ContentBrowserPanel.h"
-#include "../Panels/DetailsPanel.h"
 #include "../Panels/MetricsPanel.h" 
 #include "../Panels/SceneRendererPanel.h"
 #include "../Panels/InspectorPanel.h"
@@ -20,8 +20,7 @@ namespace Relentless
 	{
 	public:
 		Editor() noexcept = default;
-		virtual ~Editor() noexcept = default;
-
+		virtual ~Editor() noexcept;
 		virtual void OnEvent(IEvent& event) noexcept;
 		virtual void OnImGuiRender() noexcept;
 		virtual void OnCreate() noexcept;
@@ -93,7 +92,7 @@ namespace Relentless
 		std::shared_ptr<UtilityRenderer> m_pUtilityRenderer = nullptr;
 		
 		UniquePtr<OutlinerPanel> m_pOutlinerPanel = nullptr;
-		UniquePtr<DetailsPanel> m_pDetailsPanel = nullptr;
+		UniquePtr<DetailsPanel> m_pDetailsPanel;
 
 		bool m_DisplayOutlinerPanel = true;
 		bool m_DisplayContentBrowserPanel = true;

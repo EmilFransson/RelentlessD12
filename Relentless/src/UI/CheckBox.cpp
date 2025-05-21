@@ -36,8 +36,9 @@ namespace Relentless
 
 	void CheckBox::OnRender() noexcept
 	{
-		if (ImGui::Checkbox(m_ID.c_str(), &m_State))
-			OnCheckStateChanged(m_State);
+		bool state = m_ValueCallback();
+		if (ImGui::Checkbox(m_ID.c_str(), &state))
+			m_OnCheckStateChanged(state);
 
 		m_Hovered = ImGui::IsItemHovered();
 		if (m_Hovered)

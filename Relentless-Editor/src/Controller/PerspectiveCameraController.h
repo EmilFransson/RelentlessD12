@@ -20,8 +20,14 @@ namespace Relentless
 
 		[[nodiscard]] bool AllowsMovement() const noexcept;
 
+		[[nodiscard]] float GetFarPlane() const noexcept;
+		[[nodiscard]] float GetHorizontalFoV() const noexcept;
+		[[nodiscard]] float GetMaxSpeedMultiplierLimit() const noexcept;
+		[[nodiscard]] float GetMinSpeedMultiplierLimit() const noexcept;
+		[[nodiscard]] float GetNearPlane() const noexcept;
 		[[nodiscard]] float GetOrbitDistance() const noexcept;
 		[[nodiscard]] ECameraControllerNavigationState GetState() const noexcept;
+		[[nodiscard]] float GetSpeedMultiplier() const noexcept;
 
 		void SetCamera(PerspectiveCamera* pCamera) noexcept;
 		void SetDamping(float damping) noexcept;
@@ -29,6 +35,7 @@ namespace Relentless
 		void SetAllowMovement(bool state) noexcept;
 		void SetFarPlane(float farPlane) noexcept;
 		void SetFoV(float fov) noexcept;
+		void SetHorizontalFoV(float horizontalFoV) noexcept;
 		void SetNearPlane(float nearPlane) noexcept;
 		void SetOrbitDistance(float distance) noexcept;
 		void SetSpeed(float speed) noexcept;
@@ -60,6 +67,9 @@ namespace Relentless
 		float m_OrbitDistance = 10.0f;
 		float m_OrbitYaw = 0.0f;
 		float m_OrbitPitch = 0.0f;
+		float m_HorizontalFoV = Math::DegToRad(60.0f);
+		float m_MinSpeedMultiplierLimit = 0.0f;
+		float m_MaxSpeedMultiplierLimit = 10.0f;
 
 		bool m_Enabled = true;
 		bool m_AllowMovement = true;

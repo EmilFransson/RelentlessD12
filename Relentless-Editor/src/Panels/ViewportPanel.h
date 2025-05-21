@@ -32,7 +32,7 @@ namespace Relentless
 
 	protected:
 		virtual void PreRender() noexcept override;
-		void OnRender() noexcept override;
+		void OnRender() noexcept override {};
 		virtual void PostRender() noexcept override;
 
 		virtual void Update() noexcept override;
@@ -41,16 +41,26 @@ namespace Relentless
 		[[nodiscard]] bool CanHandleMouseInputs() const noexcept;
 		void ConfineAndHideMouseAtCursorPosition() noexcept;
 
-		void DetermineViewportHoverState() noexcept;
 		void DetermineCameraAreaHoverState() noexcept;
 		void DrawCameraValidClientAreaRect() noexcept;
-		void DrawToolbar(ViewportRenderView& renderView) noexcept;
-		void DrawViewport(const ViewportRenderView& renderView);
 
 		[[nodiscard]] bool HandleKeyPressed(RLS_Key key) noexcept;
 		void HandleTransformGizmoInteraction() noexcept;
 
 		[[nodiscard]] bool IsCameraValidClientAreaHovered() const noexcept;
+
+		void OnCameraSpeedMultiplierChanged(float speed) noexcept;
+		[[nodiscard]] float OnCameraSpeedMultiplierRequested() const noexcept;
+
+		void OnCanvasHoverStateChanged(bool newState) noexcept;
+		void OnCanvasResize(const Vector2i& newSize) noexcept;
+		[[nodiscard]] Texture* OnCanvasTargetRequest() const noexcept;
+		void OnCanvasRenderEnd() noexcept;
+
+		[[nodiscard]] float OnCameraFarViewPlaneRequested() const noexcept;
+		[[nodiscard]] float OnCameraNearViewPlaneRequested() const noexcept;
+		void OnCameraFarViewPlaneChanged(float farPlane) noexcept;
+		void OnCameraNearViewPlaneChanged(float nearPlane) noexcept;
 
 		//Events:
 		[[nodiscard]] bool OnKeyPressedEvent(KeyPressedEvent& event) noexcept override;
@@ -76,16 +86,23 @@ namespace Relentless
 		void OnCameraEndMove() noexcept;
 		void OnFocusGained(PanelBase* pSelf) noexcept;
 		void OnFocusLost(PanelBase* pSelf) noexcept;
+
+		void OnHorizontalFOVChanged(float value) noexcept;
+		[[nodiscard]] float OnHorizontalFOVRequested() const noexcept;
+
+		void OnSettingsButtonClicked();
+
 		void OnTransformGizmoInteractionStateChanged(ETransformGizmoInteractionState newState) noexcept;
 		void OnViewportResize(const Vector2i& newSize);
 
+		[[nodiscard]] float OnEV100Requested() const noexcept;
+		void OnEV100Changed(float ev100) noexcept;
+
 		void SetState(EViewportState newState) noexcept;
 	private:
-		String m_ViewportID;
 		String m_ToolbarID;
 
 		IntRect m_CameraValidScreenRect;
-		IntRect m_ViewportRect;
 
 		UniquePtr<TransformGizmoController> m_pTransformController = nullptr;
 		UniquePtr<PerspectiveCameraController> m_pCameraController = nullptr;
@@ -99,9 +116,14 @@ namespace Relentless
 		uint32 m_RenderViewIndex = std::numeric_limits<uint32>::max();
 		bool m_ClientAreaHovered = false;
 		bool m_CameraValidAreaHovered = false;
+		bool m_ShowSettingsPanel = false;
 
 		EViewportState m_CurrentState = EViewportState::None;
 
 		Ref<HorizontalBox> m_pToolbarBox = nullptr;
+		HorizontalBox* m_pCanvasHBox = nullptr;
+		VerticalBox* m_pSettingsBox = nullptr;
+		HorizontalBox* m_pCanvasAndSettingsBox = nullptr;
+		Canvas* m_pCanvas = nullptr;
 	};
 }

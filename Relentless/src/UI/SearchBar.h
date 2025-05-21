@@ -23,10 +23,10 @@ namespace Relentless
 		virtual void OnRender() noexcept override;
 
 		void DrawSearchBar() noexcept;
-		void DrawSearchIcon() noexcept;
-		void DrawCancelIcon() noexcept;
-		void DrawSearchHistoryPopupIcon() noexcept;
-		void DrawSearchHistoryPopup() noexcept;
+		void DrawSearchIcon(const ImVec2& searchBarStartPos) noexcept;
+		void DrawCancelIcon(const ImVec2& searchBarStartPos) noexcept;
+		void DrawSearchHistoryPopupIcon(const ImVec2& searchBarStartPos) noexcept;
+		void DrawSearchHistoryPopup(const ImVec2& searchBarStartPos) noexcept;
 		[[nodiscard]] bool InputFieldContainsText() const noexcept;
 		void ResetInputBuffer() noexcept;
 	private:
@@ -42,14 +42,14 @@ namespace Relentless
 			SearchBarEx* OwningObject = nullptr;
 		} m_CallbackUserData;
 
-		float m_Width = 0.0f;
+		Vector2 m_Size = Vector2::Zero;
 
 		char m_FullInputBuffer[128] = "        ";
 		bool m_IsActive = false;
 		bool m_IsHovered = false;
-		bool m_SearchIconHovered = false;
+		bool m_MagnifyingGlassIconHovered = false;
 		bool m_CancelIconHovered = false;
-		bool m_ArrowDownIconHovered = false;
+		bool m_ChevronIconHovered = false;
 		bool m_WasFocused = false;
 
 		bool m_EnableSearchHistory = false;

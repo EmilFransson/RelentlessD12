@@ -9,12 +9,6 @@ namespace Relentless
 	{
 	}
 
-	void VerticalBox::Add(Ref<IWidget> pWidget) noexcept
-	{
-		RLS_ASSERT(!HasWidget(pWidget), "[VerticalBox::Add] Widget already assigned as child.");
-		m_Children.push_back(pWidget);
-	}
-
 	float VerticalBox::CalcDesiredWidth() const noexcept
 	{
 		float maxWidth = 0.0f;

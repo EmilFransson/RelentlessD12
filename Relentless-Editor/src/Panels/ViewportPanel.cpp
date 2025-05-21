@@ -26,24 +26,103 @@ namespace Relentless
 		OnGainedFocus.Connect(this, &ViewportPanel::OnFocusGained);
 		OnLostFocus.Connect(this, &ViewportPanel::OnFocusLost);
 
-		m_ViewportID = std::format("{}_Viewport_{}", pName, renderViewIndex + 1);
 		m_ToolbarID = std::format("{}_Toolbar_{}", pName, renderViewIndex + 1);
 
+		Ref<VerticalBox> pRoot = new VerticalBox("##ViewportPanelRootBox");
+
 		m_pToolbarBox = new HorizontalBox(m_ToolbarID.c_str(), true, Vector2(0, 40));
+		m_pToolbarBox->SetMargin(FloatRect(5.0f, 1.0f, 0.0f, 0.0f));
 		m_pToolbarBox->SetFlags(ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse);
 
+		Ref<HorizontalBox> pToolBarLeftBox = new HorizontalBox("##ToolbarLeftAlignedBox");
+		pToolBarLeftBox->SetAlignmentPolicy(EAlignmentPolicy::Left);
+
 		Ref<Button> m_pWireFrameButton = new Button("Wireframe", Vector2(0, 40));
-
 		Ref<Button> m_pSolidButton = new Button("Solid", Vector2(0, 40));
-
 		Ref<Button> m_pTSnappingButton = new Button("T-Snap", Vector2(0, 40));
-
 		Ref<Button> m_pRSnappingButton = new Button("R-Snap", Vector2(0, 40));
 
-		m_pToolbarBox->Add(m_pWireFrameButton);
-		m_pToolbarBox->Add(m_pSolidButton);
-		m_pToolbarBox->Add(m_pTSnappingButton);
-		m_pToolbarBox->Add(m_pRSnappingButton);
+		pToolBarLeftBox->Add(m_pWireFrameButton);
+		pToolBarLeftBox->Add(m_pSolidButton);
+		pToolBarLeftBox->Add(m_pTSnappingButton);
+		pToolBarLeftBox->Add(m_pRSnappingButton);
+
+		m_pToolbarBox->Add(pToolBarLeftBox);
+
+		Ref<HorizontalBox> pToolBarRightBox = new HorizontalBox("##ToolbarRightAlignedBox");
+		pToolBarRightBox->SetAlignmentPolicy(EAlignmentPolicy::Right);
+
+		Ref<Button> pGearIconButton = new Button(ICON_FA_GEAR, Vector2(40, 40));
+		pGearIconButton->OnClicked(this, &ViewportPanel::OnSettingsButtonClicked);
+		pGearIconButton->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
+		pToolBarRightBox->Add(pGearIconButton);
+
+		m_pToolbarBox->Add(pToolBarRightBox);
+		
+		pRoot->Add(m_pToolbarBox);
+
+		m_pCanvasAndSettingsBox = new HorizontalBox("##CanvasAndSettingsBox");
+
+		m_pCanvasHBox = m_pCanvasAndSettingsBox->Add(new HorizontalBox("##ViewportCanvasBox", true, Vector2(0, 0)));
+
+		m_pCanvas = m_pCanvasHBox->Add(new Canvas("##ViewportCanvas"));
+		m_pCanvas
+			->Target(this, &ViewportPanel::OnCanvasTargetRequest)
+			->OnHoverStateChanged(this, &ViewportPanel::OnCanvasHoverStateChanged)
+			->OnResize(this, &ViewportPanel::OnCanvasResize)
+			->OnRenderEnd.Connect(this, &ViewportPanel::OnCanvasRenderEnd);
+
+		m_pSettingsBox = m_pCanvasAndSettingsBox->Add(new VerticalBox("##ViewportSettingsBox", Vector2(350.0f, 0.0f), true));
+		m_pSettingsBox->SetIsVisible(false);
+		
+		CollapsibleSection* pCameraSection = m_pSettingsBox->Add(new CollapsibleSection(ICON_FA_CAMERA "  Camera"));
+		
+		Table* pCameraSettingsTable = pCameraSection->Add(new Table("##ViewportCameraSettingsTable"));
+		uint32 currentRow = 0u;
+
+		{
+			pCameraSettingsTable->Add(new Label("Speed Multiplier"), 0, currentRow);
+			pCameraSettingsTable->Add(new FloatSlider("##SpeedMultiplierSlider", m_pCameraController->GetMinSpeedMultiplierLimit(), m_pCameraController->GetMaxSpeedMultiplierLimit(), "%.3f"), 1, currentRow)
+				->Value(this, &ViewportPanel::OnCameraSpeedMultiplierRequested)
+				->OnValueChanged(this, &ViewportPanel::OnCameraSpeedMultiplierChanged);
+			currentRow++;
+		}
+
+		{
+			pCameraSettingsTable->Add(new Label("Field of View (H)"), 0, currentRow);
+			pCameraSettingsTable->Add(new FloatSlider("##HorizontalFovSlider", 5.0f, 170.0f, "%.3f"), 1, currentRow)
+				->Value(this, &ViewportPanel::OnHorizontalFOVRequested)
+				->OnValueChanged(this, &ViewportPanel::OnHorizontalFOVChanged);
+			currentRow++;
+		}
+
+		{
+			pCameraSettingsTable->Add(new Label("Near View Plane"), 0, currentRow);
+			pCameraSettingsTable->Add(new FloatSlider("##NearViewPlaneSlider", 0.01f, 100'000.0f, "%.3f", ImGuiSliderFlags_Logarithmic), 1, currentRow)
+				->Value(this, &ViewportPanel::OnCameraNearViewPlaneRequested)
+				->OnValueChanged(this, &ViewportPanel::OnCameraNearViewPlaneChanged);
+			currentRow++;
+		}
+		
+		{
+			pCameraSettingsTable->Add(new Label("Far View Plane"), 0, currentRow);
+			pCameraSettingsTable->Add(new FloatSlider("##FarViewPlaneSlider", 0.01f, 100'000.0f, "%.3f", ImGuiSliderFlags_Logarithmic), 1, currentRow)
+				->Value(this, &ViewportPanel::OnCameraFarViewPlaneRequested)
+				->OnValueChanged(this, &ViewportPanel::OnCameraFarViewPlaneChanged);
+			currentRow++;
+		}
+
+		{
+			pCameraSettingsTable->Add(new Label("EV100"), 0, currentRow);
+			pCameraSettingsTable->Add(new FloatSlider("##ExposureSlider", -10.0f, 10.0f, "%.3f"), 1, currentRow)
+				->Value(this, &ViewportPanel::OnEV100Requested)
+				->OnValueChanged(this, &ViewportPanel::OnEV100Changed);
+			currentRow++;
+		}
+		
+
+		pRoot->Add(m_pCanvasAndSettingsBox);
+		SetRoot(pRoot);
 	}
 
 	std::shared_ptr<PerspectiveCamera> ViewportPanel::GetCamera() const noexcept
@@ -90,33 +169,12 @@ namespace Relentless
 	void ViewportPanel::PreRender() noexcept
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	}
-
-	void ViewportPanel::OnRender() noexcept
-	{
-		if (!IsVisible())
-			return;
-
-		const Vector2u& region = GetContentRegionAvail();
-		if (region.x == 0u || region.y == 0u)
-			return;
-
-		ViewportRenderView& renderView = m_pEditor->GetRenderView(m_RenderViewIndex);
-
-		DrawToolbar(renderView);
-		DrawViewport(renderView);
-
-		DetermineViewportHoverState();
-		DetermineCameraAreaHoverState();
-
-		HandleTransformGizmoInteraction();
-
-		ImGui::EndChild();
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 	}
 
 	void ViewportPanel::PostRender() noexcept
 	{
-		ImGui::PopStyleVar();
+		ImGui::PopStyleVar(2);
 	}
 
 	void ViewportPanel::Update() noexcept
@@ -142,17 +200,6 @@ namespace Relentless
 		Mouse::HideCursor();
 	}
 
-	void ViewportPanel::DetermineViewportHoverState() noexcept
-	{
-		const bool isHoveringViewport = ImGui::IsMouseHoveringRect(ImVec2(m_ViewportRect.Left, m_ViewportRect.Top), ImVec2(m_ViewportRect.Right, m_ViewportRect.Bottom));
-		if (isHoveringViewport && !m_ClientAreaHovered)
-			OnBeginViewportHover();
-		else if (!isHoveringViewport && m_ClientAreaHovered)
-			OnEndViewportHover();
-
-		m_ClientAreaHovered = isHoveringViewport;
-	}
-
 	void ViewportPanel::DetermineCameraAreaHoverState() noexcept
 	{
 		const bool isHoveringCameraValidArea = ImGui::IsMouseHoveringRect(ImVec2(m_CameraValidScreenRect.Left, m_CameraValidScreenRect.Top), ImVec2(m_CameraValidScreenRect.Right, m_CameraValidScreenRect.Bottom));
@@ -167,63 +214,6 @@ namespace Relentless
 	void ViewportPanel::DrawCameraValidClientAreaRect() noexcept
 	{
 		ImGui::GetWindowDrawList()->AddRect(ImVec2(m_CameraValidScreenRect.Left, m_CameraValidScreenRect.Top), ImVec2(m_CameraValidScreenRect.Right, m_CameraValidScreenRect.Bottom), IM_COL32(255, 255, 255, 255));
-	}
-
-	void ViewportPanel::DrawToolbar(ViewportRenderView& renderView) noexcept
-	{
-		m_pToolbarBox->Render();
-		return;
-
-		ImGui::BeginChild(m_ToolbarID.c_str(), ImVec2(0, 40), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse);
-
-		if (ImGui::Button("Wireframe"))
-			renderView.RenderMode = renderView.RenderMode == RenderModeEx::Solid ? RenderModeEx::Wireframe : RenderModeEx::Solid;
-
-		ImGui::SameLine();
-
-		if (ImGui::Button("Solid"))
-			renderView.DrawGrid = !renderView.DrawGrid;
-
-		ImGui::SameLine();
-
-		if (ImGui::Button("T-Snapping"))
-			m_pTransformController->ToggleTranslationMovementMode();
-
-		ImGui::SameLine();
-
-		if (ImGui::Button("R-Snapping"))
-			m_pTransformController->ToggleRotationMovementMode();
-
-		ImGui::EndChild();
-	}
-
-	void ViewportPanel::DrawViewport(const ViewportRenderView& renderView)
-	{
-		ImGui::BeginChild(m_ViewportID.c_str(), ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse);
-
-		const Vector2i viewportSize = Vector2i(static_cast<int32>(ImGui::GetContentRegionAvail().x), static_cast<int32>(ImGui::GetContentRegionAvail().y));
-		if (m_ViewportSize != viewportSize)
-			OnViewportResize(viewportSize);
-
-		ImGui::Image((ImTextureID)renderView.pTarget->GetSRV()->GetGPUHandle().ptr, ImVec2(static_cast<float>(m_ViewportSize.x), static_cast<float>(m_ViewportSize.y)));
-
-		const ImVec2 minRect = ImGui::GetItemRectMin();
-		const ImVec2 maxRect = ImGui::GetItemRectMax();
-		m_ScreenPosition = Vector2u(minRect.x, minRect.y);
-
-		m_ViewportRect.Left = minRect.x;
-		m_ViewportRect.Top = minRect.y;
-		m_ViewportRect.Right = maxRect.x;
-		m_ViewportRect.Bottom = maxRect.y;
-
-		constexpr int cameraRectHorizontalOffset = 5;
-		constexpr int cameraRectTopOffset = 60;
-		constexpr int cameraRectBottomOffset = 8;
-
-		m_CameraValidScreenRect.Left = m_ViewportRect.Left + cameraRectHorizontalOffset;
-		m_CameraValidScreenRect.Top = m_ViewportRect.Top + cameraRectTopOffset;
-		m_CameraValidScreenRect.Right = m_ViewportRect.Right - cameraRectHorizontalOffset;
-		m_CameraValidScreenRect.Bottom = m_ViewportRect.Bottom - cameraRectBottomOffset;
 	}
 
 	bool ViewportPanel::HandleKeyPressed(RLS_Key key) noexcept
@@ -250,7 +240,7 @@ namespace Relentless
 			.Entities = std::move(participatingEntities),
 			.WorldToView = m_pCamera->GetViewTransform().WorldToView,
 			.ViewToClip = m_pCamera->GetViewTransform().ViewToClip,
-			.Rect = m_ViewportRect,
+			.Rect = m_pCanvas->GetScreenRect(), //m_ViewportRect,
 			.pScene = m_pEditor->GetActiveScene(),
 		};
 
@@ -273,6 +263,72 @@ namespace Relentless
 		return false;
 	}
 
+	void ViewportPanel::OnCameraSpeedMultiplierChanged(float speed) noexcept
+	{
+		m_pCameraController->SetSpeed(speed);
+	}
+
+	float ViewportPanel::OnCameraSpeedMultiplierRequested() const noexcept
+	{
+		return m_pCameraController->GetSpeedMultiplier();
+	}
+
+	void ViewportPanel::OnCanvasHoverStateChanged(bool newState) noexcept
+	{
+		m_ClientAreaHovered = newState;
+		
+		if (m_ClientAreaHovered)
+			OnBeginViewportHover();
+		else
+			OnEndViewportHover();
+	}
+
+	void ViewportPanel::OnCanvasResize(const Vector2i& newSize) noexcept
+	{
+		if (newSize.x <= 0 || newSize.y <= 0)
+			return;
+
+		const IntRect screenRect = m_pCanvas->GetScreenRect();
+
+		m_ScreenPosition = Vector2u(screenRect.Left, screenRect.Top);
+
+		constexpr int cameraRectHorizontalOffset = 4;
+		constexpr int cameraRectTopOffset = 60;
+		constexpr int cameraRectBottomOffset = 8;
+
+		m_CameraValidScreenRect.Left = screenRect.Left + cameraRectHorizontalOffset;
+		m_CameraValidScreenRect.Top = screenRect.Top + cameraRectTopOffset;
+		m_CameraValidScreenRect.Right = screenRect.Right - cameraRectHorizontalOffset;
+		m_CameraValidScreenRect.Bottom = screenRect.Bottom - cameraRectBottomOffset;
+
+		const float width = Math::Max(1.0f, static_cast<float>(newSize.x));
+		const float height = Math::Max(1.0f, static_cast<float>(newSize.y));
+
+		m_ViewportSize = Vector2i((int32)width, (int32)height);
+		m_pCameraController->SetViewport(FloatRect(0.0f, 0.0f, width, height));
+	}
+
+	Texture* ViewportPanel::OnCanvasTargetRequest() const noexcept
+	{
+		return m_pEditor->GetRenderView(m_RenderViewIndex).pTarget.Get();
+	}
+
+	void ViewportPanel::OnCanvasRenderEnd() noexcept
+	{
+		DetermineCameraAreaHoverState();
+		HandleTransformGizmoInteraction();
+	}
+
+	float ViewportPanel::OnCameraFarViewPlaneRequested() const noexcept
+	{
+		return m_pCameraController->GetFarPlane();
+	}
+
+	float ViewportPanel::OnCameraNearViewPlaneRequested() const noexcept
+	{
+		return m_pCameraController->GetNearPlane();
+	}
+
 	void ViewportPanel::SetState(EViewportState newState) noexcept
 	{
 		if (newState == m_CurrentState)
@@ -284,6 +340,11 @@ namespace Relentless
 			m_pCameraController->SetAllowMovement(false);
 		else if (m_CameraValidAreaHovered)
 			m_pCameraController->SetAllowMovement(true);
+	}
+
+	void ViewportPanel::OnCameraNearViewPlaneChanged(float nearPlane) noexcept
+	{
+		m_pCameraController->SetNearPlane(nearPlane);
 	}
 
 	bool ViewportPanel::OnKeyPressedEvent(KeyPressedEvent& event) noexcept
@@ -306,6 +367,9 @@ namespace Relentless
 		{
 			if (m_CameraValidAreaHovered)
 				ConfineAndHideMouseAtCursorPosition();
+
+			if (m_CameraValidAreaHovered)
+				m_pCameraController->SetAllowMovement(true);
 
 			break;
 		}
@@ -343,6 +407,7 @@ namespace Relentless
 		{
 			const Vector2i hoverCoords = GetClientHoverCoordinates();
 			OnClickedOnViewport(this, Vector2u(hoverCoords.x, hoverCoords.y));
+
 			break;
 		}
 		case EViewportState::NavigatingScene:
@@ -365,6 +430,9 @@ namespace Relentless
 		
 		if (m_CameraValidAreaHovered)
 			ConfineAndHideMouseAtCursorPosition();
+
+		if (m_CameraValidAreaHovered)
+			m_pCameraController->SetAllowMovement(true);
 
 		return true;
 	}
@@ -403,6 +471,9 @@ namespace Relentless
 
 		if (m_CameraValidAreaHovered)
 			ConfineAndHideMouseAtCursorPosition();
+
+		if (m_CameraValidAreaHovered)
+			m_pCameraController->SetAllowMovement(true);
 
 		return true;
 	}
@@ -455,7 +526,8 @@ namespace Relentless
 
 	void ViewportPanel::OnBeginCameraValidAreaHover() noexcept
 	{
-		m_pCameraController->SetAllowMovement(true);
+		if (!Mouse::IsButtonDown(RLS_Button::Left) && !Mouse::IsButtonDown(RLS_Button::Right) && !Mouse::IsButtonDown(RLS_Button::Wheel))
+			m_pCameraController->SetAllowMovement(true);
 	}
 
 	void ViewportPanel::OnEndCameraValidAreaHover() noexcept
@@ -491,6 +563,32 @@ namespace Relentless
 		m_pCameraController->SetAllowMovement(false);
 	}
 
+	void ViewportPanel::OnHorizontalFOVChanged(float value) noexcept
+	{
+		m_pCameraController->SetHorizontalFoV(Math::DegToRad(value));
+	}
+
+	float ViewportPanel::OnHorizontalFOVRequested() const noexcept
+	{
+		return Math::RadToDeg(m_pCameraController->GetHorizontalFoV());
+	}
+
+	void ViewportPanel::OnSettingsButtonClicked()
+	{
+		m_ShowSettingsPanel = !m_ShowSettingsPanel;
+
+		if (m_ShowSettingsPanel)
+		{
+			m_pCanvasHBox->SetSize(Vector2(-350.0f, 0.0f));
+			m_pSettingsBox->SetIsVisible(true);
+		}
+		else
+		{
+			m_pCanvasHBox->SetSize(Vector2(0, 0));
+			m_pSettingsBox->SetIsVisible(false);
+		}
+	}
+
 	void ViewportPanel::OnTransformGizmoInteractionStateChanged(ETransformGizmoInteractionState newState) noexcept
 	{
 		//If the cursor crosses a gizmo handle while navigating we do not switch state.
@@ -512,14 +610,21 @@ namespace Relentless
 		const float height = Math::Max(1.0f, static_cast<float>(newSize.y));
 
 		m_ViewportSize = Vector2i((int32)width, (int32)height);
+		m_pCameraController->SetViewport(FloatRect(0.0f, 0.0f, width, height));
+	}
 
-		const FloatRect viewport = FloatRect(0.0f, 0.0f, width, height);
-		m_pCameraController->SetViewport(viewport);
+	float ViewportPanel::OnEV100Requested() const noexcept
+	{
+		return Math::Log2f(m_pEditor->GetRenderView(m_RenderViewIndex).Exposure);
+	}
 
-		const float aspectRatio = width / height;
-		constexpr float horizontalFoV = Math::DegToRad(90.0f);
-		const float verticalFoV = 2.0f * std::atan(std::tan(horizontalFoV * 0.5f) * (1.0f / aspectRatio));
+	void ViewportPanel::OnEV100Changed(float ev100) noexcept
+	{
+		m_pEditor->GetRenderView(m_RenderViewIndex).Exposure = Math::Pow2f(ev100);
+	}
 
-		m_pCameraController->SetFoV(verticalFoV);
+	void ViewportPanel::OnCameraFarViewPlaneChanged(float farPlane) noexcept
+	{
+		m_pCameraController->SetFarPlane(farPlane);
 	}
 }

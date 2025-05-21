@@ -23,6 +23,11 @@ namespace Relentless
 		return m_Flags;
 	}
 
+	const String& IWidget::GetID() const noexcept
+	{
+		return m_ID;
+	}
+
 	ESizePolicy IWidget::GetSizePolicy() const noexcept
 	{
 		return m_SizePolicy;
@@ -46,8 +51,13 @@ namespace Relentless
 			ImGui::BeginDisabled();
 
 		OnPreRender();
+		OnPreRenderEnd();
+
 		OnRender();
+		OnRenderEnd();
+
 		OnPostRender();
+		OnPostRenderEnd();
 	
 		if (!IsEnabled())
 			ImGui::EndDisabled();
@@ -60,17 +70,19 @@ namespace Relentless
 		m_Flags = flags;
 	}
 
-	void IWidget::DiscardAllStylesAndColors()
+	void IWidget::SetID(std::string_view id) noexcept
 	{
-		ImGui::PopStyleVar(m_NumStyleVars);
-		ImGui::PopStyleColor(m_NumStyleColors);
-
-		m_NumStyleVars = m_NumStyleColors = 0;
+		m_ID = id;
 	}
 
 	bool IWidget::IsEnabled() const noexcept
 	{
 		return m_IsEnabled;
+	}
+
+	bool IWidget::IsVisible() const noexcept
+	{
+		return m_IsVisible;
 	}
 
 	void IWidget::SetIsEnabled(bool state) noexcept
@@ -82,6 +94,15 @@ namespace Relentless
 		OnEnabledStateChanged(m_IsEnabled);
 	}
 
+	void IWidget::SetIsVisible(bool state) noexcept
+	{
+		if (m_IsVisible == state)
+			return;
+
+		m_IsVisible = state;
+		OnVisibilityChanged(m_IsVisible);
+	}
+
 	void IWidget::SetSizePolicy(ESizePolicy sizePolicy) noexcept
 	{
 		m_SizePolicy = sizePolicy;
@@ -90,50 +111,6 @@ namespace Relentless
 	void IWidget::SetWidthConstraint(float width) noexcept
 	{
 		m_WidthConstraint = width;
-	}
-
-	void IWidget::SetStyleColors(Span<std::pair<ImGuiCol, ImVec4>> colors) noexcept
-	{
-		m_NumStyleColors += colors.GetSize();
-
-		for (const auto& pair : colors)
-			ImGui::PushStyleColor(pair.first, pair.second);
-	}
-
-	void IWidget::SetStyleColors(Span<std::pair<ImGuiCol, uint32>> colors) noexcept
-	{
-		m_NumStyleColors += colors.GetSize();
-
-		for (const auto& pair : colors)
-			ImGui::PushStyleColor(pair.first, pair.second);
-	}
-
-	void IWidget::SetStyleVar(ImGuiStyleVar styleVar, ImVec2 value) noexcept
-	{
-		ImGui::PushStyleVar(styleVar, value);
-		m_NumStyleVars++;
-	}
-
-	void IWidget::SetStyleVar(ImGuiStyleVar styleVar, float value) noexcept
-	{
-		ImGui::PushStyleVar(styleVar, value);
-		m_NumStyleVars++;
-	}
-
-	void IWidget::SetStyleVars(Span<std::pair<ImGuiStyleVar, ImVec2>> styles) noexcept
-	{
-		m_NumStyleVars += styles.GetSize();
-
-		for (const auto& pair : styles)
-			ImGui::PushStyleVar(pair.first, pair.second);
-	}
-
-	void IWidget::SetStyleVars(Span<std::pair<ImGuiStyleVar, float>> styles) noexcept
-	{
-		m_NumStyleVars += styles.GetSize();
-
-		for (const auto& pair : styles)
-			ImGui::PushStyleVar(pair.first, pair.second);
 	}
 
 	void WidgetStyle::Apply() noexcept
@@ -204,6 +181,9 @@ namespace Relentless
 
 	void IStylableWidget::Render() noexcept
 	{
+		if (!IsVisible())
+			return;
+
 		ImGui::PushID(this);
 
 		if (!IsEnabled())
@@ -212,8 +192,13 @@ namespace Relentless
 		m_Style.Apply();
 
 		OnPreRender();
+		OnPreRenderEnd();
+
 		OnRender();
+		OnRenderEnd();
+			
 		OnPostRender();
+		OnPostRenderEnd();
 
 		m_Style.Discard();
 

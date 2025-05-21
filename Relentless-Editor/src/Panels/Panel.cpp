@@ -7,6 +7,10 @@ namespace Relentless
 	: m_Name{ pName }, m_Flags{ flags }
 	{}
 
+	PanelBase::~PanelBase() noexcept{ }
+
+	IPanel::~IPanel() noexcept { }
+
 	bool IPanel::OnEvent(IEvent& event) noexcept
 	{
 		switch (event.GetEventType())

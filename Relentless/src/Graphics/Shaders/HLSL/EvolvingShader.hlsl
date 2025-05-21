@@ -157,11 +157,16 @@ float4 ps_main(VS_OUT psIn) : SV_TARGET
         {
             toLightDirection = normalize(-light.Direction);
         }
-        else if (light.IsPoint)
+        else if (light.IsPoint || light.IsSpot)
         {
             const float3 surfaceToLight = light.Position - psIn.PositionWS;
             toLightDirection = normalize(surfaceToLight);
             attenuation = RadialAttenuation(surfaceToLight, light.Range);
+            
+            if (light.IsSpot)
+            {
+                attenuation *= DirectionalAttenuation(surfaceToLight, light.Direction, light.SpotlightAngles.y, light.SpotlightAngles.x);
+            }
         }
         
         const float NoL = dot(normal, toLightDirection);

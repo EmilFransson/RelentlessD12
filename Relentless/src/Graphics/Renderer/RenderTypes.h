@@ -34,7 +34,7 @@ namespace Relentless
 		Vector3 LocationPrev	= Vector3::Zero;
 
 		FloatRect Viewport;
-		float FoV				= 60.0f * 3.14159265358979323846f / 180.0f;
+		float FoV				= 60.0f * Math::PI / 180.0f;
 		float NearPlane			= 0.1f;
 		float FarPlane			= 1'000.0f;
 
@@ -51,18 +51,19 @@ namespace Relentless
 
 	struct ViewportRenderView : public ViewTransform
 	{
-		Vector2i MouseHoverCoordinates = Vector2i(-1, -1);
-		Ref<Texture> pTarget = nullptr;
-		bool DrawGrid = true;
-		RenderModeEx RenderMode = RenderModeEx::Solid;
+		Vector2i MouseHoverCoordinates	= Vector2i(-1, -1);
+		Ref<Texture> pTarget			= nullptr;
+		bool DrawGrid					= true;
+		RenderModeEx RenderMode			= RenderModeEx::Solid;
+		float Exposure					= 1.0f;
 	};
 
 	struct RenderView : public ViewTransform
 	{
 		Renderer* pRenderer = nullptr;
-		Scene* pScene = nullptr;
-
-		Ref<Buffer> ViewCB = nullptr;
+		Scene* pScene		= nullptr;
+		Ref<Buffer> ViewCB	= nullptr;
+		float Exposure		= 1.0f;
 	};
 
 	struct Batch

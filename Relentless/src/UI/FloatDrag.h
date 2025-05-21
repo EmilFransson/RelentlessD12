@@ -29,15 +29,20 @@ namespace Relentless
 
 		Broadcaster<void(bool state)> OnActiveChanged;
 	private:
+		void SetActive(bool state) noexcept;
+		void OnMouseRawMove(const Vector2i& delta) noexcept;
+	private:
 		String m_Format;
 		Callback<float()> m_ValueCallback;
 		Callback<void(float value)> m_OnChanged;
 
 		Color m_IndicatorColor = Colors::White;
+		Vector2i m_Delta = Vector2i::Zero();
 
 		float m_Min = 0.0f;
 		float m_Max = 0.0f;
 		float m_Speed = 1.0f;
+
 		bool m_IsHovered = false;
 		bool m_IsUsing = false;
 		bool m_IsActive = false;
@@ -57,5 +62,4 @@ namespace Relentless
 		m_ValueCallback = Callback<float()>(std::forward<T>(callback));
 		return this;
 	}
-
 }

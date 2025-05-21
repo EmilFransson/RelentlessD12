@@ -28,9 +28,10 @@ namespace Relentless
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
-	void ComboBox::AddSelectables(Span<const char*> selectables) noexcept
+	ComboBox* ComboBox::AddSelectables(Span<const char*> selectables) noexcept
 	{
 		m_Selectables = selectables.Copy();
+		return this;
 	}
 
 	float ComboBox::CalcDesiredWidth() const noexcept
@@ -48,6 +49,11 @@ namespace Relentless
 		const float arrowWidth = ImGui::GetFrameHeight(); // Approx width of arrow dropdown
 
 		return maxTextWidth + padding + arrowWidth;
+	}
+
+	const char* ComboBox::GetSelectedItem() const
+	{
+		return m_Selectables[m_Selected];
 	}
 
 	int ComboBox::GetSelectedIndex() const
@@ -68,6 +74,20 @@ namespace Relentless
 	void ComboBox::SetDropDownButtonHoveredColor(const Color& color) noexcept
 	{
 		m_Style.SetStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.R(), color.G(), color.B(), color.A()));
+	}
+
+	ComboBox* ComboBox::SetInitiallySelectedItem(const char* pItem) noexcept
+	{
+		for (uint32 i = 0u; i < m_Selectables.size(); ++i)
+		{
+			if (strcmp(pItem, m_Selectables[i]) == 0)
+			{
+				m_Selected = i;
+				break;
+			}
+		}
+
+		return this;
 	}
 
 	void ComboBox::SetSelectableBackgroundColor(const Color& color) noexcept
@@ -101,7 +121,7 @@ namespace Relentless
 					if (m_Selected != i)
 					{
 						m_Selected = i;
-						OnChanged(m_Selected);
+						m_OnSelectionChanged(m_Selectables[m_Selected]);
 					}
 				}
 

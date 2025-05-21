@@ -42,6 +42,31 @@ namespace Relentless
 		return m_AllowMovement;
 	}
 
+	float PerspectiveCameraController::GetFarPlane() const noexcept
+	{
+		return m_pCamera->GetViewTransform().FarPlane;
+	}
+
+	float PerspectiveCameraController::GetHorizontalFoV() const noexcept
+	{
+		return m_HorizontalFoV;
+	}
+
+	float PerspectiveCameraController::GetMaxSpeedMultiplierLimit() const noexcept
+	{
+		return m_MaxSpeedMultiplierLimit;
+	}
+
+	float PerspectiveCameraController::GetMinSpeedMultiplierLimit() const noexcept
+	{
+		return m_MinSpeedMultiplierLimit;
+	}
+
+	float PerspectiveCameraController::GetNearPlane() const noexcept
+	{
+		return m_pCamera->GetViewTransform().NearPlane;
+	}
+
 	float PerspectiveCameraController::GetOrbitDistance() const noexcept
 	{
 		return m_OrbitDistance;
@@ -50,6 +75,11 @@ namespace Relentless
 	ECameraControllerNavigationState PerspectiveCameraController::GetState() const noexcept
 	{
 		return m_CurrentState;
+	}
+
+	float PerspectiveCameraController::GetSpeedMultiplier() const noexcept
+	{
+		return m_Speed;
 	}
 
 	void PerspectiveCameraController::SetCamera(PerspectiveCamera* pCamera) noexcept
@@ -82,6 +112,10 @@ namespace Relentless
 	void PerspectiveCameraController::SetFarPlane(float farPlane) noexcept
 	{
 		RLS_ASSERT(m_pCamera, "[PerspectiveCameraController::SetFarPlane] Camera Is Invalid.");
+		
+		if (m_pCamera->GetViewTransform().NearPlane > farPlane)
+			m_pCamera->SetNearPlane(farPlane);
+
 		m_pCamera->SetFarPlane(farPlane);
 	}
 
@@ -91,9 +125,23 @@ namespace Relentless
 		m_pCamera->SetFoV(fov);
 	}
 
+	void PerspectiveCameraController::SetHorizontalFoV(float horizontalFoV) noexcept
+	{
+		m_HorizontalFoV = horizontalFoV;
+
+		const FloatRect viewport = m_pCamera->GetViewTransform().Viewport;
+		const float aspectRatio = viewport.GetWidth() / viewport.GetHeight();
+		const float verticalFoV = 2.0f * std::atan(std::tan(m_HorizontalFoV * 0.5f) * (1.0f / aspectRatio));
+		SetFoV(verticalFoV);
+	}
+
 	void PerspectiveCameraController::SetNearPlane(float nearPlane) noexcept
 	{
 		RLS_ASSERT(m_pCamera, "[PerspectiveCameraController::SetFarPlane] Camera Is Invalid.");
+		
+		if (m_pCamera->GetViewTransform().FarPlane < nearPlane)
+			m_pCamera->SetFarPlane(nearPlane);
+		
 		m_pCamera->SetNearPlane(nearPlane);
 	}
 
@@ -120,6 +168,12 @@ namespace Relentless
 	{
 		RLS_ASSERT(m_pCamera, "[PerspectiveCameraController::SetFarPlane] Camera Is Invalid.");
 		m_pCamera->SetViewport(viewport);
+
+		const float aspectRatio = viewport.GetWidth() / viewport.GetHeight();
+		const float horizontalFoV = m_HorizontalFoV;
+		const float verticalFoV = 2.0f * std::atan(std::tan(horizontalFoV * 0.5f) * (1.0f / aspectRatio));
+
+		SetFoV(verticalFoV);
 	}
 
 	void PerspectiveCameraController::StepSpeed(bool forward) noexcept
@@ -137,7 +191,7 @@ namespace Relentless
 		else
 			m_Speed += 0.5f * sign;
 
-		m_Speed = Math::Clamp(m_Speed, 0.0f, 10.0f);
+		m_Speed = Math::Clamp(m_Speed, m_MinSpeedMultiplierLimit, m_MaxSpeedMultiplierLimit);
 	}
 
 	void PerspectiveCameraController::ZoomOrbit(float delta) noexcept

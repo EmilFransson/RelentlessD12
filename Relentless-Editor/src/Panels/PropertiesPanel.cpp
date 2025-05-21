@@ -137,7 +137,7 @@ namespace Relentless
 								auto intensity = lc.Intensity;
 								m_pScene->GetEntityManager().Remove<DirectionalLightComponent>(m_SelectedEntity);
 								auto& dlc = m_pScene->GetEntityManager().Add<PointLightComponent>(m_SelectedEntity);
-								dlc.Color = DirectX::XMFLOAT3(color.x, color.y, color.z);
+								dlc.Color = color;
 								dlc.Intensity = intensity;
 							}
 						}
