@@ -2,9 +2,8 @@
 
 namespace Relentless
 {
-	HorizontalBox::HorizontalBox(std::string_view id, bool isChildRegion, const Vector2& size) noexcept
-		:IWidget{ id }
-		,m_Size{size}
+	HorizontalBox::HorizontalBox(bool isChildRegion, const Vector2& size) noexcept
+		:m_Size{size}
 		,m_IsChildRegion{isChildRegion}
 	{
 	}
@@ -28,7 +27,7 @@ namespace Relentless
 		return totalWidth;
 	}
 
-	bool HorizontalBox::HasWidget(Ref<IWidget> pWidget) noexcept
+	bool HorizontalBox::HasWidget(Ref<IBaseWidget> pWidget) noexcept
 	{
 		return std::find(m_Children.begin(), m_Children.end(), pWidget) != m_Children.end();
 	}
@@ -54,7 +53,7 @@ namespace Relentless
 		ImGui::SetCursorPos({ currentPos.x + m_Margin.Left, currentPos.y + m_Margin.Top });
 
 		if (m_IsChildRegion)
-			ImGui::BeginChild(std::format("{}-child", m_ID).c_str(), ImVec2(m_Size.x,m_Size.y), false, GetFlags());
+			ImGui::BeginChild(std::format("##{}-child", (long)this).c_str(), ImVec2(m_Size.x,m_Size.y), false, GetFlags());
 
 		float totalFixedWidth = 0.0f;
 		int numStretch = 0;
@@ -97,7 +96,7 @@ namespace Relentless
 		// Step 2: layout pass
 		for (size_t i = 0; i < m_Children.size(); ++i)
 		{
-			Ref<IWidget>& child = m_Children[i];
+			Ref<IBaseWidget>& child = m_Children[i];
 
 			const float width = (child->GetSizePolicy() == ESizePolicy::Stretch) ? stretchWidth : child->CalcDesiredWidth();
 
@@ -117,7 +116,7 @@ namespace Relentless
 
 	void HorizontalBox::SetWidthConstraint(float width) noexcept
 	{
-		IWidget::SetWidthConstraint(width);
+		IWidget<HorizontalBox>::SetWidthConstraint(width);
 
 		for (auto& pChild : m_Children)
 			pChild->SetWidthConstraint(width);

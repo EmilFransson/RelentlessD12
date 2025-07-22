@@ -15,7 +15,7 @@ namespace Relentless
 			return result;
 		}
 
-		std::wstring ConvertToWide(const std::string& input) noexcept
+		std::wstring ConvertToWide(const String& input) noexcept
 		{
 			const int size = ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, input.data(), static_cast<int>(input.size()), nullptr, 0);
 			RLS_ASSERT(size > 0, "MultiByteToWideChar conversion failed.");
@@ -26,9 +26,9 @@ namespace Relentless
 			return result;
 		}
 
-		std::vector<std::string> Split(const std::string& input, char delimiter) noexcept
+		std::vector<String> Split(const String& input, char delimiter) noexcept
 		{
-			std::vector<std::string> tokens;
+			std::vector<String> tokens;
 
 			size_t start = 0;
 			size_t end = input.find(delimiter);
@@ -36,7 +36,7 @@ namespace Relentless
 			while (start < input.size() && input[start] == delimiter)
 				start++;
 
-			while (end != std::string::npos)
+			while (end != String::npos)
 			{
 				if (start < end)
 					tokens.push_back(input.substr(start, end - start));
@@ -55,5 +55,12 @@ namespace Relentless
 			return tokens;
 		}
 
+		String ToLower(const String& input) noexcept
+		{
+			String result = input;
+			std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) { return std::tolower(c); });
+			
+			return result;
+		}
 	}
 }

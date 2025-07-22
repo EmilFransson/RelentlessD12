@@ -163,7 +163,7 @@ namespace Relentless
 		{
 			ImGui::BeginChild("Outliner SearchBar Child", ImVec2(0.0f, 50.0f));
 			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
-			UI::SearchBar("OutlinerSearchBar", "Search...", true);
+			//UI::SearchBar("OutlinerSearchBar", "Search...", true);
 			ImGui::EndChild();
 		}
 

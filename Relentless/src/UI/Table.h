@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "IWidget.h"
 
@@ -17,10 +17,10 @@ namespace std {
 
 namespace Relentless
 {
-	class Table : public IStylableWidget
+	class Table : public IStylableWidget<Table>
 	{
 	public:
-		Table(std::string_view id) noexcept;
+		Table() noexcept;
 
 		template<typename T>
 		T* Add(Ref<T> pWidget, uint32 column, uint32 row) noexcept;
@@ -30,7 +30,7 @@ namespace Relentless
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 
-		[[nodiscard]] bool HasWidget(Ref<IWidget> pWidget) const noexcept;
+		[[nodiscard]] bool HasWidget(Ref<IBaseWidget> pWidget) const noexcept;
 
 		void SetCellPadding(const Vector2& padding) noexcept;
 		void SetBorderLightColor(const Color& color) noexcept;
@@ -40,7 +40,7 @@ namespace Relentless
 	protected:
 		virtual void OnRender() noexcept override;
 	private:
-		std::unordered_map<std::pair<uint32, uint32>, std::vector<Ref<IWidget>>> m_Cells;
+		std::unordered_map<std::pair<uint32, uint32>, std::vector<Ref<IBaseWidget>>> m_Cells;
 
 		uint32 m_NumColumns = 0u;
 		uint32 m_NumRows = 0u;
@@ -49,7 +49,7 @@ namespace Relentless
 	template<typename T>
 	T* Table::Add(T* pWidget, uint32 column, uint32 row) noexcept
 	{
-		static_assert(std::is_base_of_v<IWidget, T>, "[Table::Add]: Can only Add widgets derived from IWidget");
+		static_assert(std::is_base_of_v<IBaseWidget, T>, "[Table::Add]: Can only Add widgets derived from IWidget");
 
 		Ref<T> widgetRef(pWidget);
 		return Add(widgetRef, column, row);

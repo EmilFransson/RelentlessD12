@@ -5,11 +5,6 @@
 
 namespace Relentless
 {
-	Canvas::Canvas(std::string_view id) noexcept
-		:IStylableWidget(id)
-	{
-	}
-
 	IntRect Canvas::GetScreenRect() const noexcept
 	{
 		return m_ScreenRect;
@@ -33,7 +28,7 @@ namespace Relentless
 		const ImVec2 rectMin = ImGui::GetItemRectMin();
 		const ImVec2 rectMax = ImGui::GetItemRectMax();
 		
-		m_ScreenRect = IntRect(rectMin.x, rectMin.y, rectMax.x, rectMax.y);
+		m_ScreenRect = IntRect((int)rectMin.x, (int)rectMin.y, (int)rectMax.x, (int)rectMax.y);
 		size.x = m_ScreenRect.GetWidth();
 		size.y = m_ScreenRect.GetHeight();
 
@@ -53,12 +48,6 @@ namespace Relentless
 
 	void Canvas::Resize(const Vector2i& newSize) noexcept
 	{
-		//if (newSize.x <= 0 || newSize.y <= 0)
-		//	return;
-
-		//const float width = Math::Max(1.0f, static_cast<float>(newSize.x));
-		//const float height = Math::Max(1.0f, static_cast<float>(newSize.y));
-
 		m_Size = Vector2i((int32)newSize.x, (int32)newSize.y);
 
 		if (m_OnResizeCallback.IsSet())

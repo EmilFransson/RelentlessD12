@@ -3,9 +3,8 @@
 
 namespace Relentless
 {
-	FloatDrag::FloatDrag(std::string_view id, float speed, float min, float max, const char* pFormat, int flags) noexcept
-		:IStylableWidget{ id }
-		,m_Speed{ speed }
+	FloatDrag::FloatDrag(float speed, float min, float max, const char* pFormat, int flags) noexcept
+		:m_Speed{ speed }
 		,m_Min{ min }
 		,m_Max{ max }
 		,m_Format{ pFormat }
@@ -39,13 +38,7 @@ namespace Relentless
 		// Optional color indicator width
 		float indicatorWidth = m_DrawColorIndicator ? 5.0f + 6.0f : 0.0f; // rect + spacing
 
-		// Label width (if visible)
-		float labelTextWidth = 0.0f;
-		const char* visibleLabel = ImGui::FindRenderedTextEnd(m_ID.c_str());
-		if (visibleLabel[0] != '\0' && visibleLabel[0] != '#')
-			labelTextWidth = ImGui::CalcTextSize(m_ID.c_str()).x + padding;
-
-		return labelTextWidth + valueTextWidth + grabSize + indicatorWidth + 6.0f; // extra spacing
+		return valueTextWidth + grabSize + indicatorWidth + 6.0f; // extra spacing
 	}
 
 	void FloatDrag::OnPreRender() noexcept
@@ -66,7 +59,7 @@ namespace Relentless
 		auto curPos = ImGui::GetCursorScreenPos();
 
 		float value = m_ValueCallback();
-		m_IsUsing = ImGui::DragFloat(m_ID.c_str(), &value, m_Speed, m_Min, m_Max, m_Format.c_str(), GetFlags());
+		m_IsUsing = ImGui::DragFloat("##DragFloat", &value, m_Speed, m_Min, m_Max, m_Format.c_str(), GetFlags());
 
 		if (m_Delta != Vector2i::Zero())
 		{
@@ -122,10 +115,11 @@ namespace Relentless
 		m_Style.SetStyleVar(ImGuiStyleVar_GrabMinSize, size);
 	}
 
-	void FloatDrag::SetIndicatorColor(const Color& color) noexcept
+	FloatDrag* FloatDrag::SetIndicatorColor(const Color& color) noexcept
 	{
 		SetDrawColorIndicator(true);
 		m_IndicatorColor = color;
+		return this;
 	}
 
 	void FloatDrag::SetActive(bool state) noexcept
@@ -154,5 +148,4 @@ namespace Relentless
 	{
 		m_Delta = delta;
 	}
-
 }

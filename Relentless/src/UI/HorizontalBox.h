@@ -5,15 +5,15 @@ namespace Relentless
 {
 	enum class EAlignmentPolicy : uint8 { Left, Center, Right };
 
-	class HorizontalBox : public IWidget
+	class HorizontalBox : public IWidget<HorizontalBox>
 	{
 	public:
-		HorizontalBox(std::string_view id, bool isChildRegion = false, const Vector2& size = Vector2::Zero) noexcept;
+		HorizontalBox(bool isChildRegion = false, const Vector2& size = Vector2::Zero) noexcept;
 
 		template<typename T>
 		T* Add(T* pWidget) noexcept
 		{
-			static_assert(std::is_base_of_v<IWidget, T>, "[VerticalBox::Add]: Can only Add widgets derived from IWidget");
+			static_assert(std::is_base_of_v<IBaseWidget, T>, "[VerticalBox::Add]: Can only Add widgets derived from IWidget");
 
 			Ref<T> widgetRef(pWidget);
 			m_Children.push_back(widgetRef);
@@ -23,19 +23,19 @@ namespace Relentless
 		template<typename T>
 		T* Add(Ref<T> pWidget) noexcept
 		{
-			static_assert(std::is_base_of_v<IWidget, T>, "[VerticalBox::Add]: Can only Add widgets derived from IWidget");
+			static_assert(std::is_base_of_v<IBaseWidget, T>, "[VerticalBox::Add]: Can only Add widgets derived from IWidget");
 
 			m_Children.push_back(pWidget);
 			return pWidget.Get();
 		}
 
-		void Remove(IWidget* pWidget) noexcept
+		void Remove(IBaseWidget* pWidget) noexcept
 		{
 			std::erase(m_Children, pWidget);
 		}
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
-		[[nodiscard]] bool HasWidget(Ref<IWidget> pWidget) noexcept;
+		[[nodiscard]] bool HasWidget(Ref<IBaseWidget> pWidget) noexcept;
 		void SetAlignmentPolicy(EAlignmentPolicy alignmentPolicy) noexcept;
 		void SetIsChildRegion(bool state) noexcept;
 		void SetMargin(const FloatRect& margin) noexcept;
@@ -45,7 +45,7 @@ namespace Relentless
 	private:
 		virtual void SetWidthConstraint(float width) noexcept override;
 	private:
-		std::vector<Ref<IWidget>> m_Children;
+		std::vector<Ref<IBaseWidget>> m_Children;
 		FloatRect m_Margin;
 		Vector2 m_Size = Vector2::Zero;
 		EAlignmentPolicy m_Alignment = EAlignmentPolicy::Left;

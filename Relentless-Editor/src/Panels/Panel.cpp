@@ -159,7 +159,7 @@ namespace Relentless
 		return m_IsVisible;
 	}
 
-	void PanelBase::SetRoot(Ref<IWidget> pRoot) noexcept
+	void PanelBase::SetRoot(Ref<IBaseWidget> pRoot) noexcept
 	{
 		m_pRoot = pRoot;
 	}

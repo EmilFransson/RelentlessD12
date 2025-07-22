@@ -4,17 +4,20 @@
 
 namespace Relentless
 {
-	class Button : public IStylableWidget
+	class Button : public IStylableWidget<Button>
 	{
 	public:
-		Button(std::string_view id, const Vector2& size = Vector2::Zero) noexcept;
+		Button(std::string_view text, const Vector2& size = Vector2::Zero) noexcept;
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 
-		virtual void SetActiveColor(const Color& color) noexcept override;
-		virtual void SetBackgroundColor(const Color& color) noexcept override;
-		virtual void SetHoverColor(const Color& color) noexcept override;
+		NO_DISCARD const String& GetText() const noexcept;
+
+		virtual Button* SetActiveColor(const Color& color) noexcept override;
+		virtual Button* SetBackgroundColor(const Color& color) noexcept override;
+		virtual Button* SetHoverColor(const Color& color) noexcept override;
 		void SetSize(const Vector2& size) noexcept;
+		void SetText(const String& text) noexcept;
 
 		template<typename InstanceType>
 		Button* OnClicked(InstanceType* instance, void(InstanceType::* method)()) noexcept
@@ -32,6 +35,7 @@ namespace Relentless
 	protected:
 		virtual void OnRender() noexcept override;
 	private:
+		String m_Text;
 		Callback<void()> m_OnClickedCallback;
 		Vector2 m_Size = Vector2::Zero;
 	};

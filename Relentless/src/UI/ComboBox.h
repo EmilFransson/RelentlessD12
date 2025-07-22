@@ -4,10 +4,10 @@
 
 namespace Relentless
 {
-	class ComboBox : public IStylableWidget
+	class ComboBox : public IStylableWidget<ComboBox>
 	{
 	public:
-		ComboBox(std::string_view id, int flags = 0) noexcept;
+		ComboBox(int flags = 0) noexcept;
 
 		ComboBox* AddSelectables(Span<const char*> selectables) noexcept;
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;

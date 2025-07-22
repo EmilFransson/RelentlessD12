@@ -4,10 +4,10 @@
 
 namespace Relentless
 {
-	class ColorPicker : public IStylableWidget
+	class ColorPicker : public IStylableWidget<ColorPicker>
 	{
 	public:
-		ColorPicker(std::string_view id, const Vector2& size = Vector2(0.0f, 0.0f), int flags = 0) noexcept;
+		ColorPicker(const Vector2& size = Vector2(0.0f, 0.0f), int flags = 0) noexcept;
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 

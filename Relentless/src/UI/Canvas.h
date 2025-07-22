@@ -8,10 +8,10 @@ namespace Relentless
 {
 	class Texture;
 
-	class Canvas : public IStylableWidget
+	class Canvas : public IStylableWidget<Canvas>
 	{
 	public:
-		Canvas(std::string_view id) noexcept;
+		Canvas() noexcept = default;
 		virtual ~Canvas() noexcept override = default;
 
 		[[nodiscard]] IntRect GetScreenRect() const noexcept;

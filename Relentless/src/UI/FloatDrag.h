@@ -4,10 +4,10 @@
 
 namespace Relentless
 {
-	class FloatDrag : public IStylableWidget
+	class FloatDrag : public IStylableWidget<FloatDrag>
 	{
 	public:
-		FloatDrag(std::string_view id, float speed = 1.0f, float min = -FLT_MAX, float max = FLT_MAX, const char* pFormat = "", int flags = 0) noexcept;
+		FloatDrag(float speed = 1.0f, float min = -FLT_MAX, float max = FLT_MAX, const char* pFormat = "", int flags = 0) noexcept;
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 
@@ -25,7 +25,7 @@ namespace Relentless
 		void SetHandleColor(const Color& color) noexcept;
 		void SetHandleSize(float size) noexcept;
 		
-		void SetIndicatorColor(const Color& color) noexcept;
+		FloatDrag* SetIndicatorColor(const Color& color) noexcept;
 
 		Broadcaster<void(bool state)> OnActiveChanged;
 	private:

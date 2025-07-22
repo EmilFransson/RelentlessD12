@@ -13,9 +13,8 @@ namespace Relentless
 		constexpr const Color SearchbarHoveredColor		= Color(100.0f, 100.0f, 100.0f, 200.0f);
 	}
 
-	SearchBarEx::SearchBarEx(std::string_view id, std::string_view hintText, bool enableSearchHistory) noexcept
-		:IStylableWidget{id}
-		,m_HintText{hintText}
+	SearchBar::SearchBar(std::string_view hintText, bool enableSearchHistory) noexcept
+		:m_HintText{hintText}
 		,m_EnableSearchHistory{ enableSearchHistory }
 	{
 		SetFrameRounding(10.0f);
@@ -26,12 +25,12 @@ namespace Relentless
 		SetBorderColor(Colors::Normalize(SearchBarEx_private::SearchbarBackgroundColor));
 	}
 
-	float SearchBarEx::CalcDesiredWidth() const noexcept
+	float SearchBar::CalcDesiredWidth() const noexcept
 	{
 		return 0.0f;
 	}
 
-	void SearchBarEx::OnRender() noexcept
+	void SearchBar::OnRender() noexcept
 	{
 		const Color borderCol = m_IsActive ? SearchBarEx_private::SearchbarActiveColor : m_IsHovered ? SearchBarEx_private::SearchbarHoveredColor : SearchBarEx_private::SearchbarBorderColor;
 		SetBorderColor(Colors::Normalize(borderCol));
@@ -53,7 +52,7 @@ namespace Relentless
 		}
 	}
 
-	void SearchBarEx::DrawSearchBar() noexcept
+	void SearchBar::DrawSearchBar() noexcept
 	{
 		const ImVec2 cursorPositionPreSearchBar = ImGui::GetCursorPos();
 
@@ -62,6 +61,15 @@ namespace Relentless
 			[](ImGuiInputTextCallbackData* data) -> int
 			{
 				constexpr const uint8 paddingLength = 8u;
+
+				CallbackUserData* pUserData = static_cast<CallbackUserData*>(data->UserData);
+				
+				bool clearedInputThisFrame = pUserData->ClearedInput;
+				if (pUserData->ClearedInput)
+				{
+					data->DeleteChars(0, strlen(data->Buf));
+					pUserData->ClearedInput = false;
+				}
 
 				for (uint8 i = 0; i < paddingLength; ++i)
 				{
@@ -72,12 +80,10 @@ namespace Relentless
 				if (data->CursorPos < paddingLength)
 					data->CursorPos = paddingLength;
 
-				const bool searchBarContainsText = paddingLength <= strlen(data->Buf);
+				const bool searchBarContainsText = !clearedInputThisFrame && paddingLength <= strlen(data->Buf);
+				
 				if (searchBarContainsText)
-				{
-					CallbackUserData* pUserData = static_cast<CallbackUserData*>(data->UserData);
 					pUserData->Input = std::string(data->Buf + paddingLength);
-				}
 
 				return 0;
 			}, &m_CallbackUserData);
@@ -129,7 +135,7 @@ namespace Relentless
 		ImGui::SetCursorPos(cursorPos);
 	}
 
-	void SearchBarEx::DrawSearchIcon(const ImVec2& searchBarStartPos) noexcept
+	void SearchBar::DrawSearchIcon(const ImVec2& searchBarStartPos) noexcept
 	{
 		const ImVec2 magnifyingGlassSize = ImGui::CalcTextSize(ICON_FA_MAGNIFYING_GLASS);
 		constexpr float margin = 5.0f;
@@ -144,7 +150,7 @@ namespace Relentless
 			ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_Arrow);
 	}
 
-	void SearchBarEx::DrawCancelIcon(const ImVec2& searchBarStartPos) noexcept
+	void SearchBar::DrawCancelIcon(const ImVec2& searchBarStartPos) noexcept
 	{
 		const ImVec2 xMarkSize = ImGui::CalcTextSize(ICON_FA_XMARK);
 		constexpr float margin = 5.0f;
@@ -163,10 +169,11 @@ namespace Relentless
 			memset(m_FullInputBuffer, 0, sizeof(m_FullInputBuffer));
 			m_CallbackUserData.Input.clear();
 			m_CancelIconHovered = false;
+			m_CallbackUserData.ClearedInput = true;
 		}
 	}
 
-	void SearchBarEx::DrawSearchHistoryPopupIcon(const ImVec2& searchBarStartPos) noexcept
+	void SearchBar::DrawSearchHistoryPopupIcon(const ImVec2& searchBarStartPos) noexcept
 	{
 		const ImVec2 chevronSize = ImGui::CalcTextSize(ICON_FA_CHEVRON_DOWN);
 		constexpr float margin = 5.0f;
@@ -192,7 +199,7 @@ namespace Relentless
 		}
 	}
 
-	void SearchBarEx::DrawSearchHistoryPopup(const ImVec2& searchBarStartPos) noexcept
+	void SearchBar::DrawSearchHistoryPopup(const ImVec2& searchBarStartPos) noexcept
 	{
 		ImGui::SetNextWindowPos(ImVec2(ImGui::GetWindowPos().x + searchBarStartPos.x, ImGui::GetWindowPos().y + searchBarStartPos.y + m_Size.y));
 		ImGui::SetNextWindowSizeConstraints(ImVec2(m_Size.x, 0), ImVec2(m_Size.x, FLT_MAX));
@@ -211,18 +218,19 @@ namespace Relentless
 					m_CallbackUserData.Input = m_SearchHistory[i];
 					ResetInputBuffer();
 					std::memcpy(m_FullInputBuffer + 8, m_CallbackUserData.Input.c_str(), m_CallbackUserData.Input.length());
+					m_OnTextChanged.ExecuteIfSet(m_CallbackUserData.Input.c_str());
 				}
 			}
 		}
 		ImGui::EndPopup();
 	}
 
-	bool SearchBarEx::InputFieldContainsText() const noexcept
+	bool SearchBar::InputFieldContainsText() const noexcept
 	{
 		return strlen(m_FullInputBuffer) > 8;
 	}
 
-	void SearchBarEx::ResetInputBuffer() noexcept
+	void SearchBar::ResetInputBuffer() noexcept
 	{
 		memset(m_FullInputBuffer, 0, 128);
 

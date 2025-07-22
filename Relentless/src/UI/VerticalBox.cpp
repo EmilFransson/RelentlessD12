@@ -2,9 +2,8 @@
 
 namespace Relentless
 {
-	VerticalBox::VerticalBox(std::string_view id, const Vector2& size, bool isChildRegion) noexcept
-		:IWidget{id}
-		,m_Size{size}
+	VerticalBox::VerticalBox(const Vector2& size, bool isChildRegion) noexcept
+		:m_Size{size}
 		,m_IsChildRegion{isChildRegion}
 	{
 	}
@@ -22,7 +21,7 @@ namespace Relentless
 		return maxWidth;
 	}
 
-	bool VerticalBox::HasWidget(Ref<IWidget> pWidget) noexcept
+	bool VerticalBox::HasWidget(Ref<IBaseWidget> pWidget) noexcept
 	{
 		return std::find(m_Children.begin(), m_Children.end(), pWidget) != m_Children.end();
 	}
@@ -35,9 +34,7 @@ namespace Relentless
 	void VerticalBox::OnRender() noexcept
 	{
 		if (m_IsChildRegion)
-		{
-			ImGui::BeginChild(std::format("{}-child", m_ID).c_str(), ImVec2(m_Size.x, m_Size.y));
-		}
+			ImGui::BeginChild(std::format("##{}-child", (long)this).c_str(), ImVec2(m_Size.x, m_Size.y));
 
 		for (auto& pChild : m_Children)
 			pChild->Render();

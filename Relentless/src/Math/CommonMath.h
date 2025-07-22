@@ -93,7 +93,7 @@ namespace Relentless
 			return radians * DEGREES_PER_RADIANS;
 		}
 
-		inline [[nodiscard]] static Vector3 RadToDeg(Vector3 radians) noexcept
+		inline [[nodiscard]] static Vector3 RadToDeg(const Vector3& radians) noexcept
 		{
 			constexpr float DEGREES_PER_RADIANS = 180.0f / PI;
 			return Vector3(radians.x * DEGREES_PER_RADIANS, radians.y * DEGREES_PER_RADIANS, radians.z * DEGREES_PER_RADIANS);
@@ -105,6 +105,22 @@ namespace Relentless
 			degrees = fmodf(degrees, 360.0f);
 			if (degrees < 0.0f)
 				degrees += 360.0f;
+			return degrees;
+		}
+
+		inline [[nodiscard]] static Vector3 RadToDeg360(const Vector3& radians) noexcept
+		{
+			Vector3 degrees = RadToDeg(radians);
+
+			degrees.x = fmodf(degrees.x, 360.0f);
+			if (degrees.x < 0.0f) degrees.x += 360.0f;
+
+			degrees.y = fmodf(degrees.y, 360.0f);
+			if (degrees.y < 0.0f) degrees.y += 360.0f;
+
+			degrees.z = fmodf(degrees.z, 360.0f);
+			if (degrees.z < 0.0f) degrees.z += 360.0f;
+			
 			return degrees;
 		}
 

@@ -3,9 +3,8 @@
 
 namespace Relentless
 {
-	IntSlider::IntSlider(std::string_view id, int min, int max, const char* pFormat, int flags) noexcept
-		:IStylableWidget{ id }
-		, m_Format{ pFormat }
+	IntSlider::IntSlider(int min, int max, const char* pFormat, int flags) noexcept
+		: m_Format{ pFormat }
 		, m_Min{ min }
 		, m_Max{ max }
 	{
@@ -28,17 +27,9 @@ namespace Relentless
 	{
 		const float grabSize = ImGui::GetStyle().GrabMinSize;
 		const float padding = ImGui::GetStyle().FramePadding.x * 2.0f;
+		const float valueTextWidth = ImGui::CalcTextSize(m_Format.c_str()).x + padding;
 
-		float valueTextWidth = ImGui::CalcTextSize(m_Format.c_str()).x + padding;
-		float labelTextWidth = 0.0f;
-
-		// Only include label width if it's visible (not just an ID)
-		const char* visibleLabel = ImGui::FindRenderedTextEnd(m_ID.c_str());
-		if (visibleLabel[0] != '\0')
-			labelTextWidth = ImGui::CalcTextSize(m_ID.c_str()).x + padding;
-
-		// Final width: label + value + grab + spacing
-		return labelTextWidth + valueTextWidth + grabSize + 8.0f;
+		return valueTextWidth + grabSize + 8.0f;
 	}
 
 	void IntSlider::OnPreRender() noexcept
@@ -57,7 +48,7 @@ namespace Relentless
 			SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 
 		int value = m_ValueCallback();
-		m_IsUsing = ImGui::SliderInt(m_ID.c_str(), &value, m_Min, m_Max, m_Format.c_str(), GetFlags());
+		m_IsUsing = ImGui::SliderInt("##SliderInt", &value, m_Min, m_Max, m_Format.c_str(), GetFlags());
 
 		if (m_IsUsing)
 			m_OnChanged(value);

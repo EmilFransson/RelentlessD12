@@ -28,9 +28,9 @@ namespace Relentless
 
 		m_ToolbarID = std::format("{}_Toolbar_{}", pName, renderViewIndex + 1);
 
-		Ref<VerticalBox> pRoot = new VerticalBox("##ViewportPanelRootBox");
+		Ref<VerticalBox> pRoot = new VerticalBox();
 
-		m_pToolbarBox = new HorizontalBox(m_ToolbarID.c_str(), true, Vector2(0, 40));
+		m_pToolbarBox = new HorizontalBox(true, Vector2(0, 40));
 		m_pToolbarBox->SetMargin(FloatRect(5.0f, 1.0f, 0.0f, 0.0f));
 		m_pToolbarBox->SetFlags(ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse);
 
@@ -63,26 +63,26 @@ namespace Relentless
 
 		m_pCanvasAndSettingsBox = new HorizontalBox("##CanvasAndSettingsBox");
 
-		m_pCanvasHBox = m_pCanvasAndSettingsBox->Add(new HorizontalBox("##ViewportCanvasBox", true, Vector2(0, 0)));
+		m_pCanvasHBox = m_pCanvasAndSettingsBox->Add(new HorizontalBox(true, Vector2(0, 0)));
 
-		m_pCanvas = m_pCanvasHBox->Add(new Canvas("##ViewportCanvas"));
+		m_pCanvas = m_pCanvasHBox->Add(new Canvas());
 		m_pCanvas
 			->Target(this, &ViewportPanel::OnCanvasTargetRequest)
 			->OnHoverStateChanged(this, &ViewportPanel::OnCanvasHoverStateChanged)
 			->OnResize(this, &ViewportPanel::OnCanvasResize)
 			->OnRenderEnd.Connect(this, &ViewportPanel::OnCanvasRenderEnd);
 
-		m_pSettingsBox = m_pCanvasAndSettingsBox->Add(new VerticalBox("##ViewportSettingsBox", Vector2(350.0f, 0.0f), true));
+		m_pSettingsBox = m_pCanvasAndSettingsBox->Add(new VerticalBox(Vector2(350.0f, 0.0f), true));
 		m_pSettingsBox->SetIsVisible(false);
 		
 		CollapsibleSection* pCameraSection = m_pSettingsBox->Add(new CollapsibleSection(ICON_FA_CAMERA "  Camera"));
 		
-		Table* pCameraSettingsTable = pCameraSection->Add(new Table("##ViewportCameraSettingsTable"));
+		Table* pCameraSettingsTable = pCameraSection->Add(new Table());
 		uint32 currentRow = 0u;
 
 		{
 			pCameraSettingsTable->Add(new Label("Speed Multiplier"), 0, currentRow);
-			pCameraSettingsTable->Add(new FloatSlider("##SpeedMultiplierSlider", m_pCameraController->GetMinSpeedMultiplierLimit(), m_pCameraController->GetMaxSpeedMultiplierLimit(), "%.3f"), 1, currentRow)
+			pCameraSettingsTable->Add(new FloatSlider(m_pCameraController->GetMinSpeedMultiplierLimit(), m_pCameraController->GetMaxSpeedMultiplierLimit(), "%.3f"), 1, currentRow)
 				->Value(this, &ViewportPanel::OnCameraSpeedMultiplierRequested)
 				->OnValueChanged(this, &ViewportPanel::OnCameraSpeedMultiplierChanged);
 			currentRow++;
@@ -90,7 +90,7 @@ namespace Relentless
 
 		{
 			pCameraSettingsTable->Add(new Label("Field of View (H)"), 0, currentRow);
-			pCameraSettingsTable->Add(new FloatSlider("##HorizontalFovSlider", 5.0f, 170.0f, "%.3f"), 1, currentRow)
+			pCameraSettingsTable->Add(new FloatSlider(5.0f, 170.0f, "%.3f"), 1, currentRow)
 				->Value(this, &ViewportPanel::OnHorizontalFOVRequested)
 				->OnValueChanged(this, &ViewportPanel::OnHorizontalFOVChanged);
 			currentRow++;
@@ -98,7 +98,7 @@ namespace Relentless
 
 		{
 			pCameraSettingsTable->Add(new Label("Near View Plane"), 0, currentRow);
-			pCameraSettingsTable->Add(new FloatSlider("##NearViewPlaneSlider", 0.01f, 100'000.0f, "%.3f", ImGuiSliderFlags_Logarithmic), 1, currentRow)
+			pCameraSettingsTable->Add(new FloatSlider(0.01f, 100'000.0f, "%.3f", ImGuiSliderFlags_Logarithmic), 1, currentRow)
 				->Value(this, &ViewportPanel::OnCameraNearViewPlaneRequested)
 				->OnValueChanged(this, &ViewportPanel::OnCameraNearViewPlaneChanged);
 			currentRow++;
@@ -106,7 +106,7 @@ namespace Relentless
 		
 		{
 			pCameraSettingsTable->Add(new Label("Far View Plane"), 0, currentRow);
-			pCameraSettingsTable->Add(new FloatSlider("##FarViewPlaneSlider", 0.01f, 100'000.0f, "%.3f", ImGuiSliderFlags_Logarithmic), 1, currentRow)
+			pCameraSettingsTable->Add(new FloatSlider(0.01f, 100'000.0f, "%.3f", ImGuiSliderFlags_Logarithmic), 1, currentRow)
 				->Value(this, &ViewportPanel::OnCameraFarViewPlaneRequested)
 				->OnValueChanged(this, &ViewportPanel::OnCameraFarViewPlaneChanged);
 			currentRow++;
@@ -114,7 +114,7 @@ namespace Relentless
 
 		{
 			pCameraSettingsTable->Add(new Label("EV100"), 0, currentRow);
-			pCameraSettingsTable->Add(new FloatSlider("##ExposureSlider", -10.0f, 10.0f, "%.3f"), 1, currentRow)
+			pCameraSettingsTable->Add(new FloatSlider(-10.0f, 10.0f, "%.3f"), 1, currentRow)
 				->Value(this, &ViewportPanel::OnEV100Requested)
 				->OnValueChanged(this, &ViewportPanel::OnEV100Changed);
 			currentRow++;
@@ -202,7 +202,7 @@ namespace Relentless
 
 	void ViewportPanel::DetermineCameraAreaHoverState() noexcept
 	{
-		const bool isHoveringCameraValidArea = ImGui::IsMouseHoveringRect(ImVec2(m_CameraValidScreenRect.Left, m_CameraValidScreenRect.Top), ImVec2(m_CameraValidScreenRect.Right, m_CameraValidScreenRect.Bottom));
+		const bool isHoveringCameraValidArea = ImGui::IsMouseHoveringRect(ImVec2((float)m_CameraValidScreenRect.Left, (float)m_CameraValidScreenRect.Top), ImVec2((float)m_CameraValidScreenRect.Right, (float)m_CameraValidScreenRect.Bottom));
 		if (isHoveringCameraValidArea && !m_CameraValidAreaHovered)
 			OnBeginCameraValidAreaHover();
 		else if (!isHoveringCameraValidArea && m_CameraValidAreaHovered)
@@ -213,7 +213,7 @@ namespace Relentless
 
 	void ViewportPanel::DrawCameraValidClientAreaRect() noexcept
 	{
-		ImGui::GetWindowDrawList()->AddRect(ImVec2(m_CameraValidScreenRect.Left, m_CameraValidScreenRect.Top), ImVec2(m_CameraValidScreenRect.Right, m_CameraValidScreenRect.Bottom), IM_COL32(255, 255, 255, 255));
+		ImGui::GetWindowDrawList()->AddRect(ImVec2((float)m_CameraValidScreenRect.Left, (float)m_CameraValidScreenRect.Top), ImVec2((float)m_CameraValidScreenRect.Right, (float)m_CameraValidScreenRect.Bottom), IM_COL32(255, 255, 255, 255));
 	}
 
 	bool ViewportPanel::HandleKeyPressed(RLS_Key key) noexcept
@@ -355,7 +355,7 @@ namespace Relentless
 		return HandleKeyPressed(event.key);
 	}
 
-	bool ViewportPanel::OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent& event) noexcept
+	bool ViewportPanel::OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent&) noexcept
 	{
 		if (!CanHandleMouseInputs())
 			return false;
@@ -393,7 +393,7 @@ namespace Relentless
 		return true;
 	}
 
-	bool ViewportPanel::OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent& event) noexcept
+	bool ViewportPanel::OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent&) noexcept
 	{
 		if (!CanHandleMouseInputs() || !m_CameraValidAreaHovered)
 			return false;
@@ -420,7 +420,7 @@ namespace Relentless
 		return true;
 	}
 
-	bool ViewportPanel::OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent& event) noexcept
+	bool ViewportPanel::OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent&) noexcept
 	{
 		if (!CanHandleMouseInputs())
 			return false;
@@ -437,7 +437,7 @@ namespace Relentless
 		return true;
 	}
 
-	bool ViewportPanel::OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent& event) noexcept
+	bool ViewportPanel::OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent&) noexcept
 	{
 		if (!CanHandleMouseInputs())
 			return false;
@@ -461,7 +461,7 @@ namespace Relentless
 		return true;
 	}
 
-	bool ViewportPanel::OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent& event) noexcept
+	bool ViewportPanel::OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent&) noexcept
 	{
 		if (!CanHandleMouseInputs())
 			return false;
@@ -478,7 +478,7 @@ namespace Relentless
 		return true;
 	}
 
-	bool ViewportPanel::OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent& event) noexcept
+	bool ViewportPanel::OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent&) noexcept
 	{
 		if (!CanHandleMouseInputs())
 			return false;

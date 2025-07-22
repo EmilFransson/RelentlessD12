@@ -232,5 +232,40 @@ namespace Relentless
 
 		std::atomic<uint32_t> m_RefCount = 0;
 	};
+
+	template<typename T>
+	bool operator==(const Ref<T>& lhs, const Ref<T>& rhs) noexcept 
+	{
+		return lhs.Get() == rhs.Get();
+	}
+
+	template<typename T, typename U>
+	bool operator==(const Ref<T>& lhs, const Ref<U>& rhs) noexcept 
+	{
+		return lhs.Get() == rhs.Get();
+	}
+
+	template<typename T>
+	bool operator!=(const Ref<T>& lhs, const Ref<T>& rhs) noexcept 
+	{
+		return !(lhs == rhs);
+	}
+
+	template<typename T, typename U>
+	bool operator!=(const Ref<T>& lhs, const Ref<U>& rhs) noexcept 
+	{
+		return !(lhs == rhs);
+	}
 }
 
+namespace std 
+{
+	template<typename T>
+	struct hash<Relentless::Ref<T>> 
+	{
+		size_t operator()(const Relentless::Ref<T>& ref) const noexcept 
+		{
+			return std::hash<T*>()(ref.Get());
+		}
+	};
+}

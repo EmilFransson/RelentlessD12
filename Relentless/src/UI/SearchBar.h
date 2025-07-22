@@ -6,18 +6,40 @@ namespace Relentless
 {
 	enum class ETextCommitType : uint8 { OnEnter = 0u, OnUserMovedFocus, OnCleared };
 
-	class SearchBarEx : public IStylableWidget
+	class SearchBar : public IStylableWidget<SearchBar>
 	{
 	public:
-		SearchBarEx(std::string_view id, std::string_view hintText = "", bool enableSearchHistory = false) noexcept;
+		SearchBar(std::string_view hintText = "", bool enableSearchHistory = false) noexcept;
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 
 		template<typename Func>
-		SearchBarEx* OnTextChanged(Func&& callback) noexcept;
+		SearchBar* OnTextChanged(Func&& callback) noexcept
+		{
+			m_OnTextChanged = std::move(callback);
+			return this;
+		}
+
+		template<typename InstanceType>
+		SearchBar* OnTextChanged(InstanceType* instance, void(InstanceType::*method)(const char*)) noexcept
+		{
+			m_OnTextChanged = [instance, method](const char* pText) { return (instance->*method)(pText); };
+			return this;
+		}
 
 		template<typename Func>
-		SearchBarEx* OnTextCommitted(Func&& callback) noexcept;
+		SearchBar* OnTextCommitted(Func&& callback) noexcept
+		{
+			m_OnTextCommitted = callback;
+			return this;
+		}
+
+		template<typename InstanceType>
+		SearchBar* OnTextCommitted(InstanceType* instance, void(InstanceType::*method)(const char*, ETextCommitType)) noexcept
+		{
+			m_OnTextCommitted = [instance, method](const char* pText, ETextCommitType commitType) { return (instance->*method)(pText, commitType); };
+			return this;
+		}
 
 	private:
 		virtual void OnRender() noexcept override;
@@ -39,7 +61,8 @@ namespace Relentless
 		struct CallbackUserData
 		{
 			std::string Input;
-			SearchBarEx* OwningObject = nullptr;
+			SearchBar* OwningObject = nullptr;
+			bool ClearedInput = false;
 		} m_CallbackUserData;
 
 		Vector2 m_Size = Vector2::Zero;
@@ -54,16 +77,4 @@ namespace Relentless
 
 		bool m_EnableSearchHistory = false;
 	};
-
-	template<typename Func>
-	SearchBarEx* SearchBarEx::OnTextChanged(Func&& callback) noexcept
-	{
-		m_OnTextChanged = std::move(callback);
-	}
-
-	template<typename Func>
-	SearchBarEx* SearchBarEx::OnTextCommitted(Func&& callback) noexcept
-	{
-		m_OnTextCommitted = callback;
-	}
 }

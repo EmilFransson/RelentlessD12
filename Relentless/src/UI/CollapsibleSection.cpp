@@ -2,8 +2,8 @@
 
 namespace Relentless
 {
-	CollapsibleSection::CollapsibleSection(std::string_view id) noexcept
-		:IStylableWidget{id}
+	CollapsibleSection::CollapsibleSection(std::string_view text) noexcept
+		: m_Text{text}
 	{
 		SetFlags(ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_OpenOnArrow);
 		SetSizePolicy(ESizePolicy::Stretch);
@@ -26,24 +26,27 @@ namespace Relentless
 		return std::find(m_Children.begin(), m_Children.end(), pWidget) != m_Children.end();
 	}
 
-	void CollapsibleSection::SetActiveColor(const Color& color) noexcept
+	CollapsibleSection* CollapsibleSection::SetActiveColor(const Color& color) noexcept
 	{
 		m_Style.SetStyleColor(ImGuiCol_HeaderActive, ImVec4(color.R(), color.G(), color.B(), color.A()));
+		return this;
 	}
 
-	void CollapsibleSection::SetBackgroundColor(const Color& color) noexcept
+	CollapsibleSection* CollapsibleSection::SetBackgroundColor(const Color& color) noexcept
 	{
 		m_Style.SetStyleColor(ImGuiCol_Header, ImVec4(color.R(), color.G(), color.B(), color.A()));
+		return this;
 	}
 
-	void CollapsibleSection::SetHoverColor(const Color& color) noexcept
+	CollapsibleSection* CollapsibleSection::SetHoverColor(const Color& color) noexcept
 	{
 		m_Style.SetStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.R(), color.G(), color.B(), color.A()));
+		return this;
 	}
 
 	void CollapsibleSection::OnRender() noexcept
 	{
-		const bool isOpen = ImGui::CollapsingHeader(m_ID.c_str(), GetFlags());
+		const bool isOpen = ImGui::CollapsingHeader(m_Text.c_str(), GetFlags());
 
 		const float fullWidth = ImGui::GetContentRegionAvail().x;
 		const float iconWidth = ImGui::CalcTextSize(ICON_FA_GEAR).x;

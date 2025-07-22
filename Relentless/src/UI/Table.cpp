@@ -2,8 +2,7 @@
 
 namespace Relentless
 {
-	Table::Table(std::string_view id) noexcept
-		: IStylableWidget{id}
+	Table::Table() noexcept
 	{
 		SetFlags(ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersH | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoPadOuterX);
 	
@@ -15,19 +14,6 @@ namespace Relentless
 		SetCellPadding(Vector2(20.0f, 4.0f));
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
-
-	//IWidget* Table::Add(Ref<IWidget> pWidget, uint32 column, uint32 row) noexcept
-	//{
-	//	RLS_ASSERT(!HasWidget(pWidget), "[Table::Add] Widget already assigned as child.");
-	//	m_Cells[{column, row}].push_back(pWidget);
-	//
-	//	m_NumRows = Math::Max(m_NumRows, row + 1);
-	//	m_NumColumns = Math::Max(m_NumColumns, column + 1);
-	//
-	//	return m_Cells[{column, row}].back().Get();
-	//}
-
-	
 
 	float Table::CalcDesiredWidth() const noexcept
 	{
@@ -60,7 +46,7 @@ namespace Relentless
 		return total;
 	}
 
-	bool Table::HasWidget(Ref<IWidget> pWidget) const noexcept
+	bool Table::HasWidget(Ref<IBaseWidget> pWidget) const noexcept
 	{
 		return std::any_of(m_Cells.begin(), m_Cells.end(), [&](const auto& cell)
 		{
@@ -98,7 +84,7 @@ namespace Relentless
 		if (m_Cells.empty())
 			return;
 
-		const bool isValid = ImGui::BeginTable(m_ID.c_str(), m_NumColumns, GetFlags());
+		const bool isValid = ImGui::BeginTable("##Table", m_NumColumns, GetFlags());
 
 		if (isValid)
 		{

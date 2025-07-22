@@ -2,8 +2,7 @@
 
 namespace Relentless
 {
-	ComboBox::ComboBox(std::string_view id, int flags) noexcept
-		: IStylableWidget{ id }
+	ComboBox::ComboBox(int flags) noexcept
 	{
 		SetFlags(flags);
 
@@ -111,7 +110,7 @@ namespace Relentless
 		else
 			SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 
-		if (ImGui::BeginCombo(m_ID.c_str(), m_Selectables[m_Selected]))
+		if (ImGui::BeginCombo("##ComboBox", m_Selectables[m_Selected]))
 		{
 			for (int i = 0; i < m_Selectables.size(); ++i)
 			{

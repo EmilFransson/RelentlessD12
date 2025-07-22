@@ -4,10 +4,10 @@
 
 namespace Relentless
 {
-	class IntSlider : public IStylableWidget
+	class IntSlider : public IStylableWidget<IntSlider>
 	{
 	public:
-		IntSlider(std::string_view id, int min, int max, const char* pFormat = "", int flags = 0) noexcept;
+		IntSlider(int min, int max, const char* pFormat = "", int flags = 0) noexcept;
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 

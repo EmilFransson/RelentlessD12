@@ -2,8 +2,7 @@
 
 namespace Relentless
 {
-	CheckBox::CheckBox(std::string_view id) noexcept
-		: IStylableWidget(id)
+	CheckBox::CheckBox() noexcept
 	{
 		SetBackgroundColor(Colors::Normalize(15.0f, 15.0f, 15.0f, 255.0f));
 		SetHoverColor(Colors::Normalize(15.0f, 15.0f, 15.0f, 255.0f));
@@ -17,27 +16,13 @@ namespace Relentless
 
 	float CheckBox::CalcDesiredWidth() const noexcept
 	{
-		const float frameHeight = ImGui::GetFrameHeight(); // checkbox square
-
-		const char* visibleLabel = ImGui::FindRenderedTextEnd(m_ID.c_str());
-		const bool hasText = (visibleLabel[0] != '\0');
-
-		if (hasText)
-		{
-			const float spacing = ImGui::GetStyle().ItemInnerSpacing.x; // space between checkbox and label
-			const float labelWidth = ImGui::CalcTextSize(m_ID.c_str()).x;
-			return frameHeight + spacing + labelWidth;
-		}
-		else
-		{
-			return frameHeight;
-		}
+		return ImGui::GetFrameHeight(); // checkbox square;
 	}
 
 	void CheckBox::OnRender() noexcept
 	{
 		bool state = m_ValueCallback();
-		if (ImGui::Checkbox(m_ID.c_str(), &state))
+		if (ImGui::Checkbox("##Checkbox", &state))
 			m_OnCheckStateChanged(state);
 
 		m_Hovered = ImGui::IsItemHovered();

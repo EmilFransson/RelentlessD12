@@ -19,7 +19,7 @@ namespace Relentless
 
 		template<typename Func, typename = typename std::enable_if<
 			!std::is_same<typename std::decay<Func>::type, Callback>::value>::type>
-		[[nodiscard]] Callback& operator=(Func&& func)
+		Callback& operator=(Func&& func)
 		{
 			m_CallbackFunc = std::make_shared<std::function<RetVal(Args...)>>(std::forward<Func>(func));
 
@@ -59,7 +59,7 @@ namespace Relentless
 
 		template<typename R = RetVal>
 		typename std::enable_if<!std::is_void<R>::value, R>::type
-		[[nodiscard]] operator()(Args... args) const
+		operator()(Args... args) const
 		{
 			if (m_CallbackFunc)
 				return (*m_CallbackFunc)(std::forward<Args>(args)...);
@@ -70,7 +70,7 @@ namespace Relentless
 			}
 		}
 
-		[[nodiscard]] Callback& operator=(const Callback& other) 
+		Callback& operator=(const Callback& other) 
 		{
 			if (this != &other) 
 			{
@@ -96,6 +96,15 @@ namespace Relentless
 
 		[[nodiscard]] bool IsSet() const noexcept { return m_CallbackFunc != nullptr; }
 		void Clear() noexcept { m_CallbackFunc = nullptr; }
+		
+		template<typename R = RetVal>
+		typename std::enable_if<std::is_void<R>::value, void>::type
+		ExecuteIfSet(Args... args) const
+		{
+			if (m_CallbackFunc)
+				(*m_CallbackFunc)(std::forward<Args>(args)...);
+		}
+
 	private:
 		std::shared_ptr<std::function<RetVal(Args...)>> m_CallbackFunc = nullptr;
 	};

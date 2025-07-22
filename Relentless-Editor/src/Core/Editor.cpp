@@ -111,7 +111,7 @@ namespace Relentless
 
 		m_pHorizontalBox = new HorizontalBox("##TestHorizontalBox");
 
-		Ref<Table> pTable = new Table("##GYUSGVU");
+		Ref<Table> pTable = new Table();
 		pTable->Add(new Label("COLUMN 0"), 0,0);
 		pTable->Add(new Label("COLUMN 1"), 1, 0);
 
@@ -141,9 +141,9 @@ namespace Relentless
 		SpawnViewport();
 
 		m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
-		CreateDetailsPanel();
 		
 		SetActiveScene(std::make_shared<Scene>());
+		CreateDetailsPanel();
 		CreateStartScene();
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());

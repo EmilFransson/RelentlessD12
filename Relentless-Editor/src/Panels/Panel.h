@@ -12,14 +12,14 @@ namespace Relentless
 		virtual void Update() noexcept {};
 		[[nodiscard]] virtual bool OnEvent(IEvent&) noexcept;
 	protected:
-		[[nodiscard]] virtual bool OnKeyPressedEvent(KeyPressedEvent& event) noexcept { return false; };
-		[[nodiscard]] virtual bool OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent& event) noexcept { return false; };
-		[[nodiscard]] virtual bool OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent& event) noexcept { return false; };
-		[[nodiscard]] virtual bool OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent& event) noexcept { return false; };
-		[[nodiscard]] virtual bool OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent& event) noexcept { return false; };
-		[[nodiscard]] virtual bool OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent& event) noexcept { return false; };
-		[[nodiscard]] virtual bool OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent& event) noexcept { return false; };
-		[[nodiscard]] virtual bool OnMouseWheelScrolledEvent(MouseWheelScrolledEvent& event) noexcept { return false; };
+		[[nodiscard]] virtual bool OnKeyPressedEvent(KeyPressedEvent&) noexcept { return false; };
+		[[nodiscard]] virtual bool OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent&) noexcept { return false; };
+		[[nodiscard]] virtual bool OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent&) noexcept { return false; };
+		[[nodiscard]] virtual bool OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent&) noexcept { return false; };
+		[[nodiscard]] virtual bool OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent&) noexcept { return false; };
+		[[nodiscard]] virtual bool OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent&) noexcept { return false; };
+		[[nodiscard]] virtual bool OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent&) noexcept { return false; };
+		[[nodiscard]] virtual bool OnMouseWheelScrolledEvent(MouseWheelScrolledEvent&) noexcept { return false; };
 	};
 
 	class PanelBase : public IPanel
@@ -57,7 +57,7 @@ namespace Relentless
 		virtual void OnRender() noexcept = 0;
 		virtual void PostRender() noexcept {}
 
-		void SetRoot(Ref<IWidget> pRoot) noexcept;
+		void SetRoot(Ref<IBaseWidget> pRoot) noexcept;
 	private:
 		std::string m_Name{};
 		std::unordered_map<ImGuiStyleVar, ImVec2> m_Styles;
@@ -76,6 +76,6 @@ namespace Relentless
 		bool m_IsHovered	= false;
 		bool m_IsVisible	= false;
 
-		Ref<IWidget> m_pRoot = nullptr;
+		Ref<IBaseWidget> m_pRoot = nullptr;
 	};
 }

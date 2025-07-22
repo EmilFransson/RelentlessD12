@@ -1,4 +1,4 @@
-#include "DetailsPanel.h"
+﻿#include "DetailsPanel.h"
 
 #include "../Core/Editor.h"
 
@@ -10,6 +10,10 @@ namespace Relentless
 	{
 		m_pEditor->GetSelection()->OnSelectionChanged.Connect(this, &DetailsPanel::OnSelectionChanged);
 		m_pEditor->OnSceneChanged.Connect(this, &DetailsPanel::OnSceneChanged);
+		
+		m_pEntityDetailsCustomizer = std::make_unique<EntityDetailsCustomizer>(pEditor);
+
+		m_pEntityOutlinerView = new EntityOutlinerView(pEditor);
 	}
 
 	DetailsPanel::~DetailsPanel() noexcept
@@ -18,20 +22,32 @@ namespace Relentless
 		{
 			if (const UniquePtr<Selection>& pSelection = m_pEditor->GetSelection())
 				pSelection->OnSelectionChanged.Detach(this);
+
+			m_pEditor->OnSceneChanged.Detach(this);
 		}
 	}
 
-	Ref<IWidget> DetailsPanel::CreateBaseSection() noexcept
+	void DetailsPanel::OnRender() noexcept
 	{
+		m_pEntityOutlinerView->Render();
+
+		//for (auto& node : m_Nodes)
+		//	node->Render();
+	}
+
+	Ref<IBaseWidget> DetailsPanel::CreateBaseSection() noexcept
+	{
+		return nullptr;
+
 		EntityManager& entityManager = m_pEditor->GetActiveScene()->GetEntityManager();
 		
-		Ref<HorizontalBox> topBox = new HorizontalBox("##BaseTopBox");
+		Ref<HorizontalBox> topBox = new HorizontalBox();
 		topBox->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 0.0f));
 
-		Ref<HorizontalBox> topLeftBox = new HorizontalBox("##BaseTopLeftBox");
+		Ref<HorizontalBox> topLeftBox = new HorizontalBox();
 		topLeftBox->SetMargin(FloatRect(10.0f, 0.0f, 0.0f, 0.0f));
 		
-		Ref<HorizontalBox> topRightBox = new HorizontalBox("##BaseTopRightBox");
+		Ref<HorizontalBox> topRightBox = new HorizontalBox();
 		topRightBox->SetAlignmentPolicy(EAlignmentPolicy::Right);
 		topRightBox->SetMargin(FloatRect(0.0f, 0.0f, 10.0f, 0.0f));
 
@@ -45,14 +61,14 @@ namespace Relentless
 		pLockButton->SetBorderColor(Colors::Transparent);
 		pLockButton->OnClicked([this, lockButton = pLockButton.Get()]()
 			{
-				if (lockButton->GetID() == ICON_FA_LOCK_OPEN)
+				if (lockButton->GetText() == ICON_FA_LOCK_OPEN)
 				{
-					lockButton->SetID(ICON_FA_LOCK);
+					lockButton->SetText(ICON_FA_LOCK);
 					lockButton->SetTextColor(Colors::White);
 				}
 				else
 				{
-					lockButton->SetID(ICON_FA_LOCK_OPEN);
+					lockButton->SetText(ICON_FA_LOCK_OPEN);
 					lockButton->SetTextColor(Colors::Gray);
 				}
 
@@ -68,14 +84,14 @@ namespace Relentless
 		topBox->Add(topLeftBox);
 		topBox->Add(topRightBox);
 
-		Ref<SearchBarEx> pSearchBar = new SearchBarEx("##ComponentsSearchBar", "Search...", true);
+		Ref<SearchBar> pSearchBar = new SearchBar("Search...", true);
 		pSearchBar->SetSizePolicy(ESizePolicy::Stretch);
 
-		Ref<HorizontalBox> pHBox = new HorizontalBox("##MainSearchbarbox", false);
+		Ref<HorizontalBox> pHBox = new HorizontalBox(false);
 		pHBox->SetMargin(FloatRect(10.0f, 0.0f, 10.0f, 0.0f));
 		pHBox->Add(pSearchBar);
 
-		Ref<VerticalBox> pSection = new VerticalBox("##BaseSection", Vector2(0, 80.0f), true);
+		Ref<VerticalBox> pSection = new VerticalBox(Vector2(0, 80.0f), true);
 		
 		pSection->Add(topBox);
 		pSection->Add(pHBox);
@@ -100,12 +116,15 @@ namespace Relentless
 
 	void DetailsPanel::CreateFromSelection() noexcept
 	{
+		SetRoot(nullptr);
+		return;
+
 		EntityManager& entityManager = m_pEditor->GetActiveScene()->GetEntityManager();
 
-		Ref<VerticalBox> pRoot = new VerticalBox("##DetailsPanel Root");
+		Ref<VerticalBox> pRoot = new VerticalBox();
 		pRoot->Add(CreateBaseSection());
 
-		Ref<VerticalBox> pComponentsSection = new VerticalBox("##DetailsPanel ComponentsSection", Vector2(0.0f, 0.0f), true);
+		Ref<VerticalBox> pComponentsSection = new VerticalBox(Vector2(0.0f, 0.0f), true);
 
 		ConditionallyCreateSection<TransformComponent>(pComponentsSection, entityManager);
 		ConditionallyCreateSection<DirectionalLightComponent>(pComponentsSection, entityManager);
@@ -406,78 +425,138 @@ namespace Relentless
 		return entityManager.Get<SpotLightComponent>(m_SelectedEntities.back()).UseTemperature;
 	}
 
-	void DetailsPanel::OnLocationChanged(float value, EAxis axis, ETransformSpace space) noexcept
+	//void DetailsPanel::OnLocationChanged(float value, EAxis axis, ETransformSpace space) noexcept
+	//{
+	//	Scene* pScene = m_pEditor->GetActiveScene();
+	//
+	//	std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [&](entity e)
+	//		{
+	//			Vector3 location = space == ETransformSpace::Absolute ? pScene->GetWorldLocation(e) : pScene->GetLocalLocation(e);
+	//			switch (axis)
+	//			{
+	//			case EAxis::X: location.x = value; break;
+	//			case EAxis::Y: location.y = value; break;
+	//			case EAxis::Z: location.z = value; break;
+	//			}
+	//
+	//			switch (space)
+	//			{
+	//			case ETransformSpace::Absolute: pScene->SetWorldLocation(e, location); break;
+	//			case ETransformSpace::Relative: pScene->SetLocalLocation(e, location); break;
+	//			}
+	//		});
+	//}
+
+	void DetailsPanel::OnLocationChanged(const Vector3& value, ComboBox* pTransformSpaceComboBox) noexcept
 	{
 		Scene* pScene = m_pEditor->GetActiveScene();
+		const ETransformSpace space = static_cast<ETransformSpace>(pTransformSpaceComboBox->GetSelectedIndex());
 
 		std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [&](entity e)
 			{
-				Vector3 location = space == ETransformSpace::Absolute ? pScene->GetWorldLocation(e) : pScene->GetLocalLocation(e);
-				switch (axis)
-				{
-				case EAxis::X: location.x = value; break;
-				case EAxis::Y: location.y = value; break;
-				case EAxis::Z: location.z = value; break;
-				}
-
 				switch (space)
 				{
-				case ETransformSpace::Absolute: pScene->SetWorldLocation(e, location); break;
-				case ETransformSpace::Relative: pScene->SetLocalLocation(e, location); break;
+				case ETransformSpace::Absolute: pScene->SetWorldLocation(e, value); break;
+				case ETransformSpace::Relative: pScene->SetLocalLocation(e, value); break;
 				}
 			});
 	}
 
-	void DetailsPanel::OnRotationChanged(float valueDeg, EAxis axis, ETransformSpace space) noexcept
+	//void DetailsPanel::OnRotationChanged(float valueDeg, EAxis axis, ETransformSpace space) noexcept
+	//{
+	//	Scene* pScene = m_pEditor->GetActiveScene();
+	//
+	//	std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [&](entity e)
+	//		{
+	//			const Quaternion currentRotation = space == ETransformSpace::Absolute ? pScene->GetWorldRotation(e) : pScene->GetLocalRotation(e);
+	//
+	//			const Vector3 eulerDeg = Math::RadToDeg(currentRotation.ToEuler());
+	//
+	//			Vector3 axisVec = Vector3::Zero;
+	//			float currentAngle = 0.0f;
+	//			switch (axis)
+	//			{
+	//			case EAxis::X: axisVec = Vector3::Right;	currentAngle = eulerDeg.x; break;
+	//			case EAxis::Y: axisVec = Vector3::Up;		currentAngle = eulerDeg.y; break;
+	//			case EAxis::Z: axisVec = Vector3::Forward;	currentAngle = eulerDeg.z; break;
+	//			}
+	//
+	//			const float deltaAngleDeg = valueDeg - currentAngle;
+	//			const float deltaAngleRad = Math::DegToRad(deltaAngleDeg);
+	//
+	//			const Quaternion deltaRot = Quaternion::CreateFromAxisAngle(axisVec, deltaAngleRad);
+	//
+	//			switch (space)
+	//			{
+	//				case ETransformSpace::Absolute: pScene->AddWorldRotation(e, Math::RadToDeg(deltaRot.ToEuler())); break;
+	//				case ETransformSpace::Relative: pScene->AddLocalRotation(e, Math::RadToDeg(deltaRot.ToEuler())); break;
+	//			}
+	//		});
+	//}
+
+	void DetailsPanel::OnRotationChanged(const Vector3& valueDeg, ComboBox* pTransformSpaceComboBox) noexcept
 	{
 		Scene* pScene = m_pEditor->GetActiveScene();
+		const ETransformSpace space = static_cast<ETransformSpace>(pTransformSpaceComboBox->GetSelectedIndex());
 
 		std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [&](entity e)
 			{
 				const Quaternion currentRotation = space == ETransformSpace::Absolute ? pScene->GetWorldRotation(e) : pScene->GetLocalRotation(e);
 
-				const Vector3 eulerDeg = Math::RadToDeg(currentRotation.ToEuler());
+				const Vector3 currentEulerDeg = Math::RadToDeg(currentRotation.ToEuler());
 
-				Vector3 axisVec = Vector3::Zero;
-				float currentAngle = 0.0f;
-				switch (axis)
-				{
-				case EAxis::X: axisVec = Vector3::Right;	currentAngle = eulerDeg.x; break;
-				case EAxis::Y: axisVec = Vector3::Up;		currentAngle = eulerDeg.y; break;
-				case EAxis::Z: axisVec = Vector3::Forward;	currentAngle = eulerDeg.z; break;
-				}
+				const Vector3 deltaEulerDeg = Vector3{
+					valueDeg.x - currentEulerDeg.x,
+					valueDeg.y - currentEulerDeg.y,
+					valueDeg.z - currentEulerDeg.z
+				};
 
-				const float deltaAngleDeg = valueDeg - currentAngle;
-				const float deltaAngleRad = Math::DegToRad(deltaAngleDeg);
-
-				const Quaternion deltaRot = Quaternion::CreateFromAxisAngle(axisVec, deltaAngleRad);
+				// Convert deg deltas to rad and build quaternions:
+				Quaternion deltaQ = Quaternion::CreateFromAxisAngle(Vector3::Right, Math::DegToRad(deltaEulerDeg.x)) *
+					Quaternion::CreateFromAxisAngle(Vector3::Up, Math::DegToRad(deltaEulerDeg.y)) *
+					Quaternion::CreateFromAxisAngle(Vector3::Forward, Math::DegToRad(deltaEulerDeg.z));
 
 				switch (space)
 				{
-					case ETransformSpace::Absolute: pScene->AddWorldRotation(e, Math::RadToDeg(deltaRot.ToEuler())); break;
-					case ETransformSpace::Relative: pScene->AddLocalRotation(e, Math::RadToDeg(deltaRot.ToEuler())); break;
+				case ETransformSpace::Absolute: pScene->AddWorldRotation(e, Math::RadToDeg(deltaQ.ToEuler())); break;
+				case ETransformSpace::Relative: pScene->AddLocalRotation(e, Math::RadToDeg(deltaQ.ToEuler())); break;
 				}
 			});
 	}
 
-	void DetailsPanel::OnScaleChanged(float value, EAxis axis, ETransformSpace space) noexcept
+	//void DetailsPanel::OnScaleChanged(float value, EAxis axis, ETransformSpace space) noexcept
+	//{
+	//	Scene* pScene = m_pEditor->GetActiveScene();
+	//
+	//	std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [&](entity e)
+	//		{
+	//			Vector3 scale = space == ETransformSpace::Absolute ? pScene->GetWorldScale(e) : pScene->GetLocalScale(e);
+	//			switch (axis)
+	//			{
+	//			case EAxis::X: scale.x = value; break;
+	//			case EAxis::Y: scale.y = value; break;
+	//			case EAxis::Z: scale.z = value; break;
+	//			}
+	//
+	//			switch (space)
+	//			{
+	//			case ETransformSpace::Absolute: pScene->SetWorldScale(e, scale); break;
+	//			case ETransformSpace::Relative: pScene->SetLocalScale(e, scale); break;
+	//			}
+	//		});
+	//}
+
+	void DetailsPanel::OnScaleChanged(const Vector3& value, ComboBox* pTransformSpaceComboBox) noexcept
 	{
 		Scene* pScene = m_pEditor->GetActiveScene();
+		const ETransformSpace space = static_cast<ETransformSpace>(pTransformSpaceComboBox->GetSelectedIndex());
 
 		std::for_each(m_SelectedEntities.begin(), m_SelectedEntities.end(), [&](entity e)
 			{
-				Vector3 scale = space == ETransformSpace::Absolute ? pScene->GetWorldScale(e) : pScene->GetLocalScale(e);
-				switch (axis)
-				{
-				case EAxis::X: scale.x = value; break;
-				case EAxis::Y: scale.y = value; break;
-				case EAxis::Z: scale.z = value; break;
-				}
-
 				switch (space)
 				{
-				case ETransformSpace::Absolute: pScene->SetWorldScale(e, scale); break;
-				case ETransformSpace::Relative: pScene->SetLocalScale(e, scale); break;
+				case ETransformSpace::Absolute: pScene->SetWorldScale(e, value); break;
+				case ETransformSpace::Relative: pScene->SetLocalScale(e, value); break;
 				}
 			});
 	}
@@ -509,6 +588,8 @@ namespace Relentless
 			return;
 
 		m_SelectedEntities = m_pEditor->GetSelection()->GetSelectedEntities();
+		m_pEntityDetailsCustomizer->SetEntities(m_SelectedEntities);
+		m_Nodes = m_pEntityDetailsCustomizer->Build();
 		
 		if (m_SelectedEntities.empty())
 			CreateEmpty();
@@ -517,75 +598,61 @@ namespace Relentless
 	}
 
 	template<>
-	Ref<IWidget> DetailsPanel::CreateComponentSection<DirectionalLightComponent>() noexcept
+	Ref<IBaseWidget> DetailsPanel::CreateComponentSection<DirectionalLightComponent>() noexcept
 	{
-		uint32 currentRow = 0;
-		Ref<Table> pTable = new Table("##DirectionalLightPropertyTable");
+		Ref<CollapsibleSection> pLightSection = new CollapsibleSection(std::format("{}  Light", ICON_FA_LIGHTBULB));
+		Table* pTable = pLightSection->Add(new Table());
 
-		pTable->Add(new Label("Type"), 0, currentRow);
-		pTable->Add(new ComboBox("##LightTypeComboBox"), 1, currentRow)
+		uint32 currentRow = 0;
+
+		AddRow(pTable, currentRow++, "Type", new ComboBox())
 			->AddSelectables({ "Directional", "Point", "Spot" })
 			->SetInitiallySelectedItem("Directional")
 			->OnSelectionChanged(this, &DetailsPanel::OnLightTypeSelectionChanged);
-		currentRow++;
 
-		pTable->Add(new Label("Intensity"), 0, currentRow);
-		pTable->Add(new FloatSlider("##Intensity", 0.0f, 120'000.0f, "%.3f lux", ImGuiSliderFlags_Logarithmic), 1, currentRow)
+		AddRow(pTable, currentRow++, "Intensity", new FloatSlider(0.0f, 120'000.0f, "%.3f lux", ImGuiSliderFlags_Logarithmic))
 			->Value(this, &DetailsPanel::OnDirectionalLightIntensityRequested)
 			->OnValueChanged(this, &DetailsPanel::OnDirectionalLightIntensityChanged);
-		currentRow++;
 
-		pTable->Add(new Label("Light Color"), 0, currentRow);
-		pTable->Add(new ColorPicker("##LightColorPicker", Vector2(180.0f, 30.0f)), 1, currentRow)
+		AddRow(pTable, currentRow++, "Light Color", new ColorPicker(Vector2(180.0f, 30.0f)))
 			->Value(this, &DetailsPanel::OnDirectionalLightColorRequested)
 			->OnValueChanged(this, &DetailsPanel::OnDirectionalLightColorChanged);
-		currentRow++;
 
-		Ref<FloatSlider> pTemperatureSlider = new FloatSlider("##TemperatureSlider", 1'700.0f, 12'000.0f, "%.3f K");
-		pTemperatureSlider
-			->Value(this, &DetailsPanel::OnDirectionalLightTemperatureRequested)
-			->OnValueChanged(this, &DetailsPanel::OnDirectionalLightTemperatureChanged)
-			->SetIsEnabled(OnDirectionalLightUseTemperatureRequested());
-
-		pTable->Add(new Label("Use Temperature"), 0, currentRow);
-		pTable->Add(new CheckBox("##UseTemperatureCheckBox"), 1, currentRow)
+		AddRow(pTable, currentRow++, "Use Temperature", new CheckBox())
 			->Value(this, &DetailsPanel::OnDirectionalLightUseTemperatureRequested)
-			->OnCheckStateChanged([this, tempSlider = pTemperatureSlider.Get()](bool state) 
+			->OnCheckStateChanged([this, pTable](bool state)
 				{ 
-					if (tempSlider) 
-						tempSlider->SetIsEnabled(state); 
+					//if (FloatSlider* pTempSlider = pTable->FindByID<FloatSlider>("##TemperatureSlider"))
+					//	pTempSlider->SetIsEnabled(state);
 
 					OnDirectionalLightUseTemperatureChanged(state);
 				});
-		currentRow++;
 		
-		pTable->Add(new Label("Temperature"), 0, currentRow);
-		pTable->Add(pTemperatureSlider, 1, currentRow);
-		currentRow++;
-
-		Ref<CollapsibleSection> pLightSection = new CollapsibleSection(std::format("{}  Light", ICON_FA_LIGHTBULB));
-		pLightSection->Add(pTable);
+		AddRow(pTable, currentRow++, "Temperature", new FloatSlider(1'700.0f, 12'000.0f, "%.3f K"))
+			->Value(this, &DetailsPanel::OnDirectionalLightTemperatureRequested)
+			->OnValueChanged(this, &DetailsPanel::OnDirectionalLightTemperatureChanged)
+			->SetIsEnabled(OnDirectionalLightUseTemperatureRequested());
 
 		return pLightSection;
 	}
 
 	template<>
-	Ref<IWidget> DetailsPanel::CreateComponentSection<PointLightComponent>() noexcept
+	Ref<IBaseWidget> DetailsPanel::CreateComponentSection<PointLightComponent>() noexcept
 	{
 		uint32 currentRow = 0;
-		Ref<Table> pTable = new Table("##PointLightPropertyTable");
+		Ref<Table> pTable = new Table();
 
 		pTable->Add(new Label("Type"), 0, currentRow);
-		pTable->Add(new ComboBox("##LightTypeComboBox"), 1, currentRow)
+		pTable->Add(new ComboBox(), 1, currentRow)
 			->AddSelectables({ "Directional", "Point", "Spot" })
 			->SetInitiallySelectedItem("Point")
 			->OnSelectionChanged(this, &DetailsPanel::OnLightTypeSelectionChanged);
 		currentRow++;
 
-		Ref<FloatSlider> pIntensityFloatSlider = new FloatSlider("##Intensity", 0.0f, 160.0f, "%.3f cd");
+		Ref<FloatSlider> pIntensityFloatSlider = new FloatSlider(0.0f, 160.0f, "%.3f cd");
 
 		pTable->Add(new Label("Intensity Units"), 0, currentRow);
-		ComboBox* pIntensityUnitsComboBox = pTable->Add(new ComboBox("##IntensityUnitsCombo"), 1, currentRow)
+		ComboBox* pIntensityUnitsComboBox = pTable->Add(new ComboBox(), 1, currentRow)
 			->AddSelectables({ "Candelas", "Lumens" })
 			->SetInitiallySelectedItem("Candelas")
 			->OnSelectionChanged([pIntensityFloatSlider](const char* pNewIntensityUnit)
@@ -612,25 +679,25 @@ namespace Relentless
 		currentRow++;
 
 		pTable->Add(new Label("Light Color"), 0, currentRow);
-		pTable->Add(new ColorPicker("##LightColorPicker", Vector2(180.0f, 30.0f)), 1, currentRow)
+		pTable->Add(new ColorPicker(Vector2(180.0f, 30.0f)), 1, currentRow)
 			->Value(this, &DetailsPanel::OnPointLightColorRequested)
 			->OnValueChanged(this, &DetailsPanel::OnPointLightColorChanged);
 		currentRow++;
 
 		pTable->Add(new Label("Attenuation Radius"), 0, currentRow);
-		pTable->Add(new FloatSlider("##AttenuationRadiusSlider", 0.08, 163.48f, "%.3f m", ImGuiSliderFlags_Logarithmic), 1, currentRow)
+		pTable->Add(new FloatSlider(0.08, 163.48f, "%.3f m", ImGuiSliderFlags_Logarithmic), 1, currentRow)
 			->Value(this, &DetailsPanel::OnPointLightAttenuationRadiusRequested)
 			->OnValueChanged(this, &DetailsPanel::OnPointLightAttenuationRadiusChanged);
 		currentRow++;
 
-		Ref<FloatSlider> pTemperatureSlider = new FloatSlider("##TemperatureSlider", 1'700.0f, 12'000.0f, "%.3f K");
+		Ref<FloatSlider> pTemperatureSlider = new FloatSlider(1'700.0f, 12'000.0f, "%.3f K");
 		pTemperatureSlider
 			->Value(this, &DetailsPanel::OnPointLightTemperatureRequested)
 			->OnValueChanged(this, &DetailsPanel::OnPointLightTemperatureChanged)
 			->SetIsEnabled(OnPointLightUseTemperatureRequested());
 
 		pTable->Add(new Label("Use Temperature"), 0, currentRow);
-		pTable->Add(new CheckBox("##UseTemperatureCheckBox"), 1, currentRow)
+		pTable->Add(new CheckBox(), 1, currentRow)
 			->Value(this, &DetailsPanel::OnPointLightUseTemperatureRequested)
 			->OnCheckStateChanged([this, tempSlider = pTemperatureSlider.Get()](bool state)
 				{
@@ -652,22 +719,22 @@ namespace Relentless
 	}
 
 	template<>
-	Ref<IWidget> DetailsPanel::CreateComponentSection<SpotLightComponent>() noexcept
+	Ref<IBaseWidget> DetailsPanel::CreateComponentSection<SpotLightComponent>() noexcept
 	{
 		uint32 currentRow = 0;
-		Ref<Table> pTable = new Table("##PointLightPropertyTable");
+		Ref<Table> pTable = new Table();
 
 		pTable->Add(new Label("Type"), 0, currentRow);
-		pTable->Add(new ComboBox("##LightTypeComboBox"), 1, currentRow)
+		pTable->Add(new ComboBox(), 1, currentRow)
 			->AddSelectables({ "Directional", "Point", "Spot" })
 			->SetInitiallySelectedItem("Spot")
 			->OnSelectionChanged(this, &DetailsPanel::OnLightTypeSelectionChanged);
 		currentRow++;
 
-		Ref<FloatSlider> pIntensityFloatSlider = new FloatSlider("##Intensity", 0.0f, 160.0f, "%.3f cd");
+		Ref<FloatSlider> pIntensityFloatSlider = new FloatSlider(0.0f, 160.0f, "%.3f cd");
 
 		pTable->Add(new Label("Intensity Units"), 0, currentRow);
-		ComboBox* pIntensityUnitsComboBox = pTable->Add(new ComboBox("##IntensityUnitsCombo"), 1, currentRow)
+		ComboBox* pIntensityUnitsComboBox = pTable->Add(new ComboBox(), 1, currentRow)
 			->AddSelectables({ "Candelas", "Lumens" })
 			->SetInitiallySelectedItem("Candelas")
 			->OnSelectionChanged([pIntensityFloatSlider](const char* pNewIntensityUnit)
@@ -694,37 +761,37 @@ namespace Relentless
 		currentRow++;
 
 		pTable->Add(new Label("Light Color"), 0, currentRow);
-		pTable->Add(new ColorPicker("##LightColorPicker", Vector2(180.0f, 30.0f)), 1, currentRow)
+		pTable->Add(new ColorPicker(Vector2(180.0f, 30.0f)), 1, currentRow)
 			->Value(this, &DetailsPanel::OnSpotLightColorRequested)
 			->OnValueChanged(this, &DetailsPanel::OnSpotLightColorChanged);
 		currentRow++;
 
 		pTable->Add(new Label("Attenuation Radius"), 0, currentRow);
-		pTable->Add(new FloatSlider("##AttenuationRadiusSlider", 0.08, 163.48f, "%.3f m", ImGuiSliderFlags_Logarithmic), 1, currentRow)
+		pTable->Add(new FloatSlider(0.08, 163.48f, "%.3f m", ImGuiSliderFlags_Logarithmic), 1, currentRow)
 			->Value(this, &DetailsPanel::OnSpotLightAttenuationRadiusRequested)
 			->OnValueChanged(this, &DetailsPanel::OnSpotLightAttenuationRadiusChanged);
 		currentRow++;
 
 		pTable->Add(new Label("Inner Cone Angle"), 0, currentRow);
-		pTable->Add(new FloatSlider("##InnerConeAngleSlider", 0.0f, 80.0f, "%.3f\xC2\xB0"), 1, currentRow)
+		pTable->Add(new FloatSlider(0.0f, 80.0f, "%.3f\xC2\xB0"), 1, currentRow)
 			->Value(this, &DetailsPanel::OnSpotLightInnerConeAngleRequested)
 			->OnValueChanged(this, &DetailsPanel::OnSpotLightInnerConeAngleChanged);
 		currentRow++;
 
 		pTable->Add(new Label("Outer Cone Angle"), 0, currentRow);
-		pTable->Add(new FloatSlider("##OuterConeAngleSlider", 0.0f, 80.0f, "%.3f\xC2\xB0"), 1, currentRow)
+		pTable->Add(new FloatSlider(0.0f, 80.0f, "%.3f\xC2\xB0"), 1, currentRow)
 			->Value(this, &DetailsPanel::OnSpotLightOuterConeAngleRequested)
 			->OnValueChanged(this, &DetailsPanel::OnSpotLightOuterConeAngleChanged);
 		currentRow++;
 
-		Ref<FloatSlider> pTemperatureSlider = new FloatSlider("##TemperatureSlider", 1'700.0f, 12'000.0f, "%.3f K");
+		Ref<FloatSlider> pTemperatureSlider = new FloatSlider(1'700.0f, 12'000.0f, "%.3f K");
 		pTemperatureSlider
 			->Value(this, &DetailsPanel::OnSpotLightTemperatureRequested)
 			->OnValueChanged(this, &DetailsPanel::OnSpotLightTemperatureChanged)
 			->SetIsEnabled(OnSpotLightUseTemperatureRequested());
 
 		pTable->Add(new Label("Use Temperature"), 0, currentRow);
-		pTable->Add(new CheckBox("##UseTemperatureCheckBox"), 1, currentRow)
+		pTable->Add(new CheckBox(), 1, currentRow)
 			->Value(this, &DetailsPanel::OnSpotLightUseTemperatureRequested)
 			->OnCheckStateChanged([this, tempSlider = pTemperatureSlider.Get()](bool state)
 				{
@@ -746,114 +813,62 @@ namespace Relentless
 	}
 
 	template<>
-	Ref<IWidget> DetailsPanel::CreateComponentSection<TransformComponent>() noexcept
+	Ref<IBaseWidget> DetailsPanel::CreateComponentSection<TransformComponent>() noexcept
 	{
-		Ref<Table> pTable = new Table("##PropertyTable");
+		using namespace std::placeholders;
+
+		Ref<Table> pTable = new Table();
 
 		uint32 currentRow = 0u;
 
 		{
-			Ref<ComboBox> pLocationComboBox = new ComboBox("##TransformLocationComboBox");
+			Ref<ComboBox> pLocationComboBox = new ComboBox();
 			pLocationComboBox->AddSelectables({ "Location", "Absolute Location" });
-
-			Ref<FloatDrag> pLocationDragFloatX = new FloatDrag("##LocationDragFloatX", 0.01f, -FLT_MAX, FLT_MAX, "%.2f");
-			pLocationDragFloatX
-				->Value([this, pComboBox = pLocationComboBox.Get()]() { return GetLocation(pComboBox).x; })
-				->OnValueChanged([this, pComboBox = pLocationComboBox.Get()](float value) {  OnLocationChanged(value, EAxis::X, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::OffRed);
-			pLocationDragFloatX->SetSizePolicy(ESizePolicy::Stretch);
-
-			Ref<FloatDrag> pLocationDragFloatY = new FloatDrag("##LocationDragFloatY", 0.01f, -FLT_MAX, FLT_MAX, "%.2f");
-			pLocationDragFloatY
-				->Value([this, pComboBox = pLocationComboBox.Get()]() { return GetLocation(pComboBox).y; })
-				->OnValueChanged([this, pComboBox = pLocationComboBox.Get()](float value) {  OnLocationChanged(value, EAxis::Y, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::OffGreen);
-			pLocationDragFloatY->SetSizePolicy(ESizePolicy::Stretch);
-
-			Ref<FloatDrag> pLocationDragFloatZ = new FloatDrag("##LocationDragFloatZ", 0.01f, -FLT_MAX, FLT_MAX, "%.2f");
-			pLocationDragFloatZ
-				->Value([this, pComboBox = pLocationComboBox.Get()]() { return GetLocation(pComboBox).z; })
-				->OnValueChanged([this, pComboBox = pLocationComboBox.Get()](float value) {  OnLocationChanged(value, EAxis::Z, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::OffBlue);
-			pLocationDragFloatZ->SetSizePolicy(ESizePolicy::Stretch);
-
-			Ref<HorizontalBox> pLocationHorizontalBox = new HorizontalBox("##LocationHorizontalBox");
-			pLocationHorizontalBox->Add(pLocationDragFloatX);
-			pLocationHorizontalBox->Add(pLocationDragFloatY);
-			pLocationHorizontalBox->Add(pLocationDragFloatZ);
-
 			pTable->Add(pLocationComboBox, 0, currentRow);
-			pTable->Add(pLocationHorizontalBox, 1, currentRow);
+
+			Float3Drag* pLocationDrag3 = pTable->Add(new Float3Drag(0.01f, -FLT_MAX, FLT_MAX, "%.2f"), 1, currentRow);
+			pLocationDrag3
+				->Value(std::bind(&DetailsPanel::GetLocation, this, pLocationComboBox.Get()))
+				->OnValueChanged(std::bind(&DetailsPanel::OnLocationChanged, this, _1, pLocationComboBox.Get()))
+				->SetIndicatorColor(0, Colors::OffRed)
+				->SetIndicatorColor(1, Colors::OffGreen)
+				->SetIndicatorColor(2, Colors::OffBlue)
+				->SetSizePolicy(ESizePolicy::Stretch);
+
 			currentRow++;
 		}
 
 		{
-			Ref<ComboBox> pRotationComboBox = new ComboBox("##RotationComboBox");
+			Ref<ComboBox> pRotationComboBox = new ComboBox();
+			pTable->Add(pRotationComboBox, 0, currentRow);
 			pRotationComboBox->AddSelectables({ "Rotation", "Absolute Rotation" });
 
-			Ref<FloatDrag> pRotationDragFloatX = new FloatDrag("##RotationDragFloatX", 1.0f, -FLT_MAX, FLT_MAX, "%.2f\xC2\xB0");
-			pRotationDragFloatX
-				->Value([this, pComboBox = pRotationComboBox.Get()]() { return Math::RadToDeg360(GetRotation(pComboBox).x); })
-				->OnValueChanged([this, pComboBox = pRotationComboBox.Get()](float value) { OnRotationChanged(value, EAxis::X, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::OffRed);
-			pRotationDragFloatX->SetSizePolicy(ESizePolicy::Stretch);
+			Float3Drag* pRotationDrag3 = pTable->Add(new Float3Drag(1.0f, -FLT_MAX, FLT_MAX, "%.2f\xC2\xB0"), 1, currentRow);
+			pRotationDrag3
+				->Value([this, pComboBox = pRotationComboBox.Get()]() { return Math::RadToDeg360(GetRotation(pComboBox)); })
+				->OnValueChanged(std::bind(&DetailsPanel::OnRotationChanged, this, _1, pRotationComboBox.Get()))
+				->SetIndicatorColor(0, Colors::OffRed)
+				->SetIndicatorColor(1, Colors::OffGreen)
+				->SetIndicatorColor(2, Colors::OffBlue)
+				->SetSizePolicy(ESizePolicy::Stretch);
 
-			Ref<FloatDrag> pRotationDragFloatY = new FloatDrag("##RotationDragFloatY", 1.0f, -FLT_MAX, FLT_MAX, "%.2f\xC2\xB0");
-			pRotationDragFloatY
-				->Value([this, pComboBox = pRotationComboBox.Get()]() { return Math::RadToDeg360(GetRotation(pComboBox).y); })
-				->OnValueChanged([this, pComboBox = pRotationComboBox.Get()](float value) { OnRotationChanged(value, EAxis::Y, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::OffGreen);
-			pRotationDragFloatY->SetSizePolicy(ESizePolicy::Stretch);
-
-			Ref<FloatDrag> pRotationDragFloatZ = new FloatDrag("##RotationDragFloatZ", 1.0f, -FLT_MAX, FLT_MAX, "%.2f\xC2\xB0");
-			pRotationDragFloatZ
-				->Value([this, pComboBox = pRotationComboBox.Get()]() { return Math::RadToDeg360(GetRotation(pComboBox).z); })
-				->OnValueChanged([this, pComboBox = pRotationComboBox.Get()](float value) { OnRotationChanged(value, EAxis::Z, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::OffBlue);
-			pRotationDragFloatZ->SetSizePolicy(ESizePolicy::Stretch);
-
-			Ref<HorizontalBox> pRotationHorizontalBox = new HorizontalBox("##RotationHorizontalBox");
-			pRotationHorizontalBox->Add(pRotationDragFloatX);
-			pRotationHorizontalBox->Add(pRotationDragFloatY);
-			pRotationHorizontalBox->Add(pRotationDragFloatZ);
-
-			pTable->Add(pRotationComboBox, 0, currentRow);
-			pTable->Add(pRotationHorizontalBox, 1, currentRow);
 			currentRow++;
 		}
 
 		{
-			Ref<ComboBox> pScaleComboBox = new ComboBox("##ScaleComboBox");
+			Ref<ComboBox> pScaleComboBox = new ComboBox();
 			pScaleComboBox->AddSelectables({ "Scale", "Absolute Scale" });
-
-			Ref<FloatDrag> pScaleDragFloatX = new FloatDrag("##ScaleDragFloatX", 0.01f, 0.01, FLT_MAX, "%.2f");
-			pScaleDragFloatX
-				->Value([this, pComboBox = pScaleComboBox.Get()]() { return GetScale(pComboBox).x; })
-				->OnValueChanged([this, pComboBox = pScaleComboBox.Get()](float value) {  OnScaleChanged(value, EAxis::X, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::OffRed);
-			pScaleDragFloatX->SetSizePolicy(ESizePolicy::Stretch);
-
-			Ref<FloatDrag> pScaleDragFloatY = new FloatDrag("##ScaleDragFloatY", 0.01f, 0.01, FLT_MAX, "%.2f");
-			pScaleDragFloatY
-				->Value([this, pComboBox = pScaleComboBox.Get()]() { return GetScale(pComboBox).y; })
-				->OnValueChanged([this, pComboBox = pScaleComboBox.Get()](float value) {  OnScaleChanged(value, EAxis::Y, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::OffGreen);
-			pScaleDragFloatY->SetSizePolicy(ESizePolicy::Stretch);
-
-			Ref<FloatDrag> pScaleDragFloatZ = new FloatDrag("##ScaleDragFloatZ", 0.01f, 0.01, FLT_MAX, "%.2f");
-			pScaleDragFloatZ
-				->Value([this, pComboBox = pScaleComboBox.Get()]() { return GetScale(pComboBox).z; })
-				->OnValueChanged([this, pComboBox = pScaleComboBox.Get()](float value) {  OnScaleChanged(value, EAxis::Z, static_cast<ETransformSpace>(pComboBox->GetSelectedIndex())); })
-				->SetIndicatorColor(Colors::OffBlue);
-			pScaleDragFloatZ->SetSizePolicy(ESizePolicy::Stretch);
-
-			Ref<HorizontalBox> pScaleHorizontalBox = new HorizontalBox("##ScaleHorizontalBox");
-			pScaleHorizontalBox->Add(pScaleDragFloatX);
-			pScaleHorizontalBox->Add(pScaleDragFloatY);
-			pScaleHorizontalBox->Add(pScaleDragFloatZ);
-
 			pTable->Add(pScaleComboBox, 0, currentRow);
-			pTable->Add(pScaleHorizontalBox, 1, currentRow);
+
+			Float3Drag* pScaleDrag3 = pTable->Add(new Float3Drag(0.01f, 0.01f, FLT_MAX, "%.2f"), 1, currentRow);
+			pScaleDrag3
+				->Value(std::bind(&DetailsPanel::GetScale, this, pScaleComboBox.Get()))
+				->OnValueChanged(std::bind(&DetailsPanel::OnScaleChanged, this, _1, pScaleComboBox.Get()))
+				->SetIndicatorColor(0, Colors::OffRed)
+				->SetIndicatorColor(1, Colors::OffGreen)
+				->SetIndicatorColor(2, Colors::OffBlue)
+				->SetSizePolicy(ESizePolicy::Stretch);
+
 			currentRow++;
 		}
 

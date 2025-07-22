@@ -1,11 +1,14 @@
 #pragma once
 #include "Panel.h"
 
+#include "../UI/Views/Details/EntityDetailsCustomizer.h"
+#include "../UI/Views/Outliner/EntityOutlinerView.h"
+
 namespace Relentless
 {
 	enum class ESelectionState : uint8;
 
-	enum class ETransformSpace : int { Relative = 0, Absolute };
+	//enum class ETransformSpace : int { Relative = 0, Absolute };
 	enum class EAxis : uint8 { X, Y, Z };
 
 	class Editor;
@@ -16,12 +19,24 @@ namespace Relentless
 		DetailsPanel(const char* pName, ImGuiWindowFlags flags, Editor* pEditor) noexcept;
 		virtual ~DetailsPanel() noexcept override;
 	protected:
-		virtual void OnRender() noexcept override {}
+		virtual void OnRender() noexcept override;
 	private:
-		[[nodiscard]] Ref<IWidget> CreateBaseSection() noexcept;
+		template<typename Widget>
+		Widget* AddRow(
+			Table* table,
+			uint32_t    row,
+			char const* labelText,
+			Widget* widget)
+		{
+			table->Add(new Label(labelText), 0, row);
+			table->Add(widget, 1, row);
+			return widget;
+		}
+
+		[[nodiscard]] Ref<IBaseWidget> CreateBaseSection() noexcept;
 
 		template<typename ComponentType>
-		[[nodiscard]] Ref<IWidget> CreateComponentSection() noexcept;
+		[[nodiscard]] Ref<IBaseWidget> CreateComponentSection() noexcept;
 
 		template<typename ComponentType>
 		void ConditionallyCreateSection(Ref<VerticalBox> pRoot, EntityManager& entityManager) noexcept;
@@ -73,23 +88,32 @@ namespace Relentless
 		[[nodiscard]] float OnSpotLightTemperatureRequested() const noexcept;
 		[[nodiscard]] bool OnSpotLightUseTemperatureRequested() const noexcept;
 
-		void OnLocationChanged(float value, EAxis axis, ETransformSpace space) noexcept;
-		void OnRotationChanged(float value, EAxis axis, ETransformSpace space) noexcept;
-		void OnScaleChanged(float value, EAxis axis, ETransformSpace space) noexcept;
+		//void OnLocationChanged(float value, EAxis axis, ETransformSpace space) noexcept;
+		void OnLocationChanged(const Vector3& value, ComboBox* pTransformSpaceComboBox) noexcept;
+		//void OnRotationChanged(float value, EAxis axis, ETransformSpace space) noexcept;
+		void OnRotationChanged(const Vector3& value, ComboBox* pTransformSpaceComboBox) noexcept;
+		//void OnScaleChanged(float value, EAxis axis, ETransformSpace space) noexcept;
+		void OnScaleChanged(const Vector3& value, ComboBox* pTransformSpaceComboBox) noexcept;
 
 		void OnEntityDestroyed(entity destroyedEntity) noexcept;
 		void OnSceneChanged(Scene* pScene) noexcept;
 		void OnSelectionChanged(entity e, ESelectionState selectionState) noexcept;
 	private:
+		UniquePtr<EntityDetailsCustomizer> m_pEntityDetailsCustomizer = nullptr;
+
 		std::vector<entity> m_SelectedEntities;
+		std::vector<Ref<IDetailsTreeNode>> m_Nodes;
+
 		Editor* m_pEditor = nullptr;
 		bool m_SelectionLocked = false;
+
+		Ref<EntityOutlinerView> m_pEntityOutlinerView = nullptr;
 	};
 
-	template<> Ref<IWidget> DetailsPanel::CreateComponentSection<DirectionalLightComponent>() noexcept;
-	template<> Ref<IWidget> DetailsPanel::CreateComponentSection<PointLightComponent>() noexcept;
-	template<> Ref<IWidget> DetailsPanel::CreateComponentSection<SpotLightComponent>() noexcept;
-	template<> Ref<IWidget> DetailsPanel::CreateComponentSection<TransformComponent>() noexcept;
+	template<> Ref<IBaseWidget> DetailsPanel::CreateComponentSection<DirectionalLightComponent>() noexcept;
+	template<> Ref<IBaseWidget> DetailsPanel::CreateComponentSection<PointLightComponent>() noexcept;
+	template<> Ref<IBaseWidget> DetailsPanel::CreateComponentSection<SpotLightComponent>() noexcept;
+	template<> Ref<IBaseWidget> DetailsPanel::CreateComponentSection<TransformComponent>() noexcept;
 
 	template<typename ComponentType>
 	void DetailsPanel::ConditionallyCreateSection(Ref<VerticalBox> pRoot, EntityManager& entityManager) noexcept

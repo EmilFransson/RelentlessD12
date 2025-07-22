@@ -4,10 +4,10 @@
 
 namespace Relentless
 {
-	class CheckBox : public IStylableWidget
+	class CheckBox : public IStylableWidget<CheckBox>
 	{
 	public:
-		CheckBox(std::string_view id) noexcept;
+		CheckBox() noexcept;
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 

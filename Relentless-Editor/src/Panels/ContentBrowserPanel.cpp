@@ -412,7 +412,7 @@ namespace Relentless
 
 	void ContentBrowserPanel::RenderDirectoryHierarchySearchBar() noexcept
 	{
-		UI::SearchBar("DirectoryHierarchySearchBar", "Search Paths...");
+		//UI::SearchBar("DirectoryHierarchySearchBar", "Search Paths...");
 	}
 
 	void ContentBrowserPanel::RenderAssetHierarchyOverview() noexcept
@@ -675,7 +675,7 @@ namespace Relentless
 
 	void ContentBrowserPanel::RenderAssetSearchBox() noexcept
 	{
-		m_ContentFilter = UI::SearchBar("AssetSearchBar", ConstructAssetBrowserHintString().c_str(), true, 600.0f);
+		//m_ContentFilter = UI::SearchBar("AssetSearchBar", ConstructAssetBrowserHintString().c_str(), true, 600.0f);
 	}
 
 	void ContentBrowserPanel::RenderAssetThumbNails() noexcept

@@ -1,0 +1,583 @@
+#pragma once
+
+#include "Callback/Callback.h"
+
+#include "Input/Keyboard.h"
+
+#include "UI/IWidget.h"
+#include "UI/ITableRow.h"
+
+namespace Relentless
+{
+	struct TableViewStyle
+	{
+		int Flags = 0;
+	};
+
+	enum class ESelectionType : uint8 { Selected, Deselected };
+	enum class ESelectionMode : uint8 { None, Single, SingleToggle, Multi };
+	enum class EOrientation   : uint8 { Horizontal, Vertical };
+
+	class Label;
+
+	struct Column
+	{
+		Ref<Label> pLabel = nullptr;;
+		float Weight = 0.0f;
+		int Flags = 0;
+	};
+
+	class HeaderRow
+	{
+	public:
+		void AddColumn(const Column& newColumn) noexcept;
+		NO_DISCARD const Column& GetColumn(uint32 index) const noexcept;
+		NO_DISCARD uint32 GetNumColumns() const noexcept;
+
+		void OnRender() noexcept;
+	private:
+		std::vector<Column> m_Columns;
+	};
+
+	template<class ItemType>
+	class ITableViewBase : public IStylableWidget<ITableViewBase<ItemType>>
+	{
+	public:
+		ITableViewBase(std::shared_ptr<HeaderRow> pHeaderRow) noexcept
+			: m_pHeaderRow{pHeaderRow}
+		{
+			Keyboard::OnKeyStateChanged.Connect(this, &ITableViewBase<ItemType>::OnKeyStateChanged);
+		}
+
+		virtual ~ITableViewBase() noexcept
+		{
+			Keyboard::OnKeyStateChanged.Detach(this);
+		}
+	private:
+		void OnKeyStateChanged(RLS_Key key, bool pressed) noexcept
+		{
+			switch (key)
+			{
+			case RLS_Key::LCtrl: 
+				m_SelectionMode = pressed ? ESelectionMode::SingleToggle : ESelectionMode::Single;
+				break;
+			case RLS_Key::LShift:
+				m_SelectionMode = pressed ? ESelectionMode::Multi : ESelectionMode::Single;
+				break;
+			}
+		}
+	protected:
+		TableViewStyle m_Style;
+		
+		ESelectionMode m_SelectionMode = ESelectionMode::Single;
+		EOrientation m_Orientation = EOrientation::Vertical;
+		std::shared_ptr<HeaderRow> m_pHeaderRow = nullptr;
+	};
+
+	template<class ItemType>
+	class ListView : public ITableViewBase<ItemType>
+	{
+	public:
+		ListView(std::shared_ptr<HeaderRow> pHeaderRow, const TableViewStyle& style = TableViewStyle()) noexcept;
+		virtual ~ListView() noexcept override = default;
+
+		virtual NO_DISCARD float CalcDesiredWidth() const noexcept override { return 0.0f; }
+
+		void ClearHightlightedItems() noexcept;
+		void ClearItemsSource() noexcept;
+		void ClearSelection() noexcept;
+		ListView<ItemType>* ClearSelectionOnClick(bool shouldClear) noexcept;
+
+		NO_DISCARD const ItemType& GetItemFromWidget(const ITableRow* pWidgetToFind) const noexcept;
+		NO_DISCARD uint32 GetNumItemsSelected() const noexcept;
+
+		NO_DISCARD bool HasValidItemSource() const noexcept;
+
+		NO_DISCARD bool IsItemHighlighted(const ItemType& item) const noexcept;
+		NO_DISCARD bool IsItemSelected(const ItemType& item) const noexcept;
+		NO_DISCARD bool IsItemVisible(ItemType item) const noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnClick(InstanceType* instance, void(InstanceType::* method)(const ItemType& item)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnDebugItemToString(const InstanceType* instance, String(InstanceType::*method)(const ItemType&) const) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnDoubleClick(InstanceType* instance, void(InstanceType::* method)(const ItemType& item)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnEntryInitialized(InstanceType* instance, void(InstanceType::* method)(ItemType, const Ref<ITableRow>&)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnIsSelectableOrNavigable(InstanceType* instance, bool(InstanceType::*method)(const ItemType&)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnItemScrolledIntoView(InstanceType* instance, void(InstanceType::* method)(const ItemType&)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnGenerateRow(InstanceType* instance, Ref<ITableRow>(InstanceType::* method)(const ItemType&)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnMouseEnterRow(InstanceType* instance, void(InstanceType::*method)(const Ref<ITableRow>&)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnMouseExitRow(InstanceType* instance, void(InstanceType::*method)(const Ref<ITableRow>&)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnRequestSource(const InstanceType* instance, const std::vector<ItemType>*(InstanceType::* method)() const) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnRowReleased(InstanceType* instance, void(InstanceType::* method)(const Ref<ITableRow>&)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnSelectionChanged(InstanceType* instance, void(InstanceType::*method)(const ItemType&, ESelectionType)) noexcept;
+
+		void SetItemHighlighted(const ItemType& item) noexcept;
+		void SetItemSelection(const ItemType& item, ESelectionType selectionType) noexcept;
+		void SetSelectionMode(ESelectionMode mode) noexcept;
+		void SetStyle(const TableViewStyle& style) noexcept;
+	protected:
+		virtual NO_DISCARD Ref<ITableRow> GenerateNewWidget(const ItemType& item) noexcept;
+		NO_DISCARD uint32 GetItemIndex(const ItemType& item) const noexcept;
+	private:
+		void OnMouseEnterRow_private(const ItemType& pItem) noexcept;
+		void OnMouseExitRow_private(const ItemType& pItem) noexcept;
+
+		void OnRender() noexcept override;
+		void OnRowClicked(const ItemType& pItem) noexcept;
+		void OnRowDoubleClicked(const ItemType& pItem) noexcept;
+	private:
+		std::unordered_map<ItemType, Ref<ITableRow>> m_ItemToRowWidgetMap;
+		std::unordered_set<ItemType> m_SelectedItems;
+		std::unordered_set<ItemType> m_HighlightedItems;
+
+		Callback<void(const ItemType& item)> m_OnClick;
+		Callback<String(const ItemType&)> m_OnDebugItemToString;
+		Callback<void(const ItemType& item)> m_OnDoubleClick;
+		Callback<void(const Ref<ITableRow>& item)> m_OnMouseEnterRow;
+		Callback<void(const Ref<ITableRow>& item)> m_OnMouseExitRow;
+		Callback<void(ItemType, const Ref<ITableRow>&)> m_OnEntryInitialized;
+		Callback<Ref<ITableRow>(const ItemType&)> m_OnGenerateRow;
+		Callback<bool(const ItemType&)> m_OnIsSelectableOrNavigable;
+		Callback<void(const ItemType&)> m_OnItemScrolledIntoView;
+		Callback<const std::vector<ItemType>*()> m_OnRequestSource;
+		Callback<void(const Ref<ITableRow>&)> m_OnRowReleased;
+		Callback<void(const ItemType&, ESelectionType)> m_OnSelectionChanged;
+	
+		std::optional<ItemType> m_ItemToScrollIntoView;
+		std::optional<ItemType> m_RangeSelectionStart;
+
+		const std::vector<ItemType>* m_pSource = nullptr;
+
+		bool m_ClearSelectionOnEmptySpaceClick = true;
+	};
+
+	template<class ItemType>
+	uint32 ListView<ItemType>::GetItemIndex(const ItemType& item) const noexcept
+	{
+		for (size_t i = 0u; i < m_pSource->size(); ++i)
+		{
+			if (item == (*m_pSource)[i])
+				return static_cast<uint32>(i);
+		}
+	}
+
+	template<class ItemType>
+	Ref<ITableRow> ListView<ItemType>::GenerateNewWidget(const ItemType& item) noexcept
+	{
+		Ref<ITableRow> pNewRow = m_OnGenerateRow(item);;
+
+		pNewRow->OnClicked(std::bind(&ListView<ItemType>::OnRowClicked, this, item));
+		pNewRow->OnDoubleClicked(std::bind(&ListView<ItemType>::OnRowDoubleClicked, this, item));
+		pNewRow->OnMouseEnter(std::bind(&ListView<ItemType>::OnMouseEnterRow_private, this, item));
+		pNewRow->OnMouseExit(std::bind(&ListView<ItemType>::OnMouseExitRow_private, this, item));
+
+		return std::move(pNewRow);
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::OnMouseEnterRow_private(const ItemType& pItem) noexcept
+	{
+		if (!IsItemSelected(pItem))
+			m_ItemToRowWidgetMap[pItem]->SetBackgroundColor(Colors::Gray);
+
+		if (m_OnMouseEnterRow.IsSet())
+			m_OnMouseEnterRow(m_ItemToRowWidgetMap[pItem]);
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::OnMouseExitRow_private(const ItemType& pItem) noexcept
+	{
+		if (!IsItemSelected(pItem))
+			m_ItemToRowWidgetMap[pItem]->SetBackgroundColor(Colors::Transparent);
+
+		if (m_OnMouseExitRow.IsSet())
+			m_OnMouseExitRow(m_ItemToRowWidgetMap[pItem]);
+	}
+
+	template<class ItemType>
+	bool ListView<ItemType>::IsItemHighlighted(const ItemType& item) const noexcept
+	{
+		return m_HighlightedItems.contains(item);
+	}
+
+	template<class ItemType>
+	bool ListView<ItemType>::IsItemSelected(const ItemType& item) const noexcept
+	{
+		return m_SelectedItems.contains(item);
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::OnRowClicked(const ItemType& pItem) noexcept
+	{
+#if defined RLS_DEBUG || defined RLS_RELWITHDEBINFO
+		String message = "[ListView]: Clicked on item: ";
+		if (m_OnDebugItemToString.IsSet())
+			message += m_OnDebugItemToString(pItem);
+		else
+			message += "Unknown";
+
+		RLS_CORE_INFO(message.c_str());
+#endif
+
+		switch (this->m_SelectionMode)
+		{
+		case ESelectionMode::Single:
+		{
+			if (!IsItemSelected(pItem))
+			{
+				ClearSelection();
+				SetItemSelection(pItem, ESelectionType::Selected);
+			}
+			else
+			{
+				const std::vector<ItemType> selectedItems(m_SelectedItems.begin(), m_SelectedItems.end());
+				for (const auto& selectedItem : selectedItems)
+				{
+					if (selectedItem != pItem)
+						SetItemSelection(selectedItem, ESelectionType::Deselected);
+				}
+			}
+			
+			break;
+		}
+		case ESelectionMode::SingleToggle:
+		{
+			if (!IsItemSelected(pItem))
+				SetItemSelection(pItem, ESelectionType::Selected);
+			else
+				SetItemSelection(pItem, ESelectionType::Deselected);
+
+			break;
+		}
+		case ESelectionMode::Multi:
+		{
+			if (m_RangeSelectionStart == std::nullopt && !IsItemSelected(pItem))
+				SetItemSelection(pItem, ESelectionType::Selected);
+			else
+			{
+				uint32 rangeBegin = GetItemIndex(m_RangeSelectionStart.value());
+				uint32 rangeEnd = GetItemIndex(pItem);
+
+				if (rangeBegin > rangeEnd)
+					std::swap(rangeBegin, rangeEnd);
+
+				for (uint32 i = rangeBegin; i <= rangeEnd; ++i)
+				{
+					if (!IsItemSelected((*m_pSource)[i]))
+						SetItemSelection((*m_pSource)[i], ESelectionType::Selected);
+				}
+			}
+
+			break;
+		}
+		}
+
+		m_OnClick.ExecuteIfSet(pItem);
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::OnRowDoubleClicked(const ItemType& pItem) noexcept
+	{
+#if defined RLS_DEBUG || defined RLS_RELWITHDEBINFO
+		String message = "[ListView]: Double clicked on item: ";
+		if (m_OnDebugItemToString.IsSet())
+			message += m_OnDebugItemToString(pItem);
+		else
+			message += "Unknown";
+
+		RLS_CORE_INFO(message.c_str());
+#endif
+
+		m_OnDoubleClick.ExecuteIfSet(pItem);
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::ClearSelection() noexcept
+	{
+		if (m_SelectedItems.empty())
+			return;
+
+		std::vector<ItemType> selectedItemsCopy(m_SelectedItems.begin(), m_SelectedItems.end());
+		
+		for (const ItemType& item : selectedItemsCopy)
+			SetItemSelection(item, ESelectionType::Deselected);
+	}
+
+	template<class ItemType>
+	ListView<ItemType>* ListView<ItemType>::ClearSelectionOnClick(bool shouldClear) noexcept
+	{
+		m_ClearSelectionOnEmptySpaceClick = shouldClear;
+		return this;
+	}
+
+	template<class ItemType>
+	ListView<ItemType>::ListView(std::shared_ptr<HeaderRow> pHeaderRow, const TableViewStyle& style) noexcept
+		: ITableViewBase<ItemType>(pHeaderRow)
+	{
+		ITableViewBase<ItemType>::m_Orientation = EOrientation::Vertical;
+		ITableViewBase<ItemType>::m_Style = style;
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::ClearHightlightedItems() noexcept
+	{
+		m_HighlightedItems.clear();
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::ClearItemsSource() noexcept
+	{
+		m_pSource = nullptr;
+		m_ItemToRowWidgetMap.clear();
+	}
+
+	template<class ItemType>
+	const ItemType& ListView<ItemType>::GetItemFromWidget(const ITableRow* pWidgetToFind) const noexcept
+	{
+		auto it = std::find_if(m_ItemToRowWidgetMap.begin(), m_ItemToRowWidgetMap.end(), [&](const auto& pair) 
+{
+				return pair.second.Get() == pWidgetToFind; //HMM
+			}
+		);
+
+		return it->first;
+	}
+
+	template<class ItemType>
+	bool ListView<ItemType>::HasValidItemSource() const noexcept
+	{
+		return m_pSource != nullptr;
+	}
+
+	template<class ItemType>
+	uint32 ListView<ItemType>::GetNumItemsSelected() const noexcept
+	{
+		return m_SelectedItems.size();
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnClick(InstanceType* instance, void(InstanceType::*method)(const ItemType& item)) noexcept
+	{
+		m_OnClick = [instance, method](const ItemType& item) { return (instance->*method)(item); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnDebugItemToString(const InstanceType* instance, String(InstanceType::*method)(const ItemType&) const) noexcept
+	{
+		m_OnDebugItemToString = [instance, method](const ItemType& item) { return (instance->*method)(item); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnDoubleClick(InstanceType* instance, void(InstanceType::*method)(const ItemType& item)) noexcept
+	{
+		m_OnDoubleClick = [instance, method](const ItemType& item) { return (instance->*method)(item); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnEntryInitialized(InstanceType* instance, void(InstanceType::*method)(ItemType, const Ref<ITableRow>&)) noexcept
+	{
+		m_OnEntryInitialized = [this, instance, method](ItemType item, const Ref<ITableRow>& pTableRow) { return (instance->*method)(item, pTableRow); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnGenerateRow(InstanceType* instance, Ref<ITableRow>(InstanceType::*method)(const ItemType&)) noexcept
+	{
+		m_OnGenerateRow = [instance, method](const ItemType& item) { return (instance->*method)(item); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnIsSelectableOrNavigable(InstanceType* instance, bool(InstanceType::*method)(const ItemType&)) noexcept
+	{
+		m_OnIsSelectableOrNavigable = [instance, method](const ItemType& item) { return (instance->*method)(item); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnItemScrolledIntoView(InstanceType* instance, void(InstanceType::*method)(const ItemType&)) noexcept
+	{
+		m_OnItemScrolledIntoView = [instance, method](const ItemType& item) { return (instance->*method)(item); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnMouseEnterRow(InstanceType* instance, void(InstanceType::*method)(const Ref<ITableRow>&)) noexcept
+	{
+		m_OnMouseEnterRow = [instance, method](const Ref<ITableRow>& item) { return (instance->*method)(item); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnMouseExitRow(InstanceType* instance, void(InstanceType::*method)(const Ref<ITableRow>&)) noexcept
+	{
+		m_OnMouseExitRow = [instance, method](const Ref<ITableRow>& item) { return (instance->*method)(item); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnRequestSource(const InstanceType* instance, const std::vector<ItemType>*(InstanceType::*method)() const) noexcept
+	{
+		m_OnRequestSource = [instance, method]() { return (instance->*method)(); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnRowReleased(InstanceType* instance, void(InstanceType::*method)(const Ref<ITableRow>&)) noexcept
+	{
+		m_OnRowReleased = [instance, method](const Ref<ITableRow>& pRow) { return (instance->*method)(pRow); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnSelectionChanged(InstanceType* instance, void(InstanceType::*method)(const ItemType&, ESelectionType)) noexcept
+	{
+		m_OnSelectionChanged = [instance, method](const ItemType& item, ESelectionType selectionType) { return (instance->*method)(item, selectionType); };
+		return this;
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::SetItemHighlighted(const ItemType& item) noexcept
+	{
+		m_HighlightedItems.insert(item);
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::SetItemSelection(const ItemType& item, ESelectionType selectionType) noexcept
+	{
+		if (selectionType == ESelectionType::Selected)
+		{
+			bool selectable = true;
+			if (m_OnIsSelectableOrNavigable.IsSet())
+				selectable = m_OnIsSelectableOrNavigable(item);
+
+			if (!selectable)
+				return;
+
+			RLS_ASSERT(!m_SelectedItems.contains(item), "[ListView::SetItemSelection]: Item {} is already selected.", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
+			m_SelectedItems.insert(item);
+			m_OnSelectionChanged.ExecuteIfSet(item, selectionType);
+
+			if (m_RangeSelectionStart == std::nullopt)
+				m_RangeSelectionStart = item;
+
+			RLS_CORE_INFO("[ListView::SetItemSelection]: Selected item: '{}'", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
+		}
+		else
+		{
+			RLS_ASSERT(m_SelectedItems.contains(item), "[ListView::SetItemSelection]: Item '{}' is not selected.", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
+			m_SelectedItems.erase(item);
+			m_OnSelectionChanged.ExecuteIfSet(item, selectionType);
+
+			if (m_RangeSelectionStart == item)
+				m_RangeSelectionStart = std::nullopt;
+
+			RLS_CORE_INFO("[ListView::SetItemSelection]: Deselected item: '{}'", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
+		}
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::SetSelectionMode(ESelectionMode mode) noexcept
+	{
+		ITableViewBase<ItemType>::m_SelectionMode = mode;
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::SetStyle(const TableViewStyle& style) noexcept
+	{
+		ITableViewBase<ItemType>::m_Style = style;
+	}
+
+	//---------- PRIVATE FUNCTIONS --------------
+
+	template<class ItemType>
+	void ListView<ItemType>::OnRender() noexcept
+	{
+		m_pSource = m_OnRequestSource();
+
+		RLS_ASSERT(HasValidItemSource(), "[ListView::OnRender]: Items source is invalid.");
+
+		const std::vector<ItemType>& source = *m_pSource;
+
+		const uint32 numColumns = this->m_pHeaderRow->GetNumColumns();
+		
+		if (ImGui::BeginTable("##Table", numColumns, this->GetFlags()))
+		{
+			this->m_pHeaderRow->OnRender();
+
+			ImGuiListClipper clipper;
+			clipper.Begin(source.size());
+
+			while (clipper.Step())
+			{
+				for (uint32 row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+				{
+					const ItemType& item = source[row];
+					
+					if (!m_ItemToRowWidgetMap.contains(item))
+					{
+						m_ItemToRowWidgetMap[item] = std::move(GenerateNewWidget(item));
+						m_OnItemScrolledIntoView.ExecuteIfSet(item);
+					}
+
+					m_ItemToRowWidgetMap[item]->Render();
+				}
+			}
+
+			ImGui::EndTable(); 
+
+			const ImVec2 min = ImGui::GetItemRectMin();
+			const ImVec2 max = ImGui::GetItemRectMax();
+			const float fullWidth = max.x - min.x;
+
+			const float remainingHeight = ImGui::GetContentRegionAvail().y;
+
+			// Catch input in table empty area:
+			if (remainingHeight > 0.0f)
+			{
+				ImGui::SetCursorScreenPos(ImVec2(min.x, max.y)); // Position right below table
+				ImGui::InvisibleButton("##TableEmptySpace", ImVec2(fullWidth, remainingHeight));
+
+				if (m_ClearSelectionOnEmptySpaceClick && ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					ClearSelection();
+			}
+		}
+	}
+}
