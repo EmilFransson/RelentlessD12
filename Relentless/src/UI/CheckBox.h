@@ -39,5 +39,6 @@ namespace Relentless
 		Callback<void(bool isChecked)> m_OnCheckStateChanged;
 
 		bool m_Hovered = false;
+		bool m_MeasuredSize = false;
 	};
 }

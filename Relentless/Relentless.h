@@ -38,7 +38,9 @@
 #include <src/UI/CheckBox.h>
 #include <src/UI/CollapsibleSection.h>
 #include <src/UI/ComboBox.h>
+#include <src/UI/ContextMenu.h>
 #include <src/UI/DragDropBehavior.h>
+#include <src/UI/DragDropOperation.h>
 #include <src/UI/FloatDrag.h>
 #include <src/UI/Float3Drag.h>
 #include <src/UI/FloatSlider.h>
@@ -47,6 +49,8 @@
 #include <src/UI/ITableRow.h>
 #include <src/UI/IWidget.h>
 #include <src/UI/Label.h>
+#include <src/UI/Panel.h>
+#include <src/UI/Separator.h>
 #include <src/UI/SearchBar.h>
 #include <src/UI/Table.h>
 #include <src/UI/Tooltip.h>
@@ -56,6 +60,7 @@
 #include <src/UI/Tree/TreeInteraction.h>
 #include <src/UI/Tree/TreeTypes.h>
 #include <src/UI/UI.h>
+#include <src/UI/UIManager.h>
 #include <src/UI/VerticalBox.h>
 
 #include <src/UI/Nodes/ITreeNode.h>

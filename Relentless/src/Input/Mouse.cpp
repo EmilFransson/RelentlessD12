@@ -1,20 +1,7 @@
 #include "Mouse.h"
 
-
-#include "../../../vendor/includes/ImGUI/imgui.h"
-
 namespace Relentless
 {
-	std::bitset<(uint16)RLS_Button::Count> Mouse::s_PersistentStates;
-	std::bitset<(uint16)RLS_Button::Count> Mouse::s_CurrentStates;
-	Vector2u Mouse::s_CurrentMouseCoords;
-	Vector2i Mouse::s_DeltaMouseCoords = Vector2i(0,0);
-	float Mouse::s_MouseWheeel = 0.0f;
-	bool Mouse::s_CursorVisible{ true };
-	bool Mouse::s_Confined{ false };
-
-	Broadcaster<void(const Vector2i& delta)> Mouse::OnRawMove;
-
 	[[nodiscard]] RLS_Button Mouse::KeyCodeToButton(uint32 keyCode) noexcept
 	{
 		switch (keyCode)
@@ -28,6 +15,33 @@ namespace Relentless
 		}
 
 		return RLS_Button::Unsupported;
+	}
+
+	PointerInfo Mouse::CreatePointerInfo() noexcept
+	{
+		PointerInfo pointerInfo{};
+
+		if (IsButtonReleased(RLS_Button::Left) || IsButtonPressed(RLS_Button::Left))
+			pointerInfo.EffectingButton = RLS_Button::Left;
+		else if (IsButtonReleased(RLS_Button::Right) || IsButtonPressed(RLS_Button::Right))
+			pointerInfo.EffectingButton = RLS_Button::Right;
+		else if (IsButtonReleased(RLS_Button::Wheel) || IsButtonPressed(RLS_Button::Wheel))
+			pointerInfo.EffectingButton = RLS_Button::Wheel;
+		else
+			pointerInfo.EffectingButton = RLS_Button::None;
+
+		if (IsButtonDown(RLS_Button::Left))
+			pointerInfo.PressedButtons.insert(RLS_Button::Left);
+		if (IsButtonDown(RLS_Button::Right))
+			pointerInfo.PressedButtons.insert(RLS_Button::Right);
+		if (IsButtonDown(RLS_Button::Wheel))
+			pointerInfo.PressedButtons.insert(RLS_Button::Wheel);
+
+		pointerInfo.WheelDelta = s_MouseWheeel;
+		pointerInfo.LocalPosition = GetCursorPosition();
+		pointerInfo.ScreenSpacePosition = GetCursorScreenPosition();
+
+		return pointerInfo;
 	}
 
 	void Mouse::OnMove(const Vector2u& newCoords) noexcept
@@ -46,7 +60,10 @@ namespace Relentless
 
 	void Mouse::Update() noexcept
 	{
-		s_CurrentStates.reset();
+		s_PreviousStates = s_CurrentStates;
+		s_PressedThisFrame.reset();
+		s_ReleasedThisFrame.reset();
+
 		s_DeltaMouseCoords = { 0,0 };
 		s_MouseWheeel = 0.0f;
 	}
@@ -54,8 +71,14 @@ namespace Relentless
 	void Mouse::UpdateState(uint32 keyCode, bool isPressed) noexcept
 	{
 		const RLS_Button button = KeyCodeToButton(keyCode);
-		s_PersistentStates[(uint16)button] = isPressed;
+	
+		const bool wasDown = s_CurrentStates[(uint16)button];
 		s_CurrentStates[(uint16)button] = isPressed;
+
+		if (!wasDown && isPressed)
+			s_PressedThisFrame.set((uint16)button);
+		else if (wasDown && !isPressed)
+			s_ReleasedThisFrame.set((uint16)button);
 	}
 
 	void Mouse::UpdateMouseWheel(float scrollAmount) noexcept
@@ -105,12 +128,17 @@ namespace Relentless
 
 	bool Mouse::IsButtonDown(const RLS_Button button) noexcept
 	{
-		return s_PersistentStates[(uint8)button];
+		return s_CurrentStates[(uint8)button];
 	}
 
 	bool Mouse::IsButtonPressed(const RLS_Button button) noexcept
 	{
-		return s_PersistentStates[(uint8)button] && s_CurrentStates[(uint8)button];
+		return s_PressedThisFrame[(uint8)button];
+	}
+
+	bool Mouse::IsButtonReleased(const RLS_Button button) noexcept
+	{
+		return s_ReleasedThisFrame[(uint8)button];
 	}
 
 	const Vector2u& Mouse::GetCursorPosition() noexcept

@@ -4,10 +4,21 @@
 
 namespace Relentless
 {
-	enum class RLS_Button : uint8 {Left = 0u, Right, Wheel, Unsupported, Count};
+	enum class RLS_Button : int {None = -1, Left = 0, Right, Wheel, Unsupported, Count};
+	
+	struct PointerInfo
+	{
+		RLS_Button EffectingButton = RLS_Button::None;
+		std::unordered_set<RLS_Button> PressedButtons;
+		float WheelDelta = 0.0f;
+		Vector2u LocalPosition = Vector2u(0u, 0u);
+		Vector2u ScreenSpacePosition = Vector2u(0u, 0u);
+	};
+
 	class Mouse
 	{
 	public:
+		static NO_DISCARD PointerInfo CreatePointerInfo() noexcept;
 		static void OnMove(const Vector2u& newCoords) noexcept;
 		static void OnRawDelta(const Vector2i& deltaCoords) noexcept;
 		static void Update() noexcept;
@@ -17,23 +28,27 @@ namespace Relentless
 		static void FreeCursor() noexcept;
 		static void ShowCursor() noexcept;
 		static void HideCursor() noexcept;
-		static [[nodiscard]] bool IsCursorConfined() noexcept;
-		static [[nodiscard]] bool IsButtonDown(const RLS_Button button) noexcept;
-		static [[nodiscard]] bool IsButtonPressed(const RLS_Button button) noexcept;
-		static [[nodiscard]] const Vector2u& GetCursorPosition() noexcept;
-		static [[nodiscard]] Vector2u GetCursorScreenPosition() noexcept;
-		static [[nodiscard]] const Vector2i& GetDeltaCoordinates() noexcept;
-		static [[nodiscard]] RLS_Button KeyCodeToButton(uint32 keyCode) noexcept;
+		static NO_DISCARD bool IsCursorConfined() noexcept;
+		static NO_DISCARD bool IsButtonDown(const RLS_Button button) noexcept;
+		static NO_DISCARD bool IsButtonPressed(const RLS_Button button) noexcept;
+		static NO_DISCARD bool IsButtonReleased(const RLS_Button button) noexcept;
+		static NO_DISCARD const Vector2u& GetCursorPosition() noexcept;
+		static NO_DISCARD Vector2u GetCursorScreenPosition() noexcept;
+		static NO_DISCARD const Vector2i& GetDeltaCoordinates() noexcept;
+		static NO_DISCARD RLS_Button KeyCodeToButton(uint32 keyCode) noexcept;
 
-		static Broadcaster<void(const Vector2i& delta)> OnRawMove;
+		inline static Broadcaster<void(const Vector2i& delta)> OnRawMove;
 	private:
-		static std::bitset<(uint16)RLS_Button::Count> s_CurrentStates;
-		static std::bitset<(uint16)RLS_Button::Count> s_PersistentStates;
-		static Vector2u s_CurrentMouseCoords;
-		static Vector2i s_DeltaMouseCoords;
-		static float s_MouseWheeel;
-		static bool s_CursorVisible;
-		static bool s_Confined;
+		inline static std::bitset<(uint16)RLS_Button::Count> s_CurrentStates;
+		inline static std::bitset<(uint16)RLS_Button::Count> s_PressedThisFrame;
+		inline static std::bitset<(uint16)RLS_Button::Count> s_PreviousStates;
+		inline static std::bitset<(uint16)RLS_Button::Count> s_ReleasedThisFrame;
+		inline static Vector2u s_CurrentMouseCoords = Vector2u(0u, 0u);
+		inline static Vector2i s_DeltaMouseCoords = Vector2i(0, 0);
+		inline static float s_MouseWheeel = 0.0f;
+		inline static bool s_CursorVisible = true;
+		inline static bool s_Confined = false;
+
 		STATIC_CLASS(Mouse);
 	};
 }

@@ -30,11 +30,15 @@ namespace Relentless
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 		[[nodiscard]] bool HasWidget(Ref<IBaseWidget> pWidget) noexcept;
 		void SetIsChildRegion(bool state) noexcept;
+
+		Broadcaster<void(bool)> OnFocusChanged;
+
 	protected:
 		virtual void OnRender() noexcept override;
 	private:
 		std::vector<Ref<IBaseWidget>> m_Children;
 		Vector2 m_Size = Vector2::Zero;
 		bool m_IsChildRegion = false;
+		bool m_IsFocused = false;
 	};
 }

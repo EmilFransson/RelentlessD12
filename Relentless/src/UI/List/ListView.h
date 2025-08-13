@@ -1,28 +1,35 @@
-#pragma once
+﻿#pragma once
 
 #include "Callback/Callback.h"
 
 #include "Input/Keyboard.h"
 
+#include "UI/ContextMenu.h"
 #include "UI/IWidget.h"
 #include "UI/ITableRow.h"
+#include "UI/UIManager.h"
 
 namespace Relentless
 {
 	struct TableViewStyle
 	{
 		int Flags = 0;
+		bool UseAlternatingRowColors = true;
+		Color EvenRowColor = Colors::EvenRowColorDefault;
+		Color OddRowColor = Colors::OddRowColorDefault;
+		Color RowHoverColor = Colors::RowHoverColorDefault;
 	};
 
 	enum class ESelectionType : uint8 { Selected, Deselected };
 	enum class ESelectionMode : uint8 { None, Single, SingleToggle, Multi };
 	enum class EOrientation   : uint8 { Horizontal, Vertical };
+	enum class ETableViewMode : uint8 { List, Tile, Tree };
 
 	class Label;
 
 	struct Column
 	{
-		Ref<Label> pLabel = nullptr;;
+		Ref<Label> pLabel = nullptr;
 		float Weight = 0.0f;
 		int Flags = 0;
 	};
@@ -35,13 +42,17 @@ namespace Relentless
 		NO_DISCARD uint32 GetNumColumns() const noexcept;
 
 		void OnRender() noexcept;
+		void SetIsPinned(bool isPinned) noexcept;
 	private:
 		std::vector<Column> m_Columns;
+		bool m_IsPinned = false;
 	};
 
 	template<class ItemType>
 	class ITableViewBase : public IStylableWidget<ITableViewBase<ItemType>>
 	{
+		static_assert(Is_Pointer_Like<ItemType>::value, "[ITableViewBase]: Item is not of pointer type.");
+
 	public:
 		ITableViewBase(std::shared_ptr<HeaderRow> pHeaderRow) noexcept
 			: m_pHeaderRow{pHeaderRow}
@@ -53,6 +64,9 @@ namespace Relentless
 		{
 			Keyboard::OnKeyStateChanged.Detach(this);
 		}
+
+		NO_DISCARD bool IsFocused() const noexcept { return m_IsFocused; }
+		virtual void SelectAll() noexcept = 0;
 	private:
 		void OnKeyStateChanged(RLS_Key key, bool pressed) noexcept
 		{
@@ -64,13 +78,22 @@ namespace Relentless
 			case RLS_Key::LShift:
 				m_SelectionMode = pressed ? ESelectionMode::Multi : ESelectionMode::Single;
 				break;
+			case RLS_Key::A:
+			{
+				if (Keyboard::IsKeyDown(RLS_Key::LCtrl) && m_IsFocused)
+					SelectAll();
+
+				break;
+			}
 			}
 		}
 	protected:
 		TableViewStyle m_Style;
+		bool m_IsFocused = false;
 		
-		ESelectionMode m_SelectionMode = ESelectionMode::Single;
-		EOrientation m_Orientation = EOrientation::Vertical;
+		ESelectionMode m_SelectionMode			= ESelectionMode::Single;
+		EOrientation m_Orientation				= EOrientation::Vertical;
+		ETableViewMode m_Mode					= ETableViewMode::List;
 		std::shared_ptr<HeaderRow> m_pHeaderRow = nullptr;
 	};
 
@@ -89,16 +112,23 @@ namespace Relentless
 		ListView<ItemType>* ClearSelectionOnClick(bool shouldClear) noexcept;
 
 		NO_DISCARD const ItemType& GetItemFromWidget(const ITableRow* pWidgetToFind) const noexcept;
+		NO_DISCARD uint32 GetNumGeneratedWidgets() const noexcept;
 		NO_DISCARD uint32 GetNumItemsSelected() const noexcept;
+		virtual NO_DISCARD String GetReferencerName() const noexcept;
+		uint32 GetSelectedItems(std::vector<ItemType>& outSelectedItems) const noexcept;
+		NO_DISCARD Ref<ITableRow> GetRowWidget(const ItemType& item) const noexcept;;
 
 		NO_DISCARD bool HasValidItemSource() const noexcept;
 
 		NO_DISCARD bool IsItemHighlighted(const ItemType& item) const noexcept;
 		NO_DISCARD bool IsItemSelected(const ItemType& item) const noexcept;
-		NO_DISCARD bool IsItemVisible(ItemType item) const noexcept;
+		NO_DISCARD bool IsItemVisible(const ItemType& item) const noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnClick(InstanceType* instance, void(InstanceType::* method)(const ItemType& item)) noexcept;
+		ListView<ItemType>* OnClick(InstanceType* instance, void(InstanceType::* method)(const PointerInfo& pointerInfo, const ItemType& item)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnContextMenuOpening(InstanceType* instance, Ref<ContextMenu>(InstanceType::* method)(const ItemType& item)) noexcept;
 
 		template<typename InstanceType>
 		ListView<ItemType>* OnDebugItemToString(const InstanceType* instance, String(InstanceType::*method)(const ItemType&) const) noexcept;
@@ -107,7 +137,7 @@ namespace Relentless
 		ListView<ItemType>* OnDoubleClick(InstanceType* instance, void(InstanceType::* method)(const ItemType& item)) noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnEntryInitialized(InstanceType* instance, void(InstanceType::* method)(ItemType, const Ref<ITableRow>&)) noexcept;
+		ListView<ItemType>* OnEntryInitialized(InstanceType* instance, void(InstanceType::* method)(const ItemType&, const Ref<ITableRow>&)) noexcept;
 
 		template<typename InstanceType>
 		ListView<ItemType>* OnIsSelectableOrNavigable(InstanceType* instance, bool(InstanceType::*method)(const ItemType&)) noexcept;
@@ -119,12 +149,6 @@ namespace Relentless
 		ListView<ItemType>* OnGenerateRow(InstanceType* instance, Ref<ITableRow>(InstanceType::* method)(const ItemType&)) noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnMouseEnterRow(InstanceType* instance, void(InstanceType::*method)(const Ref<ITableRow>&)) noexcept;
-
-		template<typename InstanceType>
-		ListView<ItemType>* OnMouseExitRow(InstanceType* instance, void(InstanceType::*method)(const Ref<ITableRow>&)) noexcept;
-
-		template<typename InstanceType>
 		ListView<ItemType>* OnRequestSource(const InstanceType* instance, const std::vector<ItemType>*(InstanceType::* method)() const) noexcept;
 
 		template<typename InstanceType>
@@ -133,31 +157,36 @@ namespace Relentless
 		template<typename InstanceType>
 		ListView<ItemType>* OnSelectionChanged(InstanceType* instance, void(InstanceType::*method)(const ItemType&, ESelectionType)) noexcept;
 
+		Broadcaster<void(bool)> OnFocusChanged;
+
+		void SelectAll() noexcept override;
 		void SetItemHighlighted(const ItemType& item) noexcept;
 		void SetItemSelection(const ItemType& item, ESelectionType selectionType) noexcept;
 		void SetSelectionMode(ESelectionMode mode) noexcept;
 		void SetStyle(const TableViewStyle& style) noexcept;
+
+		void TriggerFocusChange(bool focused) noexcept;
 	protected:
 		virtual NO_DISCARD Ref<ITableRow> GenerateNewWidget(const ItemType& item) noexcept;
 		NO_DISCARD uint32 GetItemIndex(const ItemType& item) const noexcept;
 	private:
-		void OnMouseEnterRow_private(const ItemType& pItem) noexcept;
-		void OnMouseExitRow_private(const ItemType& pItem) noexcept;
-
 		void OnRender() noexcept override;
-		void OnRowClicked(const ItemType& pItem) noexcept;
+		void OnRowClicked(const PointerInfo& pointerInfo, const ItemType& pItem) noexcept;
 		void OnRowDoubleClicked(const ItemType& pItem) noexcept;
+
+		void ReleaseInvisibleWidgets() noexcept;
 	private:
 		std::unordered_map<ItemType, Ref<ITableRow>> m_ItemToRowWidgetMap;
 		std::unordered_set<ItemType> m_SelectedItems;
 		std::unordered_set<ItemType> m_HighlightedItems;
 
-		Callback<void(const ItemType& item)> m_OnClick;
+		Callback<void(const PointerInfo& pointerInfo, const ItemType& item)> m_OnClick;
+		Callback<Ref<ContextMenu>(const ItemType& item)> m_OnContextMenuOpening;
 		Callback<String(const ItemType&)> m_OnDebugItemToString;
 		Callback<void(const ItemType& item)> m_OnDoubleClick;
+		Callback<void(const ItemType&, const Ref<ITableRow>&)> m_OnEntryInitialized;
 		Callback<void(const Ref<ITableRow>& item)> m_OnMouseEnterRow;
 		Callback<void(const Ref<ITableRow>& item)> m_OnMouseExitRow;
-		Callback<void(ItemType, const Ref<ITableRow>&)> m_OnEntryInitialized;
 		Callback<Ref<ITableRow>(const ItemType&)> m_OnGenerateRow;
 		Callback<bool(const ItemType&)> m_OnIsSelectableOrNavigable;
 		Callback<void(const ItemType&)> m_OnItemScrolledIntoView;
@@ -170,8 +199,97 @@ namespace Relentless
 
 		const std::vector<ItemType>* m_pSource = nullptr;
 
+		uint32 m_VisibleListStart = 0u;
+		uint32 m_VisibleListEnd = 0u;
+
 		bool m_ClearSelectionOnEmptySpaceClick = true;
+		bool m_ShouldDestroyContextMenu = false;
 	};
+
+	template<class ItemType>
+	String ListView<ItemType>::GetReferencerName() const noexcept
+	{
+		return "Unnamed";
+	}
+
+	template<class ItemType>
+	Ref<ITableRow> ListView<ItemType>::GetRowWidget(const ItemType& item) const noexcept
+	{
+		RLS_ASSERT(m_ItemToRowWidgetMap.contains(item), "[ListView::GetRowWidget]: Widget does not exist for item '{}'", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
+		return m_ItemToRowWidgetMap[item];
+	}
+
+	template<class ItemType>
+	bool ListView<ItemType>::IsItemVisible(const ItemType& item) const noexcept
+	{
+		return m_ItemToRowWidgetMap.contains(item);
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::ReleaseInvisibleWidgets() noexcept
+	{
+		if (!m_pSource)
+			return;
+
+		const std::vector<ItemType>& source = *m_pSource;
+		if (source.empty())
+			return;
+
+		std::unordered_set<ItemType> visibleItems;
+		visibleItems.reserve(m_VisibleListEnd - m_VisibleListStart);
+		
+		for (uint32 row = m_VisibleListStart; row < m_VisibleListEnd; ++row)
+			visibleItems.insert(source[row]);
+
+		std::erase_if(m_ItemToRowWidgetMap, [&](auto& keyValuePair) 
+			{
+				if (visibleItems.find(keyValuePair.first) == visibleItems.end())
+				{
+					m_OnRowReleased.ExecuteIfSet(keyValuePair.second);
+					return true;
+				}
+
+				return false;
+			});
+	}
+
+	template<class ItemType>
+	uint32 ListView<ItemType>::GetNumGeneratedWidgets() const noexcept
+	{
+		return static_cast<uint32>(m_ItemToRowWidgetMap.size());
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::SelectAll() noexcept
+	{
+		if (!m_pSource)
+			return;
+
+		for (const auto& item : *m_pSource)
+		{
+			if (!IsItemSelected(item))
+				SetItemSelection(item, ESelectionType::Selected);
+		}
+	}
+
+	template<class ItemType>
+	void ListView<ItemType>::TriggerFocusChange(bool focused) noexcept
+	{
+		if (this->m_IsFocused != focused)
+		{
+			this->m_IsFocused = focused;
+			OnFocusChanged(this->m_IsFocused);
+		}
+	}
+
+	template<class ItemType>
+	uint32 ListView<ItemType>::GetSelectedItems(std::vector<ItemType>& outSelectedItems) const noexcept
+	{
+		std::vector<ItemType> selectedItems(m_SelectedItems.begin(), m_SelectedItems.end());
+		outSelectedItems = std::move(selectedItems);
+
+		return static_cast<uint32>(selectedItems.size());
+	}
 
 	template<class ItemType>
 	uint32 ListView<ItemType>::GetItemIndex(const ItemType& item) const noexcept
@@ -186,34 +304,15 @@ namespace Relentless
 	template<class ItemType>
 	Ref<ITableRow> ListView<ItemType>::GenerateNewWidget(const ItemType& item) noexcept
 	{
-		Ref<ITableRow> pNewRow = m_OnGenerateRow(item);;
+		Ref<ITableRow> pNewRow = m_OnGenerateRow(item);
 
-		pNewRow->OnClicked(std::bind(&ListView<ItemType>::OnRowClicked, this, item));
+		pNewRow->OnClicked([&](const PointerInfo& info) { OnRowClicked(info, item);  }/*  std::bind(&ListView<ItemType>::OnRowClicked, this, item)*/);
 		pNewRow->OnDoubleClicked(std::bind(&ListView<ItemType>::OnRowDoubleClicked, this, item));
-		pNewRow->OnMouseEnter(std::bind(&ListView<ItemType>::OnMouseEnterRow_private, this, item));
-		pNewRow->OnMouseExit(std::bind(&ListView<ItemType>::OnMouseExitRow_private, this, item));
+
+		if (m_OnEntryInitialized.IsSet())
+			m_OnEntryInitialized(item, pNewRow);
 
 		return std::move(pNewRow);
-	}
-
-	template<class ItemType>
-	void ListView<ItemType>::OnMouseEnterRow_private(const ItemType& pItem) noexcept
-	{
-		if (!IsItemSelected(pItem))
-			m_ItemToRowWidgetMap[pItem]->SetBackgroundColor(Colors::Gray);
-
-		if (m_OnMouseEnterRow.IsSet())
-			m_OnMouseEnterRow(m_ItemToRowWidgetMap[pItem]);
-	}
-
-	template<class ItemType>
-	void ListView<ItemType>::OnMouseExitRow_private(const ItemType& pItem) noexcept
-	{
-		if (!IsItemSelected(pItem))
-			m_ItemToRowWidgetMap[pItem]->SetBackgroundColor(Colors::Transparent);
-
-		if (m_OnMouseExitRow.IsSet())
-			m_OnMouseExitRow(m_ItemToRowWidgetMap[pItem]);
 	}
 
 	template<class ItemType>
@@ -229,7 +328,7 @@ namespace Relentless
 	}
 
 	template<class ItemType>
-	void ListView<ItemType>::OnRowClicked(const ItemType& pItem) noexcept
+	void ListView<ItemType>::OnRowClicked(const PointerInfo& pointerInfo, const ItemType& pItem) noexcept
 	{
 #if defined RLS_DEBUG || defined RLS_RELWITHDEBINFO
 		String message = "[ListView]: Clicked on item: ";
@@ -241,60 +340,73 @@ namespace Relentless
 		RLS_CORE_INFO(message.c_str());
 #endif
 
-		switch (this->m_SelectionMode)
+		if (pointerInfo.EffectingButton == RLS_Button::Left)
 		{
-		case ESelectionMode::Single:
-		{
-			if (!IsItemSelected(pItem))
+			switch (this->m_SelectionMode)
 			{
-				ClearSelection();
-				SetItemSelection(pItem, ESelectionType::Selected);
-			}
-			else
+			case ESelectionMode::Single:
 			{
-				const std::vector<ItemType> selectedItems(m_SelectedItems.begin(), m_SelectedItems.end());
-				for (const auto& selectedItem : selectedItems)
+				if (!IsItemSelected(pItem))
 				{
-					if (selectedItem != pItem)
-						SetItemSelection(selectedItem, ESelectionType::Deselected);
+					ClearSelection();
+					SetItemSelection(pItem, ESelectionType::Selected);
 				}
-			}
-			
-			break;
-		}
-		case ESelectionMode::SingleToggle:
-		{
-			if (!IsItemSelected(pItem))
-				SetItemSelection(pItem, ESelectionType::Selected);
-			else
-				SetItemSelection(pItem, ESelectionType::Deselected);
-
-			break;
-		}
-		case ESelectionMode::Multi:
-		{
-			if (m_RangeSelectionStart == std::nullopt && !IsItemSelected(pItem))
-				SetItemSelection(pItem, ESelectionType::Selected);
-			else
-			{
-				uint32 rangeBegin = GetItemIndex(m_RangeSelectionStart.value());
-				uint32 rangeEnd = GetItemIndex(pItem);
-
-				if (rangeBegin > rangeEnd)
-					std::swap(rangeBegin, rangeEnd);
-
-				for (uint32 i = rangeBegin; i <= rangeEnd; ++i)
+				else
 				{
-					if (!IsItemSelected((*m_pSource)[i]))
-						SetItemSelection((*m_pSource)[i], ESelectionType::Selected);
+					const std::vector<ItemType> selectedItems(m_SelectedItems.begin(), m_SelectedItems.end());
+					for (const auto& selectedItem : selectedItems)
+					{
+						if (selectedItem != pItem)
+							SetItemSelection(selectedItem, ESelectionType::Deselected);
+					}
 				}
+
+				break;
 			}
+			case ESelectionMode::SingleToggle:
+			{
+				if (!IsItemSelected(pItem))
+					SetItemSelection(pItem, ESelectionType::Selected);
+				else
+					SetItemSelection(pItem, ESelectionType::Deselected);
 
-			break;
+				break;
+			}
+			case ESelectionMode::Multi:
+			{
+				if (m_RangeSelectionStart == std::nullopt && !IsItemSelected(pItem))
+					SetItemSelection(pItem, ESelectionType::Selected);
+				else
+				{
+					uint32 rangeBegin = GetItemIndex(m_RangeSelectionStart.value());
+					uint32 rangeEnd = GetItemIndex(pItem);
+
+					if (rangeBegin > rangeEnd)
+						std::swap(rangeBegin, rangeEnd);
+
+					for (uint32 i = rangeBegin; i <= rangeEnd; ++i)
+					{
+						if (!IsItemSelected((*m_pSource)[i]))
+							SetItemSelection((*m_pSource)[i], ESelectionType::Selected);
+					}
+				}
+
+				break;
+			}
+			}
 		}
+		else if (pointerInfo.EffectingButton == RLS_Button::Right)
+		{
+			if (m_OnContextMenuOpening.IsSet())
+			{
+				UIManager::Get().SetActiveContextMenu(m_OnContextMenuOpening(pItem));
+				//m_pContextMenu = m_OnContextMenuOpening(pItem);
+				//m_pContextMenu->OnClosed([this]() { m_ShouldDestroyContextMenu = true; });
+				//m_ShouldDestroyContextMenu = false;
+			}
 		}
 
-		m_OnClick.ExecuteIfSet(pItem);
+		m_OnClick.ExecuteIfSet(pointerInfo, pItem);
 	}
 
 	template<class ItemType>
@@ -358,7 +470,7 @@ namespace Relentless
 	{
 		auto it = std::find_if(m_ItemToRowWidgetMap.begin(), m_ItemToRowWidgetMap.end(), [&](const auto& pair) 
 {
-				return pair.second.Get() == pWidgetToFind; //HMM
+				return pair.second.Get() == pWidgetToFind;
 			}
 		);
 
@@ -379,9 +491,17 @@ namespace Relentless
 
 	template<class ItemType>
 	template<typename InstanceType>
-	ListView<ItemType>* ListView<ItemType>::OnClick(InstanceType* instance, void(InstanceType::*method)(const ItemType& item)) noexcept
+	ListView<ItemType>* ListView<ItemType>::OnClick(InstanceType* instance, void(InstanceType::*method)(const PointerInfo& pointerInfo, const ItemType& item)) noexcept
 	{
-		m_OnClick = [instance, method](const ItemType& item) { return (instance->*method)(item); };
+		m_OnClick = [instance, method](const PointerInfo& pointerInfo, const ItemType& item) { return (instance->*method)(pointerInfo, item); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnContextMenuOpening(InstanceType* instance, Ref<ContextMenu>(InstanceType::*method)(const ItemType& item)) noexcept
+	{
+		m_OnContextMenuOpening = [instance, method](const ItemType& item) { return (instance->*method)(item); };
 		return this;
 	}
 
@@ -403,9 +523,9 @@ namespace Relentless
 
 	template<class ItemType>
 	template<typename InstanceType>
-	ListView<ItemType>* ListView<ItemType>::OnEntryInitialized(InstanceType* instance, void(InstanceType::*method)(ItemType, const Ref<ITableRow>&)) noexcept
+	ListView<ItemType>* ListView<ItemType>::OnEntryInitialized(InstanceType* instance, void(InstanceType::*method)(const ItemType&, const Ref<ITableRow>&)) noexcept
 	{
-		m_OnEntryInitialized = [this, instance, method](ItemType item, const Ref<ITableRow>& pTableRow) { return (instance->*method)(item, pTableRow); };
+		m_OnEntryInitialized = [this, instance, method](const ItemType& item, const Ref<ITableRow>& pTableRow) { return (instance->*method)(item, pTableRow); };
 		return this;
 	}
 
@@ -430,22 +550,6 @@ namespace Relentless
 	ListView<ItemType>* ListView<ItemType>::OnItemScrolledIntoView(InstanceType* instance, void(InstanceType::*method)(const ItemType&)) noexcept
 	{
 		m_OnItemScrolledIntoView = [instance, method](const ItemType& item) { return (instance->*method)(item); };
-		return this;
-	}
-
-	template<class ItemType>
-	template<typename InstanceType>
-	ListView<ItemType>* ListView<ItemType>::OnMouseEnterRow(InstanceType* instance, void(InstanceType::*method)(const Ref<ITableRow>&)) noexcept
-	{
-		m_OnMouseEnterRow = [instance, method](const Ref<ITableRow>& item) { return (instance->*method)(item); };
-		return this;
-	}
-
-	template<class ItemType>
-	template<typename InstanceType>
-	ListView<ItemType>* ListView<ItemType>::OnMouseExitRow(InstanceType* instance, void(InstanceType::*method)(const Ref<ITableRow>&)) noexcept
-	{
-		m_OnMouseExitRow = [instance, method](const Ref<ITableRow>& item) { return (instance->*method)(item); };
 		return this;
 	}
 
@@ -535,15 +639,29 @@ namespace Relentless
 		RLS_ASSERT(HasValidItemSource(), "[ListView::OnRender]: Items source is invalid.");
 
 		const std::vector<ItemType>& source = *m_pSource;
+		if (source.empty())
+			return;
 
 		const uint32 numColumns = this->m_pHeaderRow->GetNumColumns();
 		
+		if (this->m_Style.UseAlternatingRowColors)
+		{
+			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBg, ImVec4(this->m_Style.EvenRowColor.R(), this->m_Style.EvenRowColor.G(), this->m_Style.EvenRowColor.B(), this->m_Style.EvenRowColor.A()));
+			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBgAlt, ImVec4(this->m_Style.OddRowColor.R(), this->m_Style.OddRowColor.G(), this->m_Style.OddRowColor.B(), this->m_Style.OddRowColor.A()));
+		}
+
+		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(ImGui::GetStyle().CellPadding.x, 0.0f));
+
 		if (ImGui::BeginTable("##Table", numColumns, this->GetFlags()))
 		{
 			this->m_pHeaderRow->OnRender();
 
 			ImGuiListClipper clipper;
 			clipper.Begin(source.size());
+
+			bool warmUp = true;
+			bool clipRangeDirty = false;
+			float lastRowY = 0.0f;
 
 			while (clipper.Step())
 			{
@@ -558,26 +676,38 @@ namespace Relentless
 					}
 
 					m_ItemToRowWidgetMap[item]->Render();
+					lastRowY = ImGui::GetCursorScreenPos().y;
 				}
+
+				if (!warmUp)
+				{
+					if (m_VisibleListStart != clipper.DisplayStart || m_VisibleListEnd != clipper.DisplayEnd)
+					{
+						m_VisibleListStart = clipper.DisplayStart;
+						m_VisibleListEnd = clipper.DisplayEnd;
+						clipRangeDirty = true;
+					}
+				}
+				
+				warmUp = !warmUp; // ping pong: warmup1 -> no warmup -> warmup2
 			}
 
-			ImGui::EndTable(); 
+			ImGui::EndTable();
 
-			const ImVec2 min = ImGui::GetItemRectMin();
-			const ImVec2 max = ImGui::GetItemRectMax();
-			const float fullWidth = max.x - min.x;
+			const ImVec2 rowMax = ImGui::GetItemRectMax();
+			const ImVec2 rowMin = ImVec2(ImGui::GetItemRectMin().x, lastRowY);
 
-			const float remainingHeight = ImGui::GetContentRegionAvail().y;
+			const float remainingHeight = rowMax.y - rowMin.y;
+			if (remainingHeight > 0.0f && m_ClearSelectionOnEmptySpaceClick && ImGui::IsMouseHoveringRect(rowMin, rowMax) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				ClearSelection();
 
-			// Catch input in table empty area:
-			if (remainingHeight > 0.0f)
-			{
-				ImGui::SetCursorScreenPos(ImVec2(min.x, max.y)); // Position right below table
-				ImGui::InvisibleButton("##TableEmptySpace", ImVec2(fullWidth, remainingHeight));
-
-				if (m_ClearSelectionOnEmptySpaceClick && ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-					ClearSelection();
-			}
+			if (clipRangeDirty)
+				ReleaseInvisibleWidgets();
 		}
+
+		ImGui::PopStyleVar();
+
+		if (this->m_Style.UseAlternatingRowColors)
+			ImGui::PopStyleColor(2);
 	}
 }

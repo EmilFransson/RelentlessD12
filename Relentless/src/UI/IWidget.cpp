@@ -38,6 +38,11 @@ namespace Relentless
 			ImGui::SetCursorPosY(pos.y + m_Margin.Bottom);
 	}
 
+	const IntRect& WidgetStyle::GetMargin() const noexcept
+	{
+		return m_Margin;
+	}
+
 	void WidgetStyle::SetFont(ImFont* pFont) noexcept
 	{
 		m_pFont = pFont;

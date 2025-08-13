@@ -39,3 +39,6 @@ constexpr inline bool EnumHasAnyFlags(Enum Flags, Enum Contains)
 {
 	return (((__underlying_type(Enum))Flags) & (__underlying_type(Enum))Contains) != 0;
 }
+
+template<typename T> 
+struct Is_Pointer_Like : std::is_pointer<T> {};

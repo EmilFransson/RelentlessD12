@@ -1,5 +1,6 @@
 #pragma once
-#include "Panel.h"
+
+#include <Relentless.h>
 
 #include "../UI/Views/Details/EntityDetailsCustomizer.h"
 #include "../UI/Views/Outliner/EntityOutlinerView.h"
@@ -96,6 +97,9 @@ namespace Relentless
 		void OnScaleChanged(const Vector3& value, ComboBox* pTransformSpaceComboBox) noexcept;
 
 		void OnEntityDestroyed(entity destroyedEntity) noexcept;
+
+		void OnPreSceneChanged(Scene* pScene) noexcept;
+
 		void OnSceneChanged(Scene* pScene) noexcept;
 		void OnSelectionChanged(entity e, ESelectionState selectionState) noexcept;
 	private:
@@ -108,6 +112,7 @@ namespace Relentless
 		bool m_SelectionLocked = false;
 
 		Ref<EntityOutlinerView> m_pEntityOutlinerView = nullptr;
+		Ref<VerticalBox> m_pBox = nullptr;
 	};
 
 	template<> Ref<IBaseWidget> DetailsPanel::CreateComponentSection<DirectionalLightComponent>() noexcept;

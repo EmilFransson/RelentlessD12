@@ -9,11 +9,15 @@ namespace Relentless
 		, m_pEditor{ pEditor }
 	{
 		m_pEditor->GetSelection()->OnSelectionChanged.Connect(this, &DetailsPanel::OnSelectionChanged);
+		m_pEditor->OnPreSceneChanged.Connect(this, &DetailsPanel::OnPreSceneChanged);
 		m_pEditor->OnSceneChanged.Connect(this, &DetailsPanel::OnSceneChanged);
 		
 		m_pEntityDetailsCustomizer = std::make_unique<EntityDetailsCustomizer>(pEditor);
 
 		m_pEntityOutlinerView = new EntityOutlinerView(pEditor);
+		m_pBox = new VerticalBox();
+
+		m_pBox->Add(m_pEntityOutlinerView);
 	}
 
 	DetailsPanel::~DetailsPanel() noexcept
@@ -29,7 +33,8 @@ namespace Relentless
 
 	void DetailsPanel::OnRender() noexcept
 	{
-		m_pEntityOutlinerView->Render();
+		m_pBox->Render();
+		//m_pEntityOutlinerView->Render();
 
 		//for (auto& node : m_Nodes)
 		//	node->Render();
@@ -574,6 +579,11 @@ namespace Relentless
 			CreateFromSelection();
 		else
 			CreateEmpty();
+	}
+
+	void DetailsPanel::OnPreSceneChanged(Scene* pScene) noexcept
+	{
+		pScene->OnEntityDestroyed.Detach(this);
 	}
 
 	void DetailsPanel::OnSceneChanged(Scene* pScene) noexcept

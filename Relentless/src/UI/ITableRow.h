@@ -2,9 +2,13 @@
 #include "IWidget.h"
 
 #include "Callback/Callback.h"
+#include "Core/Any.h"
+#include "Input/Mouse.h"
 
 namespace Relentless
 {
+	class DragDropOperation;
+
 	class ITableRow : public IStylableWidget<ITableRow>
 	{
 	public:
@@ -14,14 +18,14 @@ namespace Relentless
 		template<typename T>
 		ITableRow* OnClicked(T&& callback) noexcept
 		{
-			m_OnClickedCallback = Callback<void()>(std::forward<T>(callback));
+			m_OnClickedCallback = Callback<void(const PointerInfo&)>(std::forward<T>(callback));
 			return this;
 		}
 
 		template<typename InstanceType>
-		ITableRow* OnClicked(InstanceType* instance, void(InstanceType::* method)()) noexcept
+		ITableRow* OnClicked(InstanceType* instance, void(InstanceType::* method)(const PointerInfo&)) noexcept
 		{
-			m_OnClickedCallback = [instance, method]() { return (instance->*method)(); };
+			m_OnClickedCallback = [instance, method](const PointerInfo& pointerInfo) { return (instance->*method)(pointerInfo); };
 			return this;
 		}
 
@@ -39,20 +43,23 @@ namespace Relentless
 			return this;
 		}
 
-		const Color& GetBackgroundColor() const noexcept 
-		{
-			return m_BackgroundColor;
-		}
+		virtual const Color& GetBackgroundColor() const noexcept = 0;
 
-		ITableRow* SetBackgroundColor(const Color& backgroundColor) noexcept override
-		{
-			m_BackgroundColor = backgroundColor;
-			return this;
-		}
+		virtual uint32 GetNumColumns() noexcept = 0;
+		virtual bool IsDragDropEligible() noexcept = 0;
+
+		virtual NO_DISCARD Ref<DragDropOperation> OnDragDetected() noexcept { return nullptr; }
+		virtual NO_DISCARD bool OnDragEnter(const Ref<DragDropOperation>& pDragDropOperation) noexcept { return false; }
+		virtual NO_DISCARD bool OnDragLeave(const Ref<DragDropOperation>& pDragDropOperation) noexcept { return false; }
+		virtual NO_DISCARD bool OnDrop(const Ref<DragDropOperation>& pDragDropOperation) noexcept { return false; }
+
+		virtual void OnRender() noexcept override final;
+		virtual void OnRenderColumn(uint32 column) noexcept = 0;
+
 	protected:
-		Callback<void()> m_OnClickedCallback;
+		Callback<void(const PointerInfo& pointerInfo)> m_OnClickedCallback;
 		Callback<void()> m_OnDoubleClickedCallback;
-
-		Color m_BackgroundColor = Colors::Transparent;
+		
+		bool m_Hovered = false;
 	};
 }

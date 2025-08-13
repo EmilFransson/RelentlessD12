@@ -5,30 +5,39 @@ namespace Relentless
 {
 	namespace Colors
 	{
-		constexpr Color Transparent = Color(0.0f, 0.0f, 0.0f, 0.0f);
-		constexpr Color White = Color(1.0f, 1.0f, 1.0f, 1.0f);
-		constexpr Color Black = Color(0.0f, 0.0f, 0.0f, 1.0f);
-		constexpr Color Red = Color(1.0f, 0.0f, 0.0f, 1.0f);
-		constexpr Color OffRed = Color(0.8f, 0.0f, 0.0f, 1.0f);
-		constexpr Color Green = Color(0.0f, 1.0f, 0.0f, 1.0f);
-		constexpr Color OffGreen = Color(0.0f, 0.8f, 0.0f, 1.0f);
-		constexpr Color Blue = Color(0.0f, 0.0f, 1.0f, 1.0f);
-		constexpr Color OffBlue = Color(0.0f, 0.0f, 0.8f, 1.0f);
-		constexpr Color Yellow = Color(1.0f, 1.0f, 0.0f, 1.0f);
-		constexpr Color Magenta = Color(1.0f, 0.0f, 1.0f, 1.0f);
-		constexpr Color Cyan = Color(0.0f, 1.0f, 1.0f, 1.0f);
-		constexpr Color Gray = Color(0.5f, 0.5f, 0.5f, 1.0f);
-		constexpr Color LightSkyBlue = Color(0.529411793f, 0.807843208f, 0.980392218f, 1.0f);
-
-		inline static [[nodiscard]] Color Normalize(const Color& color) noexcept
+		inline static constexpr [[nodiscard]] Color Normalize(const Color& color) noexcept
 		{
 			return Color(color.R() / 255.0f, color.G() / 255.0f, color.B() / 255.0f, color.A() / 255.0f);
 		}
 
-		inline static [[nodiscard]] Color Normalize(float r, float g, float b, float a) noexcept
+		inline static constexpr [[nodiscard]] Color Normalize(float r, float g, float b, float a) noexcept
 		{
 			return Color(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
 		}
+
+		//General:
+		constexpr Color Transparent		= Color(0.0f, 0.0f, 0.0f, 0.0f);
+		constexpr Color White			= Color(1.0f, 1.0f, 1.0f, 1.0f);
+		constexpr Color Black			= Color(0.0f, 0.0f, 0.0f, 1.0f);
+		constexpr Color Red				= Color(1.0f, 0.0f, 0.0f, 1.0f);
+		constexpr Color OffRed			= Color(0.8f, 0.0f, 0.0f, 1.0f);
+		constexpr Color Green			= Color(0.0f, 1.0f, 0.0f, 1.0f);
+		constexpr Color OffGreen		= Color(0.0f, 0.8f, 0.0f, 1.0f);
+		constexpr Color Blue			= Color(0.0f, 0.0f, 1.0f, 1.0f);
+		constexpr Color OffBlue			= Color(0.0f, 0.0f, 0.8f, 1.0f);
+		constexpr Color Yellow			= Color(1.0f, 1.0f, 0.0f, 1.0f);
+		constexpr Color Magenta			= Color(1.0f, 0.0f, 1.0f, 1.0f);
+		constexpr Color Cyan			= Color(0.0f, 1.0f, 1.0f, 1.0f);
+		constexpr Color Gray			= Color(0.5f, 0.5f, 0.5f, 1.0f);
+		constexpr Color LightSkyBlue	= Color(0.529411793f, 0.807843208f, 0.980392218f, 1.0f);
+
+		//Rows:
+		constexpr Color EvenRowColorDefault					= Normalize(21.0f, 21.0f, 21.0f, 255.0f);
+		constexpr Color OddRowColorDefault					= Normalize(26.0f, 26.0f, 26.0f, 255.0f);
+		constexpr Color RowHoverColorDefault				= Normalize(36.0f, 36.0f, 36.0f, 255.0f);
+		constexpr Color RowFocusedSelectionColorDefault		= Normalize(30.0f, 120.0f, 255.0f, 200.0f);
+		constexpr Color RowUnfocusedSelectionColorDefault	= Normalize(64.0f, 87.0f, 111.0f, 255.0f);
+		constexpr Color ContextMenuColorDefault				= Normalize(56.0f, 56.0f, 56.0f, 255.0f);
 	};
 
 	namespace Math
@@ -87,6 +96,7 @@ namespace Relentless
 			return a < b ? a : b;
 		}
 
+
 		inline [[nodiscard]] static float RadToDeg(float radians) noexcept
 		{
 			constexpr float DEGREES_PER_RADIANS = 180.0f / PI;
@@ -108,7 +118,7 @@ namespace Relentless
 			return degrees;
 		}
 
-		inline [[nodiscard]] static Vector3 RadToDeg360(const Vector3& radians) noexcept
+		inline NO_DISCARD static Vector3 RadToDeg360(const Vector3& radians) noexcept
 		{
 			Vector3 degrees = RadToDeg(radians);
 
@@ -122,6 +132,11 @@ namespace Relentless
 			if (degrees.z < 0.0f) degrees.z += 360.0f;
 			
 			return degrees;
+		}
+
+		inline NO_DISCARD static int RandomRange(int min, int max) noexcept
+		{
+			return min + rand() % (max - min + 1);
 		}
 
 		inline [[nodiscard]] constexpr static float DegToRad(float degrees) noexcept

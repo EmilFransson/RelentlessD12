@@ -34,13 +34,21 @@ namespace Relentless
 	void VerticalBox::OnRender() noexcept
 	{
 		if (m_IsChildRegion)
-			ImGui::BeginChild(std::format("##{}-child", (long)this).c_str(), ImVec2(m_Size.x, m_Size.y));
+			ImGui::BeginChild(std::format("##{}-child", (long)this).c_str(), ImVec2(m_Size.x, m_Size.y), false, GetFlags());
 
 		for (auto& pChild : m_Children)
 			pChild->Render();
 
 		if (m_IsChildRegion)
 		{
+			const bool isFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
+
+			if (m_IsFocused != isFocused)
+			{
+				m_IsFocused = isFocused;
+				OnFocusChanged(m_IsFocused);
+			}
+
 			ImGui::EndChild();
 			ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetStyle().ItemSpacing.y);
 		}

@@ -1,4 +1,4 @@
-#include "HorizontalBox.h"
+﻿#include "HorizontalBox.h"
 
 namespace Relentless
 {
@@ -6,6 +6,11 @@ namespace Relentless
 		:m_Size{size}
 		,m_IsChildRegion{isChildRegion}
 	{
+	}
+
+	Ref<IBaseWidget> HorizontalBox::GetChild(uint32 index) const noexcept
+	{
+		return m_Children[index];
 	}
 
 	float HorizontalBox::CalcDesiredWidth() const noexcept
@@ -93,7 +98,20 @@ namespace Relentless
 		if (offsetX > 0.0f)
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
 
+		ImVec2 boundsMin(+FLT_MAX, +FLT_MAX), boundsMax(-FLT_MAX, -FLT_MAX);
+
+		auto&& UpdateBounds = [&]()
+			{
+				ImVec2 cmin = ImGui::GetItemRectMin();
+				ImVec2 cmax = ImGui::GetItemRectMax();
+				boundsMin.x = Math::Min(boundsMin.x, cmin.x);
+				boundsMin.y = Math::Min(boundsMin.y, cmin.y);
+				boundsMax.x = Math::Max(boundsMax.x, cmax.x);
+				boundsMax.y = Math::Max(boundsMax.y, cmax.y);
+			};
+
 		// Step 2: layout pass
+		ImGui::BeginGroup();
 		for (size_t i = 0; i < m_Children.size(); ++i)
 		{
 			Ref<IBaseWidget>& child = m_Children[i];
@@ -103,9 +121,31 @@ namespace Relentless
 			ImGui::SetNextItemWidth(width);
 			child->Render();
 
+			UpdateBounds();
+
 			if (i < m_Children.size() - 1)
 				ImGui::SameLine(0.0f, spacing);
 		}
+		ImGui::EndGroup();
+
+		if (GetSizePolicy() == ESizePolicy::Stretch)
+		{
+			const float fillWidth = ImGui::GetContentRegionAvail().x;
+			ImGui::Dummy(ImVec2(fillWidth, 0.0f));
+			// grab the last‐rendered widget’s rect in screen coords
+			UpdateBounds();
+		}
+
+		auto minRect = ImGui::GetItemRectMin();
+		auto maxRect = ImGui::GetItemRectMax();
+
+		const bool rectHovered = ImGui::IsMouseHoveringRect(boundsMin, boundsMax);
+		//ImGui::GetWindowDrawList()->AddRect(minRect, maxRect, ImColor(1.0f, 1.0f, 1.0f, 1.0f));
+
+		if (!this->m_IsHovered && rectHovered)
+			this->OnMouseEnter_private();
+		else if (this->m_IsHovered && !rectHovered)
+			this->OnMouseExit_private();
 
 		if (m_IsChildRegion)
 			ImGui::EndChild();

@@ -29,6 +29,8 @@ namespace Relentless
 			return pWidget.Get();
 		}
 
+		NO_DISCARD Ref<IBaseWidget> GetChild(uint32 index) const noexcept;
+
 		void Remove(IBaseWidget* pWidget) noexcept
 		{
 			std::erase(m_Children, pWidget);

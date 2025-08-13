@@ -18,7 +18,7 @@ namespace Relentless
 
 		ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(240.0f / 255.0f, 240.0f / 255.0f, 240.0f / 255.0f, 1.0f));
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
-		
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
 		ImGui::BeginTooltip();
 
 		ImGui::Text(m_Text.c_str());
@@ -26,6 +26,7 @@ namespace Relentless
 		ImGui::EndTooltip();
 
 		ImGui::PopStyleColor(2);
+		ImGui::PopStyleVar();
 
 		ImGui::PopID();
 	}

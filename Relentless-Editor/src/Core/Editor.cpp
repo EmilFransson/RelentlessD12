@@ -7,16 +7,37 @@ namespace Relentless
 
 	void Editor::OnEvent(IEvent& event) noexcept
 	{
-		for (auto& pPanel : m_PanelStack)
+		switch (event.GetEventType())
 		{
-			if (!pPanel->IsVisible())
-				continue;
+		case EventType::KeyPressedEvent:
+		{
+			const bool isNavigatingScene = false/* = m_HoveringSceneViewport && Mouse::IsButtonDown(RLS_Button::Right)*/;
+			if (!isNavigatingScene)
+			{
+				const RLS_Key key = EVENT(KeyPressedEvent).key;
+				switch (key)
+				{
+				case RLS_Key::I:
+				{
+					if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
+						m_ImmersiveModeEnabled = !m_ImmersiveModeEnabled;
 
-			if (pPanel->OnEvent(event))
-				return;
+					break;
+				}
+				case RLS_Key::A:
+				{
+					//if (m_pOutlinerPanel->IsFocused())
+					//	m_pOutlinerPanel->SelectAllExpanded();
+
+					break;
+				}
+				break;
+				}
+			}
+			event.StopPropagation();
+			break;
 		}
-
-		OnUnhandledEvent(event);
+		}
 	}
 
 	void Editor::OnImGuiRender() noexcept
@@ -38,17 +59,21 @@ namespace Relentless
 		ImGui::End();
 		ImGui::PopStyleVar();
 
-		for (auto& panel : m_PanelStack)
-			panel->Render();
-
 		ImGui::Begin("Content Browser");
 
 		ImGui::End();
 
-
 		ImGui::Begin("Spawn");
+		
 		if (ImGui::Button("Spawn viewport"))
 			SpawnViewport();
+		
+		if (ImGui::Button("Spawn Entity"))
+		{
+			static int counter = 0;
+			m_pActiveScene->CreateEntity(std::format("Entity_{}", counter++).c_str());
+		}
+
 		ImGui::End();
 		
 
@@ -77,7 +102,7 @@ namespace Relentless
 		//
 		//UI_DrawStatisticsPanel();
 		//
-		m_pOutlinerPanel->OnImGuiRender(m_DisplayOutlinerPanel && !m_ImmersiveModeEnabled);
+		//m_pOutlinerPanel->OnImGuiRender(m_DisplayOutlinerPanel && !m_ImmersiveModeEnabled);
 		//m_InspectorPanel.OnImGuiRender(m_DisplayInspectorPanel && !m_ImmersiveModeEnabled);
 		//m_SceneRendererPanel.OnImGuiRender(m_DisplaySceneRendererPanel && !m_ImmersiveModeEnabled);
 		//m_PropertiesPanel.OnImGuiRender(m_DisplayPropertiesPanel && !m_ImmersiveModeEnabled);
@@ -98,77 +123,35 @@ namespace Relentless
 
 		ProfilerManager::ClearData();
 		ImGui::End();
-
-		ImGui::Begin("UI TESTS");
-		//m_pHorizontalBox->Render();
-		ImGui::End();
 	}
 
 	void Editor::OnCreate() noexcept
 	{
 		//TODO: Change ffs.
-		UI::Initialize();
-
-		m_pHorizontalBox = new HorizontalBox("##TestHorizontalBox");
-
-		Ref<Table> pTable = new Table();
-		pTable->Add(new Label("COLUMN 0"), 0,0);
-		pTable->Add(new Label("COLUMN 1"), 1, 0);
-
-		m_pHorizontalBox->Add(pTable);
-		//Ref<FloatDrag> fd = new FloatDrag("##fsg");
-		//fd->OnValueChanged([](float aval) {})
-		//	->Value([]() { return 3.0f; });
-		//
-		//m_pHorizontalBox->Add(fd);
-		//m_pHorizontalBox->Add(new Label("Center Test"));
-		//
-		//Ref<FloatDrag> fd2 = new FloatDrag("##fsg");
-		//fd2->OnValueChanged([](float aval) {})
-		//	->Value([]() { return 3.0f; });
-		//
-		//m_pHorizontalBox->Add(fd2);
-
-		//Ref<ComboBox> pCombo = new ComboBox("##HB");
-		//pCombo->AddSelectables({"First", "Second", "Third"});
-		//m_pHorizontalBox->Add(pCombo);
-
-		m_pHorizontalBox->SetAlignmentPolicy(EAlignmentPolicy::Left);
+		//UI::Initialize();
 
 		m_pSelection = std::make_unique<Selection>();
+		m_pSelection->OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
+
 		m_pEntityFiltersManager = std::make_unique<EntityFiltersManager>();
 
 		SpawnViewport();
 
-		m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
-		
+		//m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
+		//m_pOutlinerPanel = UIManager::Get().AddPanel(std::make_unique<OutlinerPanel>(this));
+
 		SetActiveScene(std::make_shared<Scene>());
-		CreateDetailsPanel();
+
+		UIManager::Get().AddPanel(std::make_unique<DetailsPanel>(ICON_FA_LINES_LEANING " Details", ImGuiWindowFlags_None, this))
+			->SetPadding(Vector2(2.0f, 0.0f));
+		
 		CreateStartScene();
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 		app.GetRenderer()->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
 
-		m_pSelection->OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
-		
 		//LoadStarterMeshes();
 		
-// 		m_pDragger = new FloatDrag("##FloatFragger", 0.0f, 0.01f, -FLT_MAX, FLT_MAX, "%.3f");
-// 		m_pDragger->OnActiveChanged.Connect([](bool isActive)
-// 			{
-// 				if (isActive)
-// 				{
-// 					const Vector2 cursorScreenPosition = Vector2(static_cast<float>(Mouse::GetCursorScreenPosition().x), static_cast<float>(Mouse::GetCursorScreenPosition().y));
-// 					Mouse::ConfineCursor(cursorScreenPosition.x-1, cursorScreenPosition.x, cursorScreenPosition.y-1, cursorScreenPosition.y);
-// 					Mouse::HideCursor();
-// 				}
-// 				else
-// 				{
-// 					Mouse::FreeCursor();
-// 					Mouse::ShowCursor();
-// 				}
-// 			});
-
 		//
 		//m_ContentBrowserPanel.SetOnAssetSelectedCallback([this](const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)
 		//	{
@@ -224,19 +207,9 @@ namespace Relentless
 	{
 		PROFILE_SCOPE("Editor::OnUpdate");
 
-		for (auto& panel : m_PanelStack)
-			panel->Update();
-
-		m_pActiveScene->GetEntityManager().Collect<TransformComponent, RotatorComponent>().Do([&](entity e)
-			{
-				const float rotationSpeed = 10.0f;
-				const Vector3 rotation = Vector3(0, deltaTime * rotationSpeed, 0);
-				m_pActiveScene->AddWorldRotation(e, rotation);
-			});
-
 		for (int i = 0; i < m_EditorViewports.size(); ++i)
 		{
-			UniquePtr<ViewportPanel>& pViewportPanel = m_EditorViewports[i];
+			ViewportPanel* pViewportPanel = m_EditorViewports[i];
 
 			const Vector2i& region = pViewportPanel->GetViewportSize();
 			m_RenderViews[i].Viewport = FloatRect(0.0f, 0.0f, Math::Max(1.0f, (float)region.x), Math::Max(1.0f, (float)region.y));
@@ -297,40 +270,14 @@ namespace Relentless
 		return m_RenderViews;
 	}
 
-	bool Editor::IsHoveringAnyFocusedViewport() const noexcept
-	{
-		return std::any_of(m_EditorViewports.begin(), m_EditorViewports.end(), [](const UniquePtr<ViewportPanel>& pViewport)
-			{
-				return pViewport->IsFocused() && pViewport->IsHovered();
-			});
-	}
-
-	bool Editor::IsNavigatingAnyViewport() const noexcept
-	{
-		return std::any_of(m_EditorViewports.begin(), m_EditorViewports.end(), [](const UniquePtr<ViewportPanel>& pViewport)
-			{
-				return pViewport->IsFocused() && pViewport->IsHovered() && 
-					(Mouse::IsButtonDown(RLS_Button::Right) || Mouse::IsButtonDown(RLS_Button::Left) || Mouse::IsButtonDown(RLS_Button::Wheel));
-			});
-	}
-
-	ViewportPanel* Editor::GetHoveredViewport() const noexcept
-	{
-		for (auto& pViewport : m_EditorViewports)
-		{
-			if (pViewport->IsClientAreaHovered())
-				return pViewport.get();
-		}
-
-		return nullptr;
-	}
-
 	void Editor::SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept
 	{
 		m_pSelection->DeselectAllEntities();
 
 		if (m_pActiveScene)
 		{
+			OnPreSceneChanged(m_pActiveScene.get());
+
 			m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
 				{
 					if (m_pEntityFiltersManager->IsEntityInAnyFilter(e))
@@ -377,14 +324,6 @@ namespace Relentless
 			AssetHandle throwAway = NULL_HANDLE;
 			AssetManager::RequestLoadAsset(fullMeshPath, throwAway);
 		}
-	}
-
-	void Editor::CreateDetailsPanel() noexcept
-	{
-		m_pDetailsPanel = std::make_unique<DetailsPanel>(ICON_FA_LINES_LEANING " Details", ImGuiWindowFlags_None, this);
-		m_pDetailsPanel->SetPadding(Vector2(2.0f, 0.0f));
-
-		OnPanelCreated(m_pDetailsPanel.get());
 	}
 
 	void Editor::CreateStartScene() noexcept
@@ -578,7 +517,19 @@ namespace Relentless
 		if (m_ImmersiveModeEnabled)
 			return;
 
-		if (!ImGui::BeginMainMenuBar())
+		const float currentPadding = ImGui::GetStyle().FramePadding.y;
+		const float currentBorderSize = ImGui::GetStyle().WindowBorderSize;
+		ImGui::GetStyle().WindowBorderSize = 0.0f;
+		ImGui::GetStyle().FramePadding.y = 10.0f;
+
+		ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(Colors::EvenRowColorDefault.R(), Colors::EvenRowColorDefault.G(), Colors::EvenRowColorDefault.B(), Colors::EvenRowColorDefault.A()));
+
+		const bool open = ImGui::BeginMainMenuBar();
+		ImGui::GetStyle().FramePadding.y = currentPadding;
+		ImGui::GetStyle().WindowBorderSize = currentBorderSize;
+		ImGui::PopStyleColor();
+
+		if (!open)
 			return;
 
 		const ImVec2 menuBarPos = ImGui::GetWindowPos();
@@ -694,35 +645,16 @@ namespace Relentless
 		}
 	}
 
-	void Editor::OnPanelCreated(PanelBase* pPanel) noexcept
-	{
-		pPanel->OnGainedFocus.Connect(this, &Editor::OnPanelGainedFocus);
-
-		m_PanelStack.push_back(pPanel);
-	}
-
-	void Editor::OnPanelGainedFocus(PanelBase*) noexcept
-	{
-		//Note: Can be called in the middle of UI evaluation, therefore we defer the sorting
-		Application::Get().SubmitToMainThread([this]() 
-			{
-				std::sort(m_PanelStack.begin(), m_PanelStack.end(), [](PanelBase* pPanelA, PanelBase* pPanelB)
-					{
-						return pPanelA->GetLastFrameFocused() > pPanelB->GetLastFrameFocused();
-					});
-			});
-	}
-
 	void Editor::OnViewportHotkeyPressed([[maybe_unused]] ViewportPanel* pPanel, RLS_Key key) noexcept
 	{
+		if (!m_pActiveScene)
+			return;
+
 		switch (key)
 		{
 		case RLS_Key::A:
 		{
 			if (!Keyboard::IsKeyDown(RLS_Key::LCtrl))
-				return;
-			
-			if (!m_pActiveScene || !m_pSelection)
 				return;
 			
 			m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
@@ -757,9 +689,6 @@ namespace Relentless
 		}
 		case RLS_Key::Delete:
 		{
-			if (!m_pSelection || ! m_pActiveScene)
-				return;
-			
 			const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
 			
 			for (int i = (int)selectedEntities.size() - 1; i >= 0; --i)
@@ -778,7 +707,7 @@ namespace Relentless
 
 		if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
 		{
-			m_pOutlinerPanel->DeselectNonEntityItems();
+			//m_pOutlinerPanel->DeselectNonEntityItems();
 			m_pSelection->DeselectAllEntities();
 		}
 
@@ -788,41 +717,6 @@ namespace Relentless
 				m_pSelection->DeselectEntity(m_HoveredEntity);
 			else
 				m_pSelection->SelectEntity(m_HoveredEntity);
-		}
-	}
-
-	void Editor::OnUnhandledEvent(IEvent& event)
-	{
-		switch (event.GetEventType())
-		{
-		case EventType::KeyPressedEvent:
-		{
-			const bool isNavigatingScene = false/* = m_HoveringSceneViewport && Mouse::IsButtonDown(RLS_Button::Right)*/;
-			if (!isNavigatingScene)
-			{
-				const RLS_Key key = EVENT(KeyPressedEvent).key;
-				switch (key)
-				{
-				case RLS_Key::I:
-				{
-					if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
-						m_ImmersiveModeEnabled = !m_ImmersiveModeEnabled;
-
-					break;
-				}
-				case RLS_Key::A:
-				{
-					if (m_pOutlinerPanel->IsFocused())
-						m_pOutlinerPanel->SelectAllExpanded();
-
-					break;
-				}
-				break;
-				}
-			}
-			event.StopPropagation();
-			break;
-		}
 		}
 	}
 
@@ -873,14 +767,13 @@ namespace Relentless
 	{
 		m_RenderViews.push_back(ViewportRenderView());
 		
-		UniquePtr<ViewportPanel> pViewport = std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size());
+		ViewportPanel* pViewport = UIManager::Get().AddPanel(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size()));
+
 		pViewport->OnClickedOnViewport.Connect(this, &Editor::OnViewportClicked);
 		pViewport->OnHotkeyPressed.Connect(this, &Editor::OnViewportHotkeyPressed);
 		pViewport->SetPadding(Vector2(2.0f, 0.0f));
-
-		OnPanelCreated(pViewport.get());
 		
-		m_EditorViewports.push_back(std::move(pViewport));
+		m_EditorViewports.push_back(pViewport);
 	}
 
 }

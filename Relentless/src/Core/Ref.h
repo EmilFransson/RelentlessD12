@@ -1,6 +1,8 @@
 //As authored by simco50 - https://github.com/simco50/D3D12_Research/blob/master/Source/Core/Ref.h under the MIT license.
 #pragma once
 
+#include "CoreTypes.h"
+
 namespace Relentless
 {
 	template <typename T>
@@ -256,6 +258,9 @@ namespace Relentless
 	{
 		return !(lhs == rhs);
 	}
+
+	template<typename U>
+	struct Is_Pointer_Like<Ref<U>> : std::true_type {};
 }
 
 namespace std 

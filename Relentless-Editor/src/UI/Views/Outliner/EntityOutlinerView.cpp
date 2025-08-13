@@ -11,6 +11,7 @@ namespace Relentless
 			pScene->OnEntityCreated.Connect(this, &EntityOutlinerView::OnEntityCreated);
 
 		std::shared_ptr<HeaderRow> pHeaderRow = std::make_shared<HeaderRow>();
+		pHeaderRow->SetIsPinned(true);
 
 		{
 			Column column;
@@ -46,27 +47,33 @@ namespace Relentless
 
 		m_pOutlinerListView = new ListView<Ref<OutlinerListItem>>(pHeaderRow);
 		m_pOutlinerListView->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
-		m_pOutlinerListView->SetFlags(ImGuiTableFlags_Borders | ImGuiTableFlags_Sortable | ImGuiTableFlags_ContextMenuInBody | ImGuiTableFlags_NoBordersInBodyUntilResize | ImGuiTableFlags_Resizable);
+		m_pOutlinerListView->SetFlags(ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody | 
+			ImGuiTableFlags_Sortable | 
+			ImGuiTableFlags_NoBordersInBodyUntilResize | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY);
 
 		m_pOutlinerListView
 			->OnRequestSource(this, &EntityOutlinerView::OnRequestSource)
 			->OnGenerateRow(this, &EntityOutlinerView::OnGenerateRow)
 			->OnDebugItemToString(this, &EntityOutlinerView::OnDebugItemToString)
 			->OnSelectionChanged(this, &EntityOutlinerView::OnSelectionChanged)
-			->OnMouseEnterRow(this, &EntityOutlinerView::OnMouseEnterRow)
-			->OnMouseExitRow(this, &EntityOutlinerView::OnMouseExitRow);
+			->OnContextMenuOpening(this, &EntityOutlinerView::OnContextMenuOpening);
 
 		m_pMainBox = new VerticalBox();
-
+		
 		Ref<HorizontalBox> pHorizontalBox = new HorizontalBox();
+
 		pHorizontalBox->Add(new SearchBar("Search...", true))
 			->OnTextChanged(this, &EntityOutlinerView::OnSearchTextChanged)
 			->OnTextCommitted(this, &EntityOutlinerView::OnSearchTextCommitted)
 			->SetSpacing(Vector2(0.0f, 10.0f))
 			->SetSizePolicy(ESizePolicy::Stretch);
 
+		m_pOutlinerListBox = new VerticalBox(Vector2::Zero, true);
+		m_pOutlinerListBox->OnFocusChanged.Connect(this, &EntityOutlinerView::OnFocusChanged);
+		m_pOutlinerListBox->Add(m_pOutlinerListView);
+
 		m_pMainBox->Add(pHorizontalBox);
-		m_pMainBox->Add(m_pOutlinerListView);
+		m_pMainBox->Add(m_pOutlinerListBox);
 
 		m_pFilter = std::make_unique<TextFilterExpressionEvaluator>();
 	}
@@ -75,6 +82,37 @@ namespace Relentless
 	{
 		if (Scene* pScene = m_pEditor->GetActiveScene())
 			pScene->OnEntityCreated.Detach(this);
+	}
+
+	Ref<ContextMenu> EntityOutlinerView::OnContextMenuOpening(const Ref<OutlinerListItem>& item) noexcept
+	{
+		Ref<MenuBuilder> pBuilder = new MenuBuilder();
+
+		Ref<ContextMenu> pMenu = pBuilder
+			->AddSection("ENTITY OPTIONS")
+				->BeginSubMenu("Edit", "Export stuff", ICON_FA_PEN_RULER)
+					->AddMenuEntry("Duplicate", "Duplicate Selection", ICON_FA_COPY, this, &EntityOutlinerView::OnDelete)
+					->AddMenuEntry("Delete", "Delete Current Selection", ICON_FA_DELETE_LEFT, this, &EntityOutlinerView::OnDelete)
+					->AddMenuEntry("Rename", "Rename Current Selection", ICON_FA_PEN, this, &EntityOutlinerView::OnDelete)
+						->BeginSubMenu("TEST", "TESTING", ICON_FA_FOLDER)
+							->AddMenuEntry("Entry", "An Entry", ICON_FA_PEN, this, &EntityOutlinerView::OnDelete)
+						->EndSubMenu()
+				->EndSubMenu()
+			->AddMenuEntry("Delete", "Delete the item!", ICON_FA_DELETE_LEFT, this, &EntityOutlinerView::OnDelete)
+			->AddMenuEntry("Rename", "Rename the entity", ICON_FA_PEN, this, &EntityOutlinerView::OnDelete)
+			->AddSection("VIEW OPTIONS")
+				->BeginSubMenu("Export", "Export stuff", ICON_FA_EXPAND)
+					->AddMenuEntry("DO SOMETHING", "DO!", ICON_FA_DELETE_LEFT, this, &EntityOutlinerView::OnDelete)
+				->EndSubMenu()
+			->Build();
+
+		pMenu->SetSpacing(Vector2(8.0f, 1.0f));
+		return pMenu;
+	}
+
+	void EntityOutlinerView::OnDelete() noexcept
+	{
+		RLS_CORE_INFO("OH HI MARK!!!");
 	}
 
 	String EntityOutlinerView::OnDebugItemToString(const Ref<OutlinerListItem>& item) const noexcept
@@ -92,10 +130,16 @@ namespace Relentless
 		m_ListItems.emplace_back(std::move(pEntityItem));
 	}
 
+	void EntityOutlinerView::OnFocusChanged(bool focused) noexcept
+	{
+		m_pOutlinerListView->TriggerFocusChange(focused);
+	}
+
 	Ref<ITableRow> EntityOutlinerView::OnGenerateRow(const Ref<OutlinerListItem>& item) noexcept
 	{
 		Ref<OutlinerTableRow> pRow = new OutlinerTableRow(m_pOutlinerListView);
-		pRow->SetMargin(FloatRect(1.0f, 0.0f, 0.0f, 0.0f), 0);
+		pRow->OnMouseEnter(this, &EntityOutlinerView::OnMouseEnterRow);
+		pRow->OnMouseExit(this, &EntityOutlinerView::OnMouseExitRow);
 
 		const bool isEntityItem = item->IsEntityItem();
 
@@ -128,14 +172,14 @@ namespace Relentless
 		Label* pDisplayNameLabel = pDisplayBox->Add(new Label(name, ImGui::GetIO().Fonts->Fonts[2]));
 		pDisplayNameLabel->SetTooltipText(name);
 		
-		if (m_pFilter->TestTextFilter(name, ETextFilterTextComparisonMode::Partial))
+		if (highlighted && m_pFilter->TestTextFilter(name, ETextFilterTextComparisonMode::Partial))
 			pDisplayNameLabel->SetHighlightedSubstring(m_pFilter->GetFilterText());
 
 		Label* pTypeLabel = pRow->SetWidget(new Label(type, ImGui::GetIO().Fonts->Fonts[2]), 2);
 		pTypeLabel->SetTooltipText(type);
 		pTypeLabel->SetAlpha(0.7f);
 
-		if (m_pFilter->TestTextFilter(type, ETextFilterTextComparisonMode::Partial))
+		if (highlighted && m_pFilter->TestTextFilter(type, ETextFilterTextComparisonMode::Partial))
 			pTypeLabel->SetHighlightedSubstring(m_pFilter->GetFilterText());
 
 		return pRow;
@@ -151,16 +195,14 @@ namespace Relentless
 		pButton->SetAlpha(0.7f);
 	}
 
-	void EntityOutlinerView::OnMouseEnterRow(const Ref<ITableRow>& pTableRow) noexcept
+	void EntityOutlinerView::OnMouseEnterRow(ITableRow* pTableRow) noexcept
 	{
-		OutlinerTableRow* pRow = static_cast<OutlinerTableRow*>(pTableRow.Get());
-		static_cast<Button*>(pRow->GetWidget(0).Get())->SetIsVisible(true);
+		static_cast<Button*>(static_cast<OutlinerTableRow*>(pTableRow)->GetWidget(0).Get())->SetIsVisible(true);
 	}
 
-	void EntityOutlinerView::OnMouseExitRow(const Ref<ITableRow>& pTableRow) noexcept
+	void EntityOutlinerView::OnMouseExitRow(ITableRow* pTableRow) noexcept
 	{
-		OutlinerTableRow* pRow = static_cast<OutlinerTableRow*>(pTableRow.Get());
-		Button* pButton = static_cast<Button*>(pRow->GetWidget(0).Get());
+		Button* pButton = static_cast<Button*>(static_cast<OutlinerTableRow*>(pTableRow)->GetWidget(0).Get());
 
 		if (pButton->GetText() == ICON_FA_EYE)
 			pButton->SetIsVisible(false);
@@ -213,13 +255,14 @@ namespace Relentless
 		if (commitType != ETextCommitType::OnEnter)
 			return;
 
+		m_pOutlinerListView->ClearSelection();
+		m_SelectedEntities.clear();
+
 		for (size_t i = 0u; i < m_ListItems.size(); ++i)
 		{
 			if (!m_pOutlinerListView->IsItemSelected(m_ListItems[i]))
 				m_pOutlinerListView->SetItemSelection(m_ListItems[i], ESelectionType::Selected);
 		}
-
-		//TODO: Act on OnCleared! :D
 	}
 
 	void EntityOutlinerView::OnSelectionChanged(const Ref<OutlinerListItem>& item, ESelectionType selectionType) noexcept

@@ -38,17 +38,12 @@ namespace Relentless
 
 		void OnViewportEntityDuplicationRequest() noexcept;
 
+		Broadcaster<void(Scene*)> OnPreSceneChanged;
 		Broadcaster<void(Scene*)> OnSceneChanged;
 	private:
-		[[nodiscard]] bool IsHoveringAnyFocusedViewport() const noexcept;
-		[[nodiscard]] bool IsNavigatingAnyViewport() const noexcept;
-
-		[[nodiscard]] ViewportPanel* GetHoveredViewport() const noexcept;
-
 		void SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept;
 		void LoadStarterMeshes() noexcept;
 
-		void CreateDetailsPanel() noexcept;
 		void CreateStartScene() noexcept;
 
 		void UI_DrawStatisticsPanel() noexcept;
@@ -60,20 +55,13 @@ namespace Relentless
 		void OnEntityAttached(entity child, entity parent) noexcept;
 		void OnEntityReadbackDone(uint32 entityID) noexcept;
 
-		void OnPanelCreated(PanelBase* pPanel) noexcept;
-		void OnPanelGainedFocus(PanelBase* pPanel) noexcept;
-
 		void OnViewportHotkeyPressed(ViewportPanel* pPanel, RLS_Key key) noexcept;
 		void OnViewportClicked(ViewportPanel* pPanel, Vector2u relativeMouseCoords) noexcept;
-
-		void OnUnhandledEvent(IEvent& event);
 
 		void SpawnViewport() noexcept;
 	private:
 		std::vector<ViewportRenderView> m_RenderViews;
-		std::vector<UniquePtr<ViewportPanel>> m_EditorViewports;
-
-		std::vector<PanelBase*> m_PanelStack;
+		std::vector<ViewportPanel*> m_EditorViewports;
 
 		entity m_HoveredEntity = NULL_ENTITY;
 
@@ -91,8 +79,8 @@ namespace Relentless
 
 		std::shared_ptr<UtilityRenderer> m_pUtilityRenderer = nullptr;
 		
-		UniquePtr<OutlinerPanel> m_pOutlinerPanel = nullptr;
-		UniquePtr<DetailsPanel> m_pDetailsPanel;
+		//OutlinerPanel* m_pOutlinerPanel = nullptr;
+		//UniquePtr<DetailsPanel> m_pDetailsPanel;
 
 		bool m_DisplayOutlinerPanel = true;
 		bool m_DisplayContentBrowserPanel = true;

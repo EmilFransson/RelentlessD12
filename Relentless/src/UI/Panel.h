@@ -1,5 +1,12 @@
 #pragma once
-#include <Relentless.h>
+
+#include "Callback/Broadcaster.h"
+
+#include "IWidget.h"
+
+#include "EventSystem/IEvent.h"
+#include "EventSystem/KeyboardEvents.h"
+#include "EventSystem/MouseEvents.h"
 
 namespace Relentless
 {
@@ -35,7 +42,7 @@ namespace Relentless
 		[[nodiscard]] uint32 GetLastFrameFocused() const noexcept;
 		[[nodiscard]] const Vector2u& GetPosition() const noexcept;
 		[[nodiscard]] const Vector2u& GetSize() const noexcept;
-		[[nodiscard]] const std::string& GetName() const noexcept;
+		[[nodiscard]] const String& GetName() const noexcept;
 		[[nodiscard]] bool IsDocked() const noexcept;
 		[[nodiscard]] bool IsFocused() const noexcept;
 		[[nodiscard]] bool IsHovered() const noexcept;
@@ -59,7 +66,7 @@ namespace Relentless
 
 		void SetRoot(Ref<IBaseWidget> pRoot) noexcept;
 	private:
-		std::string m_Name{};
+		String m_Name{};
 		std::unordered_map<ImGuiStyleVar, ImVec2> m_Styles;
 
 		Vector2u m_ContentRegionAvail	= Vector2u::Zero();

@@ -22,15 +22,34 @@ namespace Relentless
 		IBaseWidget() noexcept = default;
 		virtual ~IBaseWidget() noexcept = default;
 
-		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept = 0;
-		virtual [[nodiscard]] ESizePolicy GetSizePolicy() const noexcept = 0;
+		virtual NO_DISCARD float CalcDesiredWidth() const noexcept = 0;
+
+		virtual NO_DISCARD ESizePolicy GetSizePolicy() const noexcept = 0;
+
+		NO_DISCARD bool IsEnabled() const noexcept
+		{
+			return m_IsEnabled;
+		}
 
 		virtual NO_DISCARD bool IsHovered() const noexcept = 0;
 
 		virtual void Render() noexcept = 0;
 
+		void SetIsEnabled(bool state) noexcept
+		{
+			if (m_IsEnabled == state)
+				return;
+
+			m_IsEnabled = state;
+			OnEnabledStateChanged(m_IsEnabled);
+		}
+
 		virtual void SetWidthConstraint(float width) noexcept = 0;
+
+		Broadcaster<void(bool)> OnEnabledStateChanged;
 	private:
+		bool m_IsEnabled = true;
+		bool m_SizeIsDirty = true;
 	};
 
 	template<class DerivedType>
@@ -55,12 +74,7 @@ namespace Relentless
 			return m_SizePolicy;
 		}
 
-		[[nodiscard]] bool IsEnabled() const noexcept
-		{
-			return m_IsEnabled;
-		}
-
-		NO_DISCARD bool IsHovered() const noexcept override
+		virtual NO_DISCARD bool IsHovered() const noexcept override
 		{
 			return m_IsHovered;
 		}
@@ -76,30 +90,30 @@ namespace Relentless
 		}
 
 		template<typename InstanceType>
-		DerivedType* OnMouseEnter(InstanceType* instance, void(InstanceType::* method)()) noexcept
+		DerivedType* OnMouseEnter(InstanceType* instance, void(InstanceType::* method)(DerivedType*)) noexcept
 		{
-			m_OnMouseEnterCallback = [instance, method]() { return (instance->*method)(); };
+			m_OnMouseEnterCallback = [instance, method](DerivedType* pDerived) { return (instance->*method)(pDerived); };
 			return static_cast<DerivedType*>(this);
 		}
 
 		template<typename T>
 		DerivedType* OnMouseEnter(T&& callback) noexcept
 		{
-			m_OnMouseEnterCallback = Callback<void()>(std::forward<T>(callback));
+			m_OnMouseEnterCallback = Callback<void(DerivedType*)>(std::forward<T>(callback));
 			return static_cast<DerivedType*>(this);
 		}
 
 		template<typename InstanceType>
-		DerivedType* OnMouseExit(InstanceType* instance, void(InstanceType::* method)()) noexcept
+		DerivedType* OnMouseExit(InstanceType* instance, void(InstanceType::* method)(DerivedType*)) noexcept
 		{
-			m_OnMouseExitCallback = [instance, method]() { return (instance->*method)(); };
+			m_OnMouseExitCallback = [instance, method](DerivedType* pDerived) { return (instance->*method)(pDerived); };
 			return static_cast<DerivedType*>(this);
 		}
 
 		template<typename T>
 		DerivedType* OnMouseExit(T&& callback) noexcept
 		{
-			m_OnMouseExitCallback = Callback<void()>(std::forward<T>(callback));
+			m_OnMouseExitCallback = Callback<void(DerivedType* pDerived)>(std::forward<T>(callback));
 			return static_cast<DerivedType*>(this);
 		}
 
@@ -130,15 +144,6 @@ namespace Relentless
 		void SetFlags(int flags) noexcept
 		{
 			m_Flags = flags;
-		}
-
-		void SetIsEnabled(bool state) noexcept
-		{
-			if (m_IsEnabled == state)
-				return;
-
-			m_IsEnabled = state;
-			OnEnabledStateChanged(m_IsEnabled);
 		}
 		
 		void SetIsVisible(bool state) noexcept
@@ -176,7 +181,6 @@ namespace Relentless
 			m_WidthConstraint = width;
 		}
 		
-		Broadcaster<void(bool)> OnEnabledStateChanged;
 		Broadcaster<void(bool)> OnVisibilityChanged;
 		Broadcaster<void()> OnPreRenderEnd;
 		Broadcaster<void()> OnRenderEnd;
@@ -187,13 +191,13 @@ namespace Relentless
 
 		virtual void OnMouseEnter_private() noexcept
 		{
-			m_OnMouseEnterCallback.ExecuteIfSet();
+			m_OnMouseEnterCallback.ExecuteIfSet(static_cast<DerivedType*>(this));
 			m_IsHovered = true;
 		}
 
 		virtual void OnMouseExit_private() noexcept
 		{
-			m_OnMouseExitCallback.ExecuteIfSet();
+			m_OnMouseExitCallback.ExecuteIfSet(static_cast<DerivedType*>(this));
 			m_IsHovered = false;
 			m_ElapsedHoverTime = 0.0f;
 		}
@@ -204,15 +208,18 @@ namespace Relentless
 
 		void ShowTooltipIfApplicable() noexcept
 		{
+			if (!m_pTooltip)
+				return;
+
 			if (m_IsHovered)
 				m_ElapsedHoverTime += Time::GetDeltaTime();
 
-			if (m_IsHovered && m_pTooltip && m_ElapsedHoverTime >= m_ShowTooltipThreshold)
+			if (m_IsHovered && m_ElapsedHoverTime >= m_ShowTooltipThreshold)
 				m_pTooltip->OnRender();
 		}
 
-		Callback<void()> m_OnMouseEnterCallback;
-		Callback<void()> m_OnMouseExitCallback;
+		Callback<void(DerivedType*)> m_OnMouseEnterCallback;
+		Callback<void(DerivedType*)> m_OnMouseExitCallback;
 	protected:
 		float m_WidthConstraint = -1.0f;
 		bool m_IsHovered = false;
@@ -224,7 +231,6 @@ namespace Relentless
 		float m_ElapsedHoverTime = 0.0f;
 		float m_ShowTooltipThreshold = 0.15f;
 
-		bool m_IsEnabled = true;
 		bool m_IsVisible = true;
 	};
 
@@ -233,6 +239,8 @@ namespace Relentless
 	public:
 		void Apply() noexcept;
 		void Discard() noexcept;
+
+		NO_DISCARD const IntRect& GetMargin() const noexcept;
 
 		void SetFont(ImFont* pFont) noexcept;
 		void SetMargin(const IntRect& margin) noexcept;
@@ -253,6 +261,11 @@ namespace Relentless
 	public:
 		IStylableWidget() noexcept = default;
 		virtual ~IStylableWidget() noexcept override = default;
+
+		NO_DISCARD const WidgetStyle& GetStyle() const noexcept
+		{
+			return m_Style;
+		}
 
 		virtual void Render() noexcept override
 		{

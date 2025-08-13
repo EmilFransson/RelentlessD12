@@ -32,11 +32,8 @@ namespace Relentless
 		const float grabSize = ImGui::GetStyle().GrabMinSize;
 		const float padding = ImGui::GetStyle().FramePadding.x * 2.0f;
 
-		// Width of numeric value text (e.g. %.2f ° lux etc.)
-		float valueTextWidth = ImGui::CalcTextSize(m_Format.c_str()).x + padding;
-
-		// Optional color indicator width
-		float indicatorWidth = m_DrawColorIndicator ? 5.0f + 6.0f : 0.0f; // rect + spacing
+		const float valueTextWidth = ImGui::CalcTextSize(m_Format.c_str()).x + padding;
+		const float indicatorWidth = m_DrawColorIndicator ? 5.0f + 6.0f : 0.0f; // rect + spacing
 
 		return valueTextWidth + grabSize + indicatorWidth + 6.0f; // extra spacing
 	}

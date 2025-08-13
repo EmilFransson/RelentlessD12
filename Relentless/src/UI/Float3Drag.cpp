@@ -50,7 +50,7 @@ namespace Relentless
 		// Optional color indicator width
 		const float indicatorWidth = m_DrawColorIndicator ? 5.0f + 6.0f : 0.0f; // rect + spacing
 
-		return valueTextWidth + grabSize + indicatorWidth + 6.0f; // extra spacing
+		return (valueTextWidth + grabSize + indicatorWidth + 6.0f) * 3.0f; // extra spacing
 	}
 
 	float Float3Drag::GetValue(int componentIndex) const noexcept

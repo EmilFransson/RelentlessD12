@@ -1,5 +1,6 @@
 #pragma once
-#include "Panel.h"
+
+#include <Relentless.h>
 
 #include "../Controller/PerspectiveCameraController.h"
 #include "../Controller/TransformGizmoController.h"

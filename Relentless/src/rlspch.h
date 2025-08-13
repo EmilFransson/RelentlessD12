@@ -46,6 +46,7 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <stdint.h>
 #include <sstream>
 #include <stdlib.h>
+#include <stack>
 #include <string>
 #include <thread>
 #include <tuple>
