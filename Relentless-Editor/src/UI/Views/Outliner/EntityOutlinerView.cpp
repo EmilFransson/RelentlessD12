@@ -45,13 +45,14 @@ namespace Relentless
 			pHeaderRow->AddColumn(column);
 		}
 
-		m_pOutlinerListView = new ListView<Ref<OutlinerListItem>>(pHeaderRow);
-		m_pOutlinerListView->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
-		m_pOutlinerListView->SetFlags(ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody | 
+		m_pOutlinerTreeView = new TreeView<Ref<OutlinerListItem>>(pHeaderRow);
+		m_pOutlinerTreeView->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
+		m_pOutlinerTreeView->SetFlags(ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody |
 			ImGuiTableFlags_Sortable | 
 			ImGuiTableFlags_NoBordersInBodyUntilResize | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY);
 
-		m_pOutlinerListView
+		m_pOutlinerTreeView
+			->OnGetChildren(this, &EntityOutlinerView::OnGetChildren)
 			->OnRequestSource(this, &EntityOutlinerView::OnRequestSource)
 			->OnGenerateRow(this, &EntityOutlinerView::OnGenerateRow)
 			->OnDebugItemToString(this, &EntityOutlinerView::OnDebugItemToString)
@@ -70,7 +71,7 @@ namespace Relentless
 
 		m_pOutlinerListBox = new VerticalBox(Vector2::Zero, true);
 		m_pOutlinerListBox->OnFocusChanged.Connect(this, &EntityOutlinerView::OnFocusChanged);
-		m_pOutlinerListBox->Add(m_pOutlinerListView);
+		m_pOutlinerListBox->Add(m_pOutlinerTreeView);
 
 		m_pMainBox->Add(pHorizontalBox);
 		m_pMainBox->Add(m_pOutlinerListBox);
@@ -132,12 +133,12 @@ namespace Relentless
 
 	void EntityOutlinerView::OnFocusChanged(bool focused) noexcept
 	{
-		m_pOutlinerListView->TriggerFocusChange(focused);
+		m_pOutlinerTreeView->TriggerFocusChange(focused);
 	}
 
 	Ref<ITableRow> EntityOutlinerView::OnGenerateRow(const Ref<OutlinerListItem>& item) noexcept
 	{
-		Ref<OutlinerTableRow> pRow = new OutlinerTableRow(m_pOutlinerListView);
+		Ref<OutlinerTableRow> pRow = new OutlinerTableRow(m_pOutlinerTreeView);
 		pRow->OnMouseEnter(this, &EntityOutlinerView::OnMouseEnterRow);
 		pRow->OnMouseExit(this, &EntityOutlinerView::OnMouseExitRow);
 
@@ -161,7 +162,7 @@ namespace Relentless
 			->SetTooltipText("Toggles the visibility of this item")
 			->SetIsVisible(false);
 
-		const bool highlighted = m_pOutlinerListView->IsItemHighlighted(item);
+		const bool highlighted = m_pOutlinerTreeView->IsItemHighlighted(item);
 
 		HorizontalBox* pDisplayBox = pRow->SetWidget(new HorizontalBox(), 1);
 
@@ -183,6 +184,11 @@ namespace Relentless
 			pTypeLabel->SetHighlightedSubstring(m_pFilter->GetFilterText());
 
 		return pRow;
+	}
+
+	void EntityOutlinerView::OnGetChildren(const Ref<OutlinerListItem>& pParent, std::vector<Ref<OutlinerListItem>>& outChildren) noexcept
+	{
+
 	}
 
 	void EntityOutlinerView::OnMouseEnterButton(Button* pButton) noexcept
@@ -222,9 +228,9 @@ namespace Relentless
 	{
 		m_SuspendNotifications = true;
 
-		m_pOutlinerListView->ClearSelection();
-		m_pOutlinerListView->ClearHightlightedItems();
-		m_pOutlinerListView->ClearItemsSource();
+		m_pOutlinerTreeView->ClearSelection();
+		m_pOutlinerTreeView->ClearHightlightedItems();
+		m_pOutlinerTreeView->ClearItemsSource();
 
 		m_ListItems.clear();
 		
@@ -240,9 +246,9 @@ namespace Relentless
 					pEntityItem->Entity = e;
 
 					if(m_SelectedEntities.contains(e))
-						m_pOutlinerListView->SetItemSelection(pEntityItem, ESelectionType::Selected);
+						m_pOutlinerTreeView->SetItemSelection(pEntityItem, ESelectionType::Selected);
 
-					m_pOutlinerListView->SetItemHighlighted(pEntityItem);
+					m_pOutlinerTreeView->SetItemHighlighted(pEntityItem);
 					m_ListItems.emplace_back(std::move(pEntityItem));
 				}
 			});
@@ -255,13 +261,13 @@ namespace Relentless
 		if (commitType != ETextCommitType::OnEnter)
 			return;
 
-		m_pOutlinerListView->ClearSelection();
+		m_pOutlinerTreeView->ClearSelection();
 		m_SelectedEntities.clear();
 
 		for (size_t i = 0u; i < m_ListItems.size(); ++i)
 		{
-			if (!m_pOutlinerListView->IsItemSelected(m_ListItems[i]))
-				m_pOutlinerListView->SetItemSelection(m_ListItems[i], ESelectionType::Selected);
+			if (!m_pOutlinerTreeView->IsItemSelected(m_ListItems[i]))
+				m_pOutlinerTreeView->SetItemSelection(m_ListItems[i], ESelectionType::Selected);
 		}
 	}
 

@@ -4,8 +4,8 @@
 
 namespace Relentless
 {
-	OutlinerTableRow::OutlinerTableRow(ListView<Ref<OutlinerListItem>>* pListView) noexcept
-		: m_pOwningListView{ pListView }
+	OutlinerTableRow::OutlinerTableRow(TreeView<Ref<OutlinerListItem>>* pTreeView) noexcept
+		: m_pOwningTreeView{ pTreeView }
 	{
 		m_pDragDropTooltip = new Tooltip();
 	}
@@ -22,11 +22,12 @@ namespace Relentless
 
 	void OutlinerTableRow::OnRenderColumn(uint32 column) noexcept
 	{
-		if (!m_pOwningListView)
+		if (!m_pOwningTreeView)
 			return;
 
-		const Ref<OutlinerListItem>& item = m_pOwningListView->GetItemFromWidget(this);
-		m_Selected = m_pOwningListView->IsItemSelected(item);
+		const Ref<OutlinerListItem>& item = m_pOwningTreeView->GetItemFromWidget(this);
+		const ItemInfo& info = m_pOwningTreeView->GetItemInfo(item);
+		m_Selected = m_pOwningTreeView->IsItemSelected(item);
 
 		const ImVec2 currentPos = ImGui::GetCursorPos();
 		ImGui::SetCursorPos({ currentPos.x + m_Margins[column].Left, currentPos.y + m_Margins[column].Top });
@@ -54,7 +55,7 @@ namespace Relentless
 			return Colors::RowHoverColorDefault;
 		else if (!m_Selected && !m_Hovered)
 			return Colors::Transparent;
-		else if (m_Selected && m_pOwningListView->IsFocused())
+		else if (m_Selected && m_pOwningTreeView->IsFocused())
 			return Colors::RowFocusedSelectionColorDefault;
 		else
 			return Colors::RowUnfocusedSelectionColorDefault;

@@ -21,7 +21,7 @@ namespace Relentless
 	class OutlinerTableRow : public ITableRow
 	{
 	public:
-		OutlinerTableRow(ListView<Ref<OutlinerListItem>>* pListView) noexcept;
+		OutlinerTableRow(TreeView<Ref<OutlinerListItem>>* pTreeView) noexcept;
 		virtual ~OutlinerTableRow() noexcept override = default;
 
 		NO_DISCARD float CalcDesiredWidth() const noexcept override;
@@ -51,7 +51,7 @@ namespace Relentless
 		std::array<Ref<IBaseWidget>, 3> m_ColumnWidgets;
 		std::array<FloatRect, 3> m_Margins;
 
-		ListView<Ref<OutlinerListItem>>* m_pOwningListView = nullptr;
+		TreeView<Ref<OutlinerListItem>>* m_pOwningTreeView = nullptr;
 		Ref<Tooltip> m_pDragDropTooltip = nullptr;
 		bool m_Selected = false;
 	};

@@ -72,6 +72,7 @@
 #include <src/UI/Details/DetailPropertyRow.h>
 #include <src/UI/Details/DetailCategoryRow.h>
 #include <src/UI/List/ListView.h>
+#include <src/UI/List/TreeView.h>
 
 //Graphics:
 #include <src/Graphics/Renderer/SceneRenderer.h>

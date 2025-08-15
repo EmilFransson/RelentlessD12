@@ -23,6 +23,7 @@ namespace Relentless
 		void OnEntityCreated(entity newEntity) noexcept;
 		void OnFocusChanged(bool focus) noexcept;
 		NO_DISCARD Ref<ITableRow> OnGenerateRow(const Ref<OutlinerListItem>& item) noexcept;
+		void OnGetChildren(const Ref<OutlinerListItem>& pParent, std::vector<Ref<OutlinerListItem>>& outChildren) noexcept;
 
 		void OnMouseEnterButton(Button* pButton) noexcept;
 		void OnMouseExitButton(Button* pButton) noexcept;
@@ -40,7 +41,7 @@ namespace Relentless
 		void OnVisibilityButtonClicked(Button* pButton) noexcept;
 	private:
 		std::vector<Ref<OutlinerListItem>> m_ListItems;
-		Ref<ListView<Ref<OutlinerListItem>>> m_pOutlinerListView = nullptr;
+		Ref<TreeView<Ref<OutlinerListItem>>> m_pOutlinerTreeView = nullptr;
 
 		std::unordered_set<entity> m_SelectedEntities;
 

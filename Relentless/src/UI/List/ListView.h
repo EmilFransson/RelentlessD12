@@ -66,6 +66,8 @@ namespace Relentless
 		}
 
 		NO_DISCARD bool IsFocused() const noexcept { return m_IsFocused; }
+		
+		void RefreshSource() noexcept;
 		virtual void SelectAll() noexcept = 0;
 	private:
 		void OnKeyStateChanged(RLS_Key key, bool pressed) noexcept
@@ -169,13 +171,13 @@ namespace Relentless
 	protected:
 		virtual NO_DISCARD Ref<ITableRow> GenerateNewWidget(const ItemType& item) noexcept;
 		NO_DISCARD uint32 GetItemIndex(const ItemType& item) const noexcept;
+		void ReleaseInvisibleWidgets() noexcept;
 	private:
 		void OnRender() noexcept override;
 		void OnRowClicked(const PointerInfo& pointerInfo, const ItemType& pItem) noexcept;
 		void OnRowDoubleClicked(const ItemType& pItem) noexcept;
 
-		void ReleaseInvisibleWidgets() noexcept;
-	private:
+	protected:
 		std::unordered_map<ItemType, Ref<ITableRow>> m_ItemToRowWidgetMap;
 		std::unordered_set<ItemType> m_SelectedItems;
 		std::unordered_set<ItemType> m_HighlightedItems;
@@ -398,12 +400,7 @@ namespace Relentless
 		else if (pointerInfo.EffectingButton == RLS_Button::Right)
 		{
 			if (m_OnContextMenuOpening.IsSet())
-			{
 				UIManager::Get().SetActiveContextMenu(m_OnContextMenuOpening(pItem));
-				//m_pContextMenu = m_OnContextMenuOpening(pItem);
-				//m_pContextMenu->OnClosed([this]() { m_ShouldDestroyContextMenu = true; });
-				//m_ShouldDestroyContextMenu = false;
-			}
 		}
 
 		m_OnClick.ExecuteIfSet(pointerInfo, pItem);
