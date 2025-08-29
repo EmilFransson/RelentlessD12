@@ -37,7 +37,9 @@ namespace Relentless
 		constexpr Color RowHoverColorDefault				= Normalize(36.0f, 36.0f, 36.0f, 255.0f);
 		constexpr Color RowFocusedSelectionColorDefault		= Normalize(30.0f, 120.0f, 255.0f, 200.0f);
 		constexpr Color RowUnfocusedSelectionColorDefault	= Normalize(64.0f, 87.0f, 111.0f, 255.0f);
+		constexpr Color RowAncestorToSelectedColorDefault	= Normalize(44.0f, 50.0f, 58.0f, 255.0f);
 		constexpr Color ContextMenuColorDefault				= Normalize(56.0f, 56.0f, 56.0f, 255.0f);
+
 	};
 
 	namespace Math

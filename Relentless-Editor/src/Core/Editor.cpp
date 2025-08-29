@@ -68,10 +68,15 @@ namespace Relentless
 		if (ImGui::Button("Spawn viewport"))
 			SpawnViewport();
 		
+		static int counter = 0;
 		if (ImGui::Button("Spawn Entity"))
 		{
-			static int counter = 0;
 			m_pActiveScene->CreateEntity(std::format("Entity_{}", counter++).c_str());
+		}
+		if (ImGui::Button("Spawn 1000 Entities"))
+		{
+			for (uint32 i = 0u; i < 1000u; ++i)
+				m_pActiveScene->CreateEntity(std::format("Entity_{}", counter++).c_str());
 		}
 
 		ImGui::End();
@@ -134,6 +139,7 @@ namespace Relentless
 		m_pSelection->OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
 
 		m_pEntityFiltersManager = std::make_unique<EntityFiltersManager>();
+		m_pEntityFiltersManager->OnEntitySetToFilter.Connect(this, &Editor::OnEntitySetToFilter);
 
 		SpawnViewport();
 
@@ -195,6 +201,7 @@ namespace Relentless
 	void Editor::OnDestroy() noexcept
 	{
 		m_pSelection->OnSelectionChanged.Detach(this);
+		m_pEntityFiltersManager->OnEntitySetToFilter.Detach(this);
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 		if (auto& pRenderer = app.GetRenderer())
@@ -206,6 +213,8 @@ namespace Relentless
 	void Editor::OnUpdate(const float deltaTime) noexcept
 	{
 		PROFILE_SCOPE("Editor::OnUpdate");
+
+		m_pActiveScene->OnUpdate(deltaTime);
 
 		for (int i = 0; i < m_EditorViewports.size(); ++i)
 		{
@@ -399,6 +408,9 @@ namespace Relentless
 		}
 
 		entity e = m_pActiveScene->CreateEntity("Sphere");
+
+		m_pActiveScene->AttachEntity(e, ground);
+
 		m_pActiveScene->GetEntityManager().Add<RotatorComponent>(e);
 
 		auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(e);
@@ -614,6 +626,12 @@ namespace Relentless
 			m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(e);
 	}
 
+	void Editor::OnEntitySetToFilter(entity e, [[maybe_unused]] EntityFilter* pFilter) noexcept
+	{
+		if (m_pActiveScene->EntityHasAncestors(e))
+			m_pActiveScene->DetachEntity(e);
+	}
+
 	void Editor::OnEntityPreDestroyed(entity e) noexcept
 	{
 		if (m_pSelection->IsEntitySelected(e))
@@ -730,7 +748,7 @@ namespace Relentless
 		newEntities.reserve(selectedEntities.size());
 
 		for (entity selectedEntity : selectedEntities)
-			newEntities.push_back(m_pActiveScene->CopyEntity(selectedEntity, false));
+			newEntities.push_back(m_pActiveScene->DuplicateEntity(selectedEntity, false));
 
 		m_pSelection->DeselectAllEntities();
 		m_pSelection->SelectEntities(newEntities);

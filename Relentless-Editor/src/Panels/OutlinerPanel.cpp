@@ -47,11 +47,11 @@ namespace Relentless
 
 		if (const UniquePtr<EntityFiltersManager>& pEntityFiltersManager = m_pEditor->GetEntityFiltersManager())
 		{
-			pEntityFiltersManager->OnFilterCreated.Connect(this, &OutlinerPanel::OnEntityFilterCreated);
-			pEntityFiltersManager->OnFilterDestroyed.Connect(this, &OutlinerPanel::OnEntityFilterDestroyed);
-			pEntityFiltersManager->OnEntitySetToFilter.Connect(this, &OutlinerPanel::OnEntitySetToFilter);
-			pEntityFiltersManager->OnEntityRemovedFromFilter.Connect(this, &OutlinerPanel::OnEntityRemovedFromFilter);
-			pEntityFiltersManager->OnFilterReattached.Connect(this, &OutlinerPanel::OnEntityFilterReattached);
+			//pEntityFiltersManager->OnFilterCreated.Connect(this, &OutlinerPanel::OnEntityFilterCreated);
+			//pEntityFiltersManager->OnFilterDestroyed.Connect(this, &OutlinerPanel::OnEntityFilterDestroyed);
+			//pEntityFiltersManager->OnEntitySetToFilter.Connect(this, &OutlinerPanel::OnEntitySetToFilter);
+			//pEntityFiltersManager->OnEntityRemovedFromFilter.Connect(this, &OutlinerPanel::OnEntityRemovedFromFilter);
+			//pEntityFiltersManager->OnFilterReattached.Connect(this, &OutlinerPanel::OnEntityFilterReattached);
 		}
 		
 		//RLS_VERIFY(AssetManager::RequestLoadAsset(FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\showicon.rasset"), m_ShowEntityTextureIconHandle), "Core engine icon missing.");

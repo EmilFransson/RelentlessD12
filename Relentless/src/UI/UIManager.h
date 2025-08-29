@@ -42,6 +42,7 @@ namespace Relentless
 		void SetActiveContextMenu(Ref<ContextMenu> pContextMenu) noexcept;
 	private:
 		void FocusSortPanelStack() noexcept;
+		void OnContextMenuClosed() noexcept;
 		void OnPanelGainedFocus(PanelBase* pPanel) noexcept;
 	private:
 		std::vector<UniquePtr<PanelBase>> m_PanelStack;
@@ -53,5 +54,6 @@ namespace Relentless
 		Ref<DragDropOperation> m_pDragDropOperation = nullptr;
 		bool m_PanelStackDirty = false;
 		bool m_ShouldDestroyContextMenu = false;
+		bool m_DropTargetIsValid = false;
 	};
 }

@@ -53,14 +53,18 @@ namespace Relentless
 				if (!state.Over)
 				{
 					state.Over = true;
-					onDragEnterFunc(m_pDragDropOperation);
+					m_DropTargetIsValid = onDragEnterFunc(m_pDragDropOperation);
 				}
 			}
 			else
 			{
-				onDropFunc(m_pDragDropOperation);
-				m_pDragDropOperation.Reset();
-				m_DragDropHoverStates.clear();
+				if (m_DropTargetIsValid)
+				{
+					onDropFunc(m_pDragDropOperation);
+					m_pDragDropOperation.Reset();
+					m_DragDropHoverStates.clear();
+					m_DropTargetIsValid = false;
+				}
 			}
 		}
 		else
@@ -135,7 +139,14 @@ namespace Relentless
 	void UIManager::SetActiveContextMenu(Ref<ContextMenu> pContextMenu) noexcept
 	{
 		m_pActiveContextMenu = pContextMenu;
-		m_pActiveContextMenu->OnClosed([this]() { m_ShouldDestroyContextMenu = true; });
+		m_pActiveContextMenu->OnClosed.Connect([this]() 
+			{ 
+				m_ShouldDestroyContextMenu = true;
+				RLS_CORE_INFO("HI");
+			});
+
+		m_pActiveContextMenu->OnClosed.Connect(this, &UIManager::OnContextMenuClosed);
+
 		m_ShouldDestroyContextMenu = false;
 	}
 
@@ -149,6 +160,11 @@ namespace Relentless
 			});
 
 		m_PanelStackDirty = false;
+	}
+
+	void UIManager::OnContextMenuClosed() noexcept
+	{
+		//RLS_CORE_INFO("HI");
 	}
 
 	void UIManager::OnPanelGainedFocus(PanelBase*) noexcept

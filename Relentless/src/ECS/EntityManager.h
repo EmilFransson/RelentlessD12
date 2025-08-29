@@ -189,7 +189,7 @@ namespace Relentless
 
 		[[nodiscard]] uint32 Size() const noexcept
 		{
-			return m_Pool.Components.size();
+			return m_Pool.DenseArray.size();
 		}
 
 	private:

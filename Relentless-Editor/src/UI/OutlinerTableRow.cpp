@@ -1,13 +1,12 @@
 ﻿#include "OutlinerTableRow.h"
 
-#include "DragDrop/OutlinerDragDropOperation.h"
+#include "Views/Outliner/EntityOutlinerView.h"
 
 namespace Relentless
 {
 	OutlinerTableRow::OutlinerTableRow(TreeView<Ref<OutlinerListItem>>* pTreeView) noexcept
 		: m_pOwningTreeView{ pTreeView }
 	{
-		m_pDragDropTooltip = new Tooltip();
 	}
 
 	float OutlinerTableRow::CalcDesiredWidth() const noexcept
@@ -32,9 +31,22 @@ namespace Relentless
 		const ImVec2 currentPos = ImGui::GetCursorPos();
 		ImGui::SetCursorPos({ currentPos.x + m_Margins[column].Left, currentPos.y + m_Margins[column].Top });
 
+		if (column == 1)
+		{
+			for (uint32 i = 0u; i < info.Depth; ++i)
+				ImGui::Indent();
+		}
+		
 		m_ColumnWidgets[column]->Render();
 
-		if (m_Hovered && !m_ColumnWidgets[0]->IsHovered())
+		if (column == 1)
+		{
+			for (uint32 i = 0u; i < info.Depth; ++i)
+				ImGui::Unindent();
+		}
+
+		//TODO: MOVE into parent -> ONCE, not EVERY ROW!
+		if (m_Hovered && !m_ColumnWidgets[0]->IsHovered() && !(static_cast<HorizontalBox*>(m_ColumnWidgets[1].Get())->GetChild(0)->IsHovered()) && column == 2)
 		{
 			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
 				m_OnDoubleClickedCallback.ExecuteIfSet();
@@ -53,12 +65,24 @@ namespace Relentless
 	{
 		if (!m_Selected && m_Hovered)
 			return Colors::RowHoverColorDefault;
-		else if (!m_Selected && !m_Hovered)
-			return Colors::Transparent;
 		else if (m_Selected && m_pOwningTreeView->IsFocused())
 			return Colors::RowFocusedSelectionColorDefault;
-		else
+		else if (m_Selected && !m_pOwningTreeView->IsFocused())
 			return Colors::RowUnfocusedSelectionColorDefault;
+		else
+		{
+			const std::vector<Ref<OutlinerListItem>> items = m_pOwningTreeView->GetDescendants(m_pOwningTreeView->GetItemFromWidget(this));
+			if (std::any_of(items.begin(), items.end(), [&](const Ref<OutlinerListItem>& pItem)
+				{
+					return m_pOwningTreeView->IsItemSelected(pItem);
+				}))
+			{
+				return Colors::RowAncestorToSelectedColorDefault;
+			}
+			else
+				return Colors::Transparent;
+
+		}
 	}
 
 	uint32 OutlinerTableRow::GetNumColumns() noexcept
@@ -73,10 +97,7 @@ namespace Relentless
 
 	Ref<DragDropOperation> OutlinerTableRow::OnDragDetected() noexcept
 	{
-		Ref<OutlinerDragDropOperation> pEntityOp = new OutlinerDragDropOperation();
-		pEntityOp->SetTooltipText(ICON_FA_BAN "  Cannot attach entity to self");
-
-		return pEntityOp;
+		return m_OnDragDetectedCallback(this);
 	}
 
 	bool OutlinerTableRow::OnDragEnter(const Ref<DragDropOperation>& pDragDropOperation) noexcept
@@ -84,18 +105,13 @@ namespace Relentless
 		if (!pDragDropOperation->Is<OutlinerDragDropOperation>())
 			return false;
 
-		//Perhaps check payload or something else...
-		RLS_CORE_INFO("ENTERED!");
-
-		return true;
+		return m_OnDragEnterCallback(this, pDragDropOperation->As<OutlinerDragDropOperation>());
 	}
 
 	bool OutlinerTableRow::OnDragLeave(const Ref<DragDropOperation>& pDragDropOperation) noexcept
 	{
 		if (!pDragDropOperation->Is<OutlinerDragDropOperation>())
 			return false;
-
-		RLS_CORE_INFO("LEFT!");
 
 		return true;
 	}
@@ -105,11 +121,7 @@ namespace Relentless
 		if (!pDragDropOperation->Is<OutlinerDragDropOperation>())
 			return false;
 
-		RLS_CORE_INFO("DROPPED!");
-
-		//Do stuff... Perhaps callback...
-
-		return true;
+		return  m_OnDropCallback(this, pDragDropOperation->As<OutlinerDragDropOperation>());
 	}
 
 }

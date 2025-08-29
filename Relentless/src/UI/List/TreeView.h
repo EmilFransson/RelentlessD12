@@ -23,6 +23,8 @@ namespace Relentless
 			this->m_Mode = ETableViewMode::Tree;
 		}
 
+		NO_DISCARD std::vector<ItemType> GetDescendants(const ItemType& pAncestor) noexcept;
+
 		NO_DISCARD const ItemInfo& GetItemInfo(const ItemType& pItem) const;
 		NO_DISCARD const ItemType& GetItemFromIndex(uint32 index) const;
 
@@ -33,6 +35,7 @@ namespace Relentless
 		TreeView<ItemType>* OnGetChildren(InstanceType* instance, void(InstanceType::*method)(const ItemType&, std::vector<ItemType>& outChildren)) noexcept;
 
 		void RequestTreeRefresh() noexcept;
+		void SetItemExpandedState(const ItemType& pItem, bool expandedState) noexcept;
 	private:
 		void OnRender() noexcept override;
 		void PopulateLinearizedItems(const std::vector<ItemType>& sourceItems) noexcept;
@@ -47,6 +50,34 @@ namespace Relentless
 
 		bool m_ShouldRefresh = true;
 	};
+
+	template<class ItemType>
+	std::vector<ItemType> TreeView<ItemType>::GetDescendants(const ItemType& pAncestor) noexcept
+	{
+		std::vector<ItemType> result;
+
+		auto&& recurse = [&](auto&& self, const ItemType& node) -> void
+			{
+				m_Scratch.clear();
+				m_OnGetChildren(node, m_Scratch);
+
+				std::vector<ItemType> children;
+				children.swap(m_Scratch);
+
+				result.insert(result.end(), children.begin(), children.end());
+				for (const auto& child : children)
+					self(self, child);
+			};
+
+		recurse(recurse, pAncestor);
+		return result;
+	}
+
+	template<class ItemType>
+	void TreeView<ItemType>::SetItemExpandedState(const ItemType& pItem, bool expandedState) noexcept
+	{
+		m_ItemInfos.at(pItem).IsExpanded = expandedState;
+	}
 
 	template<class ItemType>
 	const ItemType& TreeView<ItemType>::GetItemFromIndex(uint32 index) const
@@ -94,15 +125,14 @@ namespace Relentless
 	template<class ItemType>
 	void TreeView<ItemType>::RefreshTree() noexcept
 	{
-		//Todo: Perhaps move to ITreeViewBase!
+		//Todo: Perhaps move to ITreeViewBase! Also check source vs linearized items.
 		this->m_pSource = this->m_OnRequestSource();
 		RLS_ASSERT(this->HasValidItemSource(), "[TreeView::OnRender]: Items source is invalid.");
 
-		this->m_HighlightedItems.clear();
-		this->m_SelectedItems.clear();
 		this->m_ItemToRowWidgetMap.clear();
 
 		PopulateLinearizedItems(*(this->m_pSource));
+		this->m_pSource = &m_LinearizedItems;
 		
 		m_ShouldRefresh = false;
 	}
@@ -117,7 +147,7 @@ namespace Relentless
 	const ItemInfo& TreeView<ItemType>::GetItemInfo(const ItemType& pItem) const
 	{
 		RLS_ASSERT(m_ItemInfos.contains(pItem), "[TreeView::GetItemInfo]: Item has no info assigned!");
-		return m_ItemInfos[pItem];
+		return m_ItemInfos.at(pItem);
 	}
 
 	template<class ItemType>

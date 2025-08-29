@@ -7,16 +7,17 @@ namespace Relentless
 	{
 	public:
 		explicit EntityFilter(const std::string& path, EntityFilter* pParent, bool expanded = true) noexcept;
-		[[nodiscard]] std::shared_ptr<EntityFilter> AddChild(const std::string& childName) noexcept;
-		[[nodiscard]] bool SetChild(const std::shared_ptr<EntityFilter>& pExistingFilter) noexcept;
+		NO_DISCARD std::shared_ptr<EntityFilter> AddChild(const std::string& childName) noexcept;
+		NO_DISCARD bool SetChild(const std::shared_ptr<EntityFilter>& pExistingFilter) noexcept;
 		void RemoveChild(const std::string& childName) noexcept;
-		[[nodiscard]] std::shared_ptr<EntityFilter> FindChild(const std::string& childName) const noexcept;
-		[[nodiscard]] const std::string& GetName() const noexcept;
-		[[nodiscard]] std::string GetPath() const noexcept;
-		[[nodiscard]] bool Contains(entity e) const noexcept;
-		[[nodiscard]] bool Contains(const std::shared_ptr<EntityFilter>& pFilter) const noexcept;
-		[[nodiscard]] const std::unordered_set<entity>& GetEntities() const noexcept;
-		[[nodiscard]] const std::unordered_map<std::string, std::shared_ptr<EntityFilter>>& GetChildren() const noexcept;
+		NO_DISCARD std::shared_ptr<EntityFilter> FindChild(const std::string& childName) const noexcept;
+		NO_DISCARD const std::string& GetName() const noexcept;
+		NO_DISCARD std::string GetPath() const noexcept;
+		NO_DISCARD bool Contains(entity e) const noexcept;
+		NO_DISCARD bool Contains(const std::shared_ptr<EntityFilter>& pFilter) const noexcept;
+		NO_DISCARD bool Contains(const EntityFilter* pFilter) const noexcept;
+		NO_DISCARD const std::unordered_set<entity>& GetEntities() const noexcept;
+		NO_DISCARD const std::unordered_map<std::string, std::shared_ptr<EntityFilter>>& GetChildren() const noexcept;
 
 		void AddEntity(entity e) noexcept;
 		void RemoveEntity(entity e) noexcept;
@@ -24,8 +25,8 @@ namespace Relentless
 		void SetExpandedState(bool expandedState) noexcept;
 
 		void SetParent(EntityFilter* pParentFilter) noexcept;
-		[[nodiscard]] EntityFilter* GetParent() const noexcept;
-		[[nodiscard]] bool IsExpanded() const noexcept;
+		NO_DISCARD EntityFilter* GetParent() const noexcept;
+		NO_DISCARD bool IsExpanded() const noexcept;
 	private:
 		std::string m_Name;
 		std::unordered_set<entity> m_Entities;
@@ -41,24 +42,28 @@ namespace Relentless
 		void CreateFilter(const std::string& path) noexcept;
 		void DestroyFilter(const std::string& path) noexcept;
 
-		[[nodiscard]] std::shared_ptr<EntityFilter> GetFilter(const std::string& path) const noexcept;
-		[[nodiscard]] bool FilterExists(const std::string& path) const noexcept;
-		[[nodiscard]] bool IsEntityInAnyFilter(entity e) const noexcept;
-		[[nodiscard]] bool IsRootFilter(const std::string& path) const noexcept;
+		void ForEachFilterWithRootObject(EntityFilter* pFilter, const Callback<bool(EntityFilter*)>& operation) noexcept;
+
+		NO_DISCARD std::shared_ptr<EntityFilter> GetFilter(const std::string& path) const noexcept;
+		NO_DISCARD bool FilterExists(const std::string& path) const noexcept;
+		NO_DISCARD EntityFilter* GetFilterContainingEntity(entity e) const noexcept;
+		NO_DISCARD bool IsEntityInAnyFilter(entity e) const noexcept;
+		NO_DISCARD bool IsRootFilter(const std::string& path) const noexcept;
 		void SetEntityToFilter(entity e, const std::string& path) noexcept;
 		void SetFilterToFilter(const std::string& filterPathChild, const std::string& filterPathParent) noexcept;
 		void RemoveEntityFromCurrentFilter(entity e) noexcept;
 
-		mutable Broadcaster<void(entity e, const std::string& path, bool filterToBeDestroyed)> OnEntityRemovedFromFilter;
-		mutable Broadcaster<void(entity e, const std::string& path)> OnEntitySetToFilter;
-		mutable Broadcaster<void(const std::string& path)> OnFilterCreated;
-		mutable Broadcaster<void(const std::string& path)> OnFilterDestroyed;
+		mutable Broadcaster<void(entity e, EntityFilter* pParentFilter, bool filterToBeDestroyed)> OnEntityRemovedFromFilter;
+		mutable Broadcaster<void(entity e, EntityFilter* pFilter)> OnEntitySetToFilter;
+		mutable Broadcaster<void(EntityFilter* pFilter)> OnFilterCreated;
+		mutable Broadcaster<void(EntityFilter* pFilter)> OnFilterDestroyed;
+		mutable Broadcaster<void(EntityFilter* pFilter)> OnPreFilterDestroyed;
 
-		mutable Broadcaster<void(const std::string& originalChildPath, const std::string& newChildPath, const std::string& parentPath)> OnFilterReattached;
+		mutable Broadcaster<void(EntityFilter* pReattachedFilter, EntityFilter* pPreviousParent, EntityFilter* pNewParent)> OnFilterReattached;
 	private:
 		void DestroyHierarchy(const std::string& path) noexcept;
 		void RemoveEntityFromCurrentFilterInternal(entity e, bool partOfFilterDestroyAction) noexcept;
-		[[nodiscard]] std::shared_ptr<EntityFilter> GetOrCreateRootFilter(const std::string& path) noexcept;
+		NO_DISCARD std::shared_ptr<EntityFilter> GetOrCreateRootFilter(const std::string& path) noexcept;
 	private:
 		std::unordered_map<std::string, std::shared_ptr<EntityFilter>> m_RootFilters;
 		std::unordered_map<entity, std::weak_ptr<EntityFilter>> m_EntityToFilterMap;

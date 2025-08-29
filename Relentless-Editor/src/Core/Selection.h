@@ -3,7 +3,7 @@
 
 namespace Relentless
 {
-	enum class ESelectionState : uint8_t { Selected = 0, Deselected };
+	enum class ESelectionState : uint8 { Selected = 0, Deselected };
 
 	class Selection
 	{

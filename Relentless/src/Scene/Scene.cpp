@@ -1,5 +1,8 @@
 #include "Scene.h"
 #include "../Assets/AssetManager.h"
+
+#include "ECS/Systems/DeferredEntityDeletionSystem.h"
+
 namespace Relentless
 {
 	Scene::Scene(const char* name) noexcept
@@ -26,12 +29,21 @@ namespace Relentless
 		m_Name = name;
 	}
 
-	void Scene::OnUpdate([[maybe_unused]] const float deltaTime) noexcept
+	void Scene::OnUpdate(const float deltaTime) noexcept
 	{
 		PROFILE_FUNC;
+
+		SceneState state
+		{
+			.Scene = *this,
+			.EntityManager = m_EntityManager,
+			.DeltaTime = deltaTime
+		};
+
+		DeferredEntityDeletionSystem::Execute(state);
 	}
 
-	entity Scene::CopyEntity(entity entityToCopy, bool preserveHierarchy) noexcept
+	entity Scene::DuplicateEntity(entity entityToCopy, bool preserveHierarchy) noexcept
 	{
 		const String originalName = m_EntityManager.Get<NameComponent>(entityToCopy).Name;
 
@@ -57,7 +69,10 @@ namespace Relentless
 		} while (AnyEntityHasName(newName.c_str()));
 
 		const entity newEntity = CreateEntityWithUUID(newName.c_str(), CreateUUID());
-		
+
+		if (m_EntityManager.Has<IsChildComponent>(entityToCopy))
+			AttachEntity(newEntity, m_EntityManager.Get<IsChildComponent>(entityToCopy).Parent);
+
 		CopyComponentIfExists<TransformComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<MeshFilterComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<MeshRendererComponent>(entityToCopy, newEntity);
@@ -258,17 +273,12 @@ namespace Relentless
 			
 	void Scene::DestroyEntity(const entity entityHandle) noexcept
 	{
-		//Check if the entity itself is a child. If it is, remove its entry from parent child list:
-		if (HasParent(entityHandle))
-			DetachEntity(entityHandle);
-		
-		const std::vector<entity> children = GetEntityChildren(entityHandle);
-		for (entity child : children)
-			DetachEntity(child);
+		m_PendingEntityDeletionQueue.Push(entityHandle);
+	}
 
-		OnEntityPreDestroyed(entityHandle);
-		m_EntityManager.DestroyEntity(entityHandle);
-		OnEntityDestroyed(entityHandle);
+	bool Scene::EntityHasAncestors(entity e) const noexcept
+	{
+		return m_EntityManager.Has<IsChildComponent>(e);
 	}
 
 	bool Scene::EntityIsDescendant(const entity ancestor, const entity descendant) noexcept
@@ -492,7 +502,7 @@ namespace Relentless
 			//for (auto& child : descendants)
 			//{
 				//IMPORTANT TO FIX!
-				RLS_ASSERT(false, "NOPE");
+				//RLS_ASSERT(false, "NOPE");
 				//m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
 			//}
 		}

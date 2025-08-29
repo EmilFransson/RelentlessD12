@@ -51,6 +51,7 @@ namespace Relentless
 
 		void CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept;
 		void OnEntitySelectionChanged(entity e, ESelectionState selectionState);
+		void OnEntitySetToFilter(entity e, EntityFilter* pFilter) noexcept;
 		void OnEntityPreDestroyed(entity e) noexcept;
 		void OnEntityAttached(entity child, entity parent) noexcept;
 		void OnEntityReadbackDone(uint32 entityID) noexcept;

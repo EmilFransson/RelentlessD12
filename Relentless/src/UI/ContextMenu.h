@@ -166,26 +166,21 @@ namespace Relentless
 	class ContextMenu : public IStylableWidget<ContextMenu>
 	{
 	public:
+		virtual ~ContextMenu() noexcept override
+		{
+			if (m_IsOpen)
+			{
+				OnClosed();
+				m_IsOpen = false;
+			}
+		}
+
 		void AddEntry(Ref<MenuEntry> pEntry) noexcept
 		{
 			m_Entries.push_back(pEntry);
 		}
 
 		float CalcDesiredWidth() const noexcept override { return 0.0f; }
-
-		template<typename InstanceType>
-		ContextMenu* OnClosed(InstanceType* instance, void(InstanceType::* method)()) noexcept
-		{
-			m_OnClosedCallback = [instance, method]() { return (instance->*method)(); };
-			return this;
-		}
-
-		template<typename T>
-		ContextMenu* OnClosed(T&& callback) noexcept
-		{
-			m_OnClosedCallback = Callback<void()>(std::forward<T>(callback));
-			return this;
-		}
 
 		void OnRender() noexcept override
 		{
@@ -209,7 +204,7 @@ namespace Relentless
 					if (m_Entries[i]->OnRender())
 					{
 						ImGui::ClosePopupToLevel(0, true);
-						m_OnClosedCallback.ExecuteIfSet();
+						OnClosed();
 						m_IsOpen = false;
 					}
 				}
@@ -218,7 +213,7 @@ namespace Relentless
 			}
 			else
 			{
-				m_OnClosedCallback.ExecuteIfSet();
+				OnClosed();
 				m_IsOpen = false;
 			}
 
@@ -226,9 +221,9 @@ namespace Relentless
 			ImGui::PopStyleColor();
 		}
 
+		Broadcaster<void()> OnClosed;
 	private:
 		std::vector<Ref<MenuEntry>> m_Entries;
-		Callback<void()> m_OnClosedCallback;
 		bool m_IsOpen = false;
 	};
 
