@@ -24,6 +24,7 @@ namespace Relentless
 
 		void SetExpandedState(bool expandedState) noexcept;
 
+		void SetName(const String& name) noexcept;
 		void SetParent(EntityFilter* pParentFilter) noexcept;
 		NO_DISCARD EntityFilter* GetParent() const noexcept;
 		NO_DISCARD bool IsExpanded() const noexcept;
@@ -39,10 +40,13 @@ namespace Relentless
 	class EntityFiltersManager
 	{
 	public:
-		void CreateFilter(const std::string& path) noexcept;
+		EntityFilter* CreateFilter(const std::string& path) noexcept;
 		void DestroyFilter(const std::string& path) noexcept;
 
-		void ForEachFilterWithRootObject(EntityFilter* pFilter, const Callback<bool(EntityFilter*)>& operation) noexcept;
+		void ForEachFilterWithDescendantObject(EntityFilter* pFilter, bool includeDescendantObject, const Callback<bool(EntityFilter*)>& operation) noexcept;
+		void ForEachFilterWithRootObject(EntityFilter* pFilter, bool includeRootObject, const Callback<bool(EntityFilter*)>& operation) noexcept;
+		void ForEachFilterWithParentObject(EntityFilter* pFilter, const Callback<bool(EntityFilter*)>& operation) noexcept;
+		void ForEachRootFilters(const Callback<bool(EntityFilter*)>& operation) noexcept;
 
 		NO_DISCARD std::shared_ptr<EntityFilter> GetFilter(const std::string& path) const noexcept;
 		NO_DISCARD bool FilterExists(const std::string& path) const noexcept;

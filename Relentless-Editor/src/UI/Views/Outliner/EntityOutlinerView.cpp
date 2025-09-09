@@ -187,13 +187,142 @@ namespace Relentless
 
 	void EntityOutlinerView::OnCreateNewFilterButtonClicked() noexcept
 	{
-		String filterName = "NewFilter";
-		uint32 filterNumber = 1u;
+		const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
+		Scene* pScene = m_pEditor->GetActiveScene();
 
-		while (m_pEditor->GetEntityFiltersManager()->FilterExists(std::format("{}{}", filterName, filterNumber)))
-			filterNumber++;
+		std::vector<Ref<OutlinerListItem>> selectedItems;
+		m_pOutlinerTreeView->GetSelectedItems(selectedItems);
 
-		m_pEditor->GetEntityFiltersManager()->CreateFilter(std::format("{}{}", filterName, filterNumber));
+		//Step 1: Create the new filter. If 1 existing filter is selected -> assign it as parent for the new filter. 
+		// Otherwise, the new filter should itself become a root filter.
+
+		String newFilterPath = "";
+
+		if (selectedItems.size() == 1 && selectedItems.front()->IsFilterItem())
+		{
+			EntityFilter* pParentFilter = selectedItems.front()->pFilter;
+
+			String newFilterName = "";
+			uint32 filterIndex = 0;
+
+			bool nameOccupied = true;
+
+			while (nameOccupied)
+			{
+				nameOccupied = false;
+				filterIndex++;
+
+				newFilterName = std::format("NewFilter{}", filterIndex);
+
+				pFilterManager->ForEachFilterWithParentObject(pParentFilter, [&](EntityFilter* pChildFilter)
+					{
+						nameOccupied = pChildFilter->GetName() == newFilterName;
+						
+						return !nameOccupied;
+					});
+			}
+
+			newFilterPath = pParentFilter->GetPath() + "/" + newFilterName;
+			selectedItems.clear();
+		}
+		else
+		{
+			//Should have no parent -> should be created as a root filter:
+			String newFilterName = "";
+			uint32 filterIndex = 0;
+
+			bool nameOccupied = true;
+
+			while (nameOccupied)
+			{
+				nameOccupied = false;
+				filterIndex++;
+
+				newFilterName = std::format("NewFilter{}", filterIndex);
+
+				pFilterManager->ForEachRootFilters([&](EntityFilter* pRootFilter)
+					{
+						nameOccupied = pRootFilter->GetName() == newFilterName;
+
+						return !nameOccupied;
+					});
+			}
+
+			newFilterPath = newFilterName;
+		}
+
+		EntityFilter* pNewFilter = pFilterManager->CreateFilter(newFilterPath);
+
+		//Step 2: Assign all selected filters and entities to the newly created filter.
+		
+		std::vector<entity> selectedEntities;
+		std::vector<EntityFilter*> selectedFilters;
+
+		for (const auto& pSelectedItem : selectedItems)
+		{
+			if (pSelectedItem->IsEntityItem())
+				selectedEntities.push_back(pSelectedItem->Entity);
+			else if (pSelectedItem->IsFilterItem())
+				selectedFilters.push_back(pSelectedItem->pFilter);
+			//Ignore scene item
+		}
+
+		//Step 2.1: Remove all entities from the selected entities that are descendants to other selected entities.
+		//Attach remaining entities to newly created filter.
+		std::erase_if(selectedEntities, [&](entity candidateDescendant)
+			{  
+				return std::any_of(selectedEntities.begin(), selectedEntities.end(), [&](entity candidateAncestor)
+					{
+						return pScene->EntityIsDescendant(candidateAncestor, candidateDescendant);
+					});
+			});
+
+		for (entity selectedEntity : selectedEntities)
+		{
+			if (pScene->EntityHasAncestors(selectedEntity))
+				pScene->DetachEntity(selectedEntity);
+
+			pFilterManager->SetEntityToFilter(selectedEntity, pNewFilter->GetPath());
+		}
+
+		//Step 2.2: Remaining selected filters should next be attached to the new filter.
+		//Name clashes are first resolved, followed by attaching the filters.
+
+		for (EntityFilter* pSelectedFilter : selectedFilters)
+		{
+			bool nameClash = std::any_of(selectedFilters.begin(), selectedFilters.end(), [pSelectedFilter](EntityFilter* pCurrentFilter)
+				{
+					return pSelectedFilter != pCurrentFilter && pSelectedFilter->GetName() == pCurrentFilter->GetName();
+				});
+
+			if (nameClash)
+			{
+				String newFilterName = "";
+				uint32 filterIndex = 0;
+
+				if (auto num = StringUtils::ExtractTrailingNumber(pSelectedFilter->GetName()))
+				{
+					filterIndex = static_cast<uint32>(*num);
+					newFilterName = StringUtils::StripTrailingDigits(pSelectedFilter->GetName());
+				}
+				else
+					newFilterName = pSelectedFilter->GetName();
+
+				while (nameClash)
+				{
+					newFilterName = std::format("{}{}", newFilterName, ++filterIndex);
+					nameClash = std::any_of(selectedFilters.begin(), selectedFilters.end(), [&newFilterName](EntityFilter* pCurrentFilter) 
+						{  
+							return pCurrentFilter->GetName() == newFilterName;
+						});
+				}
+
+				pSelectedFilter->SetName(newFilterName);
+			}
+		}
+
+		for (EntityFilter* pSelectedFilter : selectedFilters)
+			pFilterManager->SetFilterToFilter(pSelectedFilter->GetPath(), pNewFilter->GetPath());
 	}
 
 	void EntityOutlinerView::OnDeleteSelection() noexcept
@@ -334,11 +463,18 @@ namespace Relentless
 					dragDropOp.SetTooltipText(tooltipText);
 					return false;
 				}
+				else if (!dragDropOp.GetDraggedFilters().empty())
+				{
+					const String tooltipText = std::format(ICON_FA_BAN "   {}.", GetItemName(pHoveredItem));
+					dragDropOp.SetTooltipText(tooltipText);
+					return false;
+				}
 			}
 			else if (pHoveredItem->IsFilterItem())
 			{
 				entity containedEntity = NULL_ENTITY;
 				EntityFilter* pContainedFilter = nullptr;
+				const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
 
 				if (std::any_of(dragDropOp.GetDraggedEntities().begin(), dragDropOp.GetDraggedEntities().end(), [&](entity e)
 					{
@@ -350,9 +486,19 @@ namespace Relentless
 					dragDropOp.SetTooltipText(tooltipText);
 					return false;
 				}
-				else if (std::any_of(dragDropOp.GetDraggedFilters().begin(), dragDropOp.GetDraggedFilters().end(), [&](const EntityFilter* pFilter)
+				else if (std::any_of(dragDropOp.GetDraggedFilters().begin(), dragDropOp.GetDraggedFilters().end(), [&](EntityFilter* pFilter)
 					{
-						return pFilter->Contains(pHoveredItem->pFilter);
+						bool anyIsDescendant = false;
+						pFilterManager->ForEachFilterWithRootObject(pFilter, false, [&](EntityFilter* pDescendant)
+							{
+								anyIsDescendant = pDescendant == pHoveredItem->pFilter;
+								if (anyIsDescendant)
+									return false;
+								else
+									return true;
+							});
+
+						return anyIsDescendant;
 					}))
 				{
 					const String tooltipText = std::format(ICON_FA_BAN "   {}. Parent cannot become the child of their descendant.", GetItemName(pHoveredItem));
@@ -369,22 +515,43 @@ namespace Relentless
 					dragDropOp.SetTooltipText(tooltipText);
 					return false;
 				}
+				else if (std::any_of(dragDropOp.GetDraggedFilters().begin(), dragDropOp.GetDraggedFilters().end(), [&](EntityFilter* pFilter)
+					{
+						pContainedFilter = pFilter;
+						return pHoveredItem->pFilter->FindChild(pFilter->GetName()) != nullptr;
+					}))
+				{
+					const String tooltipText = std::format(ICON_FA_BAN "   {} already contains a filter child named '{}'.", pHoveredItem->pFilter->GetName(), pContainedFilter->GetName());
+					dragDropOp.SetTooltipText(tooltipText);
+					return false;
+				}
 			}
 			else
 			{
+				RLS_ASSERT(pHoveredItem->IsSceneItem(), "[EntityOutlinerView::OnDragEnter]: Unknown item type encountered.");
+
 				Scene* pScene = m_pEditor->GetActiveScene();
 				const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
 
-				entity containedEntity = NULL_ENTITY;
-				if (std::any_of(dragDropOp.GetDraggedEntities().begin(), dragDropOp.GetDraggedEntities().end(), [&](entity e)
-					{
-						containedEntity = e;
-						return !pScene->EntityHasAncestors(e) && !pFilterManager->IsEntityInAnyFilter(e);
-					}))
+				if (!dragDropOp.GetDraggedFilters().empty())
 				{
-					const String tooltipText = std::format(ICON_FA_BAN "   {} is already assigned to root.", pScene->GetEntityManager().Get<NameComponent>(containedEntity).Name);
+					const String tooltipText = std::format(ICON_FA_BAN "   {}.", GetItemName(pHoveredItem));
 					dragDropOp.SetTooltipText(tooltipText);
 					return false;
+				}
+				else
+				{
+					entity containedEntity = NULL_ENTITY;
+					if (std::any_of(dragDropOp.GetDraggedEntities().begin(), dragDropOp.GetDraggedEntities().end(), [&](entity e)
+						{
+							containedEntity = e;
+							return !pScene->EntityHasAncestors(e) && !pFilterManager->IsEntityInAnyFilter(e);
+						}))
+					{
+						const String tooltipText = std::format(ICON_FA_BAN "   {} is already assigned to root.", pScene->GetEntityManager().Get<NameComponent>(containedEntity).Name);
+						dragDropOp.SetTooltipText(tooltipText);
+						return false;
+					}
 				}
 			}
 		}
@@ -417,11 +584,16 @@ namespace Relentless
 		if (pDropTargetItem->IsEntityItem())
 		{
 			Scene* pScene = m_pEditor->GetActiveScene();
-			for (entity e : draggedEntities)
+			const bool shouldDetach = std::all_of(draggedEntities.begin(), draggedEntities.end(), [&](entity e) { return pScene->EntityIsChild(e, pDropTargetItem->Entity); });
+
+			if (shouldDetach)
 			{
-				if (pScene->EntityIsParent(e, pDropTargetItem->Entity))
+				for (entity e : draggedEntities)
 					pScene->DetachEntity(e);
-				else
+			}
+			else
+			{
+				for (entity e : draggedEntities)
 					pScene->AttachEntity(e, pDropTargetItem->Entity);
 			}
 		}
@@ -434,6 +606,22 @@ namespace Relentless
 				pFilterManager->SetEntityToFilter(e, pDropTargetItem->pFilter->GetPath());
 			for (const auto& pFilter : draggedFilters)
 				pFilterManager->SetFilterToFilter(pFilter->GetPath(), pDropTargetItem->pFilter->GetPath());
+		}
+		else
+		{
+			RLS_ASSERT(pDropTargetItem->IsSceneItem(), "[EntityOutlinerView::OnDrop]: Unknown item type encountered.");
+
+			Scene* pScene = m_pEditor->GetActiveScene();
+			const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
+			
+			for (entity e : draggedEntities)
+			{
+				if (pScene->EntityHasAncestors(e))
+					pScene->DetachEntity(e);
+
+				if (pFilterManager->IsEntityInAnyFilter(e))
+					pFilterManager->RemoveEntityFromCurrentFilter(e);
+			}
 		}
 
 		return true;
@@ -523,7 +711,7 @@ namespace Relentless
 		const uint32 numEntities = entityManager.GetEntityAliveCount();
 		const uint32 numHiddenEntities = entityManager.Collect<HiddenInGameComponent>().Size();
 		OutlinerTableRow* pSceneOutlinerTableRow = static_cast<OutlinerTableRow*>(m_pOutlinerTreeView->GetRowWidget(m_ListItems[0]).Get());
-		Button* pSceneVisibilityButton = static_cast<Button*>(pSceneOutlinerTableRow->GetWidget(0).Get());
+		Button* pSceneVisibilityButton = pSceneOutlinerTableRow->GetVisibilityButton();
 		if (numHiddenEntities == numEntities)
 		{
 			pSceneVisibilityButton->SetText(ICON_FA_EYE_SLASH);
@@ -551,7 +739,7 @@ namespace Relentless
 
 				bool changeFilterVisibility = true;
 
-				pFiltersManager->ForEachFilterWithRootObject(pFilter, [&](EntityFilter* pCurrentFilter)
+				pFiltersManager->ForEachFilterWithRootObject(pFilter, false, [&](EntityFilter* pCurrentFilter)
 					{
 						const std::unordered_set<entity>& filterEntities = pCurrentFilter->GetEntities();
 						if (std::all_of(filterEntities.begin(), filterEntities.end(), [&](entity filterEntity)
@@ -571,7 +759,7 @@ namespace Relentless
 				if (changeFilterVisibility)
 				{
 					OutlinerTableRow* pFilterTableRow = static_cast<OutlinerTableRow*>(m_pOutlinerTreeView->GetRowWidget(m_FilterToItemMap[pFilter]).Get());
-					Button* pFilterVisibilityButton = static_cast<Button*>(pFilterTableRow->GetWidget(0).Get());
+					Button* pFilterVisibilityButton = pFilterTableRow->GetVisibilityButton();
 					pFilterVisibilityButton->SetText(visibilityState ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
 					pFilterVisibilityButton->SetIsVisible(!visibilityState || pFilterVisibilityButton->IsHovered());
 				}
@@ -587,7 +775,7 @@ namespace Relentless
 		Ref<ITableRow> pRow = m_pOutlinerTreeView->GetRowWidget(pListItem);
 		OutlinerTableRow* pOutlinerTableRow = static_cast<OutlinerTableRow*>(pRow.Get());
 
-		Button* pVisibilityButton = static_cast<Button*>(pOutlinerTableRow->GetWidget(0).Get());
+		Button* pVisibilityButton = pOutlinerTableRow->GetVisibilityButton();
 
 		pVisibilityButton->SetText(visibilityState ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
 		pVisibilityButton->SetIsVisible(!visibilityState || pVisibilityButton->IsHovered());
@@ -603,7 +791,11 @@ namespace Relentless
 
 	void EntityOutlinerView::OnFilterCreated(EntityFilter* pFilter) noexcept
 	{
-		m_ListItems[0]->Children.push_back(CreateEntityFilterListItem(pFilter));
+		if (EntityFilter* pParent = pFilter->GetParent())
+			m_FilterToItemMap[pParent]->Children.push_back(CreateEntityFilterListItem(pFilter));
+		else
+			m_ListItems[0]->Children.push_back(CreateEntityFilterListItem(pFilter));
+		
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
@@ -636,6 +828,7 @@ namespace Relentless
 			std::erase_if(m_ListItems[0]->Children, [pFilter](const Ref<OutlinerListItem>& pItem) { return pItem->IsFilterItem() && pItem->pFilter == pFilter; });
 		
 		m_FilterToItemMap.erase(pFilter);
+		m_SelectedFilters.erase(pFilter);
 
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
@@ -662,121 +855,90 @@ namespace Relentless
 		m_SuspendNotifications = true;
 
 		const ItemInfo& info = m_pOutlinerTreeView->GetItemInfo(item);
-		Ref<OutlinerTableRow> pRow = new OutlinerTableRow(m_pOutlinerTreeView);
+
+		OutlinerTableRowCreateInfo createInfo;
+		createInfo.pTreeView = m_pOutlinerTreeView;
+		createInfo.HasChildren = info.HasChildren;
+		createInfo.IsExpanded = info.IsExpanded;
+
+		if (item->IsEntityItem())
+		{
+			createInfo.Icon = ICON_FA_CUBE;
+			createInfo.Name = m_pEditor->GetActiveScene()->GetEntityManager().Get<NameComponent>(item->Entity).Name;
+			createInfo.Type = "Entity";
+			createInfo.IsSelected = m_pEditor->GetSelection()->IsEntitySelected(item->Entity);
+			createInfo.IsVisible = m_pEditor->GetActiveScene()->IsEntityVisible(item->Entity);
+		}
+		else if (item->IsFilterItem())
+		{
+			createInfo.Icon = (info.HasChildren && info.IsExpanded) ? ICON_FA_FOLDER_OPEN : ICON_FA_FOLDER;
+			createInfo.Name = item->pFilter->GetName();
+			createInfo.Type = "Filter";
+			createInfo.IsSelected = m_SelectedFilters.contains(item->pFilter);
+			constexpr Color folderIconColor = Colors::Normalize(213.0f, 166.0f, 74.0f, 255.0f);
+			createInfo.IconColor = folderIconColor;
+
+			Scene* pScene = m_pEditor->GetActiveScene();
+			const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
+
+			pFilterManager->ForEachFilterWithRootObject(item->pFilter, true, [&](EntityFilter* pFilter)
+				{
+					const std::unordered_set<entity> filterEntities = pFilter->GetEntities();
+					if (filterEntities.empty())
+						return true;
+
+					createInfo.IsVisible = std::all_of(filterEntities.begin(), filterEntities.end(), [&](entity filterEntity)
+						{
+							return pScene->IsEntityVisible(filterEntity);
+						});
+				
+					return createInfo.IsVisible;
+				});
+		}
+		else
+		{
+			RLS_ASSERT(item->IsSceneItem(), "[EntityOutlinerView::OnGenerateRow]: Unknown item type encountered.");
+
+			createInfo.Icon = ICON_FA_SITEMAP;
+			createInfo.Name = item->pScene->GetName();
+			createInfo.Type = "Scene";
+			createInfo.IsSelected = m_SceneItemSelected;
+			
+			EntityManager& entityManager = item->pScene->GetEntityManager();
+			createInfo.IsVisible = entityManager.Collect<HiddenInGameComponent>().Size() != entityManager.GetEntityAliveCount();
+		}
+
+		if (createInfo.IsSelected && !m_pOutlinerTreeView->IsItemSelected(item))
+			m_pOutlinerTreeView->SetItemSelection(item, ESelectionType::Selected);
+		else if (!createInfo.IsSelected && m_pOutlinerTreeView->IsItemSelected(item))
+			m_pOutlinerTreeView->SetItemSelection(item, ESelectionType::Deselected);
+
+		Ref<OutlinerTableRow> pRow = new OutlinerTableRow(createInfo);
 		pRow->OnMouseEnter(this, &EntityOutlinerView::OnMouseEnterRow);
 		pRow->OnMouseExit(this, &EntityOutlinerView::OnMouseExitRow);
 		pRow->OnDragDetected(this, &EntityOutlinerView::OnDragDetected);
 		pRow->OnDragEnter(this, &EntityOutlinerView::OnDragEnter);
 		pRow->OnDrop(this, &EntityOutlinerView::OnDrop);
 
-		const bool isEntityItem = item->IsEntityItem();
-		const bool isSceneItem = item->IsSceneItem();
-		const bool isSelected = isEntityItem ? m_pEditor->GetSelection()->IsEntitySelected(item->Entity) : false;
+		Button* pVisibilityButton = pRow->GetVisibilityButton();
+		pVisibilityButton
+			->OnClicked(std::bind(&EntityOutlinerView::OnVisibilityButtonClicked, this, pVisibilityButton, item))
+			->OnMouseEnter(this, &EntityOutlinerView::OnMouseEnterVisibilityButton)
+			->OnMouseExit(std::bind(&EntityOutlinerView::OnMouseExitVisibilityButton, this, pVisibilityButton, item));
 
-		if (isSelected && !m_pOutlinerTreeView->IsItemSelected(item))
-			m_pOutlinerTreeView->SetItemSelection(item, ESelectionType::Selected);
-		else if (!isSelected && m_pOutlinerTreeView->IsItemSelected(item))
-			m_pOutlinerTreeView->SetItemSelection(item, ESelectionType::Deselected);
-
-		String icon;
-		String name;
-		String type;
-		Color iconColor = Colors::White;
-		bool isVisible = false;
-
-		if (item->IsEntityItem())
-		{
-			icon = ICON_FA_CUBE;
-			name = m_pEditor->GetActiveScene()->GetEntityManager().Get<NameComponent>(item->Entity).Name;
-			type = "Entity";
-			isVisible = m_pEditor->GetActiveScene()->IsEntityVisible(item->Entity);
-		}
-		else if (item->IsFilterItem())
-		{
-			icon = (info.HasChildren && info.IsExpanded) ? ICON_FA_FOLDER_OPEN : ICON_FA_FOLDER;
-			name = item->pFilter->GetName();
-			type = "Filter";
-			constexpr Color folderIconColor = Colors::Normalize(213.0f, 166.0f, 74.0f, 255.0f);
-			iconColor = folderIconColor;
-
-			Scene* pScene = m_pEditor->GetActiveScene();
-			const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
-
-			pFilterManager->ForEachFilterWithRootObject(item->pFilter, [&](EntityFilter* pFilter)
-				{
-					const std::unordered_set<entity> filterEntities = pFilter->GetEntities();
-					if (filterEntities.empty())
-						return true;
-
-					isVisible = std::all_of(filterEntities.begin(), filterEntities.end(), [&](entity filterEntity)
-						{
-							return pScene->IsEntityVisible(filterEntity);
-						});
-				
-					return isVisible;
-				});
-		}
-		else
-		{
-			icon = ICON_FA_SITEMAP;
-			name = item->pScene->GetName();
-			type = "Scene";
-			
-			EntityManager& entityManager = item->pScene->GetEntityManager();
-			isVisible = entityManager.Collect<HiddenInGameComponent>().Size() != entityManager.GetEntityAliveCount();
-		}
-
-		Button* pButton = pRow->SetWidget(new Button(isVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH), 0);
-		pButton
-			->OnClicked(std::bind(&EntityOutlinerView::OnVisibilityButtonClicked, this, pButton, item))
-			->OnMouseEnter(std::bind(&EntityOutlinerView::OnMouseEnterButton, this, pButton))
-			->OnMouseExit(std::bind(&EntityOutlinerView::OnMouseExitButton, this, pButton))
-			->SetBackgroundColor(Colors::Transparent)
-			->SetActiveColor(Colors::Transparent)
-			->SetHoverColor(Colors::Transparent)
-			->SetBorderColor(Colors::Transparent)
-			->SetFont(ImGui::GetIO().Fonts->Fonts[2])
-			->SetAlpha(0.7f)
-			->SetTooltipText("Toggles the visibility of this item")
-			->SetIsVisible(isVisible ? false : true);
-
+		Button* pExpandButton = pRow->GetExpandButton();
+		pExpandButton
+			->OnClicked(std::bind(&EntityOutlinerView::OnExpandCollapseButtonClicked, this, pExpandButton, item))
+			->OnMouseEnter(this, &EntityOutlinerView::OnMouseEnterExpandCollapseButton)
+			->OnMouseExit(this, &EntityOutlinerView::OnMouseExitExpandCollapseButton);
+		
 		const bool highlighted = m_pOutlinerTreeView->IsItemHighlighted(item);
 
-		HorizontalBox* pDisplayBox = pRow->SetWidget(new HorizontalBox(), 1);
+		if (highlighted && m_pFilter->TestTextFilter(createInfo.Name, ETextFilterTextComparisonMode::Partial))
+			pRow->GetNameLabel()->SetHighlightedSubstring(m_pFilter->GetFilterText());
 
-		{
-			Button* pButton = pDisplayBox->Add(new Button(info.IsExpanded ? ICON_FA_CHEVRON_DOWN : ICON_FA_CHEVRON_RIGHT, Vector2(25.0f, 30.0f)))
-				->OnClicked(std::bind(&EntityOutlinerView::OnExpandCollapseButtonClicked, this, pButton, item))
-				->OnMouseEnter(this, &EntityOutlinerView::OnMouseEnterExpandCollapseButton)
-				->OnMouseExit(this, &EntityOutlinerView::OnMouseExitExpandCollapseButton)
-				->SetBackgroundColor(Colors::Transparent)
-				->SetActiveColor(Colors::Transparent)
-				->SetHoverColor(Colors::Transparent)
-				->SetBorderColor(Colors::Transparent)
-				->SetTextColor(Colors::Gray)
-				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
-				->SetAlpha(info.HasChildren ? 0.7f : 0.0f);
-
-				pButton->SetIsEnabled(info.HasChildren);
-		}
-
-		pDisplayBox->Add(new Label(icon, ImGui::GetIO().Fonts->Fonts[2]))
-			->SetTooltipText(name)
-			->SetAlpha(0.8f)
-			->SetTextColor(iconColor);
-
-		Label* pDisplayNameLabel = pDisplayBox->Add(new Label(name, ImGui::GetIO().Fonts->Fonts[2]));
-		pDisplayNameLabel->SetTooltipText(name);
-		
-		if (highlighted && m_pFilter->TestTextFilter(name, ETextFilterTextComparisonMode::Partial))
-			pDisplayNameLabel->SetHighlightedSubstring(m_pFilter->GetFilterText());
-
-		Label* pTypeLabel = pRow->SetWidget(new Label(type, ImGui::GetIO().Fonts->Fonts[2]), 2);
-		pTypeLabel->SetTooltipText(type);
-		pTypeLabel->SetAlpha(0.7f);
-
-		if (highlighted && m_pFilter->TestTextFilter(type, ETextFilterTextComparisonMode::Partial))
-			pTypeLabel->SetHighlightedSubstring(m_pFilter->GetFilterText());
+		if (highlighted && m_pFilter->TestTextFilter(createInfo.Type, ETextFilterTextComparisonMode::Partial))
+			pRow->GetTypeLabel()->SetHighlightedSubstring(m_pFilter->GetFilterText());
 
 		m_SuspendNotifications = false;
 
@@ -788,14 +950,15 @@ namespace Relentless
 		outChildren = pParent->Children;
 	}
 
-	void EntityOutlinerView::OnMouseEnterButton(Button* pButton) noexcept
+	void EntityOutlinerView::OnMouseEnterVisibilityButton(Button* pButton) noexcept
 	{
 		pButton->SetAlpha(1.0f);
 	}
 
-	void EntityOutlinerView::OnMouseExitButton(Button* pButton) noexcept
+	void EntityOutlinerView::OnMouseExitVisibilityButton(Button* pButton, OutlinerListItem* pItem) noexcept
 	{
-		pButton->SetAlpha(0.7f);
+		if (!m_pOutlinerTreeView->IsItemSelected(pItem))
+			pButton->SetAlpha(0.7f);
 	}
 
 	void EntityOutlinerView::OnMouseEnterExpandCollapseButton(Button* pButton) noexcept
@@ -816,12 +979,15 @@ namespace Relentless
 
 	void EntityOutlinerView::OnMouseEnterRow(ITableRow* pTableRow) noexcept
 	{
-		static_cast<Button*>(static_cast<OutlinerTableRow*>(pTableRow)->GetWidget(0).Get())->SetIsVisible(true);
+		static_cast<OutlinerTableRow*>(pTableRow)->GetVisibilityButton()->SetIsVisible(true);
 	}
 
 	void EntityOutlinerView::OnMouseExitRow(ITableRow* pTableRow) noexcept
 	{
-		Button* pButton = static_cast<Button*>(static_cast<OutlinerTableRow*>(pTableRow)->GetWidget(0).Get());
+		if (m_pOutlinerTreeView->IsItemSelected(m_pOutlinerTreeView->GetItemFromWidget(pTableRow)))
+			return;
+
+		Button* pButton = static_cast<OutlinerTableRow*>(pTableRow)->GetVisibilityButton();
 
 		if (pButton->GetText() == ICON_FA_EYE)
 			pButton->SetIsVisible(false);
@@ -878,6 +1044,8 @@ namespace Relentless
 		m_EntityToItemMap.clear();
 		m_FilterToItemMap.clear();
 		m_ListItems.clear();
+		m_SelectedFilters.clear();
+		m_SceneItemSelected = false;
 
 		m_pOutlinerTreeView->RequestTreeRefresh();
 
@@ -892,7 +1060,7 @@ namespace Relentless
 
 		m_ListItems.push_back(CreateSceneListItem(pScene));
 
-		pScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
+		pScene->GetEntityManager().Collect<IDComponent, RootComponent>().Do([this](entity e)
 			{
 				m_ListItems[0]->Children.push_back(CreateEntityListItem(e));
 			});
@@ -906,13 +1074,19 @@ namespace Relentless
 		m_pOutlinerTreeView->ClearHightlightedItems();
 		m_ListItems.clear();
 		m_EntityToItemMap.clear();
+		m_FilterToItemMap.clear();
 		
 		m_pFilter->SetFilterText(pText);
 
 		const bool containsEntityLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetEntityTypeAsString(), ETextFilterTextComparisonMode::Partial);
+		const bool containsFilterLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetFilterTypeAsString(), ETextFilterTextComparisonMode::Partial);
+		const bool containsSceneLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetSceneTypeAsString(), ETextFilterTextComparisonMode::Partial);
 
+		Scene* pScene = m_pEditor->GetActiveScene();
+
+		EntityManager& mgr = pScene->GetEntityManager();
 		const UniquePtr<Selection>& pSelection = m_pEditor->GetSelection();
-		EntityManager& mgr = m_pEditor->GetActiveScene()->GetEntityManager();
+		const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
 
 		auto&& RecursivelyTestAndAddEntityItem = [&](auto&& Self, entity e) -> void
 			{
@@ -929,10 +1103,21 @@ namespace Relentless
 
 					if (mgr.Has<IsChildComponent>(e))
 						m_EntityToItemMap[mgr.Get<IsChildComponent>(e).Parent]->Children.push_back(pEntityItem);
+					else if (EntityFilter* pFilter = pFilterManager->GetFilterContainingEntity(e))
+					{
+						pFilterManager->ForEachFilterWithDescendantObject(pFilter, true, [](EntityFilter* pCurrentFilter)
+							{
+								//TODO... Should probably begin with this type of recursive function but for root filters first!!!
+							});
+					}
 					else
-						m_ListItems[0]->Children.push_back(pEntityItem);
+					{
+						if (m_ListItems.empty())
+							m_ListItems.push_back(CreateSceneListItem(pScene));
 
-					m_EntityToItemMap[e] = pEntityItem;
+						m_ListItems[0]->Children.push_back(pEntityItem);
+					}
+
 					added = true;
 				}
 				else
@@ -952,9 +1137,13 @@ namespace Relentless
 						if (mgr.Has<IsChildComponent>(e))
 							m_EntityToItemMap[mgr.Get<IsChildComponent>(e).Parent]->Children.push_back(pEntityItem);
 						else
-							m_ListItems[0]->Children.push_back(pEntityItem);
+						{
+							if (m_ListItems.empty())
+								m_ListItems.push_back(CreateSceneListItem(pScene));
 
-						m_EntityToItemMap[e] = pEntityItem;
+							m_ListItems[0]->Children.push_back(pEntityItem);
+						}
+
 						added = true;
 					}
 				}
@@ -968,6 +1157,14 @@ namespace Relentless
 			};
 
 		mgr.Collect<RootComponent>().Do([&](entity e) { RecursivelyTestAndAddEntityItem(RecursivelyTestAndAddEntityItem, e); });
+
+		if ((m_pFilter->TestTextFilter(pScene->GetName(), ETextFilterTextComparisonMode::Partial) || containsSceneLabel))
+		{
+			if (m_ListItems.empty())
+				m_ListItems.push_back(CreateSceneListItem(pScene));
+
+			m_pOutlinerTreeView->SetItemHighlighted(m_ListItems[0], true);
+		}
 
 		m_SuspendNotifications = false;
 		m_pOutlinerTreeView->RequestTreeRefresh();
@@ -1007,20 +1204,49 @@ namespace Relentless
 	{
 		if (m_SuspendNotifications)
 			return;
-		
+
 		m_SuspendNotifications = true;
 
 		const UniquePtr<Selection>& pSelection = m_pEditor->GetSelection();
+
+		OutlinerTableRow* pOutlinerTableRow = nullptr;
+		Button* pVisibilityButton = nullptr;
+
+		if (m_pOutlinerTreeView->IsItemVisible(item))
+		{
+			pOutlinerTableRow = static_cast<OutlinerTableRow*>(m_pOutlinerTreeView->GetRowWidget(item).Get());
+			pVisibilityButton = pOutlinerTableRow->GetVisibilityButton();
+		}
 
 		if (selectionType == ESelectionType::Selected)
 		{
 			if (item->IsEntityItem())
 				pSelection->SelectEntity(item->Entity);
+			else if (item->IsFilterItem())
+				m_SelectedFilters.insert(item->pFilter);
+			else if (item->IsSceneItem())
+				m_SceneItemSelected = true;
+
+			if (pVisibilityButton)
+			{
+				pVisibilityButton->SetIsVisible(true);
+				pVisibilityButton->SetAlpha(1.0f);
+			}
 		}
 		else
 		{
 			if (item->IsEntityItem())
 				pSelection->DeselectEntity(item->Entity);
+			else if (item->IsFilterItem())
+				m_SelectedFilters.erase(item->pFilter);
+			else if (item->IsSceneItem())
+				m_SceneItemSelected = false;
+
+			if (pOutlinerTableRow && !pOutlinerTableRow->IsHovered())
+			{
+				pVisibilityButton->SetIsVisible(false);
+				pVisibilityButton->SetAlpha(0.7f);
+			}
 		}
 
 		m_SuspendNotifications = false;
@@ -1046,14 +1272,22 @@ namespace Relentless
 		{
 			const UniquePtr<EntityFiltersManager>& pFiltersManager = m_pEditor->GetEntityFiltersManager();
 			Scene* pScene = m_pEditor->GetActiveScene();
-			const std::unordered_set<entity>& entitiesInFilter = pItem->pFilter->GetEntities();
+			
+			pFiltersManager->ForEachFilterWithRootObject(pItem->pFilter, true, [&](EntityFilter* pFilter)
+				{
+					const std::unordered_set<entity>& entitiesInFilter = pFilter->GetEntities();
 
-			for (entity e : entitiesInFilter)
-				pScene->SetEntityVisibleInGame(e, !isVisible);
+					for (entity e : entitiesInFilter)
+						pScene->SetEntityVisibleInGame(e, !isVisible);
+
+					return true;
+				});
 		}
 		else
 		{
-			Scene* pScene = m_pEditor->GetActiveScene();
+			RLS_ASSERT(pItem->IsSceneItem(), "[EntityOutlinerView::OnVisibilityButtonClicked]: Unknown item type encountered!");
+
+			Scene* pScene = pItem->pScene;
 			pScene->GetEntityManager().Collect<IDComponent>().Do([pScene, isVisible](entity e)
 				{
 					pScene->SetEntityVisibleInGame(e, !isVisible);
@@ -1073,16 +1307,34 @@ namespace Relentless
 
 		for (const auto& pItem : selectedItems)
 		{
-			RLS_ASSERT(pItem->IsEntityItem(), "UNIMPLEMENTED!");
-
 			if (pItem->IsEntityItem())
 				pScene->SetEntityVisibleInGame(pItem->Entity, !isVisible);
 			else if (pItem->IsFilterItem())
 			{
-				const std::unordered_set<entity>& entitiesInFilter = pItem->pFilter->GetEntities();
+				const UniquePtr<EntityFiltersManager>& pFiltersManager = m_pEditor->GetEntityFiltersManager();
+				Scene* pScene = m_pEditor->GetActiveScene();
 
-				for (entity e : entitiesInFilter)
-					pScene->SetEntityVisibleInGame(e, !isVisible);
+				pFiltersManager->ForEachFilterWithRootObject(pItem->pFilter, true, [&](EntityFilter* pFilter)
+					{
+						const std::unordered_set<entity>& entitiesInFilter = pFilter->GetEntities();
+
+						for (entity e : entitiesInFilter)
+							pScene->SetEntityVisibleInGame(e, !isVisible);
+
+						return true;
+					});
+			}
+			else
+			{
+				RLS_ASSERT(pItem->IsSceneItem(), "[EntityOutlinerView::OnVisibilityButtonClicked]: Unknown item type encountered!");
+
+				Scene* pScene = pItem->pScene;
+				pScene->GetEntityManager().Collect<IDComponent>().Do([pScene, isVisible](entity e)
+					{
+						pScene->SetEntityVisibleInGame(e, !isVisible);
+					});
+
+				return;
 			}
 		}
 	}

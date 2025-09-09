@@ -50,8 +50,8 @@ namespace Relentless
 		NO_DISCARD Ref<ITableRow> OnGenerateRow(const Ref<OutlinerListItem>& item) noexcept;
 		void OnGetChildren(const Ref<OutlinerListItem>& pParent, std::vector<Ref<OutlinerListItem>>& outChildren) noexcept;
 
-		void OnMouseEnterButton(Button* pButton) noexcept;
-		void OnMouseExitButton(Button* pButton) noexcept;
+		void OnMouseEnterVisibilityButton(Button* pButton) noexcept;
+		void OnMouseExitVisibilityButton(Button* pButton, OutlinerListItem* pItem) noexcept;
 
 		void OnMouseEnterExpandCollapseButton(Button* pButton) noexcept;
 		void OnMouseExitExpandCollapseButton(Button* pButton) noexcept;
@@ -80,6 +80,7 @@ namespace Relentless
 
 		std::unordered_map<entity, Ref<OutlinerListItem>> m_EntityToItemMap;
 		std::unordered_map<EntityFilter*, Ref<OutlinerListItem>> m_FilterToItemMap;
+		std::unordered_set<EntityFilter*> m_SelectedFilters;
 
 		Ref<VerticalBox> m_pMainBox = nullptr;
 		Ref<VerticalBox> m_pOutlinerListBox = nullptr;
@@ -89,5 +90,6 @@ namespace Relentless
 		Editor* m_pEditor = nullptr;
 
 		bool m_SuspendNotifications = false;
+		bool m_SceneItemSelected = false;
 	};
 }

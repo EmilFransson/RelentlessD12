@@ -26,6 +26,24 @@ namespace Relentless
 			return result;
 		}
 
+		String ExtractTrailingDigits(const String& input) noexcept
+		{
+			size_t pos = input.size();
+			while (pos > 0 && std::isdigit(static_cast<unsigned char>(input[pos - 1])))
+				--pos;
+
+			return input.substr(pos);
+		}
+
+		std::optional<int> ExtractTrailingNumber(const String& input) noexcept
+		{
+			auto digits = ExtractTrailingDigits(input);
+			if (digits.empty()) 
+				return std::nullopt;
+
+			return std::stoi(digits);
+		}
+
 		std::vector<String> Split(const String& input, char delimiter) noexcept
 		{
 			std::vector<String> tokens;
@@ -53,6 +71,16 @@ namespace Relentless
 				tokens.push_back(input.substr(start));
 
 			return tokens;
+		}
+
+		String StripTrailingDigits(const std::string& input) noexcept
+		{
+			size_t pos = input.size();
+			while (pos > 0 && std::isdigit(static_cast<unsigned char>(input[pos - 1])))
+			{
+				--pos;
+			}
+			return input.substr(0, pos);
 		}
 
 		String ToLower(const String& input) noexcept

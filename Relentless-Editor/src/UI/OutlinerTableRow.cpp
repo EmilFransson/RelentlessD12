@@ -4,9 +4,59 @@
 
 namespace Relentless
 {
-	OutlinerTableRow::OutlinerTableRow(TreeView<Ref<OutlinerListItem>>* pTreeView) noexcept
-		: m_pOwningTreeView{ pTreeView }
+	OutlinerTableRow::OutlinerTableRow(const OutlinerTableRowCreateInfo& createInfo) noexcept
+		: m_pOwningTreeView{ createInfo.pTreeView }
 	{
+		{
+			Ref<HorizontalBox> pColumn0Box = new HorizontalBox();
+
+			pColumn0Box->Add(new Button(createInfo.IsVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH))
+				->SetBackgroundColor(Colors::Transparent)
+				->SetActiveColor(Colors::Transparent)
+				->SetHoverColor(Colors::Transparent)
+				->SetBorderColor(Colors::Transparent)
+				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
+				->SetAlpha(0.7f)
+				->SetTooltipText("Toggles the visibility of this item")
+				->SetIsVisible((createInfo.IsVisible && !createInfo.IsSelected) ? false : true);
+
+			m_ColumnWidgets.push_back(pColumn0Box);
+		}
+		
+		{
+			Ref<HorizontalBox> pDisplayBox = new HorizontalBox();
+			
+			Button* pButton = pDisplayBox->Add(new Button(createInfo.IsExpanded ? ICON_FA_CHEVRON_DOWN : ICON_FA_CHEVRON_RIGHT, Vector2(25.0f, 30.0f)))
+				->SetBackgroundColor(Colors::Transparent)
+				->SetActiveColor(Colors::Transparent)
+				->SetHoverColor(Colors::Transparent)
+				->SetBorderColor(Colors::Transparent)
+				->SetTextColor(Colors::Gray)
+				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
+				->SetAlpha(createInfo.HasChildren ? 0.7f : 0.0f);
+
+				pButton->SetIsEnabled(createInfo.HasChildren);
+
+			pDisplayBox->Add(new Label(createInfo.Icon, ImGui::GetIO().Fonts->Fonts[2]))
+				->SetTooltipText(createInfo.Name)
+				->SetAlpha(0.8f)
+				->SetTextColor(createInfo.IconColor);
+
+			Label* pDisplayNameLabel = pDisplayBox->Add(new Label(createInfo.Name, ImGui::GetIO().Fonts->Fonts[2]));
+			pDisplayNameLabel->SetTooltipText(createInfo.Name);
+
+			m_ColumnWidgets.push_back(pDisplayBox);
+		}
+
+		{
+			Ref<HorizontalBox> pColumn2Box = new HorizontalBox();
+
+			pColumn2Box->Add(new Label(createInfo.Type, ImGui::GetIO().Fonts->Fonts[2]))
+				->SetTooltipText(createInfo.Type)
+				->SetAlpha(0.7f);
+
+			m_ColumnWidgets.push_back(pColumn2Box);
+		}
 	}
 
 	float OutlinerTableRow::CalcDesiredWidth() const noexcept
@@ -88,6 +138,26 @@ namespace Relentless
 	uint32 OutlinerTableRow::GetNumColumns() noexcept
 	{
 		return 3u;
+	}
+
+	Button* OutlinerTableRow::GetExpandButton() const noexcept
+	{
+		return static_cast<Button*>(static_cast<HorizontalBox*>(m_ColumnWidgets[1].Get())->GetChild(0).Get());
+	}
+
+	Label* OutlinerTableRow::GetNameLabel() const noexcept
+	{
+		return static_cast<Label*>(static_cast<HorizontalBox*>(m_ColumnWidgets[1].Get())->GetChild(2).Get());
+	}
+
+	Label* OutlinerTableRow::GetTypeLabel() const noexcept
+	{
+		return static_cast<Label*>(m_ColumnWidgets[2]->GetChild(0).Get());
+	}
+
+	Button* OutlinerTableRow::GetVisibilityButton() const noexcept
+	{
+		return static_cast<Button*>(m_ColumnWidgets[0]->GetChild(0).Get());
 	}
 
 	bool OutlinerTableRow::IsDragDropEligible() noexcept

@@ -24,10 +24,23 @@ namespace Relentless
 		NO_DISCARD bool IsSceneItem() const noexcept { return pScene != nullptr; }
 	};
 
+	struct OutlinerTableRowCreateInfo
+	{
+		String Icon;
+		String Name;
+		String Type;
+		Color IconColor = Colors::White;
+		bool IsVisible = false;
+		bool IsSelected = false;
+		bool HasChildren = false;
+		bool IsExpanded = false;
+		TreeView<Ref<OutlinerListItem>>* pTreeView = nullptr;
+	};
+
 	class OutlinerTableRow : public ITableRow
 	{
 	public:
-		OutlinerTableRow(TreeView<Ref<OutlinerListItem>>* pTreeView) noexcept;
+		OutlinerTableRow(const OutlinerTableRowCreateInfo& createInfo) noexcept;
 		virtual ~OutlinerTableRow() noexcept override = default;
 
 		NO_DISCARD float CalcDesiredWidth() const noexcept override;
@@ -46,6 +59,11 @@ namespace Relentless
 
 		NO_DISCARD const Color& GetBackgroundColor() const noexcept override;
 		NO_DISCARD uint32 GetNumColumns() noexcept override;
+		NO_DISCARD Button* GetExpandButton() const noexcept;
+		NO_DISCARD Label* GetNameLabel() const noexcept;
+		NO_DISCARD Label* GetTypeLabel() const noexcept;
+		NO_DISCARD Button* GetVisibilityButton() const noexcept;
+
 		NO_DISCARD bool IsDragDropEligible() noexcept override;
 
 		template<typename InstanceType>
@@ -83,7 +101,7 @@ namespace Relentless
 		NO_DISCARD bool OnDrop(const Ref<DragDropOperation>& pDragDropOperation) noexcept override;
 
 	private:
-		std::array<Ref<IBaseWidget>, 3> m_ColumnWidgets;
+		//std::array<Ref<IBaseWidget>, 3> m_ColumnWidgets;
 		std::array<FloatRect, 3> m_Margins;
 
 		Callback<Ref<DragDropOperation>(OutlinerTableRow*)> m_OnDragDetectedCallback;

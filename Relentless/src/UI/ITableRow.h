@@ -1,5 +1,5 @@
 #pragma once
-#include "IWidget.h"
+#include "HorizontalBox.h"
 
 #include "Callback/Callback.h"
 #include "Core/Any.h"
@@ -57,6 +57,8 @@ namespace Relentless
 		virtual void OnRenderColumn(uint32 column) noexcept = 0;
 
 	protected:
+		std::vector<Ref<HorizontalBox>> m_ColumnWidgets;
+
 		Callback<void(const PointerInfo& pointerInfo)> m_OnClickedCallback;
 		Callback<void()> m_OnDoubleClickedCallback;
 		
