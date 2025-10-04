@@ -1,9 +1,39 @@
-#include "Editor.h"
+﻿#include "Editor.h"
 #include "RelentlessEditorApp.h"
 
 namespace Relentless
 {
 	Editor::~Editor() noexcept {}
+
+	bool Editor::AnyFolderContainsEntity(entity aEntity) const noexcept
+	{
+		return m_pActiveScene && m_pActiveScene->GetEntityManager().Exists(aEntity) && m_pActiveScene->GetEntityManager().Has<FolderComponent>(aEntity);
+	}
+
+	void Editor::AttachEntityToFolder(entity aEntity, const Folder& aFolder) noexcept
+	{
+		if (!m_pActiveScene)
+			return;
+
+		if (m_pActiveScene->EntityHasAncestors(aEntity))
+			m_pActiveScene->DetachEntity(aEntity);
+		
+		if (!m_pEntityFoldersManager->ContainsFolder(*m_pActiveScene, aFolder))
+			m_pEntityFoldersManager->CreateFolder(*m_pActiveScene, aFolder);
+
+		m_pActiveScene->GetEntityManager().AddOrReplace<FolderComponent>(aEntity).Folder = aFolder;
+		OnEntityAttachedToFolder(aEntity, aFolder);
+	}
+
+	bool Editor::FolderContainsEntity(const Folder& aFolder, entity aEntity) noexcept
+	{
+		return m_pActiveScene && m_pActiveScene->GetEntityManager().Has<FolderComponent>(aEntity) && m_pActiveScene->GetEntityManager().Get<FolderComponent>(aEntity).Folder == aFolder;
+	}
+
+	const Ref<EntityOutlinerView> Editor::GetEntityOutlinerView() const noexcept
+	{
+		return m_pDetailsPanel->GetEntityOutlinerView();
+	}
 
 	void Editor::OnEvent(IEvent& event) noexcept
 	{
@@ -138,8 +168,9 @@ namespace Relentless
 		m_pSelection = std::make_unique<Selection>();
 		m_pSelection->OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
 
-		m_pEntityFiltersManager = std::make_unique<EntityFiltersManager>();
-		m_pEntityFiltersManager->OnEntitySetToFilter.Connect(this, &Editor::OnEntitySetToFilter);
+		m_pEntityFoldersManager = std::make_unique<EntityFoldersManager>(this);
+		m_pEntityFoldersManager->OnEntityFolderMoved.Connect(this, &Editor::OnEntityFolderMoved);
+		m_pEntityFoldersManager->OnEntityFolderDelete.Connect(this, &Editor::OnEntityFolderDeleted);
 
 		SpawnViewport();
 
@@ -147,11 +178,11 @@ namespace Relentless
 		//m_pOutlinerPanel = UIManager::Get().AddPanel(std::make_unique<OutlinerPanel>(this));
 
 		SetActiveScene(std::make_shared<Scene>());
-
-		UIManager::Get().AddPanel(std::make_unique<DetailsPanel>(ICON_FA_LINES_LEANING " Details", ImGuiWindowFlags_None, this))
-			->SetPadding(Vector2(2.0f, 0.0f));
 		
 		CreateStartScene();
+
+		m_pDetailsPanel = UIManager::Get().AddPanel(std::make_unique<DetailsPanel>(ICON_FA_LINES_LEANING " Details", ImGuiWindowFlags_None, this));
+		m_pDetailsPanel->SetPadding(Vector2(2.0f, 0.0f));
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 		app.GetRenderer()->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
@@ -200,8 +231,9 @@ namespace Relentless
 
 	void Editor::OnDestroy() noexcept
 	{
+		OnShutDown();
+
 		m_pSelection->OnSelectionChanged.Detach(this);
-		m_pEntityFiltersManager->OnEntitySetToFilter.Detach(this);
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 		if (auto& pRenderer = app.GetRenderer())
@@ -258,14 +290,22 @@ namespace Relentless
 		return m_pActiveScene.get();
 	}
 
+	EntityFolder* Editor::GetFolderContainingEntity(entity aEntity) const noexcept
+	{
+		if (!m_pActiveScene)
+			return nullptr;
+
+		return m_pActiveScene->GetEntityManager().Has<FolderComponent>(aEntity) ? m_pEntityFoldersManager->GetFolder(*m_pActiveScene, m_pActiveScene->GetEntityManager().Get<FolderComponent>(aEntity).Folder.GetPath()) : nullptr;
+	}
+
 	const UniquePtr<Selection>& Editor::GetSelection() noexcept
 	{
 		return m_pSelection;
 	}
 
-	const UniquePtr<EntityFiltersManager>& Editor::GetEntityFiltersManager() noexcept
+	const UniquePtr<EntityFoldersManager>& Editor::GetEntityFoldersManager() noexcept
 	{
-		return m_pEntityFiltersManager;
+		return m_pEntityFoldersManager;
 	}
 
 	ViewportRenderView& Editor::GetRenderView(uint32 renderViewIndex) noexcept
@@ -286,12 +326,6 @@ namespace Relentless
 		if (m_pActiveScene)
 		{
 			OnPreSceneChanged(m_pActiveScene.get());
-
-			m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
-				{
-					if (m_pEntityFiltersManager->IsEntityInAnyFilter(e))
-						m_pEntityFiltersManager->RemoveEntityFromCurrentFilter(e);
-				});
 
 			m_pActiveScene->OnEntityPreDestroyed.Detach(this);
 			m_pActiveScene->OnEntityAttached.Detach(this);
@@ -467,12 +501,12 @@ namespace Relentless
 			CreateModelImportTask("Assets/Models/StarterContent/Sphere.obj", e);
 			CreateModelImportTask("Assets/Models/StarterContent/Cube.obj", ground);
 
-			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_albedo.png", e, true, &Material::SetAlbedoTexture);
-			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_metallic.png", e, false, &Material::SetMetallicTexture);
-			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_roughness.png", e, false, &Material::SetRoughnessTexture);
-			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_ao.png", e, false, &Material::SetAmbientOcclusionTexture);
-			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_normal-dx.png", e, false, &Material::SetNormalMap);
-			CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_height.png", e, false, &Material::SetHeightMap);
+			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_albedo.png", e, true, &Material::SetAlbedoTexture);
+			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_metallic.png", e, false, &Material::SetMetallicTexture);
+			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_roughness.png", e, false, &Material::SetRoughnessTexture);
+			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_ao.png", e, false, &Material::SetAmbientOcclusionTexture);
+			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_normal-dx.png", e, false, &Material::SetNormalMap);
+			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_height.png", e, false, &Material::SetHeightMap);
 
 			Importer::RequestAsyncLoad(tasks).Wait();
 		}
@@ -486,7 +520,343 @@ namespace Relentless
 		//m_pActiveScene->SetWorldLocation(otherCube, DirectX::XMFLOAT3(-5.0f, 0.0f, 0.0f));
 		//m_pActiveScene->SetWorldLocation(other, DirectX::XMFLOAT3(-8.0f, 0.0f, 0.0f));
 		//
-		//m_pEntityFiltersManager->CreateFilter("StarterContent/Shapes/Cubes/Another/Last");
+		
+		//RunFolderComprehensiveTest();
+
+		AttachEntityToFolder(ground, Folder(FolderRoot::CreateFromScene(*m_pActiveScene), "StarterContent/Entities"));
+	}
+
+	// Helper: quick starts_with for String
+	static bool StartsWith(const String& s, std::string_view prefix) {
+		return s.size() >= prefix.size() && s.compare(0, prefix.size(), prefix) == 0;
+	}
+
+	static bool ConsoleIsUTF8()
+	{
+#ifdef _WIN32
+		return GetConsoleOutputCP() == 65001; // CP_UTF8
+#else
+		return true; // most non-Windows terminals are UTF-8
+#endif
+	}
+	struct TreeGlyphs { const char* elbow; const char* tee; const char* pipe; const char* space; };
+
+	void Editor::RunFolderComprehensiveTest()
+	{
+		RLS_ASSERT(m_pActiveScene && m_pEntityFoldersManager, "Active scene or folders manager missing");
+		Scene& scene = *m_pActiveScene;
+		auto& F = *m_pEntityFoldersManager;
+		const FolderRoot root = FolderRoot::CreateFromScene(scene);
+
+		auto dump = [&](std::string_view tag)
+			{
+				const TreeGlyphs g = ConsoleIsUTF8()
+					? TreeGlyphs{ "└─ ", "├─ ", "│  ", "   " }   // UTF-8 bytes in source
+				: TreeGlyphs{ "\\- ", "|- ", "|  ", "   " }; // ASCII fallback
+
+				std::cout << "\n=== " << tag << " ===\n";
+
+				// Gather folders
+				auto& cont = F.GetFolderContainer(scene).Folders;
+				std::vector<EntityFolder*> nodes; nodes.reserve(cont.size());
+				for (auto& rf : cont) nodes.push_back(rf);
+
+				// Build children map by parent*
+				std::unordered_map<EntityFolder*, std::vector<EntityFolder*>> children;
+				for (auto* n : nodes) children[n->GetParent()].push_back(n);
+				for (auto& [p, ch] : children)
+					std::sort(ch.begin(), ch.end(),
+						[](auto* a, auto* b) { return a->GetLabel() < b->GetLabel(); });
+
+				// Tree print
+				std::function<void(EntityFolder*, std::string, bool)> dfs =
+					[&](EntityFolder* n, std::string indent, bool last)
+					{
+						std::cout << indent << (last ? g.elbow : g.tee) << n->GetPath() << "\n";
+						auto it = children.find(n);
+						if (it == children.end()) return;
+						auto& ch = it->second;
+						for (size_t i = 0; i < ch.size(); ++i)
+							dfs(ch[i], indent + (last ? g.space : g.pipe), i + 1 == ch.size());
+					};
+
+				std::cout << "[Folders :: tree]\n";
+				if (auto it = children.find(nullptr); it != children.end()) {
+					auto& roots = it->second;
+					for (size_t i = 0; i < roots.size(); ++i)
+						dfs(roots[i], "", i + 1 == roots.size());
+				}
+				else {
+					std::cout << "(no folders)\n";
+				}
+
+				// Flat list + duplicates
+				std::vector<EntityFolder*> sorted = nodes;
+				std::sort(sorted.begin(), sorted.end(),
+					[](auto* a, auto* b) { return a->GetPath() < b->GetPath(); });
+
+				std::unordered_map<String, int> pathCount;
+				for (auto* n : sorted) ++pathCount[n->GetPath()];
+
+				std::cout << "\n[Folders :: flat]\n";
+				for (auto* n : sorted) {
+					const auto* p = n->GetParent();
+					const bool dup = pathCount[n->GetPath()] > 1;
+					std::cout << " - " << n->GetPath()
+						<< "   (label=\"" << n->GetLabel() << "\""
+						<< ", parent=" << (p ? p->GetPath() : "<null>")
+						<< (dup ? ", DUPLICATE" : "") << ")\n";
+				}
+
+				// Entities
+				struct Row { entity e; String name; String path; };
+				std::vector<Row> rows;
+				scene.GetEntityManager().Collect<FolderComponent>().Do(
+					[&](entity e, const FolderComponent& fc)
+					{
+						rows.push_back({ e,
+										 scene.GetEntityManager().Get<NameComponent>(e).Name,
+										 fc.Folder.GetPath() });
+					});
+				std::sort(rows.begin(), rows.end(),
+					[](const Row& a, const Row& b) {
+						if (a.path != b.path) return a.path < b.path;
+						return a.name < b.name;
+					});
+
+				std::cout << "\n[Entities]\n";
+				for (const auto& r : rows)
+					std::cout << " - " << r.path << "   " << r.name
+					<< " (e=" << (uint64_t)r.e << ")\n";
+			};
+
+		// Clean start (optional): ensure no pre-existing conflicting folders/entities
+		// You can clear your scene here if you have a helper.
+
+		F.CreateFolder(scene, "Root/A/B");
+		F.CreateFolder(scene, "Root/B/A/A");
+		entity e = scene.CreateEntity("X");
+		AttachEntityToFolder(e, Folder(root, "Root/B/A/A"));
+
+		dump("before delete Root/B");
+		F.DeleteFolder(scene, "Root/B");
+		dump("after delete Root/B");
+
+		RLS_ASSERT(scene.GetEntityManager().Get<FolderComponent>(e).Folder.GetPath() == "Root/A/A", "Should be merged under Root/A/A");
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 1) Create chain and idempotency
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			EntityFolder* a = F.CreateFolder(scene, "A");
+			RLS_ASSERT(a && a->GetLabel() == "A", "Create A failed");
+
+			EntityFolder* ab = F.CreateFolder(scene, "A/B");
+			RLS_ASSERT(ab && ab->GetLabel() == "B" && ab->GetParent() == a, "Create A/B failed");
+
+			// Idempotent create: returns the same object and keeps correct parent
+			EntityFolder* ab2 = F.CreateFolder(scene, "A/B");
+			RLS_ASSERT(ab2 == ab, "Idempotent CreateFolder returned a different object");
+			RLS_ASSERT(ab2->GetParent() == a, "Idempotent CreateFolder changed parent incorrectly");
+		}
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 2) Default name uniqueness
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			String p = F.GetDefaultFolderName(scene, "A");
+			RLS_ASSERT(p == "A/New Folder", "Expected A/New Folder");
+
+			F.CreateFolder(scene, p); // create it
+
+			String p2 = F.GetDefaultFolderName(scene, "A");
+			RLS_ASSERT(p2 == "A/New Folder2", "Expected A/New Folder2");
+		}
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 3) Boundary correctness: "Foo" vs "FooBar"
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			F.CreateFolder(scene, "Foo");
+			F.CreateFolder(scene, "FooBar"); // must not be affected by renaming Foo
+
+			const entity eFoo = scene.CreateEntity("InFoo");
+			const entity eFooBar = scene.CreateEntity("InFooBar");
+
+			AttachEntityToFolder(eFoo, Folder(root, "Foo"));
+			AttachEntityToFolder(eFooBar, Folder(root, "FooBar"));
+
+			// Rename Foo -> Baz
+			bool ok = F.RenameFolder(scene, "Foo", "Baz");
+			RLS_ASSERT(ok, "Rename Foo->Baz failed");
+
+			const auto& pFoo = scene.GetEntityManager().Get<FolderComponent>(eFoo).Folder.GetPath();
+			const auto& pFooB = scene.GetEntityManager().Get<FolderComponent>(eFooBar).Folder.GetPath();
+			RLS_ASSERT(pFoo == "Baz", "Entity in Foo not remapped to Baz");
+			RLS_ASSERT(pFooB == "FooBar", "Entity in FooBar should not be affected");
+		}
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 4) Deep subtree rename + entity remap
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			F.CreateFolder(scene, "StarterContent/Entities/Monsters");
+			F.CreateFolder(scene, "StarterContent/Entities/Monsters/Bosses");
+			F.CreateFolder(scene, "StarterContent/Props");
+
+			const entity ground = scene.CreateEntity("Ground");
+			const entity troll = scene.CreateEntity("TrollBoss");
+			const entity crate = scene.CreateEntity("Crate");
+
+			AttachEntityToFolder(ground, Folder(root, "StarterContent/Entities/Monsters"));
+			AttachEntityToFolder(troll, Folder(root, "StarterContent/Entities/Monsters/Bosses"));
+			AttachEntityToFolder(crate, Folder(root, "StarterContent/Props"));
+
+			dump("before deep rename");
+
+			// Monsters -> Enemies
+			bool ok = F.RenameFolder(scene,
+				"StarterContent/Entities/Monsters",
+				"StarterContent/Entities/Enemies");
+			RLS_ASSERT(ok, "Rename Monsters->Enemies failed");
+
+			dump("after deep rename");
+
+			const auto& groundPath = scene.GetEntityManager().Get<FolderComponent>(ground).Folder.GetPath();
+			const auto& trollPath = scene.GetEntityManager().Get<FolderComponent>(troll).Folder.GetPath();
+			const auto& cratePath = scene.GetEntityManager().Get<FolderComponent>(crate).Folder.GetPath();
+
+			RLS_ASSERT(groundPath == "StarterContent/Entities/Enemies", "Remap failed for ground");
+			RLS_ASSERT(trollPath == "StarterContent/Entities/Enemies/Bosses", "Remap failed for troll");
+			RLS_ASSERT(cratePath == "StarterContent/Props", "Unrelated entity changed unexpectedly");
+		}
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 5) Invalid rename: into own descendant
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			F.CreateFolder(scene, "X/Y");
+			F.CreateFolder(scene, "X/Y/Z");
+
+			bool ok = F.RenameFolder(scene, "X/Y", "X/Y/Z"); // invalid
+			RLS_ASSERT(!ok, "Should not allow rename into own descendant");
+		}
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 6) Rename to an existing path (should fail, no changes)
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			F.CreateFolder(scene, "Alpha");
+			F.CreateFolder(scene, "Beta");
+
+			// Put an entity in Alpha to detect unintended changes
+			const entity a = scene.CreateEntity("A");
+			AttachEntityToFolder(a, Folder(root, "Alpha"));
+
+			bool ok = F.RenameFolder(scene, "Alpha", "Beta");
+			RLS_ASSERT(!ok, "Rename to existing folder should fail");
+
+			const auto& pathA = scene.GetEntityManager().Get<FolderComponent>(a).Folder.GetPath();
+			RLS_ASSERT(pathA == "Alpha", "Entity path changed despite failed rename");
+		}
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 7) Delete middle parent: children re-parent and entities remap away from prefix
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			F.CreateFolder(scene, "SC/Entities/Enemies/Minions");
+			const entity m1 = scene.CreateEntity("Minion1");
+			const entity m2 = scene.CreateEntity("Minion2");
+
+			AttachEntityToFolder(m1, Folder(root, "SC/Entities/Enemies"));
+			AttachEntityToFolder(m2, Folder(root, "SC/Entities/Enemies/Minions"));
+
+			dump("before delete SC/Entities");
+
+			// Delete middle parent "SC/Entities"
+			F.DeleteFolder(scene, "SC/Entities");
+
+			dump("after delete SC/Entities");
+
+			const auto& mp1 = scene.GetEntityManager().Get<FolderComponent>(m1).Folder.GetPath();
+			const auto& mp2 = scene.GetEntityManager().Get<FolderComponent>(m2).Folder.GetPath();
+
+			// Policy-agnostic check: old prefix must be gone
+			RLS_ASSERT(!StartsWith(mp1, "SC/Entities/"), "m1 still has deleted prefix");
+			RLS_ASSERT(!StartsWith(mp2, "SC/Entities/"), "m2 still has deleted prefix");
+		}
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 8) ForEachEntityInFolders: selection + early break
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			F.CreateFolder(scene, "Pick/One");
+			F.CreateFolder(scene, "Pick/Two");
+
+			const entity e1 = scene.CreateEntity("Pick1");
+			const entity e2 = scene.CreateEntity("Pick2");
+			const entity e3 = scene.CreateEntity("Pick3");
+
+			AttachEntityToFolder(e1, Folder(root, "Pick/One"));
+			AttachEntityToFolder(e2, Folder(root, "Pick/Two"));
+			AttachEntityToFolder(e3, Folder(root, "Pick/Two"));
+
+			std::unordered_set<String> paths = { "Pick/One", "Pick/Two" };
+
+			std::vector<entity> visited;
+			m_pEntityFoldersManager->ForEachEntityInFolders(scene, paths,
+				[&](entity e)
+				{
+					visited.push_back(e);
+					// Early break after 2
+					return visited.size() < 2;
+				});
+
+			RLS_ASSERT(visited.size() == 2, "Early-break in ForEachEntityInFolders failed");
+		}
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 9) Expanded state flag round-trip
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			F.CreateFolder(scene, "UI/Windows");
+			RLS_ASSERT(F.IsFolderExpanded(scene, "UI/Windows"), "Expected collapsed by default");
+
+			if (Ref<EntityFolder> f = F.GetFolder(scene, "UI/Windows"))
+				f->SetExpandedState(false);
+
+			RLS_ASSERT(!F.IsFolderExpanded(scene, "UI/Windows"), "Expanded state not persisted");
+		}
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 10) Root-level rename (no parent)
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			F.CreateFolder(scene, "Top");
+			const entity t = scene.CreateEntity("TopGuy");
+			AttachEntityToFolder(t, Folder(root, "Top"));
+
+			bool ok = F.RenameFolder(scene, "Top", "TopRenamed");
+			RLS_ASSERT(ok, "Root-level rename failed");
+
+			const auto& tp = scene.GetEntityManager().Get<FolderComponent>(t).Folder.GetPath();
+			RLS_ASSERT(tp == "TopRenamed", "Root-level entity not remapped");
+		}
+
+		// ─────────────────────────────────────────────────────────────────────────────
+		// 11) Delete leaf, no crash, entity policy respected (no old prefix)
+		// ─────────────────────────────────────────────────────────────────────────────
+		{
+			F.CreateFolder(scene, "Leaf");
+			const entity l = scene.CreateEntity("Leafy");
+			AttachEntityToFolder(l, Folder(root, "Leaf"));
+
+			F.DeleteFolder(scene, "Leaf");
+			bool has = scene.GetEntityManager().Has<FolderComponent>(l);
+			RLS_ASSERT(!has, "Leaf entity still references deleted folder");
+		}
+
+		std::cout << "\nAll folder tests passed ✅\n";
 	}
 
 	void Editor::UI_DrawStatisticsPanel() noexcept
@@ -618,6 +988,39 @@ namespace Relentless
 		m_pActiveScene->SetWorldTransform(newEntity, transform.Matrix);
 	}
 
+	void Editor::OnEntityFolderDeleted(EntityFolder* apFolder) noexcept
+	{
+		if (!m_pActiveScene)
+			return;
+
+		m_pActiveScene->GetEntityManager().Collect<FolderComponent>().Do([&](entity aEntity, FolderComponent& fc)
+			{
+				if (fc.Folder.GetPath() == apFolder->GetPath())
+					m_pActiveScene->GetEntityManager().Remove<FolderComponent>(aEntity);
+			});
+	}
+
+	void Editor::OnEntityFolderMoved([[maybe_unused]] EntityFolder* pMovedFolder, [[maybe_unused]] EntityFolder* pMovedFolderParent, const String& aOldPath, const String& aNewPath) noexcept
+	{
+		//TODO: Possibly EntityFolders should know their root object which would link back to correct scene...
+
+		if (!m_pActiveScene)
+			return;
+
+		m_pActiveScene->GetEntityManager().Collect<FolderComponent>().Do([&](FolderComponent& fc)
+			{
+				const String& path = fc.Folder.GetPath();
+
+				if (path == aOldPath)
+					fc.Folder = Folder(fc.Folder.GetRoot(), aNewPath);
+				else if (path.size() > aOldPath.size() && path.compare(0, aOldPath.size(), aOldPath) == 0 && path[aOldPath.size()] == '/')
+				{
+					const String suffix = path.substr(aOldPath.size());
+					fc.Folder = Folder(fc.Folder.GetRoot(), aNewPath + suffix);
+				}
+			});
+	}
+
 	void Editor::OnEntitySelectionChanged(entity e, ESelectionState selectionState)
 	{
 		if (selectionState == ESelectionState::Selected)
@@ -626,31 +1029,24 @@ namespace Relentless
 			m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(e);
 	}
 
-	void Editor::OnEntitySetToFilter(entity e, [[maybe_unused]] EntityFilter* pFilter) noexcept
+	void Editor::OnEntityPreDestroyed(entity aEntity) noexcept
 	{
-		if (m_pActiveScene->EntityHasAncestors(e))
-			m_pActiveScene->DetachEntity(e);
+		if (m_pSelection->IsEntitySelected(aEntity))
+			m_pSelection->DeselectEntity(aEntity);
 	}
 
-	void Editor::OnEntityPreDestroyed(entity e) noexcept
+	void Editor::OnEntityAttached(entity aChildEntity, [[maybe_unused]] entity aParentEntity) noexcept
 	{
-		if (m_pSelection->IsEntitySelected(e))
-			m_pSelection->DeselectEntity(e);
+		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
 
-		if (m_pEntityFiltersManager->IsEntityInAnyFilter(e))
-			m_pEntityFiltersManager->RemoveEntityFromCurrentFilter(e);
-	}
-
-	void Editor::OnEntityAttached(entity child, entity parent) noexcept
-	{
-		if (m_pEntityFiltersManager->IsEntityInAnyFilter(child))
-			m_pEntityFiltersManager->RemoveEntityFromCurrentFilter(child);
+		if (entityManager.Has<FolderComponent>(aChildEntity))
+			entityManager.Remove<FolderComponent>(aChildEntity);
 	}
 
 	void Editor::OnEntityReadbackDone(uint32 entityID) noexcept
 	{
 		/*
-		 An id of 0 is considered a sentinel value for the readback results.
+		 An id of 0 is considered a sentinel value for the read back results.
 		 This means all actual entity ids are shifted up by one and should be downshifted again (if entityID != 0)
 		*/
 
@@ -686,7 +1082,7 @@ namespace Relentless
 		{
 			if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
 			{
-				m_pActiveScene->GetEntityManager().Collect<HiddenInGameComponent>().Do([this](entity e)
+				m_pActiveScene->GetEntityManager().Collect<HiddenInGameComponent, RootComponent>().Do([this](entity e)
 					{
 						m_pActiveScene->SetEntityVisibleInGame(e, true);
 					});
@@ -699,8 +1095,8 @@ namespace Relentless
 				{
 					const entity currentEntity = selectedEntities[i];
 
-					m_pSelection->DeselectEntity(currentEntity);
 					m_pActiveScene->SetEntityVisibleInGame(currentEntity, false);
+					m_pSelection->DeselectEntity(currentEntity);
 				}
 			}
 			break;
@@ -754,8 +1150,20 @@ namespace Relentless
 		m_pSelection->SelectEntities(newEntities);
 	}
 
+	void Editor::RemoveEntityFromCurrentFolder(entity aEntity) noexcept
+	{
+		if (AnyFolderContainsEntity(aEntity))
+		{
+			Folder folder = m_pActiveScene->GetEntityManager().Get<FolderComponent>(aEntity).Folder;
+			m_pActiveScene->GetEntityManager().Remove<FolderComponent>(aEntity);
+			OnEntityRemovedFromFolder(aEntity, folder);
+		}
+	}
+
 	std::vector<entity> Editor::GetTransformSelection() const noexcept
 	{
+		PROFILE_FUNC;
+
 		if (!m_pActiveScene || !m_pSelection)
 			return {};
 
@@ -764,18 +1172,31 @@ namespace Relentless
 		if (selectedEntities.empty())
 			return {};
 
+		std::unordered_set<entity> selectedSet;
+		selectedSet.reserve(selectedEntities.size());
+		for (entity e : selectedEntities)
+			selectedSet.insert(e);
+
 		std::vector<entity> participatingEntities;
 		participatingEntities.reserve(selectedEntities.size());
 
 		for (entity e : selectedEntities)
 		{
-			if (!std::any_of(selectedEntities.begin(), selectedEntities.end(), [&](entity currentEntity)
-				{
-					return m_pActiveScene->EntityIsAncestor(currentEntity, e);
-				}))
+			entity p = m_pActiveScene->HasParent(e) ? m_pActiveScene->GetParent(e) : NULL_ENTITY;
+			bool hasSelectedAncestor = false;
+
+			while (p != NULL_ENTITY)
 			{
-				participatingEntities.push_back(e);
+				if (selectedSet.find(p) != selectedSet.end())
+				{
+					hasSelectedAncestor = true;
+					break;
+				}
+				p = m_pActiveScene->HasParent(p) ? m_pActiveScene->GetParent(p) : NULL_ENTITY;
 			}
+
+			if (!hasSelectedAncestor)
+				participatingEntities.push_back(e);
 		}
 
 		return participatingEntities;

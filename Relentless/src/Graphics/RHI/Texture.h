@@ -55,6 +55,20 @@ namespace Relentless
 			: BindingValue{ClearBindingValue::DepthStencil}, DepthStencil{depth, stencil}
 		{}
 
+		bool operator==(const ClearBinding& other) const
+		{
+			if (BindingValue != other.BindingValue)
+			{
+				return false;
+			}
+			if (BindingValue == ClearBindingValue::Color)
+			{
+				return Color == other.Color;
+			}
+			return DepthStencil.Depth == other.DepthStencil.Depth
+				&& DepthStencil.Stencil == other.DepthStencil.Stencil;
+		}
+
 		ClearBindingValue BindingValue = ClearBindingValue::None;
 		union
 		{
@@ -74,6 +88,8 @@ namespace Relentless
 		TextureFlag		Flags						= TextureFlag::None;
 		ResourceFormat	Format						= ResourceFormat::Unknown;
 		ClearBinding	ClearBindingValue			= ClearBinding(Colors::Black);
+
+		bool operator==(const TextureDesc&) const = default;
 
 		static [[nodiscard]] TextureDesc CreateCube(uint32 width, uint32 height, ResourceFormat format, uint32 mips = 1u, TextureFlag flags = TextureFlag::None, const ClearBinding& clearBinding = ClearBinding(Colors::Black), uint32 sampleCount = 1) noexcept
 		{
@@ -109,6 +125,19 @@ namespace Relentless
 			desc.Format = format;
 			desc.ClearBindingValue = clearBinding;
 			return desc;
+		}
+
+		bool IsCompatible(const TextureDesc& other) const
+		{
+			return Width == other.Width
+				&& Height == other.Height
+				&& DepthOrArraySize == other.DepthOrArraySize
+				&& Mips == other.Mips
+				&& SampleCount == other.SampleCount
+				&& Format == other.Format
+				&& ClearBindingValue == other.ClearBindingValue
+				&& Type == other.Type
+				&& EnumHasAllFlags(Flags, other.Flags);
 		}
 	};
 

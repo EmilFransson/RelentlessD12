@@ -19,6 +19,8 @@ namespace Relentless
 	public:
 		DetailsPanel(const char* pName, ImGuiWindowFlags flags, Editor* pEditor) noexcept;
 		virtual ~DetailsPanel() noexcept override;
+
+		NO_DISCARD const Ref<EntityOutlinerView>& GetEntityOutlinerView() const noexcept;
 	protected:
 		virtual void OnRender() noexcept override;
 	private:

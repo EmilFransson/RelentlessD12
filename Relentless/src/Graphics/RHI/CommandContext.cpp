@@ -353,7 +353,7 @@ namespace Relentless
 					subResource,
 					D3D12_RESOURCE_BARRIER_FLAG_NONE)
 				);
-
+				pResource->SetResourceState(afterState);
 				localResourceState.Set(afterState, subResource);
 			}
 		}

@@ -1,7 +1,9 @@
 #pragma once
-#include "Graphics/RHI/RHI.h"
 #include "Graphics/Renderer/RenderTypes.h"
+#include "Graphics/RHI/Device.h"
+#include "Graphics/RHI/RHI.h"
 #include "Graphics/RHI/PipelineState.h"
+#include "Graphics/RHI/Texture.h"
 
 namespace Relentless
 {
@@ -14,6 +16,7 @@ namespace Relentless
 	private:
 		GraphicsDevice* m_pDevice = nullptr;
 
+		Ref<Texture> m_pOutputTarget = nullptr;
 		Ref<PipelineState> m_pPostProcessPSO = nullptr;
 	};
 }

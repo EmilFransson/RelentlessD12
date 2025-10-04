@@ -3,6 +3,7 @@
 #include "ECSCommon.h"
 #include "Math/MathTypes.h"
 #include "Utility/Common.h"
+#include "Core/Folder.h"
 
 namespace Relentless
 {
@@ -123,5 +124,10 @@ namespace Relentless
 	struct RotatorComponent
 	{
 		//ID
+	};
+
+	struct FolderComponent
+	{
+		Folder Folder;
 	};
 }

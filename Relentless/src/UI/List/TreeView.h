@@ -25,6 +25,7 @@ namespace Relentless
 
 		NO_DISCARD std::vector<ItemType> GetDescendants(const ItemType& pAncestor) noexcept;
 
+		NO_DISCARD bool ExistsItemInfo(const ItemType& pItem) const;
 		NO_DISCARD const ItemInfo& GetItemInfo(const ItemType& pItem) const;
 		NO_DISCARD const ItemType& GetItemFromIndex(uint32 index) const;
 
@@ -50,6 +51,12 @@ namespace Relentless
 
 		bool m_ShouldRefresh = true;
 	};
+
+	template<class ItemType>
+	bool TreeView<ItemType>::ExistsItemInfo(const ItemType& pItem) const
+	{
+		return m_ItemInfos.contains(pItem);
+	}
 
 	template<class ItemType>
 	std::vector<ItemType> TreeView<ItemType>::GetDescendants(const ItemType& pAncestor) noexcept

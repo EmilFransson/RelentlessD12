@@ -500,6 +500,26 @@ namespace Relentless
 			return (pool && (entityIdentity < sparseArray.size()) && (sparseArray[entityIdentity] != NULL_ENTITY));
 		}
 
+		/**
+		 * @brief Checks whether an entity has a certain component type.
+		 * @param entity The entity ID to verify component type existence for.
+		 * @return A truth condition (bool) depending on component existence.
+		 */
+		template<typename ComponentType>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		[[nodiscard]] bool Has(const entity entityID) const noexcept
+		{
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
+
+			const uint32_t entityIdentity = GetIdentity(entityID);
+			const Pool<ComponentType>* pool = static_cast<Pool<ComponentType>*>(m_Pools.at(ID).get());
+			const std::vector<entity>& sparseArray = pool->SparseArray;
+
+			return (pool && (entityIdentity < sparseArray.size()) && (sparseArray[entityIdentity] != NULL_ENTITY));
+		}
+
 		template<typename... ComponentTypes>
 			requires (std::is_same_v<ComponentTypes, std::decay_t<ComponentTypes>> && ...)
 		[[nodiscard]] bool HasAllOf(const entity entityID) noexcept
@@ -542,6 +562,41 @@ namespace Relentless
 		&& (std::is_same_v<ComponentTypes, std::decay_t<ComponentTypes>> && ...)
 			&& (!std::is_empty_v<ComponentType>) && (!std::is_empty_v<ComponentTypes> && ...)
 			[[nodiscard]] std::tuple<ComponentType&, ComponentTypes&...> Get(const entity entityID) noexcept
+		{
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+			RLS_ASSERT(Has<ComponentType>(entityID) && (Has<ComponentTypes>(entityID) && ...), "Entity does not have component type(s).");
+
+			return std::forward_as_tuple(Get<ComponentType>(entityID), (Get<ComponentTypes>(entityID)) ...);
+		}
+
+		/**
+		 * @brief Returns a single component of type ComponentType for the entity.
+		 * @param entity The entity ID to return the component reference for.
+		 * @return A reference to the component belonging to entity.
+		 */
+		template<typename ComponentType, typename... C1>
+			requires (sizeof...(C1) == 0) && std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (!std::is_empty_v<ComponentType>)
+			[[nodiscard]] const ComponentType& Get(const entity entityID) const noexcept
+		{
+			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
+			RLS_ASSERT(Has<ComponentType>(entityID), "Entity does not have the component type.");
+			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
+
+			Pool<ComponentType>& pool = static_cast<Pool<ComponentType>&>(*m_Pools.at(ID).get());
+			return pool.Components[pool.SparseArray[GetIdentity(entityID)]];
+		}
+
+		/**
+		 * @brief Returns multiple components for the entity.
+		 * @param entity The entity ID to return the component references for.
+		 * @return A tuple containing the component references for all requested components belonging to the entity.
+		 */
+		template<typename ComponentType, typename... ComponentTypes>
+			requires (sizeof... (ComponentTypes) > 0) && std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (std::is_same_v<ComponentTypes, std::decay_t<ComponentTypes>> && ...)
+			&& (!std::is_empty_v<ComponentType>) && (!std::is_empty_v<ComponentTypes> && ...)
+			[[nodiscard]] const std::tuple<ComponentType&, ComponentTypes&...> Get(const entity entityID) const noexcept
 		{
 			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
 			RLS_ASSERT(Has<ComponentType>(entityID) && (Has<ComponentTypes>(entityID) && ...), "Entity does not have component type(s).");

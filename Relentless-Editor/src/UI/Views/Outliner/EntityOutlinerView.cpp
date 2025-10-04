@@ -1,24 +1,29 @@
 #include "EntityOutlinerView.h"
 
 #include "../../../Core/Editor.h"
+#include "EntityOutlinerPolicies.h"
 
 namespace Relentless
 {
+	#define RLS_SCOPED_SUSPEND() ScopedFlag _suspend{ m_SuspendNotifications }
+
 	EntityOutlinerView::EntityOutlinerView(Editor* pEditor) noexcept
 		: m_pEditor{pEditor}
 	{
+		m_pEditor->OnShutDown.Connect([this]() { m_pEditor = nullptr; });
 		m_pEditor->OnPreSceneChanged.Connect(this, &EntityOutlinerView::OnPreSceneChanged);
 		m_pEditor->OnSceneChanged.Connect(this, &EntityOutlinerView::OnSceneChanged);
+		m_pEditor->OnEntityAttachedToFolder.Connect(this, &EntityOutlinerView::OnEntityAttachedToFolder);
+		m_pEditor->OnEntityRemovedFromFolder.Connect(this, &EntityOutlinerView::OnEntityRemovedFromFolder);
 
-		m_pEditor->GetSelection()->OnSelectionChanged.Connect(this, &EntityOutlinerView::OnSelectionChangedExternally);
+		const UniquePtr<Selection>& pSelection = m_pEditor->GetSelection();
+		pSelection->OnSelectionChanged.Connect(this, &EntityOutlinerView::OnSelectionChangedExternally);
+
+		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
 		
-		const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
-		
-		pFilterManager->OnFilterCreated.Connect(this, &EntityOutlinerView::OnFilterCreated);
-		pFilterManager->OnFilterDestroyed.Connect(this, &EntityOutlinerView::OnFilterDestroyed);
-		pFilterManager->OnEntitySetToFilter.Connect(this, &EntityOutlinerView::OnEntitySetToFilter);
-		pFilterManager->OnEntityRemovedFromFilter.Connect(this, &EntityOutlinerView::OnEntityRemovedFromFilter);
-		pFilterManager->OnFilterReattached.Connect(this, &EntityOutlinerView::OnFilterReattached);
+		pFoldersManager->OnEntityFolderCreated.Connect(this, &EntityOutlinerView::OnFolderCreated);
+		pFoldersManager->OnEntityFolderDelete.Connect(this, &EntityOutlinerView::OnEntityFolderDeleted);
+		pFoldersManager->OnEntityFolderMoved.Connect(this, &EntityOutlinerView::OnFolderMoved);
 
 		std::shared_ptr<HeaderRow> pHeaderRow = std::make_shared<HeaderRow>();
 		pHeaderRow->SetIsPinned(true);
@@ -74,13 +79,13 @@ namespace Relentless
 		pHorizontalBox->SetMargin(FloatRect(0.0f, 10.0f, 0.0f, 0.0f));
 
 		pHorizontalBox->Add(new Button(ICON_FA_FOLDER_PLUS))
-			->OnClicked(this, &EntityOutlinerView::OnCreateNewFilterButtonClicked)
+			->OnClicked(this, &EntityOutlinerView::OnCreateNewFolderButtonClicked)
 			->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 			->SetBackgroundColor(Colors::Transparent)
 			->SetActiveColor(Colors::Transparent)
 			->SetHoverColor(Colors::Gray)
 			->SetBorderColor(Colors::Transparent)
-			->SetTooltipText("Create a new filter containing the current selection");
+			->SetTooltipText("Create a new folder containing the current selection");
 
 		pHorizontalBox->Add(new SearchBar("Search...", true))
 			->OnTextChanged(this, &EntityOutlinerView::OnSearchTextChanged)
@@ -95,6 +100,7 @@ namespace Relentless
 		m_pMainBox->Add(m_pOutlinerListBox);
 
 		m_pFilter = std::make_unique<TextFilterExpressionEvaluator>();
+		m_pPolicies = std::make_unique<EntityOutlinerPolicies>();
 
 		if (Scene* pScene = m_pEditor->GetActiveScene())
 			OnSceneChanged(pScene);
@@ -102,69 +108,114 @@ namespace Relentless
 
 	EntityOutlinerView::~EntityOutlinerView() noexcept
 	{
+		if (!m_pEditor)
+			return;
+
+		m_pEditor->OnShutDown.Detach(this);
+		m_pEditor->OnPreSceneChanged.Detach(this);
+		m_pEditor->OnSceneChanged.Detach(this);
+		m_pEditor->OnEntityAttachedToFolder.Detach(this);
+		m_pEditor->OnEntityRemovedFromFolder.Detach(this);
+
 		if (const UniquePtr<Selection>& pSelection = m_pEditor->GetSelection())
 			pSelection->OnSelectionChanged.Detach(this);
 
-		if (const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager())
+		if (const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager())
 		{
-			pFilterManager->OnFilterCreated.Detach(this);
-			pFilterManager->OnFilterDestroyed.Detach(this);
-			pFilterManager->OnEntitySetToFilter.Detach(this);
-			pFilterManager->OnEntityRemovedFromFilter.Detach(this);
-			pFilterManager->OnFilterReattached.Detach(this);
+			pFoldersManager->OnEntityFolderCreated.Detach(this);
+			pFoldersManager->OnEntityFolderDeleted.Detach(this);
+			pFoldersManager->OnEntityFolderMoved.Detach(this);
 		}
 
 		if (Scene* pScene = m_pEditor->GetActiveScene())
 		{
 			pScene->OnEntityCreated.Detach(this);
-			pScene->OnEntityDestroyed.Detach(this);
+			pScene->OnEntityPreDestroyed.Detach(this);
 			pScene->OnEntityAttached.Detach(this);
 			pScene->OnEntityDetached.Detach(this);
 			pScene->OnEntityVisibilityChanged.Detach(this);
 		}
 	}
 
-	Ref<OutlinerListItem> EntityOutlinerView::CreateEntityListItem(entity e) noexcept
+	Ref<OutlinerListItem> EntityOutlinerView::CreateEntityListItem(entity aEntity) noexcept
 	{
 		Ref<OutlinerListItem> pEntityItem = new OutlinerListItem();
-		pEntityItem->Entity = e;
+		pEntityItem->Payload = aEntity;
 
-		m_EntityToItemMap[e] = pEntityItem;
+		m_EntityToItemMap[m_pEditor->GetActiveScene()->GetEntityManager().Get<IDComponent>(aEntity).UuId] = pEntityItem;
 
 		return pEntityItem;
 	}
 
-	Ref<OutlinerListItem> EntityOutlinerView::CreateEntityFilterListItem(EntityFilter* pFilter) noexcept
+	Ref<OutlinerListItem> EntityOutlinerView::CreateEntityFolderListItem(EntityFolder* apFolder) noexcept
 	{
-		Ref<OutlinerListItem> pFilterListItem = new OutlinerListItem();
-		pFilterListItem->pFilter = pFilter;
+		Ref<OutlinerListItem> pFolderListItem = new OutlinerListItem();
+		pFolderListItem->Payload = apFolder;
 		
-		m_FilterToItemMap[pFilter] = pFilterListItem;
+		m_FolderToItemMap[apFolder->GetUUID()] = pFolderListItem;
 
-		return pFilterListItem;
+		return pFolderListItem;
 	}
 
 	Ref<OutlinerListItem> EntityOutlinerView::CreateSceneListItem(Scene* pScene) noexcept
 	{
 		Ref<OutlinerListItem> pSceneListItem = new OutlinerListItem();
-		pSceneListItem->pScene = pScene;
+		pSceneListItem->Payload = pScene;
 
 		return pSceneListItem;
 	}
 
+	void EntityOutlinerView::DeselectAllFolders() noexcept
+	{
+		if (m_SelectedFolders.empty())
+			return;
+
+		std::vector<UUID> selectedFolderUUIDS(m_SelectedFolders.begin(), m_SelectedFolders.end());
+
+		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
+
+		pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(*m_pEditor->GetActiveScene()), [&](const EntityFolder& aFolder)
+			{
+				if (std::ranges::any_of(selectedFolderUUIDS, [&aFolder](const UUID& aUUID) { return aFolder.GetUUID() == aUUID; }))
+				{
+					const Ref<OutlinerListItem>& pFolderItem = GetFolderItem(pFoldersManager->GetFolder(*m_pEditor->GetActiveScene(), aFolder.GetPath()));
+					OnSelectionChanged(pFolderItem, ESelectionType::Deselected);
+					m_pOutlinerTreeView->SetItemSelection(pFolderItem, ESelectionType::Deselected);
+				}
+
+				return true;
+			});
+	}
+
 	const String& EntityOutlinerView::GetItemName(const Ref<OutlinerListItem>& pItem) const noexcept
 	{
-		if (pItem->IsEntityItem())
-			return m_pEditor->GetActiveScene()->GetEntityManager().Get<NameComponent>(pItem->Entity).Name;
-		else if (pItem->IsFilterItem())
-			return pItem->pFilter->GetName();
+		if (pItem->IsEntity())
+			return m_pEditor->GetActiveScene()->GetEntityManager().Get<NameComponent>(pItem->AsEntity()).Name;
+		else if (pItem->IsFolder())
+			return pItem->AsFolder()->GetLabel();
 		else
-			return pItem->pScene->GetName();
+			return pItem->AsScene()->GetName();
 	}
 
 	const String& EntityOutlinerView::GetRowName(const OutlinerTableRow* pRow) const noexcept
 	{
 		return GetItemName(m_pOutlinerTreeView->GetItemFromWidget(pRow));
+	}
+
+	const Ref<OutlinerListItem>& EntityOutlinerView::GetEntityItem(entity aEntity) const noexcept
+	{
+		return m_EntityToItemMap.at(m_pEditor->GetActiveScene()->GetEntityManager().Get<IDComponent>(aEntity).UuId);
+	}
+
+	const Ref<OutlinerListItem>& EntityOutlinerView::GetFolderItem(EntityFolder* pAFolder) const noexcept
+	{
+		return m_FolderToItemMap.at(pAFolder->GetUUID());
+	}
+
+	Ref<OutlinerListItem> EntityOutlinerView::GetRootSceneItem() const noexcept
+	{
+		RLS_ASSERT(m_ListItems.size() == 1 && m_ListItems.at(0)->IsScene(), "[EntityOutlinerView::GetRootSceneItem]: No scene root item in list.");
+		return m_ListItems.at(0);
 	}
 
 	Ref<ContextMenu> EntityOutlinerView::OnContextMenuOpening(const Ref<OutlinerListItem>& item) noexcept
@@ -185,90 +236,48 @@ namespace Relentless
 		return pMenu;
 	}
 
-	void EntityOutlinerView::OnCreateNewFilterButtonClicked() noexcept
+	void EntityOutlinerView::OnCreateNewFolderButtonClicked() noexcept
 	{
-		const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
+		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
 		Scene* pScene = m_pEditor->GetActiveScene();
 
 		std::vector<Ref<OutlinerListItem>> selectedItems;
 		m_pOutlinerTreeView->GetSelectedItems(selectedItems);
 
-		//Step 1: Create the new filter. If 1 existing filter is selected -> assign it as parent for the new filter. 
-		// Otherwise, the new filter should itself become a root filter.
+		//Step 1: Create the new folder. If 1 existing folder is selected -> assign it as parent for the new folder. 
+		// Otherwise, the new folder should itself become a root folder.
 
-		String newFilterPath = "";
+		String newFolderPath = "";
 
-		if (selectedItems.size() == 1 && selectedItems.front()->IsFilterItem())
+		if (selectedItems.size() == 1 && selectedItems.front()->IsFolder())
 		{
-			EntityFilter* pParentFilter = selectedItems.front()->pFilter;
+			EntityFolder* pParentFolder = selectedItems.front()->AsFolder();
 
-			String newFilterName = "";
-			uint32 filterIndex = 0;
-
-			bool nameOccupied = true;
-
-			while (nameOccupied)
-			{
-				nameOccupied = false;
-				filterIndex++;
-
-				newFilterName = std::format("NewFilter{}", filterIndex);
-
-				pFilterManager->ForEachFilterWithParentObject(pParentFilter, [&](EntityFilter* pChildFilter)
-					{
-						nameOccupied = pChildFilter->GetName() == newFilterName;
-						
-						return !nameOccupied;
-					});
-			}
-
-			newFilterPath = pParentFilter->GetPath() + "/" + newFilterName;
+			newFolderPath = pFoldersManager->GetDefaultFolderName(*pScene, pParentFolder->GetPath());
 			selectedItems.clear();
 		}
 		else
-		{
-			//Should have no parent -> should be created as a root filter:
-			String newFilterName = "";
-			uint32 filterIndex = 0;
+			newFolderPath = pFoldersManager->GetDefaultFolderName(*pScene, "");
 
-			bool nameOccupied = true;
 
-			while (nameOccupied)
-			{
-				nameOccupied = false;
-				filterIndex++;
+		EntityFolder* pNewFolder = pFoldersManager->CreateFolder(*pScene, newFolderPath);
 
-				newFilterName = std::format("NewFilter{}", filterIndex);
-
-				pFilterManager->ForEachRootFilters([&](EntityFilter* pRootFilter)
-					{
-						nameOccupied = pRootFilter->GetName() == newFilterName;
-
-						return !nameOccupied;
-					});
-			}
-
-			newFilterPath = newFilterName;
-		}
-
-		EntityFilter* pNewFilter = pFilterManager->CreateFilter(newFilterPath);
-
-		//Step 2: Assign all selected filters and entities to the newly created filter.
+		//Step 2: Assign all selected folders and entities to the newly created folder.
 		
 		std::vector<entity> selectedEntities;
-		std::vector<EntityFilter*> selectedFilters;
+		std::vector<EntityFolder*> selectedFolders;
 
 		for (const auto& pSelectedItem : selectedItems)
 		{
-			if (pSelectedItem->IsEntityItem())
-				selectedEntities.push_back(pSelectedItem->Entity);
-			else if (pSelectedItem->IsFilterItem())
-				selectedFilters.push_back(pSelectedItem->pFilter);
+			if (pSelectedItem->IsEntity())
+				selectedEntities.push_back(pSelectedItem->AsEntity());
+			else if (pSelectedItem->IsFolder())
+				selectedFolders.push_back(pSelectedItem->AsFolder());
 			//Ignore scene item
 		}
 
 		//Step 2.1: Remove all entities from the selected entities that are descendants to other selected entities.
-		//Attach remaining entities to newly created filter.
+		//Attach remaining entities to newly created folder.
 		std::erase_if(selectedEntities, [&](entity candidateDescendant)
 			{  
 				return std::any_of(selectedEntities.begin(), selectedEntities.end(), [&](entity candidateAncestor)
@@ -278,51 +287,16 @@ namespace Relentless
 			});
 
 		for (entity selectedEntity : selectedEntities)
+			m_pEditor->AttachEntityToFolder(selectedEntity, Folder(FolderRoot::CreateFromScene(*pScene), pNewFolder->GetPath()));
+
+		//Step 2.2: Remaining selected folders should next be moved.
+
+		for (EntityFolder* pSelectedFolder : selectedFolders)
 		{
-			if (pScene->EntityHasAncestors(selectedEntity))
-				pScene->DetachEntity(selectedEntity);
-
-			pFilterManager->SetEntityToFilter(selectedEntity, pNewFilter->GetPath());
+			const String oldPath = pSelectedFolder->GetPath();
+			const String newPath = pNewFolder->GetPath() + pSelectedFolder->GetLabel();
+			pFoldersManager->RenameFolder(*pScene, oldPath, newPath);
 		}
-
-		//Step 2.2: Remaining selected filters should next be attached to the new filter.
-		//Name clashes are first resolved, followed by attaching the filters.
-
-		for (EntityFilter* pSelectedFilter : selectedFilters)
-		{
-			bool nameClash = std::any_of(selectedFilters.begin(), selectedFilters.end(), [pSelectedFilter](EntityFilter* pCurrentFilter)
-				{
-					return pSelectedFilter != pCurrentFilter && pSelectedFilter->GetName() == pCurrentFilter->GetName();
-				});
-
-			if (nameClash)
-			{
-				String newFilterName = "";
-				uint32 filterIndex = 0;
-
-				if (auto num = StringUtils::ExtractTrailingNumber(pSelectedFilter->GetName()))
-				{
-					filterIndex = static_cast<uint32>(*num);
-					newFilterName = StringUtils::StripTrailingDigits(pSelectedFilter->GetName());
-				}
-				else
-					newFilterName = pSelectedFilter->GetName();
-
-				while (nameClash)
-				{
-					newFilterName = std::format("{}{}", newFilterName, ++filterIndex);
-					nameClash = std::any_of(selectedFilters.begin(), selectedFilters.end(), [&newFilterName](EntityFilter* pCurrentFilter) 
-						{  
-							return pCurrentFilter->GetName() == newFilterName;
-						});
-				}
-
-				pSelectedFilter->SetName(newFilterName);
-			}
-		}
-
-		for (EntityFilter* pSelectedFilter : selectedFilters)
-			pFilterManager->SetFilterToFilter(pSelectedFilter->GetPath(), pNewFilter->GetPath());
 	}
 
 	void EntityOutlinerView::OnDeleteSelection() noexcept
@@ -331,12 +305,15 @@ namespace Relentless
 		if (m_pOutlinerTreeView->GetSelectedItems(selectedItems) == 0)
 			return;
 
+		Scene& scene = *m_pEditor->GetActiveScene();
+		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
+
 		for (const Ref<OutlinerListItem>& pItem : selectedItems)
 		{
-			if (pItem->IsEntityItem())
-				m_pEditor->GetActiveScene()->DestroyEntity(pItem->Entity);
-			else if (pItem->IsFilterItem())
-				m_pEditor->GetEntityFiltersManager()->DestroyFilter(pItem->pFilter->GetPath());
+			if (pItem->IsEntity())
+				scene.DestroyEntity(pItem->AsEntity());
+			else if (pItem->IsFolder())
+				pFoldersManager->DeleteFolder(scene, pItem->AsFolder()->GetPath());
 		}
 	}
 
@@ -357,14 +334,14 @@ namespace Relentless
 
 		for (size_t i = 0u; i < selectedItems.size(); ++i)
 		{
-			RLS_ASSERT(selectedItems[i]->IsEntityItem(), "UNIMPLEMENTED!");
+			RLS_ASSERT(selectedItems[i]->IsEntity(), "UNIMPLEMENTED!");
 
 			if (!std::any_of(selectedItems.begin(), selectedItems.end(), [&](const Ref<OutlinerListItem>& pItem)
 				{
-					return pItem->IsEntityItem() && pScene->EntityIsParent(selectedItems[i]->Entity, pItem->Entity);
+					return pItem->IsEntity() && pScene->EntityIsParent(selectedItems[i]->AsEntity(), pItem->AsEntity());
 				}))
 			{
-				roots.insert(selectedItems[i]->Entity);
+				roots.insert(selectedItems[i]->AsEntity());
 				//TODO: Erase root list items.
 			}
 		}
@@ -379,8 +356,8 @@ namespace Relentless
 
 				for (const Ref<OutlinerListItem>& pItem : selectedItems)
 				{
-					if (pScene->EntityIsChild(pItem->Entity, toDuplicate))
-						Self(Self, pItem->Entity, duplicatedEntity);
+					if (pScene->EntityIsChild(pItem->AsEntity(), toDuplicate))
+						Self(Self, pItem->AsEntity(), duplicatedEntity);
 				}
 			};
 
@@ -390,12 +367,12 @@ namespace Relentless
 
 	String EntityOutlinerView::OnDebugItemToString(const Ref<OutlinerListItem>& item) const noexcept
 	{
-		if (item->IsEntityItem())
-			return std::format("Entity: {}", item->Entity);
-		else if (item->IsFilterItem())
-			return std::format("Filter: {}", item->pFilter->GetName());
+		if (item->IsEntity())
+			return std::format("Entity: {}", item->AsEntity());
+		else if (item->IsFolder())
+			return std::format("Folder: {}", item->AsFolder()->GetLabel());
 		else 
-			return std::format("Scene: {}", item->pScene->GetName());
+			return std::format("Scene: {}", item->AsScene()->GetName());
 	}
 
 	Ref<DragDropOperation> EntityOutlinerView::OnDragDetected(OutlinerTableRow* pRow) noexcept
@@ -406,29 +383,29 @@ namespace Relentless
 		m_pOutlinerTreeView->GetSelectedItems(selectedItems);
 
 		std::vector<entity> draggedEntities;
-		std::vector<EntityFilter*> draggedFilters;
+		std::vector<EntityFolder*> draggedFolders;
 
 		for (const auto& pSelectedItem : selectedItems)
 		{
-			if (pSelectedItem->IsEntityItem())
-				draggedEntities.push_back(pSelectedItem->Entity);
-			else if (pSelectedItem->IsFilterItem())
-				draggedFilters.push_back(pSelectedItem->pFilter);
+			if (pSelectedItem->IsEntity())
+				draggedEntities.push_back(pSelectedItem->AsEntity());
+			else if (pSelectedItem->IsFolder())
+				draggedFolders.push_back(pSelectedItem->AsFolder());
 		}
 
 		pEntityDragOp->SetDraggedEntities(std::move(draggedEntities));
-		pEntityDragOp->SetDraggedFilters(std::move(draggedFilters));
+		pEntityDragOp->SetDraggedFolders(std::move(draggedFolders));
 		
 		const Ref<OutlinerListItem>& pPrimaryDraggedItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
 
-		if (pPrimaryDraggedItem->IsEntityItem())
+		if (pPrimaryDraggedItem->IsEntity())
 		{
 			const String tooltipText = std::format(ICON_FA_BAN "   {}. Cannot attach entity to self.", GetRowName(pRow));
 			pEntityDragOp->SetTooltipText(tooltipText);
 		}
-		else if (pPrimaryDraggedItem->IsFilterItem())
+		else if (pPrimaryDraggedItem->IsFolder())
 		{
-			const String tooltipText = std::format(ICON_FA_BAN "   {}. Cannot attach filter to self.", GetRowName(pRow));
+			const String tooltipText = std::format(ICON_FA_BAN "   {}. Cannot attach folder to self.", GetRowName(pRow));
 			pEntityDragOp->SetTooltipText(tooltipText);
 		}
 
@@ -437,190 +414,108 @@ namespace Relentless
 
 	bool EntityOutlinerView::OnDragEnter(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept
 	{
-		if (dragDropOp.GetDraggedEntities().empty() && dragDropOp.GetDraggedFilters().empty())
+		if (dragDropOp.GetDraggedEntities().empty() && dragDropOp.GetDraggedFolders().empty())
 			return false;
 
 		const Ref<OutlinerListItem>& pHoveredItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
+		Scene* pScene = m_pEditor->GetActiveScene();
 
-		if (m_pOutlinerTreeView->IsItemSelected(pHoveredItem) && !pHoveredItem->IsSceneItem())
+		EntityOutlinerPolicies::Context context
 		{
-			const String tooltipText = std::format(ICON_FA_BAN "   {}. Cannot attach entity to self.", GetItemName(pHoveredItem));
-			dragDropOp.SetTooltipText(tooltipText);
-			return false;
-		}
-		else
-		{
-			Scene* pScene = m_pEditor->GetActiveScene();
+			.Scene = *pScene,
+			.FoldersManager = *m_pEditor->GetEntityFoldersManager(),
+			.TargetPayload = pHoveredItem->Payload,
+			.DraggedEntities = dragDropOp.GetDraggedEntities(),
+			.DraggedFolders = dragDropOp.GetDraggedFolders()
+		};
 
-			if (pHoveredItem->IsEntityItem())
-			{
-				if (std::any_of(dragDropOp.GetDraggedEntities().begin(), dragDropOp.GetDraggedEntities().end(), [&](entity e)
-					{
-						return pScene->EntityIsDescendant(e, pHoveredItem->Entity);
-					}))
-				{
-					const String tooltipText = std::format(ICON_FA_BAN "   {}. Parent cannot become the child of their descendant.", GetItemName(pHoveredItem));
-					dragDropOp.SetTooltipText(tooltipText);
-					return false;
-				}
-				else if (!dragDropOp.GetDraggedFilters().empty())
-				{
-					const String tooltipText = std::format(ICON_FA_BAN "   {}.", GetItemName(pHoveredItem));
-					dragDropOp.SetTooltipText(tooltipText);
-					return false;
-				}
-			}
-			else if (pHoveredItem->IsFilterItem())
-			{
-				entity containedEntity = NULL_ENTITY;
-				EntityFilter* pContainedFilter = nullptr;
-				const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
-
-				if (std::any_of(dragDropOp.GetDraggedEntities().begin(), dragDropOp.GetDraggedEntities().end(), [&](entity e)
-					{
-						containedEntity = e;
-						return pHoveredItem->pFilter->Contains(e);
-					}))
-				{
-					const String tooltipText = std::format(ICON_FA_BAN "   {} is already assigned to {}.", pScene->GetEntityManager().Get<NameComponent>(containedEntity).Name, pHoveredItem->pFilter->GetPath());
-					dragDropOp.SetTooltipText(tooltipText);
-					return false;
-				}
-				else if (std::any_of(dragDropOp.GetDraggedFilters().begin(), dragDropOp.GetDraggedFilters().end(), [&](EntityFilter* pFilter)
-					{
-						bool anyIsDescendant = false;
-						pFilterManager->ForEachFilterWithRootObject(pFilter, false, [&](EntityFilter* pDescendant)
-							{
-								anyIsDescendant = pDescendant == pHoveredItem->pFilter;
-								if (anyIsDescendant)
-									return false;
-								else
-									return true;
-							});
-
-						return anyIsDescendant;
-					}))
-				{
-					const String tooltipText = std::format(ICON_FA_BAN "   {}. Parent cannot become the child of their descendant.", GetItemName(pHoveredItem));
-					dragDropOp.SetTooltipText(tooltipText);
-					return false;
-				}
-				else if (std::any_of(dragDropOp.GetDraggedFilters().begin(), dragDropOp.GetDraggedFilters().end(), [&](EntityFilter* pFilter)
-					{
-						pContainedFilter = pFilter;
-						return pHoveredItem->pFilter->Contains(pFilter);
-					}))
-				{
-					const String tooltipText = std::format(ICON_FA_BAN "   {} is already assigned to {}.", pContainedFilter->GetName(), pHoveredItem->pFilter->GetPath());
-					dragDropOp.SetTooltipText(tooltipText);
-					return false;
-				}
-				else if (std::any_of(dragDropOp.GetDraggedFilters().begin(), dragDropOp.GetDraggedFilters().end(), [&](EntityFilter* pFilter)
-					{
-						pContainedFilter = pFilter;
-						return pHoveredItem->pFilter->FindChild(pFilter->GetName()) != nullptr;
-					}))
-				{
-					const String tooltipText = std::format(ICON_FA_BAN "   {} already contains a filter child named '{}'.", pHoveredItem->pFilter->GetName(), pContainedFilter->GetName());
-					dragDropOp.SetTooltipText(tooltipText);
-					return false;
-				}
-			}
-			else
-			{
-				RLS_ASSERT(pHoveredItem->IsSceneItem(), "[EntityOutlinerView::OnDragEnter]: Unknown item type encountered.");
-
-				Scene* pScene = m_pEditor->GetActiveScene();
-				const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
-
-				if (!dragDropOp.GetDraggedFilters().empty())
-				{
-					const String tooltipText = std::format(ICON_FA_BAN "   {}.", GetItemName(pHoveredItem));
-					dragDropOp.SetTooltipText(tooltipText);
-					return false;
-				}
-				else
-				{
-					entity containedEntity = NULL_ENTITY;
-					if (std::any_of(dragDropOp.GetDraggedEntities().begin(), dragDropOp.GetDraggedEntities().end(), [&](entity e)
-						{
-							containedEntity = e;
-							return !pScene->EntityHasAncestors(e) && !pFilterManager->IsEntityInAnyFilter(e);
-						}))
-					{
-						const String tooltipText = std::format(ICON_FA_BAN "   {} is already assigned to root.", pScene->GetEntityManager().Get<NameComponent>(containedEntity).Name);
-						dragDropOp.SetTooltipText(tooltipText);
-						return false;
-					}
-				}
-			}
-		}
+		const EntityOutlinerPolicies::ValidationResponse response = m_pPolicies->ValidateMoveRequest(context);
+		const String tooltipText = (response.IsValid ? ICON_FA_CHECK"   " : ICON_FA_BAN"   ") + response.Message;
+		dragDropOp.SetTooltipText(tooltipText);
 		
-		if (pHoveredItem->IsEntityItem())
-		{
-			const String tooltipText = std::format(ICON_FA_CHECK "   {}.", GetItemName(pHoveredItem));
-			dragDropOp.SetTooltipText(tooltipText);
-		}
-		else if (pHoveredItem->IsFilterItem())
-		{
-			const String tooltipText = std::format(ICON_FA_CHECK "   Move into '{}'.", pHoveredItem->pFilter->GetPath());
-			dragDropOp.SetTooltipText(tooltipText);
-		}
-		else
-		{
-			const String tooltipText = std::format(ICON_FA_CHECK "   Move to root.");
-			dragDropOp.SetTooltipText(tooltipText);
-		}
-
-		return true;
+		return response.IsValid;
 	}
 
 	bool EntityOutlinerView::OnDrop(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept
 	{
 		const Ref<OutlinerListItem>& pDropTargetItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
-
 		const std::vector<entity>& draggedEntities = dragDropOp.GetDraggedEntities();
+		Scene* pScene = m_pEditor->GetActiveScene();
+		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
 
-		if (pDropTargetItem->IsEntityItem())
+		EntityOutlinerPolicies::Context context
 		{
-			Scene* pScene = m_pEditor->GetActiveScene();
-			const bool shouldDetach = std::all_of(draggedEntities.begin(), draggedEntities.end(), [&](entity e) { return pScene->EntityIsChild(e, pDropTargetItem->Entity); });
+			.Scene = *pScene,
+			.FoldersManager = *m_pEditor->GetEntityFoldersManager(),
+			.TargetPayload = pDropTargetItem->Payload,
+			.DraggedEntities = dragDropOp.GetDraggedEntities(),
+			.DraggedFolders = dragDropOp.GetDraggedFolders()
+		};
 
-			if (shouldDetach)
+		const EntityOutlinerPolicies::MovePlan movePlan = m_pPolicies->ResolveMoveRequest(context);
+
+		const bool targetIsEntity = pDropTargetItem->IsEntity();
+		const bool targetIsFolder = pDropTargetItem->IsFolder();
+		
+		for (const EntityOutlinerPolicies::ItemResolution& itemResolution : movePlan.ResolvedItems)
+		{
+			const bool resolvedIsEntity = std::holds_alternative<entity>(itemResolution.Item);
+			const bool resolvedIsFolder = std::holds_alternative<EntityFolder*>(itemResolution.Item);
+
+			const entity resolvedEntity = resolvedIsEntity ? std::get<entity>(itemResolution.Item) : NULL_ENTITY;
+			const EntityFolder* resolvedFolder = resolvedIsFolder ? std::get<EntityFolder*>(itemResolution.Item) : nullptr;
+
+			switch (itemResolution.MoveOperation)
 			{
-				for (entity e : draggedEntities)
-					pScene->DetachEntity(e);
+			case EMoveOperation::NoOp:
+				break;
+			case EMoveOperation::AttachToTarget:
+			{
+				if (resolvedIsEntity)
+				{
+					m_pEditor->RemoveEntityFromCurrentFolder(resolvedEntity);
+
+					if (targetIsEntity)
+						pScene->AttachEntity(resolvedEntity, pDropTargetItem->AsEntity());
+					else if (targetIsFolder)
+					{
+						m_pEditor->RemoveEntityFromCurrentFolder(resolvedEntity);
+						pScene->DetachEntity(resolvedEntity);
+
+						const Folder folder = Folder(FolderRoot::CreateFromScene(*pScene), pDropTargetItem->AsFolder()->GetPath());
+						m_pEditor->AttachEntityToFolder(resolvedEntity, folder);
+					}
+				}
+				else if (resolvedIsFolder)
+				{
+					pFoldersManager->RenameFolder(*pScene, resolvedFolder->GetPath(), pDropTargetItem->AsFolder()->GetPath() + "/" + resolvedFolder->GetLabel());
+				}
+				break;
 			}
-			else
+			case EMoveOperation::DetachFromTarget:
 			{
-				for (entity e : draggedEntities)
-					pScene->AttachEntity(e, pDropTargetItem->Entity);
+				if (resolvedIsEntity)
+				{
+					if (targetIsEntity)
+						pScene->DetachEntity(resolvedEntity);
+				}
+				break;
 			}
-		}
-		else if (pDropTargetItem->IsFilterItem())
-		{
-			const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
-			const std::vector<EntityFilter*>& draggedFilters = dragDropOp.GetDraggedFilters();
-
-			for (entity e : draggedEntities)
-				pFilterManager->SetEntityToFilter(e, pDropTargetItem->pFilter->GetPath());
-			for (const auto& pFilter : draggedFilters)
-				pFilterManager->SetFilterToFilter(pFilter->GetPath(), pDropTargetItem->pFilter->GetPath());
-		}
-		else
-		{
-			RLS_ASSERT(pDropTargetItem->IsSceneItem(), "[EntityOutlinerView::OnDrop]: Unknown item type encountered.");
-
-			Scene* pScene = m_pEditor->GetActiveScene();
-			const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
-			
-			for (entity e : draggedEntities)
+			case EMoveOperation::ReattachToParentOfTarget:
 			{
-				if (pScene->EntityHasAncestors(e))
-					pScene->DetachEntity(e);
+				if (resolvedIsEntity)
+				{
+					if (targetIsEntity)
+					{
+						pScene->DetachEntity(resolvedEntity);
+						m_pEditor->RemoveEntityFromCurrentFolder(resolvedEntity);
 
-				if (pFilterManager->IsEntityInAnyFilter(e))
-					pFilterManager->RemoveEntityFromCurrentFilter(e);
+						const Folder folder = pScene->GetEntityManager().Get<FolderComponent>(pDropTargetItem->AsEntity()).Folder;
+						m_pEditor->AttachEntityToFolder(resolvedEntity, folder);
+					}
+				}
+				break;
+			}
 			}
 		}
 
@@ -629,156 +524,185 @@ namespace Relentless
 
 	void EntityOutlinerView::OnEntityAttached(entity child, entity parent) noexcept
 	{
+		Ref<OutlinerListItem> pSceneItem = GetRootSceneItem();
 		Ref<OutlinerListItem> pChildItem = nullptr;
 
-		if (auto it = std::find_if(m_ListItems[0]->Children.begin(), m_ListItems[0]->Children.end(), [&](const Ref<OutlinerListItem>& pListItem) { return pListItem->Entity == child; }); it != m_ListItems[0]->Children.end())
+		if (auto it = std::find_if(pSceneItem->Children.begin(), pSceneItem->Children.end(), [&](const Ref<OutlinerListItem>& pListItem) { return pListItem->IsEntity() && pListItem->AsEntity() == child; }); it != pSceneItem->Children.end())
 		{
 			pChildItem = *it;
-			std::iter_swap(it, m_ListItems[0]->Children.end() - 1);
-			m_ListItems[0]->Children.pop_back();
+			std::iter_swap(it, pSceneItem->Children.end() - 1);
+			pSceneItem->Children.pop_back();
 		}
 
-		m_EntityToItemMap[parent]->Children.push_back(pChildItem);
+		GetEntityItem(parent)->Children.push_back(pChildItem);
 
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
 	void EntityOutlinerView::OnEntityCreated(entity newEntity) noexcept
 	{
-		m_ListItems[0]->Children.push_back(CreateEntityListItem(newEntity));
+		GetRootSceneItem()->Children.push_back(CreateEntityListItem(newEntity));
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
 	void EntityOutlinerView::OnEntityDestroyed(entity destroyedEntity) noexcept
 	{
-		if (m_pOutlinerTreeView->IsItemSelected(m_EntityToItemMap[destroyedEntity]))
-			m_pOutlinerTreeView->SetItemSelection(m_EntityToItemMap[destroyedEntity], ESelectionType::Deselected);
+		const Ref<OutlinerListItem>& pDestroyedEntityItem = GetEntityItem(destroyedEntity);
 
-		if (m_pOutlinerTreeView->IsItemHighlighted(m_EntityToItemMap[destroyedEntity]))
-			m_pOutlinerTreeView->SetItemHighlighted(m_EntityToItemMap[destroyedEntity], false);
+		if (m_pOutlinerTreeView->IsItemSelected(pDestroyedEntityItem))
+			m_pOutlinerTreeView->SetItemSelection(pDestroyedEntityItem, ESelectionType::Deselected);
 
-		std::erase_if(m_ListItems[0]->Children, [destroyedEntity](const Ref<OutlinerListItem>& pItem) { return pItem->Entity == destroyedEntity; });
-		m_EntityToItemMap.erase(destroyedEntity);
+		if (m_pOutlinerTreeView->IsItemHighlighted(pDestroyedEntityItem))
+			m_pOutlinerTreeView->SetItemHighlighted(pDestroyedEntityItem, false);
+
+		if (EntityFolder* pFolder = m_pEditor->GetFolderContainingEntity(destroyedEntity))
+		{
+			if (m_FolderToItemMap.contains(pFolder->GetUUID()))
+				std::erase_if(m_FolderToItemMap.at(pFolder->GetUUID())->Children, [destroyedEntity](const Ref<OutlinerListItem>& pItem) { return pItem->IsEntity() && pItem->AsEntity() == destroyedEntity; });
+		}
+		else
+			std::erase_if(GetRootSceneItem()->Children, [destroyedEntity](const Ref<OutlinerListItem>& pItem) { return pItem->IsEntity() && pItem->AsEntity() == destroyedEntity; });
+		
+		m_EntityToItemMap.erase(m_pEditor->GetActiveScene()->GetEntityManager().Get<IDComponent>(destroyedEntity).UuId);
 
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
 	void EntityOutlinerView::OnEntityDetached(entity child, entity parent) noexcept
 	{
-		Ref<OutlinerListItem> pParentItem = m_EntityToItemMap[parent];
+		const Ref<OutlinerListItem>& pParentItem = GetEntityItem(parent);
 
-		auto it = std::find_if(pParentItem->Children.begin(), pParentItem->Children.end(), [child](const Ref<OutlinerListItem>& pChild) { return pChild->Entity == child; });
+		auto it = std::find_if(pParentItem->Children.begin(), pParentItem->Children.end(), [child](const Ref<OutlinerListItem>& pChild) { return pChild->AsEntity() == child; });
 		if (it != pParentItem->Children.end())
 		{
-			m_ListItems[0]->Children.push_back(*it);
+			GetRootSceneItem()->Children.push_back(*it);
 			pParentItem->Children.erase(it);
 		}
 
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
-	void EntityOutlinerView::OnEntityRemovedFromFilter(entity entity, EntityFilter* pParentFilter, bool filterToBeDestroyed) noexcept
+	void EntityOutlinerView::OnEntityRemovedFromFolder(entity aEntity, const Folder& aFolder) noexcept
 	{
-		Ref<OutlinerListItem> pParentItem = m_FilterToItemMap[pParentFilter];
-		auto it = std::find_if(pParentItem->Children.begin(), pParentItem->Children.end(), [entity](const Ref<OutlinerListItem>& pChild) { return pChild->Entity == entity; });
+		Scene& scene = *m_pEditor->GetActiveScene();
+
+		Ref<EntityFolder> pEntityFolder = m_pEditor->GetEntityFoldersManager()->GetFolder(scene, aFolder.GetPath());
+		const Ref<OutlinerListItem>& pParentItem = GetFolderItem(pEntityFolder);
+
+		auto it = std::find_if(pParentItem->Children.begin(), pParentItem->Children.end(), [aEntity](const Ref<OutlinerListItem>& pChild) { return pChild->IsEntity() && pChild->AsEntity() == aEntity; });
 		if (it != pParentItem->Children.end())
 		{
-			m_ListItems[0]->Children.push_back(*it);
+			GetRootSceneItem()->Children.push_back(*it);
 			pParentItem->Children.erase(it);
 		}
 
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
-	void EntityOutlinerView::OnEntitySetToFilter(entity entity, EntityFilter* pFilter) noexcept
+	void EntityOutlinerView::OnEntityAttachedToFolder(entity aEntity, const Folder& aFolder) noexcept
 	{
-		//If it has been a child of an entity or filter it will at this point already have been detached. As such only checking root is required.
+		//If it has been a child of an entity or folder it will at this point already have been detached. As such only checking root is required.
 
-		std::erase_if(m_ListItems[0]->Children, [entity](const Ref<OutlinerListItem>& pItem) { return pItem->Entity == entity; });
+		Scene& scene = *m_pEditor->GetActiveScene();
 
-		m_FilterToItemMap[pFilter]->Children.push_back(m_EntityToItemMap[entity]);
+		Ref<EntityFolder> pFolder = m_pEditor->GetEntityFoldersManager()->GetFolder(scene, aFolder.GetPath());
+
+		std::erase_if(GetRootSceneItem()->Children, [aEntity](const Ref<OutlinerListItem>& pItem) { return pItem->IsEntity() && pItem->AsEntity() == aEntity; });
+
+		const Ref<OutlinerListItem>& pFolderItem = GetFolderItem(pFolder);
+		pFolderItem->Children.push_back(m_EntityToItemMap.at(scene.GetEntityManager().Get<IDComponent>(aEntity).UuId));
+
+		if (m_pOutlinerTreeView->ExistsItemInfo(pFolderItem))
+			m_pOutlinerTreeView->SetItemExpandedState(pFolderItem, true);
+		
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
-	void EntityOutlinerView::OnEntityVisibilityChanged(entity e, bool visibilityState) noexcept
+	void EntityOutlinerView::OnEntityVisibilityChanged(entity aEntity, bool aVisibilityState) noexcept
 	{
-		if (!m_EntityToItemMap.contains(e))
+		Scene& scene = *m_pEditor->GetActiveScene();
+		EntityManager& entityManager = scene.GetEntityManager();
+
+		if (!m_EntityToItemMap.contains(entityManager.Get<IDComponent>(aEntity).UuId))
 			return;
-
-		Scene* pScene = m_pEditor->GetActiveScene();
-		EntityManager& entityManager = pScene->GetEntityManager();
 
 		const uint32 numEntities = entityManager.GetEntityAliveCount();
 		const uint32 numHiddenEntities = entityManager.Collect<HiddenInGameComponent>().Size();
-		OutlinerTableRow* pSceneOutlinerTableRow = static_cast<OutlinerTableRow*>(m_pOutlinerTreeView->GetRowWidget(m_ListItems[0]).Get());
+		OutlinerTableRow* pSceneOutlinerTableRow = static_cast<OutlinerTableRow*>(m_pOutlinerTreeView->GetRowWidget(GetRootSceneItem()).Get());
 		Button* pSceneVisibilityButton = pSceneOutlinerTableRow->GetVisibilityButton();
 		if (numHiddenEntities == numEntities)
 		{
 			pSceneVisibilityButton->SetText(ICON_FA_EYE_SLASH);
-			pSceneVisibilityButton->SetIsVisible(!visibilityState || pSceneVisibilityButton->IsHovered());
+			pSceneVisibilityButton->SetIsVisible(m_SceneItemSelected || !aVisibilityState || pSceneVisibilityButton->IsHovered());
 		}
 		else
 		{
 			pSceneVisibilityButton->SetText(ICON_FA_EYE);
-			pSceneVisibilityButton->SetIsVisible(pSceneVisibilityButton->IsHovered());
+			pSceneVisibilityButton->SetIsVisible(m_SceneItemSelected || pSceneVisibilityButton->IsHovered());
 		}
 
-		const UniquePtr<EntityFiltersManager>& pFiltersManager = m_pEditor->GetEntityFiltersManager();
-		if (pFiltersManager->IsEntityInAnyFilter(e))
+		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
+		
+		if (EntityFolder* pFolder = m_pEditor->GetFolderContainingEntity(aEntity))
 		{
-			EntityFilter* pFilter = pFiltersManager->GetFilterContainingEntity(e);
-
-			while (pFilter)
+			while (pFolder)
 			{
-				if (!m_FilterToItemMap.contains(pFilter))
-					return;
+				//We need to determine for current folder, and ALL ancestor folders whether their visibility should change.
 
-				const Ref<OutlinerListItem>& pFilterListItem = m_FilterToItemMap[pFilter];
-				if (!m_pOutlinerTreeView->IsItemVisible(pFilterListItem))
-					return;
-
-				bool changeFilterVisibility = true;
-
-				pFiltersManager->ForEachFilterWithRootObject(pFilter, false, [&](EntityFilter* pCurrentFilter)
-					{
-						const std::unordered_set<entity>& filterEntities = pCurrentFilter->GetEntities();
-						if (std::all_of(filterEntities.begin(), filterEntities.end(), [&](entity filterEntity)
-							{
-								return pScene->IsEntityVisible(filterEntity) == visibilityState;
-							}))
-						{
-							return true;
-						}
-						else
-						{
-							changeFilterVisibility = false;
-							return false;
-						}
-					});
-
-				if (changeFilterVisibility)
+				const Ref<OutlinerListItem>& pFolderListItem = GetFolderItem(pFolder);
+				if (!m_pOutlinerTreeView->IsItemVisible(pFolderListItem))
 				{
-					OutlinerTableRow* pFilterTableRow = static_cast<OutlinerTableRow*>(m_pOutlinerTreeView->GetRowWidget(m_FilterToItemMap[pFilter]).Get());
-					Button* pFilterVisibilityButton = pFilterTableRow->GetVisibilityButton();
-					pFilterVisibilityButton->SetText(visibilityState ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
-					pFilterVisibilityButton->SetIsVisible(!visibilityState || pFilterVisibilityButton->IsHovered());
+					pFolder = pFolder->GetParent();
+					continue;
 				}
 
-				pFilter = pFilter->GetParent();
+				std::unordered_set<String> folderPaths;
+				pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aFolder)
+					{
+						if (aFolder.GetPath().starts_with(pFolder->GetPath()))
+							folderPaths.insert(aFolder.GetPath());
+
+						return true;
+					});
+
+				std::vector<entity> folderEntities;
+				EntityFoldersManager::ForEachEntityInFolders(scene, folderPaths, [&](entity aCurrentEntity)
+					{
+						folderEntities.push_back(aCurrentEntity);
+						return true;
+					});
+
+				if (!folderEntities.empty())
+				{
+					const bool shouldChangeFolderVisibility = std::all_of(folderEntities.begin(), folderEntities.end(), [&](entity aCurrentEntity) { return scene.IsEntityVisible(aCurrentEntity) == aVisibilityState; });
+
+					if (shouldChangeFolderVisibility)
+					{
+						OutlinerTableRow* pFolderTableRow = static_cast<OutlinerTableRow*>(m_pOutlinerTreeView->GetRowWidget(GetFolderItem(pFolder)).Get());
+						Button* pFolderVisibilityButton = pFolderTableRow->GetVisibilityButton();
+						pFolderVisibilityButton->SetText(aVisibilityState ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
+
+						pFolderVisibilityButton->SetIsVisible(m_SelectedFolders.contains(pFolder->GetUUID()) || !aVisibilityState || pFolderVisibilityButton->IsHovered());
+					}
+				}
+
+				pFolder = pFolder->GetParent();
 			}
 		}
 
-		const Ref<OutlinerListItem>& pListItem = m_EntityToItemMap[e];
+		const Ref<OutlinerListItem>& pListItem = GetEntityItem(aEntity);
 		if (!m_pOutlinerTreeView->IsItemVisible(pListItem))
 			return;
+
+		const bool isSelected = m_pOutlinerTreeView->IsItemSelected(pListItem);
 
 		Ref<ITableRow> pRow = m_pOutlinerTreeView->GetRowWidget(pListItem);
 		OutlinerTableRow* pOutlinerTableRow = static_cast<OutlinerTableRow*>(pRow.Get());
 
 		Button* pVisibilityButton = pOutlinerTableRow->GetVisibilityButton();
 
-		pVisibilityButton->SetText(visibilityState ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
-		pVisibilityButton->SetIsVisible(!visibilityState || pVisibilityButton->IsHovered());
+		pVisibilityButton->SetText(aVisibilityState ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
+		pVisibilityButton->SetIsVisible(isSelected || !aVisibilityState || pVisibilityButton->IsHovered());
 	}
 
 	void EntityOutlinerView::OnExpandCollapseButtonClicked(Button* pButton, Ref<OutlinerListItem> pItem) noexcept
@@ -789,46 +713,73 @@ namespace Relentless
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
-	void EntityOutlinerView::OnFilterCreated(EntityFilter* pFilter) noexcept
+	void EntityOutlinerView::OnFolderCreated(EntityFolder* pFolder) noexcept
 	{
-		if (EntityFilter* pParent = pFilter->GetParent())
-			m_FilterToItemMap[pParent]->Children.push_back(CreateEntityFilterListItem(pFilter));
+		if (EntityFolder* pParent = pFolder->GetParent())
+			GetFolderItem(pParent)->Children.push_back(CreateEntityFolderListItem(pFolder));
 		else
-			m_ListItems[0]->Children.push_back(CreateEntityFilterListItem(pFilter));
+			GetRootSceneItem()->Children.push_back(CreateEntityFolderListItem(pFolder));
 		
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
-	void EntityOutlinerView::OnFilterReattached(EntityFilter* pChild, EntityFilter* pPreviousParent, EntityFilter* pNewParent) noexcept
+	void EntityOutlinerView::OnFolderMoved(EntityFolder* pMovedFolder, EntityFolder* paOldParentFolder, const String& aOldPath, const String& aNewPath) noexcept
 	{
-		if (pPreviousParent)
-			std::erase_if(m_FilterToItemMap[pPreviousParent]->Children, [pChild](const Ref<OutlinerListItem>& pItem) { return pItem->IsFilterItem() && pItem->pFilter == pChild; });
+		if (paOldParentFolder && m_FolderToItemMap.contains(paOldParentFolder->GetUUID()))
+			std::erase_if(GetFolderItem(paOldParentFolder)->Children, [pMovedFolder](const Ref<OutlinerListItem>& pItem) { return pItem->IsFolder() && pItem->AsFolder() == pMovedFolder; });
 		else
-			std::erase_if(m_ListItems[0]->Children, [pChild](const Ref<OutlinerListItem>& pItem) { return pItem->IsFilterItem() && pItem->pFilter == pChild; });
+			std::erase_if(GetRootSceneItem()->Children, [pMovedFolder](const Ref<OutlinerListItem>& pItem) { return pItem->IsFolder() && pItem->AsFolder() == pMovedFolder; });
 
-		if (pNewParent)
-			m_FilterToItemMap[pNewParent]->Children.push_back(m_FilterToItemMap[pChild]);
+		if (EntityFolder* pNewParent = pMovedFolder->GetParent())
+		{
+			GetFolderItem(pNewParent)->Children.push_back(GetFolderItem(pMovedFolder));
+			m_pOutlinerTreeView->SetItemExpandedState(GetFolderItem(pNewParent), true);
+		}
 		else
-			m_ListItems[0]->Children.push_back(m_FilterToItemMap[pChild]);
+			GetRootSceneItem()->Children.push_back(GetFolderItem(pMovedFolder));
 
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
-	void EntityOutlinerView::OnFilterDestroyed(EntityFilter* pFilter) noexcept
+	void EntityOutlinerView::OnEntityFolderDeleted(EntityFolder* pFolder) noexcept
 	{
-		if (m_pOutlinerTreeView->IsItemSelected(m_FilterToItemMap[pFilter]))
-			m_pOutlinerTreeView->SetItemSelection(m_FilterToItemMap[pFilter], ESelectionType::Deselected);
+		const Ref<OutlinerListItem>& pFolderItem = GetFolderItem(pFolder);
 
-		if (m_pOutlinerTreeView->IsItemHighlighted(m_FilterToItemMap[pFilter]))
-			m_pOutlinerTreeView->SetItemHighlighted(m_FilterToItemMap[pFilter], false);
+		if (m_pOutlinerTreeView->IsItemSelected(pFolderItem))
+			m_pOutlinerTreeView->SetItemSelection(pFolderItem, ESelectionType::Deselected);
 
-		if (EntityFilter* pParentFilter = pFilter->GetParent())
-			std::erase_if(m_FilterToItemMap[pParentFilter]->Children, [pFilter](const Ref<OutlinerListItem>& pItem) { return pItem->IsFilterItem() && pItem->pFilter == pFilter; });
+		if (m_pOutlinerTreeView->IsItemHighlighted(pFolderItem))
+			m_pOutlinerTreeView->SetItemHighlighted(pFolderItem, false);
+
+		//Strategy: Deleting a folder should incur a move of all entities and folders within to first valid ancestor (if none -> scene root item)
+		EntityFolder* pAncestorFolder = pFolder->GetParent();
+		while (pAncestorFolder && pAncestorFolder->IsMarkedAsDeleted())
+			pAncestorFolder = pAncestorFolder->GetParent();
+
+		std::vector<Ref<OutlinerListItem>> children = pFolderItem->Children;
+		if (pAncestorFolder)
+		{
+			const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
+
+			for (auto& pChildItem : children)
+			{
+				if (pChildItem->IsEntity())
+					m_pEditor->AttachEntityToFolder(pChildItem->AsEntity(), Folder(FolderRoot::CreateFromScene(*m_pEditor->GetActiveScene()), pAncestorFolder->GetPath()));
+			}
+		}
 		else
-			std::erase_if(m_ListItems[0]->Children, [pFilter](const Ref<OutlinerListItem>& pItem) { return pItem->IsFilterItem() && pItem->pFilter == pFilter; });
+		{
+			GetRootSceneItem()->Children.insert(GetRootSceneItem()->Children.end(), children.begin(), children.end());
+		}
+
+
+		if (EntityFolder* pParentFolder = pFolder->GetParent())
+			std::erase_if(GetFolderItem(pParentFolder)->Children, [pFolder](const Ref<OutlinerListItem>& pItem) { return pItem->IsFolder() && pItem->AsFolder() == pFolder; });
+		else
+			std::erase_if(GetRootSceneItem()->Children, [pFolder](const Ref<OutlinerListItem>& pItem) { return pItem->IsFolder() && pItem->AsFolder() == pFolder; });
 		
-		m_FilterToItemMap.erase(pFilter);
-		m_SelectedFilters.erase(pFilter);
+		m_FolderToItemMap.erase(pFolder->GetUUID());
+		m_SelectedFolders.erase(pFolder->GetUUID());
 
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
@@ -852,8 +803,9 @@ namespace Relentless
 
 	Ref<ITableRow> EntityOutlinerView::OnGenerateRow(const Ref<OutlinerListItem>& item) noexcept
 	{
-		m_SuspendNotifications = true;
+		RLS_SCOPED_SUSPEND();
 
+		Scene& scene = *m_pEditor->GetActiveScene();
 		const ItemInfo& info = m_pOutlinerTreeView->GetItemInfo(item);
 
 		OutlinerTableRowCreateInfo createInfo;
@@ -861,50 +813,57 @@ namespace Relentless
 		createInfo.HasChildren = info.HasChildren;
 		createInfo.IsExpanded = info.IsExpanded;
 
-		if (item->IsEntityItem())
+		if (item->IsEntity())
 		{
 			createInfo.Icon = ICON_FA_CUBE;
-			createInfo.Name = m_pEditor->GetActiveScene()->GetEntityManager().Get<NameComponent>(item->Entity).Name;
+			createInfo.Name = scene.GetEntityManager().Get<NameComponent>(item->AsEntity()).Name;
 			createInfo.Type = "Entity";
-			createInfo.IsSelected = m_pEditor->GetSelection()->IsEntitySelected(item->Entity);
-			createInfo.IsVisible = m_pEditor->GetActiveScene()->IsEntityVisible(item->Entity);
+			createInfo.IsSelected = m_pEditor->GetSelection()->IsEntitySelected(item->AsEntity());
+			createInfo.IsVisible = scene.IsEntityVisible(item->AsEntity());
 		}
-		else if (item->IsFilterItem())
+		else if (item->IsFolder())
 		{
 			createInfo.Icon = (info.HasChildren && info.IsExpanded) ? ICON_FA_FOLDER_OPEN : ICON_FA_FOLDER;
-			createInfo.Name = item->pFilter->GetName();
-			createInfo.Type = "Filter";
-			createInfo.IsSelected = m_SelectedFilters.contains(item->pFilter);
+			createInfo.Name = item->AsFolder()->GetLabel();
+			createInfo.Type = "Folder";
+			createInfo.IsSelected = m_SelectedFolders.contains(item->AsFolder()->GetUUID());
 			constexpr Color folderIconColor = Colors::Normalize(213.0f, 166.0f, 74.0f, 255.0f);
 			createInfo.IconColor = folderIconColor;
 
-			Scene* pScene = m_pEditor->GetActiveScene();
-			const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
+			const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
 
-			pFilterManager->ForEachFilterWithRootObject(item->pFilter, true, [&](EntityFilter* pFilter)
+			std::unordered_set<String> folderPaths;
+
+			const String rootPath = item->AsFolder()->GetPath();
+
+			pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aFolder)
 				{
-					const std::unordered_set<entity> filterEntities = pFilter->GetEntities();
-					if (filterEntities.empty())
-						return true;
+					if (aFolder.GetPath().starts_with(rootPath))
+						folderPaths.insert(aFolder.GetPath());
 
-					createInfo.IsVisible = std::all_of(filterEntities.begin(), filterEntities.end(), [&](entity filterEntity)
-						{
-							return pScene->IsEntityVisible(filterEntity);
-						});
-				
-					return createInfo.IsVisible;
+					return true;
 				});
+
+			std::vector<entity> folderEntities;
+
+			EntityFoldersManager::ForEachEntityInFolders(scene, folderPaths, [&scene, &folderEntities](entity aEntity)
+				{
+					folderEntities.push_back(aEntity);
+					return true;
+				});
+
+			createInfo.IsVisible = std::all_of(folderEntities.begin(), folderEntities.end(), [&](entity aEntity) { return scene.IsEntityVisible(aEntity); });
 		}
 		else
 		{
-			RLS_ASSERT(item->IsSceneItem(), "[EntityOutlinerView::OnGenerateRow]: Unknown item type encountered.");
+			RLS_ASSERT(item->IsScene(), "[EntityOutlinerView::OnGenerateRow]: Unknown item type encountered.");
 
 			createInfo.Icon = ICON_FA_SITEMAP;
-			createInfo.Name = item->pScene->GetName();
+			createInfo.Name = item->AsScene()->GetName();
 			createInfo.Type = "Scene";
 			createInfo.IsSelected = m_SceneItemSelected;
 			
-			EntityManager& entityManager = item->pScene->GetEntityManager();
+			EntityManager& entityManager = item->AsScene()->GetEntityManager();
 			createInfo.IsVisible = entityManager.Collect<HiddenInGameComponent>().Size() != entityManager.GetEntityAliveCount();
 		}
 
@@ -939,8 +898,6 @@ namespace Relentless
 
 		if (highlighted && m_pFilter->TestTextFilter(createInfo.Type, ETextFilterTextComparisonMode::Partial))
 			pRow->GetTypeLabel()->SetHighlightedSubstring(m_pFilter->GetFilterText());
-
-		m_SuspendNotifications = false;
 
 		return pRow;
 	}
@@ -1012,9 +969,9 @@ namespace Relentless
 			{
 				auto&& GetItemRank = [](const Ref<OutlinerListItem>& pItem) noexcept -> int 
 					{
-						if (pItem->IsEntityItem())
+						if (pItem->IsEntity())
 							return 2;
-						else if (pItem->IsFilterItem())
+						else if (pItem->IsFolder())
 							return 1;
 						else
 							return 0;
@@ -1042,9 +999,9 @@ namespace Relentless
 	void EntityOutlinerView::OnSceneChanged(Scene* pScene) noexcept
 	{
 		m_EntityToItemMap.clear();
-		m_FilterToItemMap.clear();
+		m_FolderToItemMap.clear();
 		m_ListItems.clear();
-		m_SelectedFilters.clear();
+		m_SelectedFolders.clear();
 		m_SceneItemSelected = false;
 
 		m_pOutlinerTreeView->RequestTreeRefresh();
@@ -1053,120 +1010,27 @@ namespace Relentless
 			return;
 
 		pScene->OnEntityCreated.Connect(this, &EntityOutlinerView::OnEntityCreated);
-		pScene->OnEntityDestroyed.Connect(this, &EntityOutlinerView::OnEntityDestroyed);
+		pScene->OnEntityPreDestroyed.Connect(this, &EntityOutlinerView::OnEntityDestroyed);
 		pScene->OnEntityAttached.Connect(this, &EntityOutlinerView::OnEntityAttached);
 		pScene->OnEntityDetached.Connect(this, &EntityOutlinerView::OnEntityDetached);
 		pScene->OnEntityVisibilityChanged.Connect(this, &EntityOutlinerView::OnEntityVisibilityChanged);
 
-		m_ListItems.push_back(CreateSceneListItem(pScene));
-
-		pScene->GetEntityManager().Collect<IDComponent, RootComponent>().Do([this](entity e)
-			{
-				m_ListItems[0]->Children.push_back(CreateEntityListItem(e));
-			});
+		RecreateItemHierarchy();
 	}
 
 	void EntityOutlinerView::OnSearchTextChanged(const char* pText) noexcept
 	{
-		m_SuspendNotifications = true;
+		RLS_SCOPED_SUSPEND();
 
 		m_pOutlinerTreeView->ClearSelection();
 		m_pOutlinerTreeView->ClearHightlightedItems();
 		m_ListItems.clear();
 		m_EntityToItemMap.clear();
-		m_FilterToItemMap.clear();
+		m_FolderToItemMap.clear();
 		
 		m_pFilter->SetFilterText(pText);
 
-		const bool containsEntityLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetEntityTypeAsString(), ETextFilterTextComparisonMode::Partial);
-		const bool containsFilterLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetFilterTypeAsString(), ETextFilterTextComparisonMode::Partial);
-		const bool containsSceneLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetSceneTypeAsString(), ETextFilterTextComparisonMode::Partial);
-
-		Scene* pScene = m_pEditor->GetActiveScene();
-
-		EntityManager& mgr = pScene->GetEntityManager();
-		const UniquePtr<Selection>& pSelection = m_pEditor->GetSelection();
-		const UniquePtr<EntityFiltersManager>& pFilterManager = m_pEditor->GetEntityFiltersManager();
-
-		auto&& RecursivelyTestAndAddEntityItem = [&](auto&& Self, entity e) -> void
-			{
-				bool added = false;
-
-				if (containsEntityLabel || m_pFilter->TestTextFilter(mgr.Get<NameComponent>(e).Name, ETextFilterTextComparisonMode::Partial))
-				{
-					Ref<OutlinerListItem> pEntityItem = CreateEntityListItem(e);
-
-					if (pSelection->IsEntitySelected(e))
-						m_pOutlinerTreeView->SetItemSelection(pEntityItem, ESelectionType::Selected);
-
-					m_pOutlinerTreeView->SetItemHighlighted(pEntityItem, true);
-
-					if (mgr.Has<IsChildComponent>(e))
-						m_EntityToItemMap[mgr.Get<IsChildComponent>(e).Parent]->Children.push_back(pEntityItem);
-					else if (EntityFilter* pFilter = pFilterManager->GetFilterContainingEntity(e))
-					{
-						pFilterManager->ForEachFilterWithDescendantObject(pFilter, true, [](EntityFilter* pCurrentFilter)
-							{
-								//TODO... Should probably begin with this type of recursive function but for root filters first!!!
-							});
-					}
-					else
-					{
-						if (m_ListItems.empty())
-							m_ListItems.push_back(CreateSceneListItem(pScene));
-
-						m_ListItems[0]->Children.push_back(pEntityItem);
-					}
-
-					added = true;
-				}
-				else
-				{
-					const std::vector<entity> descendants = m_pEditor->GetActiveScene()->GetAllEntityDescendants(e);
-					if (std::any_of(descendants.begin(), descendants.end(), [&](entity descendant)
-						{
-							return m_pFilter->TestTextFilter(mgr.Get<NameComponent>(descendant).Name, ETextFilterTextComparisonMode::Partial);
-						}
-						))
-					{
-						Ref<OutlinerListItem> pEntityItem = CreateEntityListItem(e);
-
-						if (pSelection->IsEntitySelected(e))
-							m_pOutlinerTreeView->SetItemSelection(pEntityItem, ESelectionType::Selected);
-
-						if (mgr.Has<IsChildComponent>(e))
-							m_EntityToItemMap[mgr.Get<IsChildComponent>(e).Parent]->Children.push_back(pEntityItem);
-						else
-						{
-							if (m_ListItems.empty())
-								m_ListItems.push_back(CreateSceneListItem(pScene));
-
-							m_ListItems[0]->Children.push_back(pEntityItem);
-						}
-
-						added = true;
-					}
-				}
-
-				if (added)
-				{
-					const std::vector<entity> children = m_pEditor->GetActiveScene()->GetEntityChildren(e);
-					for (auto child : children)
-						Self(Self, child);
-				}
-			};
-
-		mgr.Collect<RootComponent>().Do([&](entity e) { RecursivelyTestAndAddEntityItem(RecursivelyTestAndAddEntityItem, e); });
-
-		if ((m_pFilter->TestTextFilter(pScene->GetName(), ETextFilterTextComparisonMode::Partial) || containsSceneLabel))
-		{
-			if (m_ListItems.empty())
-				m_ListItems.push_back(CreateSceneListItem(pScene));
-
-			m_pOutlinerTreeView->SetItemHighlighted(m_ListItems[0], true);
-		}
-
-		m_SuspendNotifications = false;
+		RecreateItemHierarchy();
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
@@ -1188,9 +1052,9 @@ namespace Relentless
 			{
 				for (size_t i = 0u; i < items.size(); ++i)
 				{
-					const bool isEntityItem = items[i]->IsEntityItem();
+					const bool isEntityItem = items[i]->IsEntity();
 
-					if (!m_pOutlinerTreeView->IsItemSelected(items[i]) && m_pFilter->TestTextFilter(isEntityItem ? mgr.Get<NameComponent>(items[i]->Entity).Name : "?", ETextFilterTextComparisonMode::Partial))
+					if (!m_pOutlinerTreeView->IsItemSelected(items[i]) && m_pFilter->TestTextFilter(isEntityItem ? mgr.Get<NameComponent>(items[i]->AsEntity()).Name : "?", ETextFilterTextComparisonMode::Partial))
 						m_pOutlinerTreeView->SetItemSelection(items[i], ESelectionType::Selected);
 
 					Self(Self, items[i]->Children);
@@ -1205,7 +1069,7 @@ namespace Relentless
 		if (m_SuspendNotifications)
 			return;
 
-		m_SuspendNotifications = true;
+		RLS_SCOPED_SUSPEND();
 
 		const UniquePtr<Selection>& pSelection = m_pEditor->GetSelection();
 
@@ -1220,11 +1084,11 @@ namespace Relentless
 
 		if (selectionType == ESelectionType::Selected)
 		{
-			if (item->IsEntityItem())
-				pSelection->SelectEntity(item->Entity);
-			else if (item->IsFilterItem())
-				m_SelectedFilters.insert(item->pFilter);
-			else if (item->IsSceneItem())
+			if (item->IsEntity())
+				pSelection->SelectEntity(item->AsEntity());
+			else if (item->IsFolder())
+				m_SelectedFolders.insert(item->AsFolder()->GetUUID());
+			else if (item->IsScene())
 				m_SceneItemSelected = true;
 
 			if (pVisibilityButton)
@@ -1235,107 +1099,316 @@ namespace Relentless
 		}
 		else
 		{
-			if (item->IsEntityItem())
-				pSelection->DeselectEntity(item->Entity);
-			else if (item->IsFilterItem())
-				m_SelectedFilters.erase(item->pFilter);
-			else if (item->IsSceneItem())
+			if (item->IsEntity())
+				pSelection->DeselectEntity(item->AsEntity());
+			else if (item->IsFolder())
+				m_SelectedFolders.erase(item->AsFolder()->GetUUID());
+			else if (item->IsScene())
 				m_SceneItemSelected = false;
 
 			if (pOutlinerTableRow && !pOutlinerTableRow->IsHovered())
-			{
-				pVisibilityButton->SetIsVisible(false);
+			{	
+				if (pVisibilityButton->GetText() == ICON_FA_EYE)
+					pVisibilityButton->SetIsVisible(false);
+				
 				pVisibilityButton->SetAlpha(0.7f);
 			}
 		}
-
-		m_SuspendNotifications = false;
 	}
 
-	void EntityOutlinerView::OnSelectionChangedExternally(entity e, ESelectionState selectionState) noexcept
+	void EntityOutlinerView::OnSelectionChangedExternally(entity aEntity, ESelectionState aSelectionState) noexcept
 	{
 		if (m_SuspendNotifications)
 			return;
 
-		m_SuspendNotifications = true;
-		m_pOutlinerTreeView->SetItemSelection(m_EntityToItemMap[e], (ESelectionType)selectionState);
-		m_SuspendNotifications = false;
+		Scene& scene = *m_pEditor->GetActiveScene();
+
+		{
+			RLS_SCOPED_SUSPEND();
+			m_pOutlinerTreeView->SetItemSelection(m_EntityToItemMap.at(scene.GetEntityManager().Get<IDComponent>(aEntity).UuId), (ESelectionType)aSelectionState);
+		}
+
+		if (!m_pOutlinerTreeView->IsItemVisible(m_EntityToItemMap.at(scene.GetEntityManager().Get<IDComponent>(aEntity).UuId)))
+			return;
+
+		OutlinerTableRow* pOutlinerTableRow = static_cast<OutlinerTableRow*>(m_pOutlinerTreeView->GetRowWidget(m_EntityToItemMap[scene.GetEntityManager().Get<IDComponent>(aEntity).UuId]).Get());
+
+		switch (aSelectionState)
+		{
+		case ESelectionState::Selected:
+		{
+			pOutlinerTableRow->GetVisibilityButton()->SetIsVisible(true);
+			pOutlinerTableRow->GetVisibilityButton()->SetAlpha(1.0f);
+			break;
+		}
+		case ESelectionState::Deselected:
+		{
+			if (!pOutlinerTableRow->IsHovered() && (pOutlinerTableRow->GetVisibilityButton()->GetText() != ICON_FA_EYE_SLASH))
+			{
+				pOutlinerTableRow->GetVisibilityButton()->SetIsVisible(false);
+				pOutlinerTableRow->GetVisibilityButton()->SetAlpha(0.7f);
+			}
+
+			DeselectAllFolders();
+
+			if (m_SceneItemSelected)
+			{
+				OnSelectionChanged(GetRootSceneItem(), ESelectionType::Deselected);
+				m_pOutlinerTreeView->SetItemSelection(GetRootSceneItem(), ESelectionType::Deselected);
+			}
+
+			break;
+		}
+		}
 	}
 
 	void EntityOutlinerView::OnVisibilityButtonClicked(Button* pButton, Ref<OutlinerListItem> pItem) noexcept
 	{
-		const bool isVisible = pButton->GetText() == ICON_FA_EYE;
+		const bool isVisible = (pButton->GetText() == ICON_FA_EYE);
+		const bool newVisibility = !isVisible;
 
-		if (pItem->IsEntityItem())
-			m_pEditor->GetActiveScene()->SetEntityVisibleInGame(pItem->Entity, !isVisible);
-		else if (pItem->IsFilterItem())
+		ToggleVisibilityForItem(pItem, newVisibility);
+
+		if (m_pOutlinerTreeView->IsItemSelected(pItem))
 		{
-			const UniquePtr<EntityFiltersManager>& pFiltersManager = m_pEditor->GetEntityFiltersManager();
-			Scene* pScene = m_pEditor->GetActiveScene();
-			
-			pFiltersManager->ForEachFilterWithRootObject(pItem->pFilter, true, [&](EntityFilter* pFilter)
+			std::vector<Ref<OutlinerListItem>> otherSelectedItems;
+			m_pOutlinerTreeView->GetSelectedItems(otherSelectedItems);
+
+			std::erase_if(otherSelectedItems, [pItem](const Ref<OutlinerListItem>& pCurrentItem) { return pCurrentItem == pItem; });
+		
+			for (const auto& pOtherItem : otherSelectedItems)
+				ToggleVisibilityForItem(pOtherItem, newVisibility);
+		}
+	}
+
+	void EntityOutlinerView::RecreateItemHierarchy() noexcept
+	{
+		/*
+			STRATEGY:
+			1. Add Scene as root item.
+			2. For every root folder:
+			2.1 Add it, then recursively add its children, along with their respective entities and entities children.
+			2.2 This takes care of all folders and entities that are in folders , as well as entities that are children of entities in folders.
+			3. For every root entity that is not in a folder, add it, then recursively add its children.
+
+			Problem: Any entry should be added if it or any of its descendants match the text filter, else it shouldn't.
+			Solution: When adding an entry, check if it or any of its descendants match the text filter, if so add it, else skip it.
+		*/
+
+		Scene& scene = *m_pEditor->GetActiveScene();
+		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
+		const UniquePtr<Selection>& pSelection = m_pEditor->GetSelection();
+
+		std::vector<entity> entitiesToAdd;
+		std::vector<String> foldersToAdd;
+
+		const bool containsEntityLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetEntityTypeAsString(), ETextFilterTextComparisonMode::Partial);
+		const bool containsFolderLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetFolderTypeAsString(), ETextFilterTextComparisonMode::Partial);
+		const bool containsSceneLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetSceneTypeAsString(), ETextFilterTextComparisonMode::Partial);
+
+		pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aEntityFolder)
+			{
+				if (m_pFilter->TestTextFilter(aEntityFolder.GetLabel(), ETextFilterTextComparisonMode::Partial) || containsFolderLabel)
 				{
-					const std::unordered_set<entity>& entitiesInFilter = pFilter->GetEntities();
+					foldersToAdd.push_back(aEntityFolder.GetPath());
+					return true;
+				}
 
-					for (entity e : entitiesInFilter)
-						pScene->SetEntityVisibleInGame(e, !isVisible);
+				//We need ALL descendant folders and ALL entities belonging to those folders AND all entities descending from THOSE entities as well!
 
+				std::unordered_set<String> descendantFolderLabels;
+				std::unordered_set<String> descendantFolderPaths;
+
+				//Descendant folders:
+				pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aCandidateDescendantFolder)
+					{
+						if (aEntityFolder.GetUUID() == aCandidateDescendantFolder.GetUUID())
+							return true;
+
+						if (aCandidateDescendantFolder.GetPath().starts_with(aEntityFolder.GetPath()))
+						{
+							descendantFolderLabels.insert(aCandidateDescendantFolder.GetLabel());
+							descendantFolderPaths.insert(aCandidateDescendantFolder.GetPath());
+						}
+
+						return true;
+					});
+
+				if (std::ranges::any_of(descendantFolderLabels, [&](const String& aDescendantLabel)
+					{
+						return m_pFilter->TestTextFilter(aDescendantLabel, ETextFilterTextComparisonMode::Partial);
+					}))
+				{
+					foldersToAdd.push_back(aEntityFolder.GetPath());
+					return true;
+				}
+
+				descendantFolderPaths.insert(aEntityFolder.GetPath());
+
+				//All entities for all those folders:
+				EntityFoldersManager::ForEachEntityInFolders(scene, descendantFolderPaths, [&](entity aCurrentEntity)
+					{
+						if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(aCurrentEntity).Name, ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
+						{
+							foldersToAdd.push_back(aEntityFolder.GetPath());
+							return false;
+						}
+
+						//Test descendants:
+						scene.ForEachEntityWithAncestorEntity(aCurrentEntity, true, [&](entity currentDescendant)
+							{
+								if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(currentDescendant).Name, ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
+								{
+									foldersToAdd.push_back(aEntityFolder.GetPath());
+									return false;
+								}
+								return true;
+							});
+
+						return true;
+					});
+
+				return true;
+			});
+
+		auto&& ConditionallyAddEntity = [&](entity currentEntity)
+			{
+				scene.ForEachEntityWithAncestorEntity(currentEntity, true, [&](entity e)
+					{
+						if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(e).Name, ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
+						{
+							entitiesToAdd.push_back(currentEntity);
+							return false;
+						}
+						return true;
+					});
+			};
+
+		scene.GetEntityManager().Collect<IDComponent, RootComponent>().Do([&](entity e)
+			{
+				scene.ForEachEntityWithAncestorEntity(e, true, [&](entity currentEntity)
+					{
+						ConditionallyAddEntity(currentEntity);
+						return true;
+					});
+			});
+
+
+		enum class NodeCat : uint8_t { Root = 0, Internal = 1, Leaf = 2 };
+
+		auto category = [&](entity e) -> NodeCat 
+			{
+				const bool p = scene.HasParent(e);
+				if (!p)
+					return NodeCat::Root;
+
+				return scene.IsParent(e) ? NodeCat::Internal : NodeCat::Leaf;
+			};
+
+		// Optional: add tie-breakers after category (Id, Name, Priority…)
+		auto key = [&](entity e) 
+			{
+				return std::tuple{ static_cast<uint8_t>(category(e)), /* e.Priority, e.Id, ... */ };
+			};
+
+		std::stable_sort(entitiesToAdd.begin(), entitiesToAdd.end(), [&](entity a, entity b) 
+			{ 
+				return key(a) < key(b); 
+			});
+
+		std::stable_sort(foldersToAdd.begin(), foldersToAdd.end(), [&](const String& a, const String& b)
+			{
+				return StringUtils::Split(a, '/').size() < StringUtils::Split(b, '/').size();
+			});
+
+		//We now know what folders and entities to add, so we can proceed to add them.
+		if (!foldersToAdd.empty() || !entitiesToAdd.empty())
+		{
+			Ref<OutlinerListItem> pSceneListItem = CreateSceneListItem(m_pEditor->GetActiveScene());
+			if (m_SceneItemSelected)
+				m_pOutlinerTreeView->SetItemSelection(pSceneListItem, ESelectionType::Selected);
+
+			if (m_pFilter->TestTextFilter(scene.GetName(), ETextFilterTextComparisonMode::Partial) || containsSceneLabel)
+				m_pOutlinerTreeView->SetItemHighlighted(pSceneListItem, true);
+
+			m_ListItems.push_back(pSceneListItem);
+
+			for (const String& folderPath : foldersToAdd)
+			{
+				EntityFolder* pFolder = pFoldersManager->GetFolder(scene, folderPath);
+
+				Ref<OutlinerListItem> pFolderListItem = CreateEntityFolderListItem(pFolder);
+				if (m_SelectedFolders.contains(pFolder->GetUUID()))
+					m_pOutlinerTreeView->SetItemSelection(pFolderListItem, ESelectionType::Selected);
+
+				if (m_pFilter->TestTextFilter(pFolder->GetLabel(), ETextFilterTextComparisonMode::Partial) || containsFolderLabel)
+					m_pOutlinerTreeView->SetItemHighlighted(pFolderListItem, true);
+
+				if (pFolder->GetParent() && m_FolderToItemMap.contains(pFolder->GetParent()->GetUUID()))
+					m_FolderToItemMap[pFolder->GetParent()->GetUUID()]->Children.push_back(pFolderListItem);
+				else
+					GetRootSceneItem()->Children.push_back(pFolderListItem);
+			}
+			for (entity e : entitiesToAdd)
+			{
+				Ref<OutlinerListItem> pEntityListItem = CreateEntityListItem(e);
+				if (pSelection->IsEntitySelected(e))
+					m_pOutlinerTreeView->SetItemSelection(pEntityListItem, ESelectionType::Selected);
+
+				if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(e).Name, ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
+					m_pOutlinerTreeView->SetItemHighlighted(pEntityListItem, true);
+
+				if (scene.EntityHasAncestors(e))
+					m_EntityToItemMap[scene.GetEntityManager().Get<IDComponent>(scene.GetParent(e)).UuId]->Children.push_back(pEntityListItem);
+				else if (EntityFolder* pFolder = m_pEditor->GetFolderContainingEntity(e))
+					m_FolderToItemMap[pFolder->GetUUID()]->Children.push_back(pEntityListItem);
+				else
+					GetRootSceneItem()->Children.push_back(pEntityListItem);
+			}
+		}
+		else
+		{
+			if (m_pFilter->TestTextFilter(scene.GetName(), ETextFilterTextComparisonMode::Partial) || containsSceneLabel)
+			{
+				Ref<OutlinerListItem> pSceneListItem = CreateSceneListItem(m_pEditor->GetActiveScene());
+				if (m_SceneItemSelected)
+					m_pOutlinerTreeView->SetItemSelection(pSceneListItem, ESelectionType::Selected);
+
+				m_pOutlinerTreeView->SetItemHighlighted(pSceneListItem, true);
+				m_ListItems.push_back(pSceneListItem);
+			}
+		}
+	}
+
+	void EntityOutlinerView::ToggleVisibilityForItem(const Ref<OutlinerListItem>& pAOutlinerListItem, bool aToVisible) noexcept
+	{
+		Scene& scene = *m_pEditor->GetActiveScene();
+
+		if (pAOutlinerListItem->IsEntity())
+			scene.SetEntityVisibleInGame(pAOutlinerListItem->AsEntity(), aToVisible);
+		else if (pAOutlinerListItem->IsFolder())
+		{
+			const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
+
+			const String rootPath = pAOutlinerListItem->AsFolder()->GetPath();
+
+			std::unordered_set<String> folderPaths;
+
+			pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aFolder)
+				{
+					if (aFolder.GetPath().starts_with(rootPath))
+						folderPaths.insert(aFolder.GetPath());
+
+					return true;
+				});
+
+			EntityFoldersManager::ForEachEntityInFolders(scene, folderPaths, [&scene, aToVisible](entity aEntity)
+				{
+					scene.SetEntityVisibleInGame(aEntity, aToVisible);
 					return true;
 				});
 		}
 		else
-		{
-			RLS_ASSERT(pItem->IsSceneItem(), "[EntityOutlinerView::OnVisibilityButtonClicked]: Unknown item type encountered!");
-
-			Scene* pScene = pItem->pScene;
-			pScene->GetEntityManager().Collect<IDComponent>().Do([pScene, isVisible](entity e)
-				{
-					pScene->SetEntityVisibleInGame(e, !isVisible);
-				});
-		}
-	
-		if (!m_pOutlinerTreeView->IsItemSelected(pItem))
-			return;
-
-		std::vector<Ref<OutlinerListItem>> selectedItems;
-		m_pOutlinerTreeView->GetSelectedItems(selectedItems);
-
-		std::erase_if(selectedItems, [pItem](const Ref<OutlinerListItem>& pCurrentItem) { return pCurrentItem == pItem; });
-
-		const UniquePtr<EntityFiltersManager>& pFiltersManager = m_pEditor->GetEntityFiltersManager();
-		Scene* pScene = m_pEditor->GetActiveScene();
-
-		for (const auto& pItem : selectedItems)
-		{
-			if (pItem->IsEntityItem())
-				pScene->SetEntityVisibleInGame(pItem->Entity, !isVisible);
-			else if (pItem->IsFilterItem())
-			{
-				const UniquePtr<EntityFiltersManager>& pFiltersManager = m_pEditor->GetEntityFiltersManager();
-				Scene* pScene = m_pEditor->GetActiveScene();
-
-				pFiltersManager->ForEachFilterWithRootObject(pItem->pFilter, true, [&](EntityFilter* pFilter)
-					{
-						const std::unordered_set<entity>& entitiesInFilter = pFilter->GetEntities();
-
-						for (entity e : entitiesInFilter)
-							pScene->SetEntityVisibleInGame(e, !isVisible);
-
-						return true;
-					});
-			}
-			else
-			{
-				RLS_ASSERT(pItem->IsSceneItem(), "[EntityOutlinerView::OnVisibilityButtonClicked]: Unknown item type encountered!");
-
-				Scene* pScene = pItem->pScene;
-				pScene->GetEntityManager().Collect<IDComponent>().Do([pScene, isVisible](entity e)
-					{
-						pScene->SetEntityVisibleInGame(e, !isVisible);
-					});
-
-				return;
-			}
-		}
+			scene.GetEntityManager().Collect<IDComponent>().Do([&scene, aToVisible](entity aEntity) { scene.SetEntityVisibleInGame(aEntity, aToVisible); });
 	}
 }

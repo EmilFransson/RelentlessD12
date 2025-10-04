@@ -12,7 +12,7 @@ endif()
 
 project("Relentless")
 set(CMAKE_SYSTEM_VERSION "10.0.26100.0" CACHE STRING "Target Windows SDK version")
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Define the macro globally to resolve mutex constructor issue

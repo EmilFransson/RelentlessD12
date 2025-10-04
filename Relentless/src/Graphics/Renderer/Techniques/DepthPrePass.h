@@ -1,7 +1,9 @@
 #pragma once
-#include "Graphics/RHI/RHI.h"
 #include "Graphics/Renderer/RenderTypes.h"
+#include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/PipelineState.h"
+#include "Graphics/RHI/RHI.h"
+#include "Graphics/RHI/Texture.h"
 
 namespace Relentless
 {
@@ -12,6 +14,8 @@ namespace Relentless
 		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept;
 	private:
 		GraphicsDevice* m_pDevice = nullptr;
+
+		Ref<Texture> m_pDepthTarget = nullptr;
 		Ref<PipelineState> m_pOpaquePSO = nullptr;
 	};
 }

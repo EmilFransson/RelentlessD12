@@ -2,26 +2,29 @@
 
 #include <Relentless.h>
 
-#include "../Core/EntityFilters.h"
+#include "../Core/EntityFolders.h"
 #include "DragDrop/OutlinerDragDropOperation.h"
 
 namespace Relentless
 {
+	using OutlinerPayload = std::variant<entity, EntityFolder*, Scene*>;
+
 	struct OutlinerListItem : public RefCounted<OutlinerListItem>
 	{
 		std::vector<Ref<OutlinerListItem>> Children;
+		OutlinerPayload Payload;
 
-		entity Entity = NULL_ENTITY;
-		EntityFilter* pFilter = nullptr;
-		Scene* pScene = nullptr;
+		NO_DISCARD static constexpr std::string_view GetEntityTypeAsString() { return "Entity"; }
+		NO_DISCARD static constexpr std::string_view GetFolderTypeAsString() { return "Folder"; }
+		NO_DISCARD static constexpr std::string_view GetSceneTypeAsString() { return "Scene"; }
 
-		NO_DISCARD static const String& GetEntityTypeAsString() { static String str = "Entity";  return str; }
-		NO_DISCARD static const String& GetFilterTypeAsString() { static String str = "Filter"; return str; }
-		NO_DISCARD static const String& GetSceneTypeAsString() { static String str = "Scene"; return str; }
+		NO_DISCARD bool IsEntity() const noexcept { return std::holds_alternative<entity>(Payload); }
+		NO_DISCARD bool IsFolder() const noexcept { return std::holds_alternative<EntityFolder*>(Payload); }
+		NO_DISCARD bool IsScene() const noexcept { return std::holds_alternative<Scene*>(Payload); }
 
-		NO_DISCARD bool IsEntityItem() const noexcept { return Entity != NULL_ENTITY; }
-		NO_DISCARD bool IsFilterItem() const noexcept { return pFilter != nullptr; }
-		NO_DISCARD bool IsSceneItem() const noexcept { return pScene != nullptr; }
+		NO_DISCARD entity AsEntity() const noexcept { RLS_ASSERT(IsEntity(), "[OutlinerListItem::AsEntity]: Not an entity item!"); return std::get<entity>(Payload); }
+		NO_DISCARD EntityFolder* AsFolder() const noexcept { RLS_ASSERT(IsFolder(), "[OutlinerListItem::AsFolder]: Not a folder item!"); return std::get<EntityFolder*>(Payload); }
+		NO_DISCARD Scene* AsScene() const noexcept { RLS_ASSERT(IsScene(), "[OutlinerListItem::AsScene]: Not a scene item!"); return std::get<Scene*>(Payload); }
 	};
 
 	struct OutlinerTableRowCreateInfo

@@ -1,7 +1,6 @@
 #include "PostProcessing.h"
 
 #include "Graphics/RHI/CommandContext.h"
-#include "Graphics/RHI/Device.h"
 #include "Graphics/Renderer/Renderer.h"
 
 namespace Relentless
@@ -14,11 +13,15 @@ namespace Relentless
 
 	void PostProcessing::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<Texture> pOutlinesSolidTexture, Ref<Texture> pOutlinesBlurredTexture) noexcept
 	{
-		const uint32 width = sceneTextures.pColorTarget->GetWidth();
-		const uint32 height = sceneTextures.pColorTarget->GetHeight();
-		const ResourceFormat colorFormat = ResourceFormat::RGB10A2_UNORM;
+		if (!m_pOutputTarget || m_pOutputTarget->GetWidth() != sceneTextures.pColorTarget->GetWidth() || m_pOutputTarget->GetHeight() != sceneTextures.pColorTarget->GetHeight()
+			|| m_pOutputTarget->GetFormat() != sceneTextures.pColorTarget->GetFormat())
+		{
+			const uint32 width = sceneTextures.pColorTarget->GetWidth();
+			const uint32 height = sceneTextures.pColorTarget->GetHeight();
+			const ResourceFormat colorFormat = ResourceFormat::RGB10A2_UNORM;
 
-		Ref<Texture> pTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, colorFormat, 1u, TextureFlag::UnorderedAccess), "Linear Color Target");
+			m_pOutputTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, colorFormat, 1u, TextureFlag::UnorderedAccess), "Linear Color Target");
+		}
 
 		commandContext.SetPipelineState(m_pPostProcessPSO);
 		commandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());
@@ -33,7 +36,7 @@ namespace Relentless
 		} params;
 
 		params.SourceIndex = sceneTextures.pColorTarget->GetSRVIndex();
-		params.TargetIndex = pTarget->GetUAVIndex();
+		params.TargetIndex = m_pOutputTarget->GetUAVIndex();
 
 		params.OutlinesSolidIndex = pOutlinesSolidTexture->GetSRVIndex();
 		params.OutlinesBlurredIndex = pOutlinesBlurredTexture->GetSRVIndex();
@@ -41,8 +44,8 @@ namespace Relentless
 		commandContext.BindRootCBV(BindingSlot::PerPass, &params, sizeof(params));
 		Renderer::BindViewData(commandContext, renderView);
 
-		commandContext.Dispatch(ComputeUtils::GetNumThreadGroups(pTarget->GetWidth(), 16, pTarget->GetHeight(), 16));
+		commandContext.Dispatch(ComputeUtils::GetNumThreadGroups(m_pOutputTarget->GetWidth(), 16, m_pOutputTarget->GetHeight(), 16));
 
-		sceneTextures.pColorTarget = pTarget;
+		sceneTextures.pColorTarget = m_pOutputTarget;
 	}
 }

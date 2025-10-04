@@ -35,7 +35,8 @@ namespace Relentless
 		Ref<PipelineState> m_pGaussianBlurPSO = nullptr;
 
 		Ref<Texture> m_pSolidOutput = nullptr;
-		Ref<Texture> m_pIntermediateBlur = nullptr;
+		Ref<Texture> m_pDepthTarget = nullptr;
+		Ref<Texture> m_pIntermediateBlurOutput = nullptr;
 		Ref<Texture> m_pBlurredOutput = nullptr;
 
 		GaussianBlurCB m_CBData;

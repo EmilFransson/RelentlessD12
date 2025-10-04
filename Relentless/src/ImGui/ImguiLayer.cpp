@@ -13,6 +13,8 @@ namespace Relentless
 
 	void ImguiLayer::BeginFrame(Ref<Texture> pTarget, CommandContext* pCommandContext) noexcept
 	{
+		PROFILE_FUNC;
+
 		ImGui_ImplDX12_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
@@ -81,6 +83,8 @@ namespace Relentless
 
 	void ImguiLayer::EndFrame(Ref<Texture> pTarget, CommandContext* pCommandContext) noexcept
 	{
+		PROFILE_FUNC;
+		
 		ImGui::Render();
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCommandContext->GetCommandList());
 
@@ -94,6 +98,8 @@ namespace Relentless
 
 	void ImguiLayer::OnImGuiRender() noexcept
 	{
+		PROFILE_FUNC;
+
 		static bool showWindow = true;
 		ImGui::ShowDemoWindow(&showWindow);
 	}

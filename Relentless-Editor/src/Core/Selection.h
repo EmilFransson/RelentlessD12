@@ -23,6 +23,7 @@ namespace Relentless
 		[[nodiscard]] uint32 GetSelectedEntityCount() const noexcept;
 		[[nodiscard]] entity GetFirstSelected() const noexcept;
 
+		Broadcaster<void()> OnPreDeselectAll;
 		Broadcaster<void(entity e, ESelectionState)> OnSelectionChanged;
 	private:
 		/*

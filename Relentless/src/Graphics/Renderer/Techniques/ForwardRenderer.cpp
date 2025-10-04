@@ -2,8 +2,6 @@
 
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RHI/CommandContext.h"
-#include "Graphics/RHI/Device.h"
-#include "Graphics/RHI/Texture.h"
 
 namespace Relentless
 {
@@ -30,23 +28,27 @@ namespace Relentless
 
 	void ForwardRenderer::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, RenderModeEx renderMode) noexcept
 	{
-		const uint32 width = sceneTextures.pColorTarget->GetWidth();
-		const uint32 height = sceneTextures.pColorTarget->GetHeight();
-		const ResourceFormat colorFormat = sceneTextures.pColorTarget->GetFormat();
+		if (!m_pColorTarget || m_pColorTarget->GetWidth() != sceneTextures.pColorTarget->GetWidth() || m_pColorTarget->GetHeight() != sceneTextures.pColorTarget->GetHeight()
+			|| m_pColorTarget->GetFormat() != sceneTextures.pColorTarget->GetFormat())
+		{
+			const uint32 width = sceneTextures.pColorTarget->GetWidth();
+			const uint32 height = sceneTextures.pColorTarget->GetHeight();
+			const ResourceFormat colorFormat = sceneTextures.pColorTarget->GetFormat();
 
-		const TextureDesc colorTargetDesc = TextureDesc::Create2D(
-			width,
-			height,
-			colorFormat,
-			1u, 
-			TextureFlag::RenderTarget | TextureFlag::ShaderResource, 
-			ClearBinding(Colors::Black),
-			sceneTextures.pColorTarget->GetSampleCount());
+			const TextureDesc colorTargetDesc = TextureDesc::Create2D(
+				width,
+				height,
+				colorFormat,
+				1u,
+				TextureFlag::RenderTarget | TextureFlag::ShaderResource,
+				ClearBinding(Colors::Black),
+				sceneTextures.pColorTarget->GetSampleCount());
 
-		const Ref<Texture> pColorTarget = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
+			m_pColorTarget = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
+		}
 		
 		RenderPassInfo info;
-		info.RenderTargets[0].pTarget = pColorTarget;
+		info.RenderTargets[0].pTarget = m_pColorTarget;
 		info.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Clear;
 		info.RenderTargets[0].EndAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargetCount++;
@@ -74,6 +76,6 @@ namespace Relentless
 
 		commandContext.EndRenderPass();
 
-		sceneTextures.pColorTarget = pColorTarget;
+		sceneTextures.pColorTarget = m_pColorTarget;
 	}
 }

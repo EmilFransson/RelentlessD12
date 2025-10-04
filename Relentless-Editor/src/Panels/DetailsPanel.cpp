@@ -33,6 +33,8 @@ namespace Relentless
 
 	void DetailsPanel::OnRender() noexcept
 	{
+		PROFILE_FUNC;
+
 		m_pBox->Render();
 		//m_pEntityOutlinerView->Render();
 
@@ -139,6 +141,11 @@ namespace Relentless
 		pRoot->Add(pComponentsSection);
 
 		SetRoot(pRoot);
+	}
+
+	const Ref<EntityOutlinerView>& DetailsPanel::GetEntityOutlinerView() const noexcept
+	{
+		return m_pEntityOutlinerView;
 	}
 
 	Vector3 DetailsPanel::GetLocation(ComboBox* pTransformSpaceComboBox) const noexcept

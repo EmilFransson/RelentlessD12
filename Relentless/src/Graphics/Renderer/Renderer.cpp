@@ -107,9 +107,15 @@ namespace Relentless
 
 			m_MainView.Exposure				= exposure;
 		}
-																													
-		m_SceneTextures.pColorTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT), "Color Target");
-		m_SceneTextures.pDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS), "Depth Target");
+		
+		if (!m_pColortarget || m_pColortarget->GetWidth() != width || m_pColortarget->GetHeight() != height)
+			m_pColortarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT), "Color Target");
+
+		if (!m_pDepthTarget || m_pDepthTarget->GetWidth() != width || m_pDepthTarget->GetHeight() != height)
+			m_pDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS), "Depth Target");
+
+		m_SceneTextures.pColorTarget = m_pColortarget;
+		m_SceneTextures.pDepthTarget = m_pDepthTarget;
 
 		{
 			PROFILE_SCOPE("Renderer::Render::SyncRingBuffer");
@@ -185,27 +191,34 @@ namespace Relentless
 			const uint32 width = m_SceneTextures.pColorTarget->GetWidth();
 			const uint32 height = m_SceneTextures.pColorTarget->GetHeight();
 			const ResourceFormat colorFormat = ResourceFormat::R32_FLOAT;
+			
+			if (!m_pEntityIDTexture || m_pEntityIDTexture->GetWidth() != m_SceneTextures.pColorTarget->GetWidth() || m_pEntityIDTexture->GetHeight() != m_SceneTextures.pColorTarget->GetHeight())
+			{
+				const TextureDesc colorTargetDesc = TextureDesc::Create2D(
+					width,
+					height,
+					colorFormat,
+					1u,
+					TextureFlag::RenderTarget | TextureFlag::ShaderResource,
+					ClearBinding(Colors::Black),
+					m_SceneTextures.pColorTarget->GetSampleCount());
 
-			const TextureDesc colorTargetDesc = TextureDesc::Create2D(
-				width,
-				height,
-				colorFormat,
-				1u,
-				TextureFlag::RenderTarget | TextureFlag::ShaderResource,
-				ClearBinding(Colors::Black),
-				m_SceneTextures.pColorTarget->GetSampleCount());
+				m_pEntityIDTexture = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
+			}
 
-			const TextureDesc depthTargetDesc = TextureDesc::Create2D(
-				width,
-				height,
-				m_SceneTextures.pDepthTarget->GetFormat(),
-				1u,
-				TextureFlag::DepthStencil,
-				ClearBinding(1.0f, 1u),
-				m_SceneTextures.pDepthTarget->GetSampleCount());
+			if (!m_pEntityIDDepthTarget || m_pEntityIDDepthTarget->GetWidth() != m_SceneTextures.pColorTarget->GetWidth() || m_pEntityIDDepthTarget->GetHeight() != m_SceneTextures.pColorTarget->GetHeight())
+			{
+				const TextureDesc depthTargetDesc = TextureDesc::Create2D(
+					width,
+					height,
+					m_SceneTextures.pDepthTarget->GetFormat(),
+					1u,
+					TextureFlag::DepthStencil,
+					ClearBinding(1.0f, 1u),
+					m_SceneTextures.pDepthTarget->GetSampleCount());
 
-			m_pEntityIDTexture = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
-			const Ref<Texture> pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
+				m_pEntityIDDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
+			}
 			
 			RenderPassInfo info;
 			info.RenderTargets[0].pTarget = m_pEntityIDTexture;
@@ -213,7 +226,7 @@ namespace Relentless
 			info.RenderTargets[0].EndAccessFlags = RenderTargetAccessFlags::Preserve;
 			info.RenderTargetCount++;
 
-			info.DepthStencilTarget.pTarget = pDepthTarget;
+			info.DepthStencilTarget.pTarget = m_pEntityIDDepthTarget;
 			info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ClearDepth;
 			info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::None;
 
@@ -265,6 +278,7 @@ namespace Relentless
 			
 				commandContext.InsertResourceBarrier(m_pEntityIDTexture, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
 				commandContext.CopyTexture(m_pEntityIDTexture, m_EntityIDReadbackBuffer, box);
+				commandContext.InsertResourceBarrier(m_pEntityIDTexture, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			}
 
 			SyncPoint s = commandContext.Execute();
@@ -298,8 +312,8 @@ namespace Relentless
 			PROFILE_SCOPE("Renderer::Render::Blit");
 
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-
-			pCommandContext->InsertResourceBarrier(pTarget, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			
+			pCommandContext->InsertResourceBarrier(pTarget, pTarget->GetResourceState(), D3D12_RESOURCE_STATE_COPY_DEST);
 			pCommandContext->InsertResourceBarrier(m_SceneTextures.pColorTarget, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		
 			pCommandContext->CopyResource(m_SceneTextures.pColorTarget, pTarget);
@@ -341,6 +355,11 @@ namespace Relentless
 	Span<const Batch> Renderer::GetBatches() const noexcept
 	{
 		return m_Batches;
+	}
+
+	uint32 Renderer::GetFrameIndex() const noexcept
+	{
+		return m_Frame;
 	}
 
 	void Renderer::BindViewData(CommandContext& commandContext, const RenderView& pRenderView) noexcept

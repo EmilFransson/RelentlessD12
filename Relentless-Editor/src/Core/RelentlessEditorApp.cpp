@@ -26,11 +26,20 @@ namespace Relentless
 		std::vector<ViewportRenderView>& renderViews = m_pEditorLayer->GetEditor()->GetRenderViews();
 		for (int i = 0; i < renderViews.size(); ++i)
 		{
-			const uint32 width	= static_cast<uint32>(std::max(1.0f, std::min(renderViews[i].Viewport.GetWidth(), (float)WindowEx::GetDisplaySize().x)));
-			const uint32 height = static_cast<uint32>(std::max(1.0f, std::min(renderViews[i].Viewport.GetHeight(), (float)WindowEx::GetDisplaySize().y)));
-			renderViews[i].pTarget = m_pGraphicsDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource), std::format("Target: {}", i).c_str());
+			const uint32 width	= static_cast<uint32>(Math::Max(1.0f, Math::Min(renderViews[i].Viewport.GetWidth(), (float)WindowEx::GetDisplaySize().x)));
+			const uint32 height = static_cast<uint32>(Math::Max(1.0f, Math::Min(renderViews[i].Viewport.GetHeight(), (float)WindowEx::GetDisplaySize().y)));
+
+			if (!m_pColorTarget || m_pColorTarget->GetWidth() != width || m_pColorTarget->GetHeight() != height)
+				m_pColorTarget = m_pGraphicsDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource), std::format("Target: {}", i).c_str());
+
+			renderViews[i].pTarget = m_pColorTarget;
 			m_pRenderer->Render(m_pEditorLayer->GetEditor()->GetActiveScene(), &renderViews[i], options, renderViews[i].pTarget);
 		}
+	}
+
+	const UniquePtr<Editor>& RelentlessEditor::GetEditor() const noexcept
+	{
+		return m_pEditorLayer->GetEditor();
 	}
 
 	const UniquePtr<Renderer>& RelentlessEditor::GetRenderer() const noexcept

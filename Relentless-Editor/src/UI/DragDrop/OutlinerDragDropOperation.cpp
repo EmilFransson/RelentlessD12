@@ -1,7 +1,7 @@
 #include "OutlinerDragDropOperation.h"
 
 #include "../OutlinerTableRow.h"
-#include "../../Core/EntityFilters.h"
+#include "../../Core/EntityFolders.h"
 
 namespace Relentless
 {
@@ -15,9 +15,9 @@ namespace Relentless
 		return m_DraggedEntities;
 	}
 
-	const std::vector<EntityFilter*>& OutlinerDragDropOperation::GetDraggedFilters() const noexcept
+	const std::vector<EntityFolder*>& OutlinerDragDropOperation::GetDraggedFolders() const noexcept
 	{
-		return m_DraggedFilters;
+		return m_DraggedFolders;
 	}
 
 	OutlinerTableRow* OutlinerDragDropOperation::GetDragInitiatorRow() const noexcept
@@ -25,14 +25,13 @@ namespace Relentless
 		return m_pDragStartRow;
 	}
 
-	void OutlinerDragDropOperation::SetDraggedEntities(const std::vector<entity>& entities) noexcept
+	void OutlinerDragDropOperation::SetDraggedEntities(const std::vector<entity>& someEntities) noexcept
 	{
-		m_DraggedEntities = entities;
+		m_DraggedEntities = someEntities;
 	}
 
-	void OutlinerDragDropOperation::SetDraggedFilters(const std::vector<EntityFilter*>& filters) noexcept
+	void OutlinerDragDropOperation::SetDraggedFolders(const std::vector<EntityFolder*>& someFolders) noexcept
 	{
-		m_DraggedFilters = filters;
+		m_DraggedFolders = someFolders;
 	}
-
 }

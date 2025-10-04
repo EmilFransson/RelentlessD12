@@ -37,27 +37,27 @@ namespace Relentless
 		Ref<HorizontalBox> pToolBarLeftBox = new HorizontalBox("##ToolbarLeftAlignedBox");
 		pToolBarLeftBox->SetAlignmentPolicy(EAlignmentPolicy::Left);
 
-		Ref<Button> m_pWireFrameButton = new Button("Wireframe", Vector2(0, 40));
-		Ref<Button> m_pSolidButton = new Button("Solid", Vector2(0, 40));
-		Ref<Button> m_pTSnappingButton = new Button("T-Snap", Vector2(0, 40));
-		Ref<Button> m_pRSnappingButton = new Button("R-Snap", Vector2(0, 40));
-
-		pToolBarLeftBox->Add(m_pWireFrameButton);
-		pToolBarLeftBox->Add(m_pSolidButton);
-		pToolBarLeftBox->Add(m_pTSnappingButton);
-		pToolBarLeftBox->Add(m_pRSnappingButton);
+		//Ref<Button> m_pWireFrameButton = new Button("Wireframe", Vector2(0, 40));
+		//Ref<Button> m_pSolidButton = new Button("Solid", Vector2(0, 40));
+		//Ref<Button> m_pTSnappingButton = new Button("T-Snap", Vector2(0, 40));
+		//Ref<Button> m_pRSnappingButton = new Button("R-Snap", Vector2(0, 40));
+		//
+		//pToolBarLeftBox->Add(m_pWireFrameButton);
+		//pToolBarLeftBox->Add(m_pSolidButton);
+		//pToolBarLeftBox->Add(m_pTSnappingButton);
+		//pToolBarLeftBox->Add(m_pRSnappingButton);
 
 		m_pToolbarBox->Add(pToolBarLeftBox);
 
-		Ref<HorizontalBox> pToolBarRightBox = new HorizontalBox("##ToolbarRightAlignedBox");
-		pToolBarRightBox->SetAlignmentPolicy(EAlignmentPolicy::Right);
-
-		Ref<Button> pGearIconButton = new Button(ICON_FA_GEAR, Vector2(40, 40));
-		pGearIconButton->OnClicked(this, &ViewportPanel::OnSettingsButtonClicked);
-		pGearIconButton->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
-		pToolBarRightBox->Add(pGearIconButton);
-
-		m_pToolbarBox->Add(pToolBarRightBox);
+		//Ref<HorizontalBox> pToolBarRightBox = new HorizontalBox("##ToolbarRightAlignedBox");
+		//pToolBarRightBox->SetAlignmentPolicy(EAlignmentPolicy::Right);
+		//
+		//Ref<Button> pGearIconButton = new Button(ICON_FA_GEAR, Vector2(40, 40));
+		//pGearIconButton->OnClicked(this, &ViewportPanel::OnSettingsButtonClicked);
+		//pGearIconButton->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
+		//pToolBarRightBox->Add(pGearIconButton);
+		//
+		//m_pToolbarBox->Add(pToolBarRightBox);
 		
 		pRoot->Add(m_pToolbarBox);
 
@@ -74,51 +74,51 @@ namespace Relentless
 
 		m_pSettingsBox = m_pCanvasAndSettingsBox->Add(new VerticalBox(Vector2(350.0f, 0.0f), true));
 		m_pSettingsBox->SetIsVisible(false);
-		
-		CollapsibleSection* pCameraSection = m_pSettingsBox->Add(new CollapsibleSection(ICON_FA_CAMERA "  Camera"));
-		
-		Table* pCameraSettingsTable = pCameraSection->Add(new Table());
-		uint32 currentRow = 0u;
 
-		{
-			pCameraSettingsTable->Add(new Label("Speed Multiplier"), 0, currentRow);
-			pCameraSettingsTable->Add(new FloatSlider(m_pCameraController->GetMinSpeedMultiplierLimit(), m_pCameraController->GetMaxSpeedMultiplierLimit(), "%.3f"), 1, currentRow)
-				->Value(this, &ViewportPanel::OnCameraSpeedMultiplierRequested)
-				->OnValueChanged(this, &ViewportPanel::OnCameraSpeedMultiplierChanged);
-			currentRow++;
-		}
-
-		{
-			pCameraSettingsTable->Add(new Label("Field of View (H)"), 0, currentRow);
-			pCameraSettingsTable->Add(new FloatSlider(5.0f, 170.0f, "%.3f"), 1, currentRow)
-				->Value(this, &ViewportPanel::OnHorizontalFOVRequested)
-				->OnValueChanged(this, &ViewportPanel::OnHorizontalFOVChanged);
-			currentRow++;
-		}
-
-		{
-			pCameraSettingsTable->Add(new Label("Near View Plane"), 0, currentRow);
-			pCameraSettingsTable->Add(new FloatSlider(0.01f, 100'000.0f, "%.3f", ImGuiSliderFlags_Logarithmic), 1, currentRow)
-				->Value(this, &ViewportPanel::OnCameraNearViewPlaneRequested)
-				->OnValueChanged(this, &ViewportPanel::OnCameraNearViewPlaneChanged);
-			currentRow++;
-		}
-		
-		{
-			pCameraSettingsTable->Add(new Label("Far View Plane"), 0, currentRow);
-			pCameraSettingsTable->Add(new FloatSlider(0.01f, 100'000.0f, "%.3f", ImGuiSliderFlags_Logarithmic), 1, currentRow)
-				->Value(this, &ViewportPanel::OnCameraFarViewPlaneRequested)
-				->OnValueChanged(this, &ViewportPanel::OnCameraFarViewPlaneChanged);
-			currentRow++;
-		}
-
-		{
-			pCameraSettingsTable->Add(new Label("EV100"), 0, currentRow);
-			pCameraSettingsTable->Add(new FloatSlider(-10.0f, 10.0f, "%.3f"), 1, currentRow)
-				->Value(this, &ViewportPanel::OnEV100Requested)
-				->OnValueChanged(this, &ViewportPanel::OnEV100Changed);
-			currentRow++;
-		}
+		//CollapsibleSection* pCameraSection = m_pSettingsBox->Add(new CollapsibleSection(ICON_FA_CAMERA "  Camera"));
+		//
+		//Table* pCameraSettingsTable = pCameraSection->Add(new Table());
+		//uint32 currentRow = 0u;
+		//
+		//{
+		//	pCameraSettingsTable->Add(new Label("Speed Multiplier"), 0, currentRow);
+		//	pCameraSettingsTable->Add(new FloatSlider(m_pCameraController->GetMinSpeedMultiplierLimit(), m_pCameraController->GetMaxSpeedMultiplierLimit(), "%.3f"), 1, currentRow)
+		//		->Value(this, &ViewportPanel::OnCameraSpeedMultiplierRequested)
+		//		->OnValueChanged(this, &ViewportPanel::OnCameraSpeedMultiplierChanged);
+		//	currentRow++;
+		//}
+		//
+		//{
+		//	pCameraSettingsTable->Add(new Label("Field of View (H)"), 0, currentRow);
+		//	pCameraSettingsTable->Add(new FloatSlider(5.0f, 170.0f, "%.3f"), 1, currentRow)
+		//		->Value(this, &ViewportPanel::OnHorizontalFOVRequested)
+		//		->OnValueChanged(this, &ViewportPanel::OnHorizontalFOVChanged);
+		//	currentRow++;
+		//}
+		//
+		//{
+		//	pCameraSettingsTable->Add(new Label("Near View Plane"), 0, currentRow);
+		//	pCameraSettingsTable->Add(new FloatSlider(0.01f, 100'000.0f, "%.3f", ImGuiSliderFlags_Logarithmic), 1, currentRow)
+		//		->Value(this, &ViewportPanel::OnCameraNearViewPlaneRequested)
+		//		->OnValueChanged(this, &ViewportPanel::OnCameraNearViewPlaneChanged);
+		//	currentRow++;
+		//}
+		//
+		//{
+		//	pCameraSettingsTable->Add(new Label("Far View Plane"), 0, currentRow);
+		//	pCameraSettingsTable->Add(new FloatSlider(0.01f, 100'000.0f, "%.3f", ImGuiSliderFlags_Logarithmic), 1, currentRow)
+		//		->Value(this, &ViewportPanel::OnCameraFarViewPlaneRequested)
+		//		->OnValueChanged(this, &ViewportPanel::OnCameraFarViewPlaneChanged);
+		//	currentRow++;
+		//}
+		//
+		//{
+		//	pCameraSettingsTable->Add(new Label("EV100"), 0, currentRow);
+		//	pCameraSettingsTable->Add(new FloatSlider(-10.0f, 10.0f, "%.3f"), 1, currentRow)
+		//		->Value(this, &ViewportPanel::OnEV100Requested)
+		//		->OnValueChanged(this, &ViewportPanel::OnEV100Changed);
+		//	currentRow++;
+		//}
 		
 
 		pRoot->Add(m_pCanvasAndSettingsBox);
@@ -240,7 +240,7 @@ namespace Relentless
 			.Entities = std::move(participatingEntities),
 			.WorldToView = m_pCamera->GetViewTransform().WorldToView,
 			.ViewToClip = m_pCamera->GetViewTransform().ViewToClip,
-			.Rect = m_pCanvas->GetScreenRect(), //m_ViewportRect,
+			.Rect = m_pCanvas->GetScreenRect(),
 			.pScene = m_pEditor->GetActiveScene(),
 		};
 
@@ -315,6 +315,8 @@ namespace Relentless
 
 	void ViewportPanel::OnCanvasRenderEnd() noexcept
 	{
+		PROFILE_FUNC;
+
 		DetermineCameraAreaHoverState();
 		HandleTransformGizmoInteraction();
 	}

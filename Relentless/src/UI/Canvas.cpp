@@ -17,6 +17,8 @@ namespace Relentless
 
 	void Canvas::OnRender() noexcept
 	{
+		PROFILE_FUNC;
+
 		Vector2i size = Vector2i(static_cast<int32>(ImGui::GetContentRegionAvail().x), static_cast<int32>(ImGui::GetContentRegionAvail().y));
 
 		if (size.x > 0 && size.y > 0)

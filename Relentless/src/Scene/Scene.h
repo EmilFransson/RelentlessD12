@@ -1,4 +1,5 @@
 #pragma once
+#include "Callback/Callback.h"
 #include "Callback/Broadcaster.h"
 #include "ECS/EntityManager.h"
 #include "Threading/ThreadSafeQueue.h"
@@ -14,6 +15,9 @@ namespace Relentless
 		explicit Scene(const char* name = "Sample Scene") noexcept;
 		virtual ~Scene() noexcept = default;
 		NO_DISCARD bool AnyEntityHasName(const char* pName) const noexcept;
+
+		NO_DISCARD const UUID& GetUUID() const noexcept;
+
 		void SetName(const std::string& name) noexcept;
 		void OnUpdate(const float deltaTime) noexcept;
 		entity DuplicateEntity(entity entityToCopy, bool preserveHierarchy) noexcept;
@@ -31,14 +35,18 @@ namespace Relentless
 
 		void DestroyEntity(const entity entityHandle) noexcept;
 		NO_DISCARD EntityManager& GetEntityManager() noexcept { return m_EntityManager; }
+		NO_DISCARD const EntityManager& GetEntityManager() const noexcept { return m_EntityManager; }
 		NO_DISCARD const std::string& GetName() const noexcept { return m_Name; }
 		NO_DISCARD bool EntityHasAncestors(entity e) const noexcept;
-		NO_DISCARD bool EntityIsDescendant(const entity ancestor, const entity descendant) noexcept;
+		NO_DISCARD bool EntityIsDescendant(const entity ancestor, const entity descendant) const noexcept;
 		NO_DISCARD bool EntityIsAncestor(const entity ancestor, const entity descendant) noexcept;
-		NO_DISCARD bool EntityIsParent(entity possibleChild, entity possibleParent) noexcept;
-		NO_DISCARD bool EntityIsChild(entity possibleChild, entity possibleParent) noexcept;
+		NO_DISCARD bool EntityIsParent(entity possibleChild, entity possibleParent) const noexcept;
+		NO_DISCARD bool EntityIsChild(entity possibleChild, entity possibleParent) const noexcept;
 		void AttachEntity(const entity toBecomeChild, const entity toBecomeParent) noexcept;
 		bool DetachEntity(const entity entityToDetach) noexcept;
+
+		void ForEachEntityWithAncestorEntity(entity aEntity, bool aIncludeAncestor, const Callback<bool(entity)>& aOperation) noexcept;
+
 		NO_DISCARD std::vector<entity> GetAllEntityDescendants(entity rootEntity) noexcept;
 		NO_DISCARD std::vector<entity> GetAllEntityAncestors(entity rootEntity) noexcept;
 		NO_DISCARD std::vector<entity> GetEntityChildren(entity parent) noexcept;
@@ -118,6 +126,7 @@ namespace Relentless
 		ThreadSafeQueue<entity> m_PendingEntityDeletionQueue;
 
 		mutable EntityManager m_EntityManager;
+		UUID m_UUID = NULL_UUID;
 		String m_Name;
 		bool m_IsPaused = false;
 	};

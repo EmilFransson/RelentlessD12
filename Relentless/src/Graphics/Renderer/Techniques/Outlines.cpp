@@ -54,34 +54,41 @@ namespace Relentless
 		const uint32 height = sceneTextures.pColorTarget->GetHeight();
 		const ResourceFormat colorFormat = ResourceFormat::R32_FLOAT;
 
-		const TextureDesc colorTargetDesc = TextureDesc::Create2D(
-			width,
-			height,
-			colorFormat,
-			1u,
-			TextureFlag::RenderTarget | TextureFlag::ShaderResource,
-			ClearBinding(Colors::Black),
-			sceneTextures.pColorTarget->GetSampleCount());
+		if (!m_pSolidOutput || m_pSolidOutput->GetWidth() != width || m_pSolidOutput->GetHeight() != height)
+		{
+			const TextureDesc colorTargetDesc = TextureDesc::Create2D(
+				width,
+				height,
+				colorFormat,
+				1u,
+				TextureFlag::RenderTarget | TextureFlag::ShaderResource,
+				ClearBinding(Colors::Black),
+				sceneTextures.pColorTarget->GetSampleCount());
 		
-		const TextureDesc depthTargetDesc = TextureDesc::Create2D(
-			width,
-			height,
-			sceneTextures.pDepthTarget->GetFormat(),
-			1u,
-			TextureFlag::DepthStencil,
-			ClearBinding(1.0f, 1u),
-			sceneTextures.pDepthTarget->GetSampleCount());
-		
-		m_pSolidOutput = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
-		const Ref<Texture> pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
-		
+			m_pSolidOutput = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
+		}
+
+		if (!m_pDepthTarget || m_pDepthTarget->GetWidth() != width || m_pDepthTarget->GetHeight() != height)
+		{
+			const TextureDesc depthTargetDesc = TextureDesc::Create2D(
+				width,
+				height,
+				sceneTextures.pDepthTarget->GetFormat(),
+				1u,
+				TextureFlag::DepthStencil,
+				ClearBinding(1.0f, 1u),
+				sceneTextures.pDepthTarget->GetSampleCount());
+
+			m_pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
+		}
+
 		RenderPassInfo info;
 		info.RenderTargets[0].pTarget = m_pSolidOutput;
 		info.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Clear;
 		info.RenderTargets[0].EndAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargetCount++;
 		
-		info.DepthStencilTarget.pTarget = pDepthTarget;
+		info.DepthStencilTarget.pTarget = m_pDepthTarget;
 		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ClearDepth;
 		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::None;
 		
@@ -130,8 +137,11 @@ namespace Relentless
 			ClearBinding(Colors::Black),
 			m_pSolidOutput->GetSampleCount());
 
-		m_pIntermediateBlur = m_pDevice->CreateTexture(blurredColorTargetDesc, "Blurred Intermediate Color Target");
-		m_pBlurredOutput = m_pDevice->CreateTexture(blurredColorTargetDesc, "Blurred Color Target");
+		if (!m_pIntermediateBlurOutput || m_pIntermediateBlurOutput->GetWidth() != width || m_pIntermediateBlurOutput->GetHeight() != height)
+			m_pIntermediateBlurOutput = m_pDevice->CreateTexture(blurredColorTargetDesc, "Blurred Intermediate Color Target");
+
+		if (!m_pBlurredOutput || m_pBlurredOutput->GetWidth() != width || m_pBlurredOutput->GetHeight() != height)
+			m_pBlurredOutput = m_pDevice->CreateTexture(blurredColorTargetDesc, "Blurred Color Target");
 
 		commandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());
 		commandContext.SetPipelineState(m_pGaussianBlurPSO);
@@ -145,7 +155,7 @@ namespace Relentless
 		} params;
 
 		params.SourceIndex = m_pSolidOutput->GetSRVIndex();
-		params.TargetIndex = m_pIntermediateBlur->GetUAVIndex();
+		params.TargetIndex = m_pIntermediateBlurOutput->GetUAVIndex();
 		params.Radius = RADIUS;
 		params.IsHorizontal = 1u;
 
@@ -157,7 +167,7 @@ namespace Relentless
 	
 		commandContext.InsertUAVBarrier();
 
-		params.SourceIndex = m_pIntermediateBlur->GetSRVIndex();
+		params.SourceIndex = m_pIntermediateBlurOutput->GetSRVIndex();
 		params.TargetIndex = m_pBlurredOutput->GetUAVIndex();
 		params.IsHorizontal = 0;
 		

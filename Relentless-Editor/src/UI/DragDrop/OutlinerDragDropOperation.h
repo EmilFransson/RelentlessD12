@@ -4,7 +4,7 @@
 
 namespace Relentless
 {
-	class EntityFilter;
+	class EntityFolder;
 	class OutlinerTableRow;
 
 	class OutlinerDragDropOperation : public DragDropOperation
@@ -16,17 +16,17 @@ namespace Relentless
 		static constexpr uint64      kType		= "ENTITY_DRAG_DROP_OP"_h;
 
 		NO_DISCARD const std::vector<entity>& GetDraggedEntities() const noexcept;
-		NO_DISCARD const std::vector<EntityFilter*>& GetDraggedFilters() const noexcept;
+		NO_DISCARD const std::vector<EntityFolder*>& GetDraggedFolders() const noexcept;
 		NO_DISCARD OutlinerTableRow* GetDragInitiatorRow() const noexcept;
 
 		NO_DISCARD uint64 GetType() const noexcept override { return kType; }
 		NO_DISCARD const char* GetTypeName() const noexcept override { return kTypeName; }
 
-		void SetDraggedEntities(const std::vector<entity>& entities) noexcept;
-		void SetDraggedFilters(const std::vector<EntityFilter*>& filters) noexcept;
+		void SetDraggedEntities(const std::vector<entity>& someEntities) noexcept;
+		void SetDraggedFolders(const std::vector<EntityFolder*>& someFolders) noexcept;
 	private:
 		std::vector<entity> m_DraggedEntities;
-		std::vector<EntityFilter*> m_DraggedFilters;
+		std::vector<EntityFolder*> m_DraggedFolders;
 
 		OutlinerTableRow* m_pDragStartRow = nullptr;
 	};

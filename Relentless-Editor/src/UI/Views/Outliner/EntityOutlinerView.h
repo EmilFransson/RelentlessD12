@@ -1,11 +1,12 @@
 ﻿#pragma once
 #include <Relentless.h>
-#include "../../../Core/EntityFilters.h"
+#include "../../../Core/EntityFolders.h"
 #include "../../OutlinerTableRow.h"
 
 namespace Relentless
 {
 	class Editor;
+	class EntityOutlinerPolicies;
 	enum class ESelectionState : uint8;
 
 	class EntityOutlinerView : public IWidget<EntityOutlinerView>
@@ -16,50 +17,55 @@ namespace Relentless
 	private:
 		NO_DISCARD float CalcDesiredWidth() const noexcept override { return 0.0f; } 
 
-		NO_DISCARD Ref<OutlinerListItem> CreateEntityListItem(entity e) noexcept;
-		NO_DISCARD Ref<OutlinerListItem> CreateEntityFilterListItem(EntityFilter* pFilter) noexcept;
+		NO_DISCARD Ref<OutlinerListItem> CreateEntityListItem(entity aEntity) noexcept;
+		NO_DISCARD Ref<OutlinerListItem> CreateEntityFolderListItem(EntityFolder* apFolder) noexcept;
 		NO_DISCARD Ref<OutlinerListItem> CreateSceneListItem(Scene* pScene) noexcept;
+
+		void DeselectAllFolders() noexcept;
 
 		NO_DISCARD const String& GetItemName(const Ref<OutlinerListItem>& pItem) const noexcept;
 		NO_DISCARD const String& GetRowName(const OutlinerTableRow* pRow) const noexcept;
+		NO_DISCARD const Ref<OutlinerListItem>& GetEntityItem(entity aEntity) const noexcept;
+		NO_DISCARD const Ref<OutlinerListItem>& GetFolderItem(EntityFolder* pAFolder) const noexcept;
+		NO_DISCARD Ref<OutlinerListItem> GetRootSceneItem() const noexcept;
 
-		NO_DISCARD Ref<ContextMenu> OnContextMenuOpening(const Ref<OutlinerListItem>& item) noexcept;
-		void OnCreateNewFilterButtonClicked() noexcept;
+		NO_DISCARD Ref<ContextMenu> OnContextMenuOpening(const Ref<OutlinerListItem>& aItem) noexcept;
+		void OnCreateNewFolderButtonClicked() noexcept;
 
 		void OnDeleteSelection() noexcept;
 		void OnDuplicateSelection() noexcept;
 
-		NO_DISCARD String OnDebugItemToString(const Ref<OutlinerListItem>& item) const noexcept;
-		NO_DISCARD Ref<DragDropOperation> OnDragDetected(OutlinerTableRow* pRow) noexcept;
-		NO_DISCARD bool OnDragEnter(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept;
-		NO_DISCARD bool OnDrop(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept;
+		NO_DISCARD String OnDebugItemToString(const Ref<OutlinerListItem>& apItem) const noexcept;
+		NO_DISCARD Ref<DragDropOperation> OnDragDetected(OutlinerTableRow* apRow) noexcept;
+		NO_DISCARD bool OnDragEnter(OutlinerTableRow* apRow, OutlinerDragDropOperation& aDragDropOp) noexcept;
+		NO_DISCARD bool OnDrop(OutlinerTableRow* apRow, OutlinerDragDropOperation& aDragDropOp) noexcept;
 
-		void OnEntityAttached(entity child, entity parent) noexcept;;
-		void OnEntityCreated(entity newEntity) noexcept;
-		void OnEntityDestroyed(entity destroyedEntity) noexcept;
-		void OnEntityDetached(entity child, entity parent) noexcept;
-		void OnEntityRemovedFromFilter(entity entity, EntityFilter* pFilter, bool filterToBeDestroyed) noexcept;
-		void OnEntitySetToFilter(entity entity, EntityFilter* pFilter) noexcept;
-		void OnEntityVisibilityChanged(entity e, bool visibilityState) noexcept;
-		void OnExpandCollapseButtonClicked(Button* pButton, Ref<OutlinerListItem> pItem) noexcept;
+		void OnEntityAttached(entity aChildEntity, entity aParentEntity) noexcept;
+		void OnEntityCreated(entity aNewEntity) noexcept;
+		void OnEntityDestroyed(entity aDestroyedEntity) noexcept;
+		void OnEntityDetached(entity aChildEntity, entity aParentEntity) noexcept;
+		void OnEntityRemovedFromFolder(entity aEntity, const Folder& aFolder) noexcept;
+		void OnEntityAttachedToFolder(entity aEntity, const Folder& aFolder) noexcept;
+		void OnEntityVisibilityChanged(entity aEntity, bool aVisibilityState) noexcept;
+		void OnExpandCollapseButtonClicked(Button* apButton, Ref<OutlinerListItem> apItem) noexcept;
 		
-		void OnFilterCreated(EntityFilter* pFilter) noexcept;
-		void OnFilterReattached(EntityFilter* pChild, EntityFilter* pPreviousParent, EntityFilter* pNewParent) noexcept;
-		void OnFocusChanged(bool focus) noexcept;
+		void OnFolderCreated(EntityFolder* apFolder) noexcept;
+		void OnFolderMoved(EntityFolder* apChildFolder, EntityFolder* paOldParentFolder, const String& aOldPath, const String& aNewPath) noexcept;
+		void OnFocusChanged(bool aFocus) noexcept;
 
-		NO_DISCARD Ref<ITableRow> OnGenerateRow(const Ref<OutlinerListItem>& item) noexcept;
-		void OnGetChildren(const Ref<OutlinerListItem>& pParent, std::vector<Ref<OutlinerListItem>>& outChildren) noexcept;
+		NO_DISCARD Ref<ITableRow> OnGenerateRow(const Ref<OutlinerListItem>& apItem) noexcept;
+		void OnGetChildren(const Ref<OutlinerListItem>& apParent, std::vector<Ref<OutlinerListItem>>& outChildren) noexcept;
 
 		void OnMouseEnterVisibilityButton(Button* pButton) noexcept;
 		void OnMouseExitVisibilityButton(Button* pButton, OutlinerListItem* pItem) noexcept;
 
-		void OnMouseEnterExpandCollapseButton(Button* pButton) noexcept;
-		void OnMouseExitExpandCollapseButton(Button* pButton) noexcept;
+		void OnMouseEnterExpandCollapseButton(Button* apButton) noexcept;
+		void OnMouseExitExpandCollapseButton(Button* apButton) noexcept;
 
-		void OnMouseEnterRow(ITableRow* pTableRow) noexcept;
-		void OnMouseExitRow(ITableRow* pTableRow) noexcept;
+		void OnMouseEnterRow(ITableRow* apTableRow) noexcept;
+		void OnMouseExitRow(ITableRow* apTableRow) noexcept;
 
-		void OnFilterDestroyed(EntityFilter* pFilter) noexcept;
+		void OnEntityFolderDeleted(EntityFolder* apFolder) noexcept;
 
 		void OnPreSceneChanged(Scene* pScene) noexcept;
 
@@ -67,25 +73,34 @@ namespace Relentless
 		void OnRenameSelection() noexcept;
 		NO_DISCARD const std::vector<Ref<OutlinerListItem>>* OnRequestSource() noexcept;
 
-		void OnSceneChanged(Scene* pScene) noexcept;
-		void OnSearchTextChanged(const char* pText) noexcept;
-		void OnSearchTextCommitted(const char* pText, ETextCommitType commitType) noexcept;
-		void OnSelectionChanged(const Ref<OutlinerListItem>& item, ESelectionType selectionType) noexcept;
-		void OnSelectionChangedExternally(entity e, ESelectionState selectionState) noexcept;
+		void OnSceneChanged(Scene* apScene) noexcept;
+		void OnSearchTextChanged(const char* aText) noexcept;
+		void OnSearchTextCommitted(const char* aText, ETextCommitType aCommitType) noexcept;
+		void OnSelectionChanged(const Ref<OutlinerListItem>& apItem, ESelectionType aSelectionType) noexcept;
+		void OnSelectionChangedExternally(entity aEntity, ESelectionState aSelectionState) noexcept;
 		
-		void OnVisibilityButtonClicked(Button* pButton, Ref<OutlinerListItem> pItem) noexcept;
+		void OnVisibilityButtonClicked(Button* apButton, Ref<OutlinerListItem> apItem) noexcept;
+
+		void RecreateItemHierarchy() noexcept;
+
+		void ToggleVisibilityForItem(const Ref<OutlinerListItem>& pAOutlinerListItem, bool aToVisible) noexcept;
 	private:
+		friend class EntityFoldersManager;
+
 		std::vector<Ref<OutlinerListItem>> m_ListItems;
 		Ref<TreeView<Ref<OutlinerListItem>>> m_pOutlinerTreeView = nullptr;
 
-		std::unordered_map<entity, Ref<OutlinerListItem>> m_EntityToItemMap;
-		std::unordered_map<EntityFilter*, Ref<OutlinerListItem>> m_FilterToItemMap;
-		std::unordered_set<EntityFilter*> m_SelectedFilters;
+		std::unordered_map<UUID, Ref<OutlinerListItem>> m_ItemMap;
+
+		std::unordered_map<UUID, Ref<OutlinerListItem>> m_EntityToItemMap;
+		std::unordered_map<UUID, Ref<OutlinerListItem>> m_FolderToItemMap;
+		std::unordered_set<UUID> m_SelectedFolders;
 
 		Ref<VerticalBox> m_pMainBox = nullptr;
 		Ref<VerticalBox> m_pOutlinerListBox = nullptr;
 
 		UniquePtr<TextFilterExpressionEvaluator> m_pFilter = nullptr;
+		UniquePtr<EntityOutlinerPolicies> m_pPolicies = nullptr;
 
 		Editor* m_pEditor = nullptr;
 

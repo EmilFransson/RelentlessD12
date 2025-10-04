@@ -32,6 +32,7 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <concepts>
 #define _CRTDBG_MAP_ALLOC
 #include <crtdbg.h>
+#include <cwctype>
 #include <execution>
 #include <filesystem>
 #include <fstream>
@@ -41,6 +42,7 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <map>
 #include <memory>
 #include <mutex>
+#include <ranges>
 #include <set>
 #include <span>
 #include <stdint.h>
@@ -56,7 +58,6 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <variant>
 #include <vector>
 #include <queue>
-
 #include <comdef.h>
 #include <commdlg.h>
 #include <DirectXColors.h>

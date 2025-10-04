@@ -9,7 +9,7 @@
 #include "../Panels/InspectorPanel.h"
 #include "../Panels/ViewportPanel.h"
 
-#include "EntityFilters.h"
+#include "EntityFolders.h"
 #include "Selection.h"
 
 namespace Relentless
@@ -21,6 +21,14 @@ namespace Relentless
 	public:
 		Editor() noexcept = default;
 		virtual ~Editor() noexcept;
+
+		NO_DISCARD bool AnyFolderContainsEntity(entity aEntity) const noexcept;
+		void AttachEntityToFolder(entity aEntity, const Folder& aFolder) noexcept;
+
+		NO_DISCARD bool FolderContainsEntity(const Folder& aFolder, entity aEntity) noexcept;
+
+		NO_DISCARD const Ref<EntityOutlinerView> GetEntityOutlinerView() const noexcept;
+
 		virtual void OnEvent(IEvent& event) noexcept;
 		virtual void OnImGuiRender() noexcept;
 		virtual void OnCreate() noexcept;
@@ -28,16 +36,23 @@ namespace Relentless
 		virtual void OnUpdate(const float deltaTime) noexcept;
 		virtual void OnRender() noexcept;
 
-		[[nodiscard]] Scene* GetActiveScene() const noexcept;
-		[[nodiscard]] const UniquePtr<Selection>& GetSelection() noexcept;
-		[[nodiscard]] const UniquePtr<EntityFiltersManager>& GetEntityFiltersManager() noexcept;
-		[[nodiscard]] ViewportRenderView& GetRenderView(uint32 renderViewIndex) noexcept;
-		[[nodiscard]] std::vector<ViewportRenderView>& GetRenderViews() noexcept;
+		NO_DISCARD Scene* GetActiveScene() const noexcept;
+		NO_DISCARD EntityFolder* GetFolderContainingEntity(entity aEntity) const noexcept;
+		NO_DISCARD const UniquePtr<Selection>& GetSelection() noexcept;
+		NO_DISCARD const UniquePtr<EntityFoldersManager>& GetEntityFoldersManager() noexcept;
+		NO_DISCARD ViewportRenderView& GetRenderView(uint32 renderViewIndex) noexcept;
+		NO_DISCARD std::vector<ViewportRenderView>& GetRenderViews() noexcept;
 
 		[[nodiscard]] std::vector<entity> GetTransformSelection() const noexcept;
 
 		void OnViewportEntityDuplicationRequest() noexcept;
 
+		void RemoveEntityFromCurrentFolder(entity aEntity) noexcept;
+
+		Broadcaster<void(entity, const Folder&)> OnEntityAttachedToFolder;
+		Broadcaster<void(entity, const Folder&)> OnEntityRemovedFromFolder;
+
+		Broadcaster<void()> OnShutDown;
 		Broadcaster<void(Scene*)> OnPreSceneChanged;
 		Broadcaster<void(Scene*)> OnSceneChanged;
 	private:
@@ -50,8 +65,9 @@ namespace Relentless
 		void UI_DrawMainMenuBar() noexcept;
 
 		void CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept;
+		void OnEntityFolderDeleted(EntityFolder* apFolder) noexcept;
+		void OnEntityFolderMoved(EntityFolder* pMovedFolder, EntityFolder* pMovedFolderParent, const String& aOldPath, const String& aNewPath) noexcept;
 		void OnEntitySelectionChanged(entity e, ESelectionState selectionState);
-		void OnEntitySetToFilter(entity e, EntityFilter* pFilter) noexcept;
 		void OnEntityPreDestroyed(entity e) noexcept;
 		void OnEntityAttached(entity child, entity parent) noexcept;
 		void OnEntityReadbackDone(uint32 entityID) noexcept;
@@ -59,6 +75,7 @@ namespace Relentless
 		void OnViewportHotkeyPressed(ViewportPanel* pPanel, RLS_Key key) noexcept;
 		void OnViewportClicked(ViewportPanel* pPanel, Vector2u relativeMouseCoords) noexcept;
 
+		void RunFolderComprehensiveTest();
 		void SpawnViewport() noexcept;
 	private:
 		std::vector<ViewportRenderView> m_RenderViews;
@@ -67,7 +84,7 @@ namespace Relentless
 		entity m_HoveredEntity = NULL_ENTITY;
 
 		UniquePtr<Selection> m_pSelection = nullptr;
-		UniquePtr<EntityFiltersManager> m_pEntityFiltersManager = nullptr;
+		UniquePtr<EntityFoldersManager> m_pEntityFoldersManager = nullptr;
 
 		//PropertiesPanel m_PropertiesPanel;
 		//ContentBrowserPanel m_ContentBrowserPanel;
@@ -108,5 +125,7 @@ namespace Relentless
 
 		Ref<CollapsibleSection> m_pSection = nullptr;
 		Ref<FloatDrag> m_pDragger = nullptr;
+
+		DetailsPanel* m_pDetailsPanel = nullptr;
 	};
 }

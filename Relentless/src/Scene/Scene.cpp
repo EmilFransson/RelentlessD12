@@ -6,7 +6,8 @@
 namespace Relentless
 {
 	Scene::Scene(const char* name) noexcept
-		: m_Name{ name }
+		:m_Name{ name }
+		,m_UUID{ CreateUUID() }
 	{
 	}
 
@@ -22,6 +23,11 @@ namespace Relentless
 		}
 
 		return false;
+	}
+
+	const UUID& Scene::GetUUID() const noexcept
+	{
+		return m_UUID;
 	}
 
 	void Scene::SetName(const std::string& name) noexcept
@@ -281,7 +287,7 @@ namespace Relentless
 		return m_EntityManager.Has<IsChildComponent>(e);
 	}
 
-	bool Scene::EntityIsDescendant(const entity ancestor, const entity descendant) noexcept
+	bool Scene::EntityIsDescendant(const entity ancestor, const entity descendant) const noexcept
 	{
 		RLS_ASSERT(m_EntityManager.Exists(ancestor), "Ancestor entity does not exist");
 		RLS_ASSERT(m_EntityManager.Exists(descendant), "Descendant entity does not exist");
@@ -314,12 +320,12 @@ namespace Relentless
 		return EntityIsDescendant(ancestor, descendant);
 	}
 
-	bool Scene::EntityIsParent(entity possibleChild, entity possibleParent) noexcept
+	bool Scene::EntityIsParent(entity possibleChild, entity possibleParent) const noexcept
 	{
 		return m_EntityManager.Has<IsChildComponent>(possibleChild) && m_EntityManager.Get<IsChildComponent>(possibleChild).Parent == possibleParent;
 	}
 
-	bool Scene::EntityIsChild(entity possibleChild, entity possibleParent) noexcept
+	bool Scene::EntityIsChild(entity possibleChild, entity possibleParent) const noexcept
 	{
 		if (!m_EntityManager.Has<ParentComponent>(possibleParent))
 			return false;
@@ -383,6 +389,22 @@ namespace Relentless
 
 		OnEntityDetached(entityToDetach, parent);
 		return true;
+	}
+
+	void Scene::ForEachEntityWithAncestorEntity(entity aEntity, bool aIncludeAncestor, const Callback<bool(entity)>& aOperation) noexcept
+	{
+		std::vector<entity> entitiesToProcess;
+		if (aIncludeAncestor)
+			entitiesToProcess.push_back(aEntity);
+
+		const std::vector<entity> descendants = GetAllEntityDescendants(aEntity);
+		entitiesToProcess.insert(entitiesToProcess.end(), descendants.begin(), descendants.end());
+
+		for (entity e : entitiesToProcess)
+		{
+			if (!aOperation(e))
+				break;
+		}
 	}
 
 	std::vector<entity> Scene::GetAllEntityDescendants(entity rootEntity) noexcept

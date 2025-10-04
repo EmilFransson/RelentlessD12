@@ -112,6 +112,8 @@ namespace Relentless
 
 	void UIManager::OnRender() noexcept
 	{
+		PROFILE_FUNC;
+
 		for (auto& panel : m_PanelStack)
 			panel->Render();
 

@@ -2,8 +2,6 @@
 
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RHI/CommandContext.h"
-#include "Graphics/RHI/Device.h"
-#include "Graphics/RHI/Texture.h"
 
 namespace Relentless
 {
@@ -24,22 +22,28 @@ namespace Relentless
 
 	void DepthPrePass::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept
 	{
-		const uint32 width = sceneTextures.pDepthTarget->GetWidth();
-		const uint32 height = sceneTextures.pDepthTarget->GetHeight();
+		if (!m_pDepthTarget ||
+			m_pDepthTarget->GetWidth() != sceneTextures.pDepthTarget->GetWidth() ||
+			m_pDepthTarget->GetHeight() != sceneTextures.pDepthTarget->GetHeight() ||
+			m_pDepthTarget->GetSampleCount() != sceneTextures.pDepthTarget->GetSampleCount())
+		{
+			const uint32 width = sceneTextures.pDepthTarget->GetWidth();
+			const uint32 height = sceneTextures.pDepthTarget->GetHeight();
 
-		const TextureDesc depthTargetDesc = TextureDesc::Create2D(
-			width,
-			height,
-			sceneTextures.pDepthTarget->GetFormat(),
-			1u,
-			TextureFlag::DepthStencil | TextureFlag::ShaderResource,
-			ClearBinding(1.0f, 1u),
-			sceneTextures.pDepthTarget->GetSampleCount());
+			const TextureDesc depthTargetDesc = TextureDesc::Create2D(
+				width,
+				height,
+				sceneTextures.pDepthTarget->GetFormat(),
+				1u,
+				TextureFlag::DepthStencil | TextureFlag::ShaderResource,
+				ClearBinding(1.0f, 1u),
+				sceneTextures.pDepthTarget->GetSampleCount());
 
-		const Ref<Texture> pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
+			m_pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
+		}
 
 		RenderPassInfo info{};
-		info.DepthStencilTarget.pTarget = pDepthTarget;
+		info.DepthStencilTarget.pTarget = m_pDepthTarget;
 		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ClearDepth;
 		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::None;
 
@@ -58,7 +62,7 @@ namespace Relentless
 
 		commandContext.EndRenderPass();
 
-		sceneTextures.pDepthTarget = pDepthTarget;
+		sceneTextures.pDepthTarget = m_pDepthTarget;
 	}
 
 }
