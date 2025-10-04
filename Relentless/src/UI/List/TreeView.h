@@ -84,6 +84,7 @@ namespace Relentless
 	void TreeView<ItemType>::SetItemExpandedState(const ItemType& pItem, bool expandedState) noexcept
 	{
 		m_ItemInfos.at(pItem).IsExpanded = expandedState;
+		m_ShouldRefresh = true;
 	}
 
 	template<class ItemType>

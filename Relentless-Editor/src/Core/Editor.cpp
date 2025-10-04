@@ -1144,7 +1144,13 @@ namespace Relentless
 		newEntities.reserve(selectedEntities.size());
 
 		for (entity selectedEntity : selectedEntities)
-			newEntities.push_back(m_pActiveScene->DuplicateEntity(selectedEntity, false));
+		{
+			const entity duplicatedEntity = m_pActiveScene->DuplicateEntity(selectedEntity, false);
+			if (EntityFolder* pFolder = GetFolderContainingEntity(selectedEntity))
+				AttachEntityToFolder(duplicatedEntity, Folder(FolderRoot::CreateFromScene(*m_pActiveScene), pFolder->GetPath()));
+
+			newEntities.push_back(duplicatedEntity);
+		}
 
 		m_pSelection->DeselectAllEntities();
 		m_pSelection->SelectEntities(newEntities);

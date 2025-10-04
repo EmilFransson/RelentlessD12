@@ -45,7 +45,7 @@ namespace Relentless
 
 		EntityFolder* CreateFolder(Scene& aScene, const String& aPath) noexcept;
 		EntityFolder* CreateFolder(Scene& aScene, const Folder& aFolder) noexcept;
-		EntityFolder* CreateFolderContainingSelection(Scene& aScene, const String& aPath) noexcept;
+		EntityFolder* CreateFolderContainingSelection(Scene& aScene) noexcept;
 		NO_DISCARD bool ContainsFolder(const Scene& aScene, const String& aPath) const noexcept;
 		NO_DISCARD bool ContainsFolder(const Scene& aScene, const Folder& aFolder) const noexcept;
 
@@ -58,6 +58,7 @@ namespace Relentless
 
 		NO_DISCARD String GetDefaultFolderName(Scene& aScene, const String& aParentPath) const noexcept;
 		NO_DISCARD Folder GetDefaultFolderName(Scene& aScene, const Folder& aParentFolder) const noexcept;
+		NO_DISCARD Folder GetDefaultFolderForSelection(Scene& aScene, Span<Folder> someFolders) const noexcept;
 		NO_DISCARD String GetFolderName(const Scene& aScene, const String& aParentPath, const String& aFolderName) const noexcept;
 
 		NO_DISCARD bool IsFolderExpanded(Scene& aScene, const String& aPath) const noexcept;
@@ -68,6 +69,7 @@ namespace Relentless
 		void OnFolderRootObjectRemoved(const FolderRoot& aRootObject) noexcept;
 
 		NO_DISCARD Ref<EntityFolder> GetFolder(const Scene& aScene, const String& aPath) const noexcept;
+		NO_DISCARD Ref<EntityFolder> GetFolder(const Scene& aScene, const UUID& aFolderUUID) const noexcept;
 
 		bool RenameFolder(Scene& aScene, const String& aOldPath, const String& aNewPath) noexcept;
 

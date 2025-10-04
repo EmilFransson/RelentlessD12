@@ -41,9 +41,9 @@ namespace Relentless
 		const entity targetEntity = std::get<entity>(aContext.TargetPayload);
 		const std::string_view targetEntityName = locGetEntityName(targetEntity, aContext.Scene);
 
-		if (WouldCreateCycle(targetEntity, aContext.DraggedEntities, aContext.Scene))
+		if (WouldCreateCycle(targetEntity, aContext.Entities, aContext.Scene))
 			return { std::format("{}. Parent cannot become the child of their descendant.", targetEntityName), false };
-		else if (aContext.DraggedFolders.GetSize() > 0)
+		else if (aContext.Folders.GetSize() > 0)
 			return { std::format("{}.", targetEntityName), false };
 		
 		return { std::format("{}.", targetEntityName), true };
@@ -57,13 +57,13 @@ namespace Relentless
 		entity outRejectedEntity = NULL_ENTITY;
 		EntityFolder* pOutRejectedFolder = nullptr;
 
-		if (FolderAlreadyContainsEntity(aContext.Scene, pTargetFolder->GetPath(), aContext.DraggedEntities, outRejectedEntity))
+		if (FolderAlreadyContainsEntity(aContext.Scene, pTargetFolder->GetPath(), aContext.Entities, outRejectedEntity))
 			return { std::format("{} is already assigned to {}.", locGetEntityName(outRejectedEntity , aContext.Scene), pTargetFolder->GetLabel()), false };
-		else if (WouldCreateCycle(pTargetFolder, aContext.DraggedFolders))
+		else if (WouldCreateCycle(pTargetFolder, aContext.Folders))
 			return { std::format("{}. Parent cannot become the child of their descendant.", targetFolderLabel), false };
-		else if (FolderAlreadyContainsFolder(pTargetFolder, aContext.DraggedFolders, pOutRejectedFolder))
+		else if (FolderAlreadyContainsFolder(pTargetFolder, aContext.Folders, pOutRejectedFolder))
 			return { std::format("{} is already assigned to {}.", pOutRejectedFolder->GetLabel(), targetFolderLabel), false };
-		else if (WouldCreateNameCollision(aContext.FoldersManager, aContext.Scene, pTargetFolder, aContext.DraggedFolders, pOutRejectedFolder))
+		else if (WouldCreateNameCollision(aContext.FoldersManager, aContext.Scene, pTargetFolder, aContext.Folders, pOutRejectedFolder))
 			return { std::format("{} already contains a folder child named '{}'.", pTargetFolder->GetLabel(), pOutRejectedFolder->GetLabel()), false };
 
 		return { std::format("Move into '{}'.", targetFolderLabel), true };
@@ -75,10 +75,11 @@ namespace Relentless
 		const String& targetSceneName = pTargetScene->GetName();
 
 		entity outRejectedEntity = NULL_ENTITY;
-		
-		if (aContext.DraggedFolders.GetSize() > 0)
-			return { std::format("{}.", targetSceneName), false };
-		else if (RootAlreadyContainsEntity(pTargetScene, aContext.DraggedEntities, outRejectedEntity))
+		EntityFolder* pOutRejectedFolder = nullptr;
+
+		if (WouldCreateNameCollision(aContext.FoldersManager, aContext.Scene, nullptr, aContext.Folders, pOutRejectedFolder))
+			return { std::format("Root already contains a folder named '{}'.", pOutRejectedFolder->GetLabel()), false };
+		else if (RootAlreadyContainsEntity(pTargetScene, aContext.Entities, outRejectedEntity))
 			return { std::format("{} is already assigned to root.", locGetEntityName(outRejectedEntity, *pTargetScene)), false };
 
 		return { "Move to root.", true };
@@ -143,7 +144,7 @@ namespace Relentless
 				3.1 Attach all entities to target entity.
 		*/
 		const entity targetEntity = std::get<entity>(aContext.TargetPayload);
-		const int numDraggedEntities = static_cast<int>(aContext.DraggedEntities.GetSize());
+		const int numDraggedEntities = static_cast<int>(aContext.Entities.GetSize());
 
 		const EntityManager& manager = aContext.Scene.GetEntityManager();
 		const bool targetHasFolder = manager.Has<FolderComponent>(targetEntity);
@@ -154,7 +155,7 @@ namespace Relentless
 		auto&& GetIntersectingEntities = [&aContext, targetEntity]() -> std::unordered_set<entity>
 		{
 			std::unordered_set<entity> intersectingEntities;
-			for (entity draggedEntity : aContext.DraggedEntities)
+			for (entity draggedEntity : aContext.Entities)
 			{
 				if (aContext.Scene.EntityIsParent(draggedEntity, targetEntity))
 					intersectingEntities.insert(draggedEntity);
@@ -164,10 +165,10 @@ namespace Relentless
 		};
 
 		const std::unordered_set<entity> intersectingEntities = GetIntersectingEntities();
-		if (intersectingEntities.size() == aContext.DraggedEntities.GetSize())
+		if (intersectingEntities.size() == aContext.Entities.GetSize())
 		{
 			//Case 1:
-			for (entity draggedEntity : aContext.DraggedEntities)
+			for (entity draggedEntity : aContext.Entities)
 			{
 				ItemResolution resolution;
 				resolution.Item = OutlinerPayload(draggedEntity);
@@ -181,7 +182,7 @@ namespace Relentless
 		else if (!intersectingEntities.empty())
 		{
 			//Case 2:
-			for (entity draggedEntity : aContext.DraggedEntities)
+			for (entity draggedEntity : aContext.Entities)
 			{
 				ItemResolution resolution;
 				resolution.Item = OutlinerPayload(draggedEntity);
@@ -195,7 +196,7 @@ namespace Relentless
 		else
 		{
 			//Case 3:
-			for (entity draggedEntity : aContext.DraggedEntities)
+			for (entity draggedEntity : aContext.Entities)
 			{
 				ItemResolution resolution;
 				resolution.Item = OutlinerPayload(draggedEntity);
@@ -224,10 +225,8 @@ namespace Relentless
 			Note: Resolution items must be sorted such that entities come before folders, to ensure that entities are moved before folders.
 		*/
 
-		const EntityFolder* pTargetFolder = std::get<EntityFolder*>(aContext.TargetPayload);
-
-		const uint32 numDraggedEntities = aContext.DraggedEntities.GetSize();
-		const uint32 numDraggedFolders = aContext.DraggedFolders.GetSize();
+		const uint32 numDraggedEntities = aContext.Entities.GetSize();
+		const uint32 numDraggedFolders = aContext.Folders.GetSize();
 
 		MovePlan movePlan;
 		movePlan.ResolvedItems.reserve(numDraggedEntities + numDraggedFolders);
@@ -236,9 +235,9 @@ namespace Relentless
 		{
 			std::unordered_set<entity> descendantEntities;
 
-			for (entity candidateEntityDescendant : aContext.DraggedEntities)
+			for (entity candidateEntityDescendant : aContext.Entities)
 			{
-				for (entity candidateEntityAncestor : aContext.DraggedEntities)
+				for (entity candidateEntityAncestor : aContext.Entities)
 				{
 					if (candidateEntityDescendant == candidateEntityAncestor)
 						continue;
@@ -256,7 +255,7 @@ namespace Relentless
 
 		std::unordered_set<entity> descendantEntities = GetDescendantEntities();
 
-		for (entity draggedEntity : aContext.DraggedEntities)
+		for (entity draggedEntity : aContext.Entities)
 		{
 			ItemResolution resolution;
 			resolution.Item = OutlinerPayload(draggedEntity);
@@ -267,7 +266,7 @@ namespace Relentless
 			movePlan.ResolvedItems.push_back(resolution);
 		}
 
-		for (EntityFolder* pFolder : aContext.DraggedFolders)
+		for (EntityFolder* pFolder : aContext.Folders)
 		{
 			ItemResolution resolution;
 			resolution.Item = OutlinerPayload(pFolder);
@@ -280,7 +279,19 @@ namespace Relentless
 
 	EntityOutlinerPolicies::MovePlan EntityOutlinerPolicies::ResolveMoveToRoot(const Context& aContext) const noexcept
 	{
-		return {};
+		/*
+			We know:
+			1. No entities in move op currently belong to scene root.
+			2. No name collisions among folders will be created.
+
+			We need to resolve:
+			1. If an entity is a descendant of another dragged entity, then resolution is:
+				1.1 No-Op for the descendant entity.
+
+			Note: this is the same move plan as for ResolveMoveToFolder -> hence it is reused
+		*/
+
+		return ResolveMoveToFolder(aContext);
 	}
 
 	bool EntityOutlinerPolicies::RootAlreadyContainsEntity(Scene* pScene, Span<const entity> someSourceEntities, entity& aOutRejectedEntity) const noexcept
@@ -326,7 +337,7 @@ namespace Relentless
 
 	bool EntityOutlinerPolicies::WouldCreateNameCollision(const EntityFoldersManager& aFoldersManager, const Scene& aScene, const EntityFolder* pTargetFolder, Span<EntityFolder* const> someSourceFolders, EntityFolder*& paOutRejectedFolder) const noexcept
 	{
-		const String targetFolderPath = pTargetFolder->GetPath();
+		const String targetFolderPath = pTargetFolder ? pTargetFolder->GetPath() : "";
 
 		for (EntityFolder* pSourceFolder : someSourceFolders)
 		{

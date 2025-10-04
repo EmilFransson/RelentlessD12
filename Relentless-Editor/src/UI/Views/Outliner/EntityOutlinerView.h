@@ -1,12 +1,13 @@
 ﻿#pragma once
 #include <Relentless.h>
+#include "EntityOutlinerPolicies.h"
+
 #include "../../../Core/EntityFolders.h"
 #include "../../OutlinerTableRow.h"
 
 namespace Relentless
 {
 	class Editor;
-	class EntityOutlinerPolicies;
 	enum class ESelectionState : uint8;
 
 	class EntityOutlinerView : public IWidget<EntityOutlinerView>
@@ -22,6 +23,8 @@ namespace Relentless
 		NO_DISCARD Ref<OutlinerListItem> CreateSceneListItem(Scene* pScene) noexcept;
 
 		void DeselectAllFolders() noexcept;
+
+		void ExecuteMovePlan(const EntityOutlinerPolicies::MovePlan& aMovePlan, Scene& aScene, const OutlinerPayload& targetPayload) noexcept;
 
 		NO_DISCARD const String& GetItemName(const Ref<OutlinerListItem>& pItem) const noexcept;
 		NO_DISCARD const String& GetRowName(const OutlinerTableRow* pRow) const noexcept;
@@ -39,6 +42,8 @@ namespace Relentless
 		NO_DISCARD Ref<DragDropOperation> OnDragDetected(OutlinerTableRow* apRow) noexcept;
 		NO_DISCARD bool OnDragEnter(OutlinerTableRow* apRow, OutlinerDragDropOperation& aDragDropOp) noexcept;
 		NO_DISCARD bool OnDrop(OutlinerTableRow* apRow, OutlinerDragDropOperation& aDragDropOp) noexcept;
+
+		NO_DISCARD std::vector<EntityFolder*> MergeFoldersByLabel(const std::vector<EntityFolder*>& someFolders) noexcept;
 
 		void OnEntityAttached(entity aChildEntity, entity aParentEntity) noexcept;
 		void OnEntityCreated(entity aNewEntity) noexcept;
@@ -72,6 +77,7 @@ namespace Relentless
 		void OnRender() noexcept override;
 		void OnRenameSelection() noexcept;
 		NO_DISCARD const std::vector<Ref<OutlinerListItem>>* OnRequestSource() noexcept;
+		void OnRowDoubleClicked(const Ref<OutlinerListItem>& apItem) noexcept;
 
 		void OnSceneChanged(Scene* apScene) noexcept;
 		void OnSearchTextChanged(const char* aText) noexcept;

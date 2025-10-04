@@ -5,14 +5,15 @@ namespace Relentless
 	class FilepathUtils
 	{
 	public:
-		static [[nodiscard]] std::string ExtractFilename(const std::filesystem::path& filepath) noexcept;
-		static [[nodiscard]] std::string ExtractFilenameWithoutExtension(const std::filesystem::path& filepath) noexcept;
-		static [[nodiscard]] std::string ExtractExtension(const std::filesystem::path& filepath) noexcept;
-		static [[nodiscard]] std::filesystem::path Combine(const std::filesystem::path& basePath, const std::filesystem::path& pathToAppend) noexcept;
-		static void Normalize(std::filesystem::path& basePath) noexcept;
-		static [[nodiscard]] bool HasExtension(const std::filesystem::path& path) noexcept;
-		static void SetExtension(std::filesystem::path& path, const std::string& extension) noexcept;
-		static [[nodiscard]] std::string SanitizeFileName(const std::string& fileName) noexcept;
-		static [[nodiscard]] bool IsDirectory(const std::filesystem::path& filepath) noexcept;
+		static NO_DISCARD String ExtractFilename(const Path& aFilepath) noexcept;
+		static NO_DISCARD String ExtractFilenameWithoutExtension(const Path& aFilepath) noexcept;
+		static NO_DISCARD String ExtractExtension(const Path& aFilepath) noexcept;
+		static NO_DISCARD Path Combine(const Path& aBasePath, const Path& aPathToAppend) noexcept;
+		static NO_DISCARD String CombineDisplay(const Path& aBasePath, const Path& aPathToAppend) noexcept;
+		static void Normalize(Path& basePath) noexcept;
+		static NO_DISCARD bool HasExtension(const Path& aFilePath) noexcept;
+		static void SetExtension(Path& aFilePath, const String& aExtension) noexcept;
+		static NO_DISCARD String SanitizeFileName(const String& aFileName) noexcept;
+		static NO_DISCARD bool IsDirectory(const Path& aFilepath) noexcept;
 	};
 }

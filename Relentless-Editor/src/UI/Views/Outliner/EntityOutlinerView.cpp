@@ -1,7 +1,6 @@
 #include "EntityOutlinerView.h"
 
 #include "../../../Core/Editor.h"
-#include "EntityOutlinerPolicies.h"
 
 namespace Relentless
 {
@@ -69,6 +68,7 @@ namespace Relentless
 			->OnGetChildren(this, &EntityOutlinerView::OnGetChildren)
 			->OnRequestSource(this, &EntityOutlinerView::OnRequestSource)
 			->OnGenerateRow(this, &EntityOutlinerView::OnGenerateRow)
+			->OnDoubleClick(this, &EntityOutlinerView::OnRowDoubleClicked)
 			->OnDebugItemToString(this, &EntityOutlinerView::OnDebugItemToString)
 			->OnSelectionChanged(this, &EntityOutlinerView::OnSelectionChanged)
 			->OnContextMenuOpening(this, &EntityOutlinerView::OnContextMenuOpening);
@@ -187,6 +187,85 @@ namespace Relentless
 			});
 	}
 
+	void EntityOutlinerView::ExecuteMovePlan(const EntityOutlinerPolicies::MovePlan& aMovePlan, Scene& aScene, const OutlinerPayload& targetPayload) noexcept
+	{
+		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
+		
+		const bool targetIsEntity = std::holds_alternative<entity>(targetPayload);
+		const bool targetIsFolder = std::holds_alternative<EntityFolder*>(targetPayload);
+		const bool targetIsScene = std::holds_alternative<Scene*>(targetPayload);
+
+		for (const EntityOutlinerPolicies::ItemResolution& itemResolution : aMovePlan.ResolvedItems)
+		{
+			const bool resolvedIsEntity = std::holds_alternative<entity>(itemResolution.Item);
+			const bool resolvedIsFolder = std::holds_alternative<EntityFolder*>(itemResolution.Item);
+
+			const entity resolvedEntity = resolvedIsEntity ? std::get<entity>(itemResolution.Item) : NULL_ENTITY;
+			const EntityFolder* resolvedFolder = resolvedIsFolder ? std::get<EntityFolder*>(itemResolution.Item) : nullptr;
+
+			switch (itemResolution.MoveOperation)
+			{
+			case EMoveOperation::NoOp:
+				break;
+			case EMoveOperation::AttachToTarget:
+			{
+				if (resolvedIsEntity)
+				{
+					m_pEditor->RemoveEntityFromCurrentFolder(resolvedEntity);
+
+					if (targetIsEntity)
+						aScene.AttachEntity(resolvedEntity, std::get<entity>(targetPayload));
+					else if (targetIsFolder)
+					{
+						m_pEditor->RemoveEntityFromCurrentFolder(resolvedEntity);
+						aScene.DetachEntity(resolvedEntity);
+
+						const Folder folder = Folder(FolderRoot::CreateFromScene(aScene), std::get<EntityFolder*>(targetPayload)->GetPath());
+						m_pEditor->AttachEntityToFolder(resolvedEntity, folder);
+					}
+					else
+					{
+						m_pEditor->RemoveEntityFromCurrentFolder(resolvedEntity);
+						aScene.DetachEntity(resolvedEntity);
+					}
+				}
+				else if (resolvedIsFolder)
+				{
+					if (targetIsFolder)
+						pFoldersManager->RenameFolder(aScene, resolvedFolder->GetPath(), FilepathUtils::CombineDisplay(std::get<EntityFolder*>(targetPayload)->GetPath(), resolvedFolder->GetLabel()));
+					else 
+						pFoldersManager->RenameFolder(aScene, resolvedFolder->GetPath(), resolvedFolder->GetLabel());
+				}
+				break;
+			}
+			case EMoveOperation::DetachFromTarget:
+			{
+				if (resolvedIsEntity)
+				{
+					if (targetIsEntity)
+						aScene.DetachEntity(resolvedEntity);
+				}
+				break;
+			}
+			case EMoveOperation::ReattachToParentOfTarget:
+			{
+				if (resolvedIsEntity)
+				{
+					if (targetIsEntity)
+					{
+						aScene.DetachEntity(resolvedEntity);
+						m_pEditor->RemoveEntityFromCurrentFolder(resolvedEntity);
+
+						const Folder folder = aScene.GetEntityManager().Get<FolderComponent>(std::get<entity>(targetPayload)).Folder;
+						m_pEditor->AttachEntityToFolder(resolvedEntity, folder);
+					}
+				}
+				break;
+			}
+			}
+		}
+	}
+
 	const String& EntityOutlinerView::GetItemName(const Ref<OutlinerListItem>& pItem) const noexcept
 	{
 		if (pItem->IsEntity())
@@ -239,63 +318,64 @@ namespace Relentless
 	void EntityOutlinerView::OnCreateNewFolderButtonClicked() noexcept
 	{
 		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
-		Scene* pScene = m_pEditor->GetActiveScene();
+		Scene& scene = *m_pEditor->GetActiveScene();
 
 		std::vector<Ref<OutlinerListItem>> selectedItems;
 		m_pOutlinerTreeView->GetSelectedItems(selectedItems);
 
-		//Step 1: Create the new folder. If 1 existing folder is selected -> assign it as parent for the new folder. 
-		// Otherwise, the new folder should itself become a root folder.
+		std::vector<EntityFolder*> folders;
+		std::vector<entity> entities;
 
-		String newFolderPath = "";
-
-		if (selectedItems.size() == 1 && selectedItems.front()->IsFolder())
+		for (uint32 i = 0u; i < selectedItems.size(); ++i)
 		{
-			EntityFolder* pParentFolder = selectedItems.front()->AsFolder();
+			if (selectedItems[i]->IsFolder())
+				folders.push_back(selectedItems[i]->AsFolder());
+			else if (selectedItems[i]->IsEntity())
+				entities.push_back(selectedItems[i]->AsEntity());
+		}
 
-			newFolderPath = pFoldersManager->GetDefaultFolderName(*pScene, pParentFolder->GetPath());
-			selectedItems.clear();
+		if (folders.size() == 1)
+		{
+			const String newFolderName = pFoldersManager->GetDefaultFolderName(scene, folders.front()->GetPath());
+			EntityFolder* pNewFolder = pFoldersManager->CreateFolder(scene, FilepathUtils::CombineDisplay(folders.front()->GetPath(), newFolderName));
+			if (!pNewFolder)
+				return;
+
+			EntityOutlinerPolicies::Context context
+			{
+				.Scene = scene,
+				.FoldersManager = *pFoldersManager,
+				.TargetPayload = pNewFolder,
+				.Entities = entities
+			};
+
+			const EntityOutlinerPolicies::MovePlan movePlan = m_pPolicies->ResolveMoveRequest(context);
+			ExecuteMovePlan(movePlan, scene, pNewFolder);
+
+			m_pOutlinerTreeView->SetItemSelection(GetFolderItem(pNewFolder), ESelectionType::Selected);
 		}
 		else
-			newFolderPath = pFoldersManager->GetDefaultFolderName(*pScene, "");
-
-
-		EntityFolder* pNewFolder = pFoldersManager->CreateFolder(*pScene, newFolderPath);
-
-		//Step 2: Assign all selected folders and entities to the newly created folder.
-		
-		std::vector<entity> selectedEntities;
-		std::vector<EntityFolder*> selectedFolders;
-
-		for (const auto& pSelectedItem : selectedItems)
 		{
-			if (pSelectedItem->IsEntity())
-				selectedEntities.push_back(pSelectedItem->AsEntity());
-			else if (pSelectedItem->IsFolder())
-				selectedFolders.push_back(pSelectedItem->AsFolder());
-			//Ignore scene item
-		}
+			std::vector<EntityFolder*> prunedFolders = MergeFoldersByLabel(folders);
 
-		//Step 2.1: Remove all entities from the selected entities that are descendants to other selected entities.
-		//Attach remaining entities to newly created folder.
-		std::erase_if(selectedEntities, [&](entity candidateDescendant)
-			{  
-				return std::any_of(selectedEntities.begin(), selectedEntities.end(), [&](entity candidateAncestor)
-					{
-						return pScene->EntityIsDescendant(candidateAncestor, candidateDescendant);
-					});
-			});
+			EntityFolder* pNewFolder = pFoldersManager->CreateFolderContainingSelection(scene);
+			m_pOutlinerTreeView->SetItemSelection(GetFolderItem(pNewFolder), ESelectionType::Selected);
+			
+			if (!pNewFolder || selectedItems.empty())
+				return;
 
-		for (entity selectedEntity : selectedEntities)
-			m_pEditor->AttachEntityToFolder(selectedEntity, Folder(FolderRoot::CreateFromScene(*pScene), pNewFolder->GetPath()));
+			EntityOutlinerPolicies::Context context
+			{
+				.Scene = scene,
+				.FoldersManager = *pFoldersManager,
+				.TargetPayload = pNewFolder,
+				.Entities = entities,
+				.Folders = prunedFolders
+			};
 
-		//Step 2.2: Remaining selected folders should next be moved.
+			const EntityOutlinerPolicies::MovePlan movePlan = m_pPolicies->ResolveMoveRequest(context);
+			ExecuteMovePlan(movePlan, scene, pNewFolder);
 
-		for (EntityFolder* pSelectedFolder : selectedFolders)
-		{
-			const String oldPath = pSelectedFolder->GetPath();
-			const String newPath = pNewFolder->GetPath() + pSelectedFolder->GetLabel();
-			pFoldersManager->RenameFolder(*pScene, oldPath, newPath);
 		}
 	}
 
@@ -425,8 +505,8 @@ namespace Relentless
 			.Scene = *pScene,
 			.FoldersManager = *m_pEditor->GetEntityFoldersManager(),
 			.TargetPayload = pHoveredItem->Payload,
-			.DraggedEntities = dragDropOp.GetDraggedEntities(),
-			.DraggedFolders = dragDropOp.GetDraggedFolders()
+			.Entities = dragDropOp.GetDraggedEntities(),
+			.Folders = dragDropOp.GetDraggedFolders()
 		};
 
 		const EntityOutlinerPolicies::ValidationResponse response = m_pPolicies->ValidateMoveRequest(context);
@@ -440,86 +520,74 @@ namespace Relentless
 	{
 		const Ref<OutlinerListItem>& pDropTargetItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
 		const std::vector<entity>& draggedEntities = dragDropOp.GetDraggedEntities();
-		Scene* pScene = m_pEditor->GetActiveScene();
+		Scene& scene = *m_pEditor->GetActiveScene();
 		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
 
 		EntityOutlinerPolicies::Context context
 		{
-			.Scene = *pScene,
+			.Scene = scene,
 			.FoldersManager = *m_pEditor->GetEntityFoldersManager(),
 			.TargetPayload = pDropTargetItem->Payload,
-			.DraggedEntities = dragDropOp.GetDraggedEntities(),
-			.DraggedFolders = dragDropOp.GetDraggedFolders()
+			.Entities = dragDropOp.GetDraggedEntities(),
+			.Folders = dragDropOp.GetDraggedFolders()
 		};
 
 		const EntityOutlinerPolicies::MovePlan movePlan = m_pPolicies->ResolveMoveRequest(context);
+		ExecuteMovePlan(movePlan, scene, pDropTargetItem->Payload);
 
-		const bool targetIsEntity = pDropTargetItem->IsEntity();
-		const bool targetIsFolder = pDropTargetItem->IsFolder();
-		
-		for (const EntityOutlinerPolicies::ItemResolution& itemResolution : movePlan.ResolvedItems)
+		return true;
+	}
+
+	std::vector<EntityFolder*> EntityOutlinerView::MergeFoldersByLabel(const std::vector<EntityFolder*>& someFolders) noexcept
+	{
+		if (someFolders.empty() || someFolders.size() == 1)
+			return someFolders;
+
+		Scene& scene = *m_pEditor->GetActiveScene();
+
+		std::unordered_map<String, std::vector<EntityFolder*>> labelToFoldersMap;
+
+		for (EntityFolder* pFolder : someFolders)
+			labelToFoldersMap[pFolder->GetLabel()].push_back(pFolder);
+
+		std::unordered_set<EntityFolder*> foldersToDelete;
+
+		for (auto& [Label, folders] : labelToFoldersMap)
 		{
-			const bool resolvedIsEntity = std::holds_alternative<entity>(itemResolution.Item);
-			const bool resolvedIsFolder = std::holds_alternative<EntityFolder*>(itemResolution.Item);
+			if (folders.size() == 1)
+				continue;
 
-			const entity resolvedEntity = resolvedIsEntity ? std::get<entity>(itemResolution.Item) : NULL_ENTITY;
-			const EntityFolder* resolvedFolder = resolvedIsFolder ? std::get<EntityFolder*>(itemResolution.Item) : nullptr;
-
-			switch (itemResolution.MoveOperation)
+			//Merge by moving all entities and folders in all but the first folder to the first folder.
+			EntityFolder* pTargetFolder = folders.front();
+			const Folder targetRawFolder = Folder(FolderRoot::CreateFromScene(scene), pTargetFolder->GetPath());
+			for (uint32 i = 1u; i < folders.size(); ++i)
 			{
-			case EMoveOperation::NoOp:
-				break;
-			case EMoveOperation::AttachToTarget:
-			{
-				if (resolvedIsEntity)
-				{
-					m_pEditor->RemoveEntityFromCurrentFolder(resolvedEntity);
+				EntityFolder* pCurrrentFolder = folders[i];
 
-					if (targetIsEntity)
-						pScene->AttachEntity(resolvedEntity, pDropTargetItem->AsEntity());
-					else if (targetIsFolder)
+				std::unordered_set<String> folderPaths;
+				folderPaths.insert(pCurrrentFolder->GetPath());
+
+				EntityFoldersManager::ForEachEntityInFolders(scene, folderPaths, [&](entity aEntity)
 					{
-						m_pEditor->RemoveEntityFromCurrentFolder(resolvedEntity);
-						pScene->DetachEntity(resolvedEntity);
+						m_pEditor->AttachEntityToFolder(aEntity, targetRawFolder);
+						return true;
+					});
 
-						const Folder folder = Folder(FolderRoot::CreateFromScene(*pScene), pDropTargetItem->AsFolder()->GetPath());
-						m_pEditor->AttachEntityToFolder(resolvedEntity, folder);
-					}
-				}
-				else if (resolvedIsFolder)
-				{
-					pFoldersManager->RenameFolder(*pScene, resolvedFolder->GetPath(), pDropTargetItem->AsFolder()->GetPath() + "/" + resolvedFolder->GetLabel());
-				}
-				break;
-			}
-			case EMoveOperation::DetachFromTarget:
-			{
-				if (resolvedIsEntity)
-				{
-					if (targetIsEntity)
-						pScene->DetachEntity(resolvedEntity);
-				}
-				break;
-			}
-			case EMoveOperation::ReattachToParentOfTarget:
-			{
-				if (resolvedIsEntity)
-				{
-					if (targetIsEntity)
-					{
-						pScene->DetachEntity(resolvedEntity);
-						m_pEditor->RemoveEntityFromCurrentFolder(resolvedEntity);
-
-						const Folder folder = pScene->GetEntityManager().Get<FolderComponent>(pDropTargetItem->AsEntity()).Folder;
-						m_pEditor->AttachEntityToFolder(resolvedEntity, folder);
-					}
-				}
-				break;
-			}
+				foldersToDelete.insert(pCurrrentFolder);
 			}
 		}
 
-		return true;
+		std::vector<EntityFolder*> foldersToReturn;
+		for (EntityFolder* pFolder : someFolders)
+		{
+			if (!foldersToDelete.contains(pFolder))
+				foldersToReturn.push_back(pFolder);
+		}
+
+		for (EntityFolder* pFolder : foldersToDelete)
+			m_pEditor->GetEntityFoldersManager()->DeleteFolder(scene, pFolder->GetPath());
+
+		return foldersToReturn;
 	}
 
 	void EntityOutlinerView::OnEntityAttached(entity child, entity parent) noexcept
@@ -733,7 +801,9 @@ namespace Relentless
 		if (EntityFolder* pNewParent = pMovedFolder->GetParent())
 		{
 			GetFolderItem(pNewParent)->Children.push_back(GetFolderItem(pMovedFolder));
-			m_pOutlinerTreeView->SetItemExpandedState(GetFolderItem(pNewParent), true);
+
+			if (m_pOutlinerTreeView->IsItemVisible(GetFolderItem(pNewParent)))
+				m_pOutlinerTreeView->SetItemExpandedState(GetFolderItem(pNewParent), true);
 		}
 		else
 			GetRootSceneItem()->Children.push_back(GetFolderItem(pMovedFolder));
@@ -771,7 +841,6 @@ namespace Relentless
 		{
 			GetRootSceneItem()->Children.insert(GetRootSceneItem()->Children.end(), children.begin(), children.end());
 		}
-
 
 		if (EntityFolder* pParentFolder = pFolder->GetParent())
 			std::erase_if(GetFolderItem(pParentFolder)->Children, [pFolder](const Ref<OutlinerListItem>& pItem) { return pItem->IsFolder() && pItem->AsFolder() == pFolder; });
@@ -994,6 +1063,12 @@ namespace Relentless
 		RecursiveSort(RecursiveSort, m_ListItems);
 
 		return &m_ListItems;
+	}
+
+	void EntityOutlinerView::OnRowDoubleClicked(const Ref<OutlinerListItem>& apItem) noexcept
+	{
+		if (apItem->IsFolder())
+			m_pOutlinerTreeView->SetItemExpandedState(apItem, !m_pOutlinerTreeView->GetItemInfo(apItem).IsExpanded);
 	}
 
 	void EntityOutlinerView::OnSceneChanged(Scene* pScene) noexcept

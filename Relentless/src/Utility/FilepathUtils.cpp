@@ -3,69 +3,76 @@
 
 namespace Relentless
 {
-	std::string FilepathUtils::ExtractFilename(const std::filesystem::path& filepath) noexcept
+	String FilepathUtils::ExtractFilename(const Path& aFilepath) noexcept
 	{
-		if (filepath.has_filename())
-			return filepath.filename().string();
+		if (aFilepath.has_filename())
+			return aFilepath.filename().string();
 		else
 			return "";
 	}
 
-	std::string FilepathUtils::ExtractFilenameWithoutExtension(const std::filesystem::path& filepath) noexcept
+	String FilepathUtils::ExtractFilenameWithoutExtension(const Path& aFilepath) noexcept
 	{
-		if (filepath.has_stem())
-			return filepath.stem().string();
+		if (aFilepath.has_stem())
+			return aFilepath.stem().string();
 		else
 			return "";
 	}
 
-	std::string FilepathUtils::ExtractExtension(const std::filesystem::path& filepath) noexcept
+	String FilepathUtils::ExtractExtension(const Path& aFilepath) noexcept
 	{
-		if (filepath.has_extension())
-			return filepath.extension().string();
+		if (aFilepath.has_extension())
+			return aFilepath.extension().string();
 		else
 			return "";
 	}
 
-	std::filesystem::path FilepathUtils::Combine(const std::filesystem::path& basePath, const std::filesystem::path& pathToAppend) noexcept
+	Path FilepathUtils::Combine(const Path& basePath, const Path& pathToAppend) noexcept
 	{
 		return (basePath / pathToAppend).make_preferred();
 	}
 
-	void FilepathUtils::Normalize(std::filesystem::path& path) noexcept
+	String FilepathUtils::CombineDisplay(const Path& aBasePath, const Path& aPathToAppend) noexcept
 	{
-		path.make_preferred();
+		String s = (aBasePath / aPathToAppend).string();
+		std::replace(s.begin(), s.end(), '\\', '/'); 
+		return s;
 	}
 
-	bool FilepathUtils::HasExtension(const std::filesystem::path& path) noexcept
+	void FilepathUtils::Normalize(Path& aFilepath) noexcept
 	{
-		return path.has_extension();
+		aFilepath.make_preferred();
 	}
 
-	void FilepathUtils::SetExtension(std::filesystem::path& path, const std::string& extension) noexcept
+	bool FilepathUtils::HasExtension(const Path& aFilepath) noexcept
 	{
-		if (HasExtension(path))
-			path.replace_extension(extension);
+		return aFilepath.has_extension();
+	}
+
+	void FilepathUtils::SetExtension(Path& aFilepath, const String& aExtension) noexcept
+	{
+		if (HasExtension(aFilepath))
+			aFilepath.replace_extension(aExtension);
 		else
-			path.append(extension);
+			aFilepath.append(aExtension);
 	}
 
-	std::string FilepathUtils::SanitizeFileName(const std::string& fileName) noexcept
+	String FilepathUtils::SanitizeFileName(const String& aFileName) noexcept
 	{
-		std::string sanitized = fileName;
-		const std::string illegalCharacters = R"(\/:*?"<>|)";
+		String sanitized = aFileName;
+		const String illegalCharacters = R"(\/:*?"<>|)";
 		for (char& ch : sanitized) 
 		{
-			if (illegalCharacters.find(ch) != std::string::npos || std::iscntrl(static_cast<unsigned char>(ch)))
+			if (illegalCharacters.find(ch) != String::npos || std::iscntrl(static_cast<unsigned char>(ch)))
 				ch = '_';
 		}
-			
+		
 		return sanitized;
 	}
 
-	bool FilepathUtils::IsDirectory(const std::filesystem::path& filepath) noexcept
+	bool FilepathUtils::IsDirectory(const Path& aFilepath) noexcept
 	{
-		return std::filesystem::is_directory(filepath);
+		return std::filesystem::is_directory(aFilepath);
 	}
 
 }

@@ -18,8 +18,8 @@ namespace Relentless
 			const Scene& Scene;
 			const EntityFoldersManager& FoldersManager;
 			const OutlinerPayload& TargetPayload;
-			Span<const entity> DraggedEntities;
-			Span<EntityFolder* const> DraggedFolders;
+			Span<const entity> Entities;
+			Span<EntityFolder* const> Folders;
 		};	
 
 		struct ItemResolution

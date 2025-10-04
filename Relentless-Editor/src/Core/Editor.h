@@ -43,7 +43,7 @@ namespace Relentless
 		NO_DISCARD ViewportRenderView& GetRenderView(uint32 renderViewIndex) noexcept;
 		NO_DISCARD std::vector<ViewportRenderView>& GetRenderViews() noexcept;
 
-		[[nodiscard]] std::vector<entity> GetTransformSelection() const noexcept;
+		NO_DISCARD std::vector<entity> GetTransformSelection() const noexcept;
 
 		void OnViewportEntityDuplicationRequest() noexcept;
 

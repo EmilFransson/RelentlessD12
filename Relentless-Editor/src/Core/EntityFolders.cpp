@@ -206,10 +206,22 @@ namespace Relentless
 		return CreateFolder(aScene, aFolder.GetPath());
 	}
 
-	EntityFolder* EntityFoldersManager::CreateFolderContainingSelection(Scene& aScene, const String& aPath) noexcept
+	EntityFolder* EntityFoldersManager::CreateFolderContainingSelection(Scene& aScene) noexcept
 	{
-		//TODO!
-		return nullptr;
+		Ref<EntityOutlinerView> pOutlinerView = m_pEditor->GetEntityOutlinerView();
+
+		std::vector<Folder> folders;
+		folders.resize(pOutlinerView->m_SelectedFolders.size());
+
+		for (const UUID& uuid : pOutlinerView->m_SelectedFolders)
+		{
+			if (EntityFolder* pFolder = GetFolder(aScene, uuid))
+				folders.push_back(Folder(FolderRoot::CreateFromScene(aScene), pFolder->GetPath()));
+		}
+
+		const Folder newFolder = GetDefaultFolderForSelection(aScene, folders);
+
+		return CreateFolder(aScene, newFolder);
 	}
 
 	bool EntityFoldersManager::ContainsFolder(const Scene& aScene, const Folder& aFolder) const noexcept
@@ -295,6 +307,32 @@ namespace Relentless
 		return Folder(aParentFolder.GetRoot(), GetDefaultFolderName(aScene, aParentFolder.GetPath()));
 	}
 
+	Folder EntityFoldersManager::GetDefaultFolderForSelection(Scene& aScene, Span<Folder> someFolders) const noexcept
+	{
+		if (!IsInitializedForScene(aScene))
+			return Folder{};
+
+		if (someFolders.GetSize() == 0)
+			return Folder(FolderRoot::CreateFromScene(aScene), GetDefaultFolderName(aScene, ""));
+
+		const String originalProposedPath = "New Folder";
+		String proposedPath = originalProposedPath;
+
+		std::unordered_set<String> folderLabels;
+		for (uint32 i = 0; i < someFolders.GetSize(); ++i)
+		{
+			const String& fullPath = someFolders[i].GetPath();
+			const String label = fullPath.contains('/') ? fullPath.substr(fullPath.rfind('/') + 1) : fullPath;
+			folderLabels.insert(label);
+		}
+
+		uint32 counter = 1;
+		while (ContainsFolder(aScene, proposedPath) || folderLabels.contains(proposedPath))
+			proposedPath = std::format("{}{}", originalProposedPath, ++counter);
+
+		return Folder(FolderRoot::CreateFromScene(aScene), proposedPath);
+	}
+
 	String EntityFoldersManager::GetFolderName(const Scene& aScene, const String& aParentPath, const String& aFolderName) const noexcept
 	{
 		if (!IsInitializedForScene(aScene))
@@ -374,6 +412,21 @@ namespace Relentless
 		auto it = std::ranges::find_if(folders, [&aPath](const Ref<EntityFolder>& pFolder) { return pFolder->GetPath() == aPath; });
 
 		return it != folders.end() ? *it : nullptr;
+	}
+
+	Ref<EntityFolder> EntityFoldersManager::GetFolder(const Scene& aScene, const UUID& aFolderUUID) const noexcept
+	{
+		if (!IsInitializedForScene(aScene))
+			return nullptr;
+
+		const std::vector<Ref<EntityFolder>>& folders = GetFolderContainer(aScene).Folders;
+		for (const Ref<EntityFolder>& pFolder : folders)
+		{
+			if (pFolder->GetUUID() == aFolderUUID)
+				return pFolder;
+		}
+
+		return nullptr;
 	}
 
 	void EntityFoldersManager::DeleteFolderContainer(const FolderRoot& aRoot) noexcept

@@ -104,7 +104,6 @@ namespace Relentless
 		NO_DISCARD bool OnDrop(const Ref<DragDropOperation>& pDragDropOperation) noexcept override;
 
 	private:
-		//std::array<Ref<IBaseWidget>, 3> m_ColumnWidgets;
 		std::array<FloatRect, 3> m_Margins;
 
 		Callback<Ref<DragDropOperation>(OutlinerTableRow*)> m_OnDragDetectedCallback;
