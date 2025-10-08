@@ -6,6 +6,7 @@ namespace Relentless
 		:m_Size{size}
 		,m_IsChildRegion{isChildRegion}
 	{
+		m_Spacing = Vector2(ImGui::GetStyle().ItemSpacing.x, ImGui::GetStyle().ItemSpacing.y);
 	}
 
 	float VerticalBox::CalcDesiredWidth() const noexcept
@@ -31,13 +32,22 @@ namespace Relentless
 		m_IsChildRegion = state;
 	}
 
+	void VerticalBox::SetSpacing(const Vector2& aSpacing) noexcept
+	{
+		m_Spacing = aSpacing;
+	}
+
 	void VerticalBox::OnRender() noexcept
 	{
 		if (m_IsChildRegion)
 			ImGui::BeginChild(std::format("##{}-child", (long)this).c_str(), ImVec2(m_Size.x, m_Size.y), false, GetFlags());
 
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(m_Spacing.x, m_Spacing.y));
+
 		for (auto& pChild : m_Children)
 			pChild->Render();
+
+		ImGui::PopStyleVar();
 
 		if (m_IsChildRegion)
 		{

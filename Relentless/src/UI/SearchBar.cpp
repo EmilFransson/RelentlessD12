@@ -57,6 +57,7 @@ namespace Relentless
 		const ImVec2 cursorPositionPreSearchBar = ImGui::GetCursorPos();
 
 		//We do custom hint solution below
+		ImGui::SetNextItemWidth(-100.0f);
 		const bool inputDone = ImGui::InputTextWithHint("##SearchBar", nullptr, m_FullInputBuffer, IM_ARRAYSIZE(m_FullInputBuffer), ImGuiInputTextFlags_CallbackAlways,
 			[](ImGuiInputTextCallbackData* data) -> int
 			{

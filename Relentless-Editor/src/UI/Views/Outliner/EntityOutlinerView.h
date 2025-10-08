@@ -15,6 +15,9 @@ namespace Relentless
 	public:
 		EntityOutlinerView(Editor* pEditor) noexcept;
 		virtual ~EntityOutlinerView() noexcept override;
+
+		void OnDeleteSelection() noexcept;
+		void OnRenameSelection() noexcept;
 	private:
 		NO_DISCARD float CalcDesiredWidth() const noexcept override { return 0.0f; } 
 
@@ -35,7 +38,6 @@ namespace Relentless
 		NO_DISCARD Ref<ContextMenu> OnContextMenuOpening(const Ref<OutlinerListItem>& aItem) noexcept;
 		void OnCreateNewFolderButtonClicked() noexcept;
 
-		void OnDeleteSelection() noexcept;
 		void OnDuplicateSelection() noexcept;
 
 		NO_DISCARD String OnDebugItemToString(const Ref<OutlinerListItem>& apItem) const noexcept;
@@ -61,6 +63,8 @@ namespace Relentless
 		NO_DISCARD Ref<ITableRow> OnGenerateRow(const Ref<OutlinerListItem>& apItem) noexcept;
 		void OnGetChildren(const Ref<OutlinerListItem>& apParent, std::vector<Ref<OutlinerListItem>>& outChildren) noexcept;
 
+		void OnItemScrolledIntoView(const Ref<OutlinerListItem>& aItem) noexcept;
+
 		void OnMouseEnterVisibilityButton(Button* pButton) noexcept;
 		void OnMouseExitVisibilityButton(Button* pButton, OutlinerListItem* pItem) noexcept;
 
@@ -70,12 +74,13 @@ namespace Relentless
 		void OnMouseEnterRow(ITableRow* apTableRow) noexcept;
 		void OnMouseExitRow(ITableRow* apTableRow) noexcept;
 
+		void OnOutlinerTreeRefreshed() noexcept;
+
 		void OnEntityFolderDeleted(EntityFolder* apFolder) noexcept;
 
 		void OnPreSceneChanged(Scene* pScene) noexcept;
 
 		void OnRender() noexcept override;
-		void OnRenameSelection() noexcept;
 		NO_DISCARD const std::vector<Ref<OutlinerListItem>>* OnRequestSource() noexcept;
 		void OnRowDoubleClicked(const Ref<OutlinerListItem>& apItem) noexcept;
 
@@ -88,6 +93,8 @@ namespace Relentless
 		void OnVisibilityButtonClicked(Button* apButton, Ref<OutlinerListItem> apItem) noexcept;
 
 		void RecreateItemHierarchy() noexcept;
+		NO_DISCARD bool RenameFolder(EntityFolder* aFolder, const String& aName) noexcept;
+		NO_DISCARD bool RenameEntity(entity aEntity, const String& aName) noexcept;
 
 		void ToggleVisibilityForItem(const Ref<OutlinerListItem>& pAOutlinerListItem, bool aToVisible) noexcept;
 	private:
@@ -107,6 +114,9 @@ namespace Relentless
 
 		UniquePtr<TextFilterExpressionEvaluator> m_pFilter = nullptr;
 		UniquePtr<EntityOutlinerPolicies> m_pPolicies = nullptr;
+
+		Ref<OutlinerListItem> m_pItemToScrollIntoView = nullptr;
+		Ref<OutlinerListItem> m_pFolderToRenameWhenScrolledIntoView = nullptr;
 
 		Editor* m_pEditor = nullptr;
 

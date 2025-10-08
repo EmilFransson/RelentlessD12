@@ -41,6 +41,7 @@
 #include <src/UI/ContextMenu.h>
 #include <src/UI/DragDropBehavior.h>
 #include <src/UI/DragDropOperation.h>
+#include <src/UI/EditableTextBox.h>
 #include <src/UI/FloatDrag.h>
 #include <src/UI/Float3Drag.h>
 #include <src/UI/FloatSlider.h>
@@ -62,6 +63,7 @@
 #include <src/UI/UI.h>
 #include <src/UI/UIManager.h>
 #include <src/UI/VerticalBox.h>
+#include <src/UI/WidgetSwitcher.h>
 
 #include <src/UI/Nodes/ITreeNode.h>
 #include <src/UI/Nodes/DetailCategoryNode.h>

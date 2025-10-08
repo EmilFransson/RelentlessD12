@@ -23,6 +23,8 @@ namespace Relentless
 		NO_DISCARD const Ref<EntityOutlinerView>& GetEntityOutlinerView() const noexcept;
 	protected:
 		virtual void OnRender() noexcept override;
+		bool OnKeyPressedEvent(KeyPressedEvent&) noexcept override;
+
 	private:
 		template<typename Widget>
 		Widget* AddRow(
@@ -50,6 +52,8 @@ namespace Relentless
 		[[nodiscard]] Vector3 GetLocation(ComboBox* pTransformSpaceComboBox) const noexcept;
 		[[nodiscard]] Vector3 GetRotation(ComboBox* pTransformSpaceComboBox) const noexcept;
 		[[nodiscard]] Vector3 GetScale(ComboBox* pTransformSpaceComboBox) const noexcept;
+
+
 
 		void OnLightTypeSelectionChanged(const char* selected) noexcept;
 

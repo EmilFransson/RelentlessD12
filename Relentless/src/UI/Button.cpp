@@ -16,7 +16,7 @@ namespace Relentless
 
 	float Button::CalcDesiredWidth() const noexcept
 	{
-		return m_Size.x;
+		return ImGui::CalcTextSize(m_Text.c_str()).x + (ImGui::GetStyle().FramePadding.x * 2.0f);
 	}
 
 	const String& Button::GetText() const noexcept

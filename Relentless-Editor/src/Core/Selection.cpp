@@ -5,6 +5,7 @@ namespace Relentless
 	void Selection::SelectEntity(entity entityToSelect) noexcept
 	{
 		RLS_ASSERT(!IsEntitySelected(entityToSelect), "Entity is already selected.");
+		
 		m_SelectedEntities.push_back(entityToSelect);
 		OnSelectionChanged(entityToSelect, ESelectionState::Selected);
 	}
@@ -17,7 +18,7 @@ namespace Relentless
 
 	void Selection::DeselectEntity(entity entityToDeselect) noexcept
 	{
-		RLS_ASSERT(IsEntitySelected(entityToDeselect), "Entity is already selected.");
+		RLS_ASSERT(IsEntitySelected(entityToDeselect), "Entity is not selected.");
 		m_SelectedEntities.erase(std::remove(m_SelectedEntities.begin(), m_SelectedEntities.end(), entityToDeselect), m_SelectedEntities.end());
 		OnSelectionChanged(entityToDeselect, ESelectionState::Deselected);
 	}

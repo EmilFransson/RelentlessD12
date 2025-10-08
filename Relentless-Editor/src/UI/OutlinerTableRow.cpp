@@ -24,9 +24,10 @@ namespace Relentless
 		}
 		
 		{
-			Ref<HorizontalBox> pDisplayBox = new HorizontalBox();
-			
-			Button* pButton = pDisplayBox->Add(new Button(createInfo.IsExpanded ? ICON_FA_CHEVRON_DOWN : ICON_FA_CHEVRON_RIGHT, Vector2(25.0f, 30.0f)))
+			Ref<HorizontalBox> pColumn1Box = new HorizontalBox();
+			pColumn1Box->SetMargin(FloatRect(0.0f, 0.0f, 0.0f, 0.0f));
+
+			Button* pButton = pColumn1Box->Add(new Button(createInfo.IsExpanded ? ICON_FA_CHEVRON_DOWN : ICON_FA_CHEVRON_RIGHT, Vector2(25.0f, 30.0f)))
 				->SetBackgroundColor(Colors::Transparent)
 				->SetActiveColor(Colors::Transparent)
 				->SetHoverColor(Colors::Transparent)
@@ -37,15 +38,24 @@ namespace Relentless
 
 				pButton->SetIsEnabled(createInfo.HasChildren);
 
-			pDisplayBox->Add(new Label(createInfo.Icon, ImGui::GetIO().Fonts->Fonts[2]))
+			pColumn1Box->Add(new Label(createInfo.Icon, ImGui::GetIO().Fonts->Fonts[2]))
 				->SetTooltipText(createInfo.Name)
 				->SetAlpha(0.8f)
 				->SetTextColor(createInfo.IconColor);
 
+			WidgetSwitcher* pSwitcher = pColumn1Box->Add(new WidgetSwitcher());
+			
+			HorizontalBox* pDisplayBox = pSwitcher->Add(new HorizontalBox());
+			pDisplayBox->SetSpacing(Vector2(8.0f, 0.0f));
+
 			Label* pDisplayNameLabel = pDisplayBox->Add(new Label(createInfo.Name, ImGui::GetIO().Fonts->Fonts[2]));
 			pDisplayNameLabel->SetTooltipText(createInfo.Name);
 
-			m_ColumnWidgets.push_back(pDisplayBox);
+			pSwitcher->Add(new EditableTextBox(Vector2(-1.0f, 35.0f)));
+
+			pSwitcher->SetActiveWidgetIndex(0);
+
+			m_ColumnWidgets.push_back(pColumn1Box);
 		}
 
 		{
@@ -135,19 +145,31 @@ namespace Relentless
 		}
 	}
 
+	EditableTextBox* OutlinerTableRow::GetEditableTextBox() const noexcept
+	{
+		return static_cast<EditableTextBox*>(GetWidgetSwitcher()->GetWidget(1).Get());
+	}
+
 	uint32 OutlinerTableRow::GetNumColumns() noexcept
 	{
 		return 3u;
 	}
 
+	WidgetSwitcher* OutlinerTableRow::GetWidgetSwitcher() const noexcept
+	{
+		return static_cast<WidgetSwitcher*>(m_ColumnWidgets[1]->GetChild(2).Get());
+	}
+
 	Button* OutlinerTableRow::GetExpandButton() const noexcept
 	{
-		return static_cast<Button*>(static_cast<HorizontalBox*>(m_ColumnWidgets[1].Get())->GetChild(0).Get());
+		return static_cast<Button*>(m_ColumnWidgets[1]->GetChild(0).Get());
 	}
 
 	Label* OutlinerTableRow::GetNameLabel() const noexcept
 	{
-		return static_cast<Label*>(static_cast<HorizontalBox*>(m_ColumnWidgets[1].Get())->GetChild(2).Get());
+		WidgetSwitcher* pSwitcher = GetWidgetSwitcher();
+		HorizontalBox* pDisplayBox = static_cast<HorizontalBox*>(pSwitcher->GetWidget(0).Get());
+		return static_cast<Label*>(pDisplayBox->GetChild(0).Get());
 	}
 
 	Label* OutlinerTableRow::GetTypeLabel() const noexcept

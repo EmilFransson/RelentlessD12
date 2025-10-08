@@ -6,6 +6,7 @@ namespace Relentless
 		:m_Size{size}
 		,m_IsChildRegion{isChildRegion}
 	{
+		m_Spacing = Vector2(ImGui::GetStyle().ItemSpacing.x, ImGui::GetStyle().ItemSpacing.y);
 	}
 
 	Ref<IBaseWidget> HorizontalBox::GetChild(uint32 index) const noexcept
@@ -52,6 +53,11 @@ namespace Relentless
 		m_Size = size;
 	}
 
+	void HorizontalBox::SetSpacing(const Vector2& aSpacing) noexcept
+	{
+		m_Spacing = aSpacing;
+	}
+
 	void HorizontalBox::OnRender() noexcept
 	{
 		ImVec2 currentPos = ImGui::GetCursorPos();
@@ -71,7 +77,9 @@ namespace Relentless
 				totalFixedWidth += child->CalcDesiredWidth();
 		}
 
-		const float spacing = ImGui::GetStyle().ItemSpacing.x;
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(m_Spacing.x, m_Spacing.y));
+
+		const float spacing = m_Spacing.x;
 		const float totalSpacing = spacing * (m_Children.size() - 1);
 		const float availableWidth = ImGui::GetContentRegionAvail().x - m_Margin.Right;
 		const float stretchWidth = (availableWidth - totalFixedWidth - totalSpacing) / Math::Max(numStretch, 1);
@@ -127,6 +135,8 @@ namespace Relentless
 				ImGui::SameLine(0.0f, spacing);
 		}
 		ImGui::EndGroup();
+
+		ImGui::PopStyleVar();
 
 		if (GetSizePolicy() == ESizePolicy::Stretch)
 		{

@@ -36,7 +36,26 @@ namespace Relentless
 		TreeView<ItemType>* OnGetChildren(InstanceType* instance, void(InstanceType::*method)(const ItemType&, std::vector<ItemType>& outChildren)) noexcept;
 
 		void RequestTreeRefresh() noexcept;
+
+		void RequestScrollToRow(uint32 row, float centerRatio = 0.35f) noexcept { m_PendingScroll = { row, centerRatio }; }
+		void RequestScrollToItem(const ItemType& item, float centerRatio = 0.35f) noexcept
+		{
+			if (auto it = std::find(m_LinearizedItems.begin(), m_LinearizedItems.end(), item);
+				it != m_LinearizedItems.end())
+			{
+				RequestScrollToRow(static_cast<uint32>(std::distance(m_LinearizedItems.begin(), it)), centerRatio);
+			}
+			else
+			{
+				m_ShouldRefresh = true;
+				m_PendingScrollItem = item;
+				// The actual row will be resolved next frame after RefreshTree().
+			}
+		}
+
 		void SetItemExpandedState(const ItemType& pItem, bool expandedState) noexcept;
+
+		Broadcaster<void()> OnTreeRefreshed;
 	private:
 		void OnRender() noexcept override;
 		void PopulateLinearizedItems(const std::vector<ItemType>& sourceItems) noexcept;
@@ -45,6 +64,10 @@ namespace Relentless
 		std::vector<ItemType> m_LinearizedItems;
 		std::vector<ItemType> m_Scratch;
 		std::unordered_map<ItemType, ItemInfo> m_ItemInfos;
+
+		struct PendingScrollTarget { uint32 Row = UINT32_MAX; float CenterRatio = 0.35f; bool IsValid() const { return Row != UINT32_MAX; } };
+		PendingScrollTarget m_PendingScroll;                 // [scroll] request by row
+		std::optional<ItemType> m_PendingScrollItem;         // [scroll] request by item (resolved after refresh)
 
 		Callback<void(const ItemType&)> m_OnExpansionChanged;
 		Callback<void(const ItemType&, std::vector<ItemType>&)> m_OnGetChildren;
@@ -143,6 +166,8 @@ namespace Relentless
 		this->m_pSource = &m_LinearizedItems;
 		
 		m_ShouldRefresh = false;
+
+		OnTreeRefreshed();
 	}
 
 	template<class ItemType>
@@ -188,8 +213,16 @@ namespace Relentless
 			bool clipRangeDirty = false;
 			float lastRowY = 0.0f;
 
+			float clipStartPosY = FLT_MAX;
+			float clipItemsHeight = 0.0f;
+
 			while (clipper.Step())
 			{
+				if (clipStartPosY == FLT_MAX)
+					clipStartPosY = clipper.StartPosY;
+				if (!warmUp)
+					clipItemsHeight = clipper.ItemsHeight;
+
 				for (uint32 row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
 				{
 					const ItemType& item = m_LinearizedItems[row];
@@ -215,6 +248,32 @@ namespace Relentless
 				}
 
 				warmUp = !warmUp; // ping pong: warmup1 -> no warmup -> warmup2
+			}
+
+			if (m_PendingScrollItem.has_value() && !m_PendingScroll.IsValid())
+			{
+				const ItemType& want = *m_PendingScrollItem;
+				auto it = std::find(m_LinearizedItems.begin(), m_LinearizedItems.end(), want);
+				if (it != m_LinearizedItems.end())
+				{
+					m_PendingScroll.Row = static_cast<uint32>(std::distance(m_LinearizedItems.begin(), it));
+					// keep CenterRatio default (0.35f) unless you want to carry one with the item request
+				}
+				m_PendingScrollItem.reset();
+			}
+
+			if (m_PendingScroll.IsValid() && clipStartPosY != FLT_MAX && !m_LinearizedItems.empty())
+			{
+				const uint32 maxRow = static_cast<uint32>(m_LinearizedItems.size() - 1);
+				const uint32 clampedRow = (m_PendingScroll.Row > maxRow) ? maxRow : m_PendingScroll.Row;
+
+				// Convert the desired row to local Y (relative to current window)
+				const float localY = clipStartPosY + static_cast<float>(clampedRow) * clipItemsHeight;
+
+				// Scroll so that 'localY' appears at the chosen spot in view (0=top, .5=center, 1=bottom)
+				ImGui::SetScrollFromPosY(localY, m_PendingScroll.CenterRatio);
+
+					m_PendingScroll = {}; // clear request
 			}
 
 			ImGui::EndTable();

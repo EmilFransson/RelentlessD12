@@ -29,32 +29,33 @@ namespace Relentless
 		m_ToolbarID = std::format("{}_Toolbar_{}", pName, renderViewIndex + 1);
 
 		Ref<VerticalBox> pRoot = new VerticalBox();
+		pRoot->SetSpacing(Vector2(0.0f, 0.0f));
 
 		m_pToolbarBox = new HorizontalBox(true, Vector2(0, 40));
-		m_pToolbarBox->SetMargin(FloatRect(5.0f, 1.0f, 0.0f, 0.0f));
+		//m_pToolbarBox->SetMargin(FloatRect(5.0f, 1.0f, 0.0f, 0.0f));
 		m_pToolbarBox->SetFlags(ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse);
 
 		Ref<HorizontalBox> pToolBarLeftBox = new HorizontalBox("##ToolbarLeftAlignedBox");
-		pToolBarLeftBox->SetAlignmentPolicy(EAlignmentPolicy::Left);
+		pToolBarLeftBox->SetAlignmentPolicy(EAlignmentPolicy::Right);
 
-		//Ref<Button> m_pWireFrameButton = new Button("Wireframe", Vector2(0, 40));
-		//Ref<Button> m_pSolidButton = new Button("Solid", Vector2(0, 40));
-		//Ref<Button> m_pTSnappingButton = new Button("T-Snap", Vector2(0, 40));
-		//Ref<Button> m_pRSnappingButton = new Button("R-Snap", Vector2(0, 40));
-		//
-		//pToolBarLeftBox->Add(m_pWireFrameButton);
-		//pToolBarLeftBox->Add(m_pSolidButton);
-		//pToolBarLeftBox->Add(m_pTSnappingButton);
-		//pToolBarLeftBox->Add(m_pRSnappingButton);
+		Ref<Button> m_pWireFrameButton = new Button("Wireframe", Vector2(0, 40));
+		Ref<Button> m_pSolidButton = new Button("Solid", Vector2(0, 40));
+		Ref<Button> m_pTSnappingButton = new Button("T-Snap", Vector2(0, 40));
+		Ref<Button> m_pRSnappingButton = new Button("R-Snap", Vector2(0, 40));
+		
+		pToolBarLeftBox->Add(m_pWireFrameButton);
+		pToolBarLeftBox->Add(m_pSolidButton);
+		pToolBarLeftBox->Add(m_pTSnappingButton);
+		pToolBarLeftBox->Add(m_pRSnappingButton);
 
 		m_pToolbarBox->Add(pToolBarLeftBox);
 
 		//Ref<HorizontalBox> pToolBarRightBox = new HorizontalBox("##ToolbarRightAlignedBox");
 		//pToolBarRightBox->SetAlignmentPolicy(EAlignmentPolicy::Right);
 		//
-		//Ref<Button> pGearIconButton = new Button(ICON_FA_GEAR, Vector2(40, 40));
+		//Ref<Button> pGearIconButton = new Button("HEY", Vector2(0, 20));
 		//pGearIconButton->OnClicked(this, &ViewportPanel::OnSettingsButtonClicked);
-		//pGearIconButton->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
+		////pGearIconButton->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
 		//pToolBarRightBox->Add(pGearIconButton);
 		//
 		//m_pToolbarBox->Add(pToolBarRightBox);
@@ -62,8 +63,9 @@ namespace Relentless
 		pRoot->Add(m_pToolbarBox);
 
 		m_pCanvasAndSettingsBox = new HorizontalBox("##CanvasAndSettingsBox");
+		m_pCanvasAndSettingsBox->SetSpacing(Vector2(0.0f, 0.0f));
 
-		m_pCanvasHBox = m_pCanvasAndSettingsBox->Add(new HorizontalBox(true, Vector2(0, 0)));
+		m_pCanvasHBox = m_pCanvasAndSettingsBox->Add(new HorizontalBox(true, Vector2(0.0f, 0.0f)));
 
 		m_pCanvas = m_pCanvasHBox->Add(new Canvas());
 		m_pCanvas
@@ -72,8 +74,8 @@ namespace Relentless
 			->OnResize(this, &ViewportPanel::OnCanvasResize)
 			->OnRenderEnd.Connect(this, &ViewportPanel::OnCanvasRenderEnd);
 
-		m_pSettingsBox = m_pCanvasAndSettingsBox->Add(new VerticalBox(Vector2(350.0f, 0.0f), true));
-		m_pSettingsBox->SetIsVisible(false);
+		//m_pSettingsBox = m_pCanvasAndSettingsBox->Add(new VerticalBox(Vector2(350.0f, 0.0f), true));
+		//m_pSettingsBox->SetIsVisible(false);
 
 		//CollapsibleSection* pCameraSection = m_pSettingsBox->Add(new CollapsibleSection(ICON_FA_CAMERA "  Camera"));
 		//

@@ -51,20 +51,13 @@ namespace Relentless
 		
 		virtual void OnRenderColumn(uint32 column) noexcept override;
 
-		template<typename WidgetType>
-		WidgetType* SetWidget(WidgetType* pWidget, uint8 column) noexcept
-		{
-			static_assert(std::is_base_of<IBaseWidget, WidgetType>::value, "[OutlinerTableRow::SetWidget]: WidgetType is not derived from IWidget.");
-
-			m_ColumnWidgets[column] = Ref<WidgetType>(pWidget);
-			return pWidget;
-		}
-
 		NO_DISCARD const Color& GetBackgroundColor() const noexcept override;
-		NO_DISCARD uint32 GetNumColumns() noexcept override;
+		NO_DISCARD EditableTextBox* GetEditableTextBox() const noexcept;
 		NO_DISCARD Button* GetExpandButton() const noexcept;
 		NO_DISCARD Label* GetNameLabel() const noexcept;
+		NO_DISCARD uint32 GetNumColumns() noexcept override;
 		NO_DISCARD Label* GetTypeLabel() const noexcept;
+		NO_DISCARD WidgetSwitcher* GetWidgetSwitcher() const noexcept;
 		NO_DISCARD Button* GetVisibilityButton() const noexcept;
 
 		NO_DISCARD bool IsDragDropEligible() noexcept override;

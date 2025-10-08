@@ -34,12 +34,22 @@ namespace Relentless
 	void DetailsPanel::OnRender() noexcept
 	{
 		PROFILE_FUNC;
-
 		m_pBox->Render();
-		//m_pEntityOutlinerView->Render();
+	}
 
-		//for (auto& node : m_Nodes)
-		//	node->Render();
+	bool DetailsPanel::OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept
+	{
+		switch (aEvent.key)
+		{
+		case RLS_Key::Delete: 
+			m_pEntityOutlinerView->OnDeleteSelection();
+			return true;
+		case RLS_Key::F2:
+			m_pEntityOutlinerView->OnRenameSelection();
+			return true;
+		}
+		
+		return false;
 	}
 
 	Ref<IBaseWidget> DetailsPanel::CreateBaseSection() noexcept

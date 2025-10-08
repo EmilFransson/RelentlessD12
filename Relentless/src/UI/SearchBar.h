@@ -4,8 +4,6 @@
 
 namespace Relentless
 {
-	enum class ETextCommitType : uint8 { OnEnter = 0u, OnUserMovedFocus, OnCleared };
-
 	class SearchBar : public IStylableWidget<SearchBar>
 	{
 	public:

@@ -13,7 +13,7 @@ namespace Relentless
 		template<typename T>
 		T* Add(T* pWidget) noexcept
 		{
-			static_assert(std::is_base_of_v<IBaseWidget, T>, "[VerticalBox::Add]: Can only Add widgets derived from IWidget");
+			static_assert(std::is_base_of_v<IBaseWidget, T>, "[VerticalBox::Add]: Can only Add widgets derived from IBaseWidget");
 
 			Ref<T> widgetRef(pWidget);
 			m_Children.push_back(widgetRef);
@@ -23,7 +23,7 @@ namespace Relentless
 		template<typename T>
 		T* Add(Ref<T> pWidget) noexcept
 		{
-			static_assert(std::is_base_of_v<IBaseWidget, T>, "[VerticalBox::Add]: Can only Add widgets derived from IWidget");
+			static_assert(std::is_base_of_v<IBaseWidget, T>, "[VerticalBox::Add]: Can only Add widgets derived from IBaseWidget");
 
 			m_Children.push_back(pWidget);
 			return pWidget.Get();
@@ -42,6 +42,7 @@ namespace Relentless
 		void SetIsChildRegion(bool state) noexcept;
 		void SetMargin(const FloatRect& margin) noexcept;
 		void SetSize(const Vector2& size) noexcept;
+		void SetSpacing(const Vector2& aSpacing) noexcept;
 	protected:
 		virtual void OnRender() noexcept override;
 	private:
@@ -50,6 +51,7 @@ namespace Relentless
 		std::vector<Ref<IBaseWidget>> m_Children;
 		FloatRect m_Margin;
 		Vector2 m_Size = Vector2::Zero;
+		Vector2 m_Spacing = Vector2::Zero;
 		EAlignmentPolicy m_Alignment = EAlignmentPolicy::Left;
 		bool m_IsChildRegion = false;
 	};

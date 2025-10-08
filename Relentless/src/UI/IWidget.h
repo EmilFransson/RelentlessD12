@@ -16,6 +16,8 @@ namespace Relentless
 		Auto         // Use content size, but allow layout to override if needed
 	};
 
+	enum class ETextCommitType : uint8 { OnEnter = 0u, OnUserMovedFocus, OnCleared };
+
 	class IBaseWidget : public RefCounted<IBaseWidget>
 	{
 	public:
@@ -62,6 +64,11 @@ namespace Relentless
 		void AddFlags(int flags) noexcept
 		{
 			m_Flags |= flags;
+		}
+
+		void ForceKeyboardFocus() noexcept
+		{
+			m_ShouldForceKeyboardFocus = true;
 		}
 
 		[[nodiscard]] int GetFlags() const noexcept
@@ -126,6 +133,12 @@ namespace Relentless
 
 			OnPreRender();
 			OnPreRenderEnd();
+
+			if (m_ShouldForceKeyboardFocus)
+			{
+				ImGui::SetKeyboardFocusHere();
+				m_ShouldForceKeyboardFocus = false;
+			}
 
 			OnRender();
 			OnRenderEnd();
@@ -223,6 +236,7 @@ namespace Relentless
 	protected:
 		float m_WidthConstraint = -1.0f;
 		bool m_IsHovered = false;
+		bool m_ShouldForceKeyboardFocus = false;
 		Ref<Tooltip> m_pTooltip = nullptr;
 	private:
 		ESizePolicy m_SizePolicy = ESizePolicy::Auto;
@@ -281,6 +295,12 @@ namespace Relentless
 
 			OnPreRender();
 			this->OnPreRenderEnd();
+
+			if (this->m_ShouldForceKeyboardFocus)
+			{
+				ImGui::SetKeyboardFocusHere();
+				this->m_ShouldForceKeyboardFocus = false;
+			}
 
 			this->OnRender();
 			this->OnRenderEnd();
