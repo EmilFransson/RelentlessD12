@@ -1,6 +1,8 @@
 ﻿#include "EntityFolders.h"
 #include "Editor.h"
 
+#include "../UI/Views/Outliner/EntityOutlinerView.h"
+
 namespace Relentless
 {
 	// Collect direct children by parent pointer

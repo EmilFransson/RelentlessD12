@@ -20,6 +20,8 @@ namespace Relentless
 		template<typename T>
 		FloatDrag* OnValueChanged(T&& callback) noexcept;
 
+		NO_DISCARD Vector2 ReportSize() const noexcept override;
+
 		void SetDrawColorIndicator(bool state) noexcept;
 		
 		void SetHandleColor(const Color& color) noexcept;

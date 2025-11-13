@@ -136,6 +136,8 @@ namespace Relentless
 
 		// Sort
 		{
+			PROFILE_SCOPE("Renderer::Render::Sort");
+
 			auto&& CompareSort = [this](const Batch& a, const Batch& b)
 				{
 					const float aDist = Vector3::DistanceSquared(a.Location, m_MainView.Location);
@@ -167,11 +169,11 @@ namespace Relentless
 
 		//HBAO+
 		{
-			PROFILE_SCOPE("Renderer::Render::HBAO+");
-
-			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			m_pHBAOPlus->Render(*pCommandContext, m_MainView, m_SceneTextures);
-			pCommandContext->Execute();
+			//PROFILE_SCOPE("Renderer::Render::HBAO+");
+			//
+			//CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			//m_pHBAOPlus->Render(*pCommandContext, m_MainView, m_SceneTextures);
+			//pCommandContext->Execute();
 		}
 
 		//Editor Grid:

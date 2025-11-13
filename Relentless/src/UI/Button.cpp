@@ -24,6 +24,31 @@ namespace Relentless
 		return m_Text;
 	}
 
+	Vector2 Button::ReportSize() const noexcept
+	{
+		ImFont* pFont = GetStyle().GetFont();
+		if (pFont)
+			ImGui::PushFont(pFont);
+
+		const ImVec2 textSize = ImGui::CalcTextSize(m_Text.c_str(), nullptr, false);
+		const Vector2 padding = GetPadding() * 2.0f;
+
+		const float lineHeight = ImGui::GetFontSize();
+		const float textHeight = (m_Text.empty() ? lineHeight : textSize.y);
+
+		Vector2 sizeToReport(textSize.x + padding.x, textHeight + padding.y);
+
+		if (m_Size.x > 0.0f) 
+			sizeToReport.x = Math::Max(sizeToReport.x, m_Size.x);
+		if (m_Size.y > 0.0f) 
+			sizeToReport.y = Math::Max(sizeToReport.y, m_Size.y);
+
+		if (pFont) 
+			ImGui::PopFont();
+
+		return sizeToReport;
+	}
+
 	Button* Button::SetActiveColor(const Color& color) noexcept
 	{
 		m_Style.SetStyleColor(ImGuiCol_ButtonActive, ImVec4(color.R(), color.G(), color.B(), color.A()));

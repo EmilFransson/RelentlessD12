@@ -132,4 +132,33 @@ namespace Relentless
 
 		m_IsHovered = ImGui::IsItemHovered();
 	}
+
+	Vector2 ComboBox::ReportSize() const noexcept
+	{
+		if (m_Selectables.empty())
+			return Vector2::Zero;
+
+		// Match the font you actually render with
+		ImFont* pFont = GetStyle().GetFont();
+		if (pFont) 
+			ImGui::PushFont(pFont);
+
+		const Vector2 padding = GetPadding() * 2.0f;
+
+		const ImGuiStyle& style = ImGui::GetStyle();
+		const float frameHeight = ImGui::GetFontSize() + padding.y;
+		const float arrowW = frameHeight;
+		const float inner = style.ItemInnerSpacing.x;
+		const float padX = padding.x;
+
+		const float textWidth = ImGui::CalcTextSize(m_Selectables[m_Selected]).x;
+
+		float width = textWidth + inner + arrowW + padX;
+		float height = frameHeight;
+
+		if (pFont) 
+			ImGui::PopFont();
+		
+		return { width, height };
+	}
 }

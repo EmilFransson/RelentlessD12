@@ -22,6 +22,11 @@ namespace Relentless
 		return maxWidth;
 	}
 
+	Ref<IBaseWidget> VerticalBox::GetChild(uint32 aIndex) const noexcept
+	{
+		return aIndex < m_Children.size() ? m_Children[aIndex] : nullptr;
+	}
+
 	bool VerticalBox::HasWidget(Ref<IBaseWidget> pWidget) noexcept
 	{
 		return std::find(m_Children.begin(), m_Children.end(), pWidget) != m_Children.end();

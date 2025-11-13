@@ -13,6 +13,8 @@ namespace Relentless
 
 		NO_DISCARD const String& GetText() const noexcept;
 
+		virtual NO_DISCARD Vector2 ReportSize() const noexcept override;
+
 		virtual Button* SetActiveColor(const Color& color) noexcept override;
 		virtual Button* SetBackgroundColor(const Color& color) noexcept override;
 		virtual Button* SetHoverColor(const Color& color) noexcept override;

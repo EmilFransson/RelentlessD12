@@ -28,7 +28,11 @@ namespace Relentless
 		}
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
+
+		NO_DISCARD Ref<IBaseWidget> GetChild(uint32 aIndex) const noexcept;
+
 		[[nodiscard]] bool HasWidget(Ref<IBaseWidget> pWidget) noexcept;
+
 		void SetIsChildRegion(bool state) noexcept;
 		void SetSpacing(const Vector2& aSpacing) noexcept;
 

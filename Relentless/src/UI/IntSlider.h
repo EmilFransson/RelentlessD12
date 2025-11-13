@@ -32,6 +32,8 @@ namespace Relentless
 			return this;
 		}
 
+		NO_DISCARD Vector2 ReportSize() const noexcept override;
+
 		template<typename InstanceType>
 		IntSlider* Value(InstanceType* instance, int(InstanceType::* method)() const) noexcept
 		{

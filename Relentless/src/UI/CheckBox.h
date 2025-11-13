@@ -25,6 +25,13 @@ namespace Relentless
 			return this;
 		}
 
+		template<typename InstanceType>
+		CheckBox* OnCheckStateChanged(InstanceType* instance, void(InstanceType::*method)(bool)) noexcept
+		{
+			m_OnCheckStateChanged = [instance, method](bool aState) { return (instance->*method)(aState); };
+			return this;
+		}
+
 		template<typename T>
 		CheckBox* OnCheckStateChanged(T&& callback) noexcept
 		{
@@ -32,6 +39,7 @@ namespace Relentless
 			return this;
 		}
 
+		NO_DISCARD Vector2 ReportSize() const noexcept override;
 	protected:
 		virtual void OnRender() noexcept override;
 	private:

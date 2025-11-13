@@ -1,9 +1,9 @@
 #pragma once
-#include "HorizontalBox.h"
-
 #include "Callback/Callback.h"
 #include "Core/Any.h"
 #include "Input/Mouse.h"
+#include "HorizontalBox.h"
+#include "HorizontalBoxEx.h"
 
 namespace Relentless
 {
@@ -56,8 +56,10 @@ namespace Relentless
 		virtual void OnRender() noexcept override final;
 		virtual void OnRenderColumn(uint32 column) noexcept = 0;
 
+		void SetColumnWidget(uint8 aColumnIndex, const Ref<HorizontalBoxEx>& aWidget) noexcept;
+
 	protected:
-		std::vector<Ref<HorizontalBox>> m_ColumnWidgets;
+		std::vector<Ref<HorizontalBoxEx>> m_ColumnWidgets;
 
 		Callback<void(const PointerInfo& pointerInfo)> m_OnClickedCallback;
 		Callback<void()> m_OnDoubleClickedCallback;

@@ -121,10 +121,10 @@ namespace Relentless
 
 		EViewportState m_CurrentState = EViewportState::None;
 
-		Ref<HorizontalBox> m_pToolbarBox = nullptr;
-		HorizontalBox* m_pCanvasHBox = nullptr;
+		Ref<HorizontalBoxEx> m_pToolbarBox = nullptr;
+		HorizontalBoxEx* m_pCanvasHBox = nullptr;
 		VerticalBox* m_pSettingsBox = nullptr;
-		HorizontalBox* m_pCanvasAndSettingsBox = nullptr;
+		HorizontalBoxEx* m_pCanvasAndSettingsBox = nullptr;
 		Canvas* m_pCanvas = nullptr;
 	};
 }

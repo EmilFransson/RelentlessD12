@@ -39,6 +39,8 @@ namespace Relentless
 			return this;
 		}
 
+		NO_DISCARD Vector2 ReportSize() const noexcept override;
+
 	private:
 		virtual void OnRender() noexcept override;
 
@@ -64,6 +66,8 @@ namespace Relentless
 		} m_CallbackUserData;
 
 		Vector2 m_Size = Vector2::Zero;
+		Vector2 m_AreaMin = Vector2::Zero;
+		Vector2 m_AreaMax = Vector2::Zero;
 
 		char m_FullInputBuffer[128] = "        ";
 		bool m_IsActive = false;

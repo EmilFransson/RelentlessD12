@@ -43,9 +43,11 @@ namespace Relentless
 
 		void OnRender() noexcept;
 		void SetIsPinned(bool isPinned) noexcept;
+		void SetIsVisible(bool aIsVisible) noexcept;
 	private:
 		std::vector<Column> m_Columns;
 		bool m_IsPinned = false;
+		bool m_IsVisible = true;
 	};
 
 	template<class ItemType>

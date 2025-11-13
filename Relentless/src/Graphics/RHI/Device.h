@@ -24,34 +24,34 @@ namespace Relentless
 		GraphicsDevice(const GraphicsDeviceOptions& options) noexcept;
 		virtual ~GraphicsDevice() noexcept override;
 
-		[[nodiscard]] CommandContext* AllocateCommandContext(D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT) noexcept;
-		[[nodiscard]] Ref<Buffer> CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData = (const void*)nullptr) noexcept;
-		[[nodiscard]] Ref<DepthStencilView> CreateDSV(Texture* pTexture, const TextureDSVDesc& textureDSVDesc) noexcept;            
-		[[nodiscard]] Ref<Texture> CreateTexture(const TextureDesc& desc, const char* pName, Span<D3D12_SUBRESOURCE_DATA> initData = {}) noexcept;
-		[[nodiscard]] Ref<Texture> CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept;
-		[[nodiscard]] Ref<PipelineState> CreatePipeline(const PipelineStateInitializer& pipelineStateInitializer) noexcept;
-		[[nodiscard]] Ref<PipelineState> CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName, const char* pEntryPoint) noexcept;
-		[[nodiscard]] Ref<RenderTargetView> CreateRTV(Texture* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept;
-		[[nodiscard]] Ref<ShaderResourceView> CreateSRV(Buffer* pBuffer, const BufferSRVDesc& desc) noexcept;
-		[[nodiscard]] Ref<ShaderResourceView> CreateSRV(Texture* pTexture, const TextureSRVDesc& srvDesc) noexcept;
-		[[nodiscard]] Ref<UnorderedAccessView> CreateUAV(Texture* pTexture, const TextureUAVDesc& desc) noexcept;
+		NO_DISCARD CommandContext* AllocateCommandContext(D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT) noexcept;
+		NO_DISCARD Ref<Buffer> CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData = (const void*)nullptr) noexcept;
+		NO_DISCARD Ref<DepthStencilView> CreateDSV(Texture* pTexture, const TextureDSVDesc& textureDSVDesc) noexcept;            
+		NO_DISCARD Ref<Texture> CreateTexture(const TextureDesc& desc, const char* pName, Span<D3D12_SUBRESOURCE_DATA> initData = {}) noexcept;
+		NO_DISCARD Ref<Texture> CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept;
+		NO_DISCARD Ref<PipelineState> CreatePipeline(const PipelineStateInitializer& pipelineStateInitializer) noexcept;
+		NO_DISCARD Ref<PipelineState> CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName, const char* pEntryPoint) noexcept;
+		NO_DISCARD Ref<RenderTargetView> CreateRTV(Texture* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept;
+		NO_DISCARD Ref<ShaderResourceView> CreateSRV(Buffer* pBuffer, const BufferSRVDesc& desc) noexcept;
+		NO_DISCARD Ref<ShaderResourceView> CreateSRV(Texture* pTexture, const TextureSRVDesc& srvDesc) noexcept;
+		NO_DISCARD Ref<UnorderedAccessView> CreateUAV(Texture* pTexture, const TextureUAVDesc& desc) noexcept;
 
 		void DeferReleaseObject(ID3D12Object* pResource) noexcept;
 		void FreeCommandContext(CommandContext* pCommandContext) noexcept;
-		[[nodiscard]] CommandQueue* GetCommandQueue(D3D12_COMMAND_LIST_TYPE type) const noexcept;
-		[[nodiscard]] ID3D12DeviceX* GetDevice() const noexcept;
-		[[nodiscard]] IDXGIFactoryX* GetFactory() const noexcept;
-		[[nodiscard]] Fence* GetFrameFence() const noexcept;
-		[[nodiscard]] DescriptorHeap* GetGlobalShaderBindableHeap() const noexcept;
-		[[nodiscard]] DescriptorHeap* GetGlobalSamplerHeap() const noexcept;
-		[[nodiscard]] RootSignature* GetGlobalRootSignature() const noexcept;
-		[[nodiscard]] DescriptorHeap* GetRenderTargetViewDescriptorHeap() const noexcept;
-		[[nodiscard]] RingBufferAllocator* GetRingBuffer() const noexcept;
-		[[nodiscard]] ShaderLibrary* GetShaderLibrary() const noexcept;
+		NO_DISCARD CommandQueue* GetCommandQueue(D3D12_COMMAND_LIST_TYPE type) const noexcept;
+		NO_DISCARD ID3D12DeviceX* GetDevice() const noexcept;
+		NO_DISCARD IDXGIFactoryX* GetFactory() const noexcept;
+		NO_DISCARD Fence* GetFrameFence() const noexcept;
+		NO_DISCARD DescriptorHeap* GetGlobalShaderBindableHeap() const noexcept;
+		NO_DISCARD DescriptorHeap* GetGlobalSamplerHeap() const noexcept;
+		NO_DISCARD RootSignature* GetGlobalRootSignature() const noexcept;
+		NO_DISCARD DescriptorHeap* GetRenderTargetViewDescriptorHeap() const noexcept;
+		NO_DISCARD RingBufferAllocator* GetRingBuffer() const noexcept;
+		NO_DISCARD ShaderLibrary* GetShaderLibrary() const noexcept;
 
 		void IdleGPU() noexcept;
-		[[nodiscard]] DescriptorHandle RegisterGlobalDescriptor(DescriptorHandleType descriptorHandleType) noexcept;
-		[[nodiscard]] std::vector<DescriptorHandle> RegisterGlobalDescriptorBlock(DescriptorHandleType descriptorHandleType, uint32 blockSize) noexcept;
+		NO_DISCARD DescriptorHandle RegisterGlobalDescriptor(DescriptorHandleType descriptorHandleType) noexcept;
+		NO_DISCARD std::vector<DescriptorHandle> RegisterGlobalDescriptorBlock(DescriptorHandleType descriptorHandleType, uint32 blockSize) noexcept;
 
 		void TickFrame() noexcept;
 		void UnregisterGlobalDescriptor(const DescriptorHandle& descriptorHandle) noexcept;

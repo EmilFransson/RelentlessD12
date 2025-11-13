@@ -9,14 +9,18 @@
 
 namespace Relentless
 {
-	enum class ESizePolicy
-	{
-		Fixed,       // Use exact size from CalcDesiredWidth()
-		Stretch,     // Take all available space (or a share of it)
-		Auto         // Use content size, but allow layout to override if needed
-	};
+	enum class EHorizontalAlignmentPolicy	: uint8 { Left = 0u, Center, Right };
+	enum class EVerticalAlignmentPolicy		: uint8 { Top = 0u, Center, Bottom };
+	enum class ESizePolicy					: uint8 { Auto = 0u, Fixed, Stretch };
+	enum class ETextCommitType				: uint8 { OnEnter = 0u, OnUserMovedFocus, OnCleared };
 
-	enum class ETextCommitType : uint8 { OnEnter = 0u, OnUserMovedFocus, OnCleared };
+	struct ScopedStyleVar 
+	{
+		int Count = 0;
+		~ScopedStyleVar() { while (Count--) ImGui::PopStyleVar(); }
+		void Push(ImGuiStyleVar idx, ImVec2 v) { ImGui::PushStyleVar(idx, v); ++Count; }
+		void Push(ImGuiStyleVar idx, float v) { ImGui::PushStyleVar(idx, v); ++Count; }
+	};
 
 	class IBaseWidget : public RefCounted<IBaseWidget>
 	{
@@ -24,34 +28,46 @@ namespace Relentless
 		IBaseWidget() noexcept = default;
 		virtual ~IBaseWidget() noexcept = default;
 
+		void AssignSize(const Vector2& aSize) noexcept;
+
 		virtual NO_DISCARD float CalcDesiredWidth() const noexcept = 0;
 
-		virtual NO_DISCARD ESizePolicy GetSizePolicy() const noexcept = 0;
+		NO_DISCARD const Vector2& GetAssignedSize() const noexcept;
+		NO_DISCARD const FloatRect& GetMargin() const noexcept;
+		NO_DISCARD EHorizontalAlignmentPolicy GetHorizontalAlignmentPolicy() const noexcept;
+		NO_DISCARD const FloatRect& GetPadding() const noexcept;
+		NO_DISCARD ESizePolicy GetSizePolicy() const noexcept;
+		NO_DISCARD EVerticalAlignmentPolicy GetVerticalAlignmentPolicy() const noexcept;
 
-		NO_DISCARD bool IsEnabled() const noexcept
-		{
-			return m_IsEnabled;
-		}
+		NO_DISCARD bool HasAssignedSize() const noexcept;
 
+		virtual NO_DISCARD bool IsContainer() const noexcept { return false; };
+		NO_DISCARD bool IsEnabled() const noexcept;
 		virtual NO_DISCARD bool IsHovered() const noexcept = 0;
+		NO_DISCARD bool IsVisible() const noexcept;
 
 		virtual void Render() noexcept = 0;
+		virtual NO_DISCARD Vector2 ReportSize() const noexcept { return Vector2::Zero; }
 
-		void SetIsEnabled(bool state) noexcept
-		{
-			if (m_IsEnabled == state)
-				return;
-
-			m_IsEnabled = state;
-			OnEnabledStateChanged(m_IsEnabled);
-		}
-
+		void SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy aAlignmentPolicy) noexcept;
+		void SetIsEnabled(bool aIsEnabledState) noexcept;
+		void SetIsVisible(bool aVisibleState) noexcept;
+		void SetMargin(const FloatRect& aMargin) noexcept;
+		void SetSizePolicy(ESizePolicy aSizePolicy) noexcept;
+		void SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy aAlignmentPolicy) noexcept;
 		virtual void SetWidthConstraint(float width) noexcept = 0;
 
 		Broadcaster<void(bool)> OnEnabledStateChanged;
+		Broadcaster<void(bool)> OnVisibilityChanged;
 	private:
+		FloatRect m_Margin = FloatRect{};
+		FloatRect m_Padding = FloatRect{};
+		Vector2 m_AssignedSize = Vector2::Zero;
+		EHorizontalAlignmentPolicy m_HorizontalAlignmentPolicy = EHorizontalAlignmentPolicy::Left;
+		EVerticalAlignmentPolicy m_VerticalAlignmentPolicy = EVerticalAlignmentPolicy::Top;
+		ESizePolicy m_SizePolicy = ESizePolicy::Auto;
 		bool m_IsEnabled = true;
-		bool m_SizeIsDirty = true;
+		bool m_IsVisible = true;
 	};
 
 	template<class DerivedType>
@@ -76,19 +92,9 @@ namespace Relentless
 			return m_Flags;
 		}
 
-		[[nodiscard]] ESizePolicy GetSizePolicy() const noexcept override
-		{
-			return m_SizePolicy;
-		}
-
 		virtual NO_DISCARD bool IsHovered() const noexcept override
 		{
 			return m_IsHovered;
-		}
-
-		[[nodiscard]] bool IsVisible() const noexcept
-		{
-			return m_IsVisible;
 		}
 
 		[[nodiscard]] bool HasFlags(int flags) const noexcept
@@ -158,20 +164,6 @@ namespace Relentless
 		{
 			m_Flags = flags;
 		}
-		
-		void SetIsVisible(bool state) noexcept
-		{
-			if (m_IsVisible == state)
-				return;
-
-			m_IsVisible = state;
-			OnVisibilityChanged(m_IsVisible);
-		}
-
-		void SetSizePolicy(ESizePolicy sizePolicy) noexcept 
-		{
-			m_SizePolicy = sizePolicy;
-		}
 
 		DerivedType* SetTooltip(Ref<Tooltip> pTooltip) noexcept
 		{
@@ -194,7 +186,6 @@ namespace Relentless
 			m_WidthConstraint = width;
 		}
 		
-		Broadcaster<void(bool)> OnVisibilityChanged;
 		Broadcaster<void()> OnPreRenderEnd;
 		Broadcaster<void()> OnRenderEnd;
 		Broadcaster<void()> OnPostRenderEnd;
@@ -239,13 +230,9 @@ namespace Relentless
 		bool m_ShouldForceKeyboardFocus = false;
 		Ref<Tooltip> m_pTooltip = nullptr;
 	private:
-		ESizePolicy m_SizePolicy = ESizePolicy::Auto;
-
 		int m_Flags = 0;
 		float m_ElapsedHoverTime = 0.0f;
 		float m_ShowTooltipThreshold = 0.15f;
-
-		bool m_IsVisible = true;
 	};
 
 	class WidgetStyle
@@ -254,10 +241,11 @@ namespace Relentless
 		void Apply() noexcept;
 		void Discard() noexcept;
 
-		NO_DISCARD const IntRect& GetMargin() const noexcept;
+		NO_DISCARD ImFont* GetFont() const noexcept;
+		//NO_DISCARD const IntRect& GetMargin() const noexcept;
+		NO_DISCARD Vector2 GetPadding() const noexcept;
 
 		void SetFont(ImFont* pFont) noexcept;
-		void SetMargin(const IntRect& margin) noexcept;
 		void SetStyleVar(ImGuiStyleVar styleVar, ImVec2 value) noexcept;
 		void SetStyleVar(ImGuiStyleVar styleVar, float value) noexcept;
 		void SetStyleColor(ImGuiCol styleColor, ImVec4 value) noexcept;
@@ -265,7 +253,6 @@ namespace Relentless
 		std::unordered_map<ImGuiStyleVar, ImVec2> m_Vars1;
 		std::unordered_map<ImGuiStyleVar, float> m_Vars2;
 		std::unordered_map<ImGuiCol, ImVec4> m_Cols;
-		IntRect m_Margin;
 		ImFont* m_pFont = nullptr;
 	};
 
@@ -275,6 +262,11 @@ namespace Relentless
 	public:
 		IStylableWidget() noexcept = default;
 		virtual ~IStylableWidget() noexcept override = default;
+
+		NO_DISCARD Vector2 GetPadding() const noexcept
+		{
+			return m_Style.GetPadding();
+		}
 
 		NO_DISCARD const WidgetStyle& GetStyle() const noexcept
 		{
@@ -374,7 +366,8 @@ namespace Relentless
 
 		DerivedType* SetMargin(const IntRect& margin) noexcept
 		{
-			m_Style.SetMargin(margin);
+			/*m_Margin = */IBaseWidget::SetMargin(FloatRect(static_cast<float>(margin.Left), static_cast<float>(margin.Top), static_cast<float>(margin.Right), static_cast<float>(margin.Bottom)));
+			//m_Style.SetMargin(margin);
 			return static_cast<DerivedType*>(this);
 		}
 

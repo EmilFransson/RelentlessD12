@@ -17,16 +17,16 @@ namespace Relentless
 
 		virtual void Render() noexcept = 0;
 		virtual void Update() noexcept {};
-		[[nodiscard]] virtual bool OnEvent(IEvent&) noexcept;
+		NO_DISCARD virtual bool OnEvent(IEvent&) noexcept;
 	protected:
-		[[nodiscard]] virtual bool OnKeyPressedEvent(KeyPressedEvent&) noexcept { return false; };
-		[[nodiscard]] virtual bool OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent&) noexcept { return false; };
-		[[nodiscard]] virtual bool OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent&) noexcept { return false; };
-		[[nodiscard]] virtual bool OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent&) noexcept { return false; };
-		[[nodiscard]] virtual bool OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent&) noexcept { return false; };
-		[[nodiscard]] virtual bool OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent&) noexcept { return false; };
-		[[nodiscard]] virtual bool OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent&) noexcept { return false; };
-		[[nodiscard]] virtual bool OnMouseWheelScrolledEvent(MouseWheelScrolledEvent&) noexcept { return false; };
+		NO_DISCARD virtual bool OnKeyPressedEvent(KeyPressedEvent&) noexcept { return false; };
+		NO_DISCARD virtual bool OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent&) noexcept { return false; };
+		NO_DISCARD virtual bool OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent&) noexcept { return false; };
+		NO_DISCARD virtual bool OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent&) noexcept { return false; };
+		NO_DISCARD virtual bool OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent&) noexcept { return false; };
+		NO_DISCARD virtual bool OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent&) noexcept { return false; };
+		NO_DISCARD virtual bool OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent&) noexcept { return false; };
+		NO_DISCARD virtual bool OnMouseWheelScrolledEvent(MouseWheelScrolledEvent&) noexcept { return false; };
 	};
 
 	class PanelBase : public IPanel
@@ -35,18 +35,18 @@ namespace Relentless
 		PanelBase(const char* pName, ImGuiWindowFlags flags) noexcept;
 		virtual ~PanelBase() noexcept override;
 
-		[[nodiscard]] const Vector2u& GetContentRegionAvail() const noexcept;
-		[[nodiscard]] const Vector2u& GetContentRegionMin() const noexcept;
-		[[nodiscard]] const Vector2u& GetContentRegionMax() const noexcept;
-		[[nodiscard]] FloatRect GetContentRegionInScreenSpace() const noexcept;
-		[[nodiscard]] uint32 GetLastFrameFocused() const noexcept;
-		[[nodiscard]] const Vector2u& GetPosition() const noexcept;
-		[[nodiscard]] const Vector2u& GetSize() const noexcept;
-		[[nodiscard]] const String& GetName() const noexcept;
-		[[nodiscard]] bool IsDocked() const noexcept;
-		[[nodiscard]] bool IsFocused() const noexcept;
-		[[nodiscard]] bool IsHovered() const noexcept;
-		[[nodiscard]] bool IsVisible() const noexcept;
+		NO_DISCARD const Vector2u& GetContentRegionAvail() const noexcept;
+		NO_DISCARD const Vector2u& GetContentRegionMin() const noexcept;
+		NO_DISCARD const Vector2u& GetContentRegionMax() const noexcept;
+		NO_DISCARD FloatRect GetContentRegionInScreenSpace() const noexcept;
+		NO_DISCARD uint32 GetLastFrameFocused() const noexcept;
+		NO_DISCARD const Vector2u& GetPosition() const noexcept;
+		NO_DISCARD const Vector2u& GetSize() const noexcept;
+		NO_DISCARD const String& GetName() const noexcept;
+		NO_DISCARD bool IsDocked() const noexcept;
+		NO_DISCARD bool IsFocused() const noexcept;
+		NO_DISCARD bool IsHovered() const noexcept;
+		NO_DISCARD bool IsVisible() const noexcept;
 	
 		virtual void Render() noexcept override final;
 
@@ -61,7 +61,7 @@ namespace Relentless
 	protected:
 
 		virtual void PreRender() noexcept {}
-		virtual void OnRender() noexcept = 0;
+		virtual void OnRender() noexcept {};
 		virtual void PostRender() noexcept {}
 
 		void SetRoot(Ref<IBaseWidget> pRoot) noexcept;

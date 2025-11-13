@@ -146,11 +146,7 @@ namespace Relentless
 			UpdateBounds();
 		}
 
-		auto minRect = ImGui::GetItemRectMin();
-		auto maxRect = ImGui::GetItemRectMax();
-
 		const bool rectHovered = ImGui::IsMouseHoveringRect(boundsMin, boundsMax);
-		//ImGui::GetWindowDrawList()->AddRect(minRect, maxRect, ImColor(1.0f, 1.0f, 1.0f, 1.0f));
 
 		if (!this->m_IsHovered && rectHovered)
 			this->OnMouseEnter_private();

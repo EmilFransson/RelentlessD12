@@ -18,10 +18,10 @@ namespace Relentless
 		void DeselectEntities(std::span<entity> entitiesToDeselect) noexcept;
 		void DeselectAllEntities() noexcept;
 
-		[[nodiscard]] const std::vector<entity>& GetSelectedEntities() const noexcept;
-		[[nodiscard]] bool IsEntitySelected(entity entityToQuery) const noexcept;
-		[[nodiscard]] uint32 GetSelectedEntityCount() const noexcept;
-		[[nodiscard]] entity GetFirstSelected() const noexcept;
+		NO_DISCARD const std::vector<entity>& GetSelectedEntities() const noexcept;
+		NO_DISCARD bool IsEntitySelected(entity entityToQuery) const noexcept;
+		NO_DISCARD uint32 GetSelectedEntityCount() const noexcept;
+		NO_DISCARD entity GetFirstSelected() const noexcept;
 
 		Broadcaster<void()> OnPreDeselectAll;
 		Broadcaster<void(entity e, ESelectionState)> OnSelectionChanged;

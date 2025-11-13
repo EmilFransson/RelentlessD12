@@ -37,6 +37,9 @@ namespace Relentless
 			return this;
 		}
 
+
+		virtual NO_DISCARD Vector2 ReportSize() const noexcept override;
+
 	protected:
 		[[nodiscard]] float CalcDesiredWidth() const noexcept override;
 	private:

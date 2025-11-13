@@ -21,6 +21,9 @@ namespace Relentless
 
 	void HeaderRow::OnRender() noexcept
 	{
+		if (!m_IsVisible)
+			return;
+
 		if (m_IsPinned)
 			ImGui::TableSetupScrollFreeze(0, 1);
 
@@ -46,6 +49,11 @@ namespace Relentless
 	void HeaderRow::SetIsPinned(bool isPinned) noexcept
 	{
 		m_IsPinned = isPinned;
+	}
+
+	void HeaderRow::SetIsVisible(bool aIsVisible) noexcept
+	{
+		m_IsVisible = aIsVisible;
 	}
 
 }

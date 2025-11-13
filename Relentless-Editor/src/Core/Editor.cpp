@@ -1,6 +1,9 @@
 ﻿#include "Editor.h"
 #include "RelentlessEditorApp.h"
 
+#include "../Panels/TestPanel.h"
+#include "../UI/Views/Outliner/EntityOutlinerView.h"
+
 namespace Relentless
 {
 	Editor::~Editor() noexcept {}
@@ -32,7 +35,7 @@ namespace Relentless
 
 	const Ref<EntityOutlinerView> Editor::GetEntityOutlinerView() const noexcept
 	{
-		return m_pDetailsPanel->GetEntityOutlinerView();
+		return m_pOutlinerPanel->GetEntityOutlinerView();
 	}
 
 	void Editor::OnEvent(IEvent& event) noexcept
@@ -54,13 +57,6 @@ namespace Relentless
 
 					break;
 				}
-				case RLS_Key::A:
-				{
-					//if (m_pOutlinerPanel->IsFocused())
-					//	m_pOutlinerPanel->SelectAllExpanded();
-
-					break;
-				}
 				break;
 				}
 			}
@@ -75,19 +71,6 @@ namespace Relentless
 		PROFILE_FUNC;
 
 		UI_DrawMainMenuBar();
-
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("Main", nullptr);
-
-		ImGui::BeginChild("Scene", ImVec2(0,60), false);
-
-		ImGui::EndChild();
-
-		ImGuiID dockspaceID = ImGui::GetID("MainDockSpace");
-		ImGui::DockSpace(dockspaceID, ImVec2(0, 0));
-
-		ImGui::End();
-		ImGui::PopStyleVar();
 
 		ImGui::Begin("Content Browser");
 
@@ -133,16 +116,6 @@ namespace Relentless
 		//	}
 		//	ImGui::EndDragDropTarget();
 		//}
-		//
-		//
-		//UI_DrawStatisticsPanel();
-		//
-		//m_pOutlinerPanel->OnImGuiRender(m_DisplayOutlinerPanel && !m_ImmersiveModeEnabled);
-		//m_InspectorPanel.OnImGuiRender(m_DisplayInspectorPanel && !m_ImmersiveModeEnabled);
-		//m_SceneRendererPanel.OnImGuiRender(m_DisplaySceneRendererPanel && !m_ImmersiveModeEnabled);
-		//m_PropertiesPanel.OnImGuiRender(m_DisplayPropertiesPanel && !m_ImmersiveModeEnabled);
-		//m_ContentBrowserPanel.OnImGuiRender(m_DisplayContentBrowserPanel && !m_ImmersiveModeEnabled);
-		//m_MetricsPanel.OnImGuiRender(m_DisplayMetricsPanel && !m_ImmersiveModeEnabled);
 
 		ImGui::Begin("TEST");
 
@@ -162,9 +135,6 @@ namespace Relentless
 
 	void Editor::OnCreate() noexcept
 	{
-		//TODO: Change ffs.
-		//UI::Initialize();
-
 		m_pSelection = std::make_unique<Selection>();
 		m_pSelection->OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
 
@@ -174,15 +144,16 @@ namespace Relentless
 
 		SpawnViewport();
 
-		//m_pOutlinerPanel = std::make_unique<OutlinerPanel>(this);
-		//m_pOutlinerPanel = UIManager::Get().AddPanel(std::make_unique<OutlinerPanel>(this));
-
 		SetActiveScene(std::make_shared<Scene>());
-		
 		CreateStartScene();
 
-		m_pDetailsPanel = UIManager::Get().AddPanel(std::make_unique<DetailsPanel>(ICON_FA_LINES_LEANING " Details", ImGuiWindowFlags_None, this));
+		m_pDetailsPanel = UIManager::Get().AddPanel(std::make_unique<DetailsPanel>(this));
 		m_pDetailsPanel->SetPadding(Vector2(2.0f, 0.0f));
+
+		m_pOutlinerPanel = UIManager::Get().AddPanel(std::make_unique<OutlinerPanel>(this));
+		m_pOutlinerPanel->SetPadding(Vector2(2.0f, 0.0f));
+
+		UIManager::Get().AddPanel(std::make_unique<TestPanel>("Test", ImGuiWindowFlags_None));
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 		app.GetRenderer()->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
@@ -237,9 +208,7 @@ namespace Relentless
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 		if (auto& pRenderer = app.GetRenderer())
-		{
 			pRenderer->OnEntityIDReadbackDone.Detach(this);
-		}
 	}
 
 	void Editor::OnUpdate(const float deltaTime) noexcept
@@ -1080,25 +1049,7 @@ namespace Relentless
 		}
 		case RLS_Key::H:
 		{
-			if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
-			{
-				m_pActiveScene->GetEntityManager().Collect<HiddenInGameComponent, RootComponent>().Do([this](entity e)
-					{
-						m_pActiveScene->SetEntityVisibleInGame(e, true);
-					});
-			}
-			else
-			{
-				const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
-
-				for (int i = (int)selectedEntities.size() - 1; i >= 0; --i)
-				{
-					const entity currentEntity = selectedEntities[i];
-
-					m_pActiveScene->SetEntityVisibleInGame(currentEntity, false);
-					m_pSelection->DeselectEntity(currentEntity);
-				}
-			}
+			SetVisibilityForSelectedEntities(Keyboard::IsKeyDown(RLS_Key::LCtrl));
 			break;
 		}
 		case RLS_Key::Delete:
@@ -1120,10 +1071,7 @@ namespace Relentless
 		const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
 
 		if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
-		{
-			//m_pOutlinerPanel->DeselectNonEntityItems();
 			m_pSelection->DeselectAllEntities();
-		}
 
 		if (isHoveringEntity)
 		{
@@ -1163,6 +1111,34 @@ namespace Relentless
 			Folder folder = m_pActiveScene->GetEntityManager().Get<FolderComponent>(aEntity).Folder;
 			m_pActiveScene->GetEntityManager().Remove<FolderComponent>(aEntity);
 			OnEntityRemovedFromFolder(aEntity, folder);
+		}
+	}
+
+	void Editor::SetVisibilityForSelectedEntities(bool aVisibilityState) noexcept
+	{
+		if (aVisibilityState)
+		{
+			m_pActiveScene->GetEntityManager().Collect<HiddenInGameComponent, RootComponent>().Do([this, aVisibilityState](entity e)
+				{
+					m_pActiveScene->SetEntityVisibleInGame(e, aVisibilityState);
+				});
+
+			m_pActiveScene->GetEntityManager().Collect<HiddenInGameComponent>().Do([this, aVisibilityState](entity e)
+				{
+					m_pActiveScene->SetEntityVisibleInGame(e, aVisibilityState);
+				});
+		}
+		else
+		{
+			const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
+
+			for (int i = (int)selectedEntities.size() - 1; i >= 0; --i)
+			{
+				const entity currentEntity = selectedEntities[i];
+
+				m_pActiveScene->SetEntityVisibleInGame(currentEntity, aVisibilityState);
+				m_pSelection->DeselectEntity(currentEntity);
+			}
 		}
 	}
 

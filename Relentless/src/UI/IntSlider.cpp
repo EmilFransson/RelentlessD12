@@ -8,6 +8,11 @@ namespace Relentless
 		, m_Min{ min }
 		, m_Max{ max }
 	{
+		if (pFormat == nullptr || pFormat[0] == '\0')
+			m_Format = "%d";
+		else
+			m_Format = pFormat;
+
 		SetFlags(flags);
 
 		const Color defaultFrameColor = Colors::Normalize(12.5f, 12.5f, 12.5f, 255.0f);
@@ -66,6 +71,29 @@ namespace Relentless
 
 		if (m_IsHovered)
 			ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_ResizeEW);
+	}
+
+	Vector2 IntSlider::ReportSize() const noexcept
+	{
+		ImFont* pFont = m_Style.GetFont();
+		if (pFont)
+			ImGui::PushFont(pFont);
+
+		const Vector2 padding = GetPadding() * 2.0f;
+		const float frameHeight = ImGui::GetFontSize() + padding.y;
+
+		char valueBuffer[64];
+		const float value = m_ValueCallback.IsSet() ? m_ValueCallback() : 0.0f;
+		ImFormatString(valueBuffer, sizeof(valueBuffer), m_Format.c_str(), value);
+
+		const float rawWidth = ImGui::CalcTextSize(valueBuffer).x;
+		float width = rawWidth + padding.x;
+		width = Math::Max(width, 100.0f);
+
+		if (pFont)
+			ImGui::PopFont();
+
+		return { width, frameHeight };
 	}
 
 	void IntSlider::SetFormat(const char* pFormat) noexcept

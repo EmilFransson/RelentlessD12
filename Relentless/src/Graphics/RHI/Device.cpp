@@ -24,9 +24,8 @@ namespace Relentless
 	}
 
 	GraphicsDevice::GraphicsDevice(const GraphicsDeviceOptions& options) noexcept
-		:
-		DeviceObject{this}, 
-		m_DeferredDeleteQueue{this}
+		:DeviceObject{this}, 
+		 m_DeferredDeleteQueue{this}
 	{
 		uint32_t flags = 0u;
 		if (options.UseDebugDevice)

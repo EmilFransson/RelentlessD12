@@ -1,23 +1,20 @@
 ﻿#include "DetailsPanel.h"
-
 #include "../Core/Editor.h"
+
+#include "../UI/Views/Details/EntityDetailsView.h"
 
 namespace Relentless
 {
-	DetailsPanel::DetailsPanel(const char* pName, ImGuiWindowFlags flags, Editor* pEditor) noexcept
-		: PanelBase{ pName, flags}
-		, m_pEditor{ pEditor }
+	DetailsPanel::DetailsPanel(Editor* aEditor) noexcept
+		: IEditorPanel{ ICON_FA_LINES_LEANING " Details", ImGuiWindowFlags_NoScrollbar, aEditor}
 	{
 		m_pEditor->GetSelection()->OnSelectionChanged.Connect(this, &DetailsPanel::OnSelectionChanged);
 		m_pEditor->OnPreSceneChanged.Connect(this, &DetailsPanel::OnPreSceneChanged);
 		m_pEditor->OnSceneChanged.Connect(this, &DetailsPanel::OnSceneChanged);
-		
-		m_pEntityDetailsCustomizer = std::make_unique<EntityDetailsCustomizer>(pEditor);
+		m_pEditor->OnShutDown.Connect([this]() { m_pEditor = nullptr; });
 
-		m_pEntityOutlinerView = new EntityOutlinerView(pEditor);
-		m_pBox = new VerticalBox();
-
-		m_pBox->Add(m_pEntityOutlinerView);
+		m_pEntityDetailsView = new EntityDetailsView(m_pEditor);
+		SetRoot(m_pEntityDetailsView);
 	}
 
 	DetailsPanel::~DetailsPanel() noexcept
@@ -29,27 +26,6 @@ namespace Relentless
 
 			m_pEditor->OnSceneChanged.Detach(this);
 		}
-	}
-
-	void DetailsPanel::OnRender() noexcept
-	{
-		PROFILE_FUNC;
-		m_pBox->Render();
-	}
-
-	bool DetailsPanel::OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept
-	{
-		switch (aEvent.key)
-		{
-		case RLS_Key::Delete: 
-			m_pEntityOutlinerView->OnDeleteSelection();
-			return true;
-		case RLS_Key::F2:
-			m_pEntityOutlinerView->OnRenameSelection();
-			return true;
-		}
-		
-		return false;
 	}
 
 	Ref<IBaseWidget> DetailsPanel::CreateBaseSection() noexcept
@@ -151,11 +127,6 @@ namespace Relentless
 		pRoot->Add(pComponentsSection);
 
 		SetRoot(pRoot);
-	}
-
-	const Ref<EntityOutlinerView>& DetailsPanel::GetEntityOutlinerView() const noexcept
-	{
-		return m_pEntityOutlinerView;
 	}
 
 	Vector3 DetailsPanel::GetLocation(ComboBox* pTransformSpaceComboBox) const noexcept
@@ -603,6 +574,10 @@ namespace Relentless
 		pScene->OnEntityDestroyed.Detach(this);
 	}
 
+	void DetailsPanel::OnRender() noexcept
+	{
+	}
+
 	void DetailsPanel::OnSceneChanged(Scene* pScene) noexcept
 	{
 		pScene->OnEntityDestroyed.Connect(this, &DetailsPanel::OnEntityDestroyed);
@@ -611,17 +586,15 @@ namespace Relentless
 
 	void DetailsPanel::OnSelectionChanged(entity, ESelectionState) noexcept
 	{
-		if (m_SelectionLocked)
-			return;
-
-		m_SelectedEntities = m_pEditor->GetSelection()->GetSelectedEntities();
-		m_pEntityDetailsCustomizer->SetEntities(m_SelectedEntities);
-		m_Nodes = m_pEntityDetailsCustomizer->Build();
-		
-		if (m_SelectedEntities.empty())
-			CreateEmpty();
-		else
-			CreateFromSelection();
+		//if (m_SelectionLocked)
+		//	return;
+		//
+		//m_SelectedEntities = m_pEditor->GetSelection()->GetSelectedEntities();
+		//
+		//if (m_SelectedEntities.empty())
+		//	CreateEmpty();
+		//else
+		//	CreateFromSelection();
 	}
 
 	template<>

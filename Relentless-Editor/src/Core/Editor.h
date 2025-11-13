@@ -49,6 +49,8 @@ namespace Relentless
 
 		void RemoveEntityFromCurrentFolder(entity aEntity) noexcept;
 
+		void SetVisibilityForSelectedEntities(bool aVisibilityState) noexcept;
+
 		Broadcaster<void(entity, const Folder&)> OnEntityAttachedToFolder;
 		Broadcaster<void(entity, const Folder&)> OnEntityRemovedFromFolder;
 
@@ -86,20 +88,11 @@ namespace Relentless
 		UniquePtr<Selection> m_pSelection = nullptr;
 		UniquePtr<EntityFoldersManager> m_pEntityFoldersManager = nullptr;
 
-		//PropertiesPanel m_PropertiesPanel;
-		//ContentBrowserPanel m_ContentBrowserPanel;
-		//MetricsPanel m_MetricsPanel;
-		//SceneRendererPanel m_SceneRendererPanel;
-		//InspectorPanel m_InspectorPanel;
-
 		std::shared_ptr<Scene> m_pActiveScene = nullptr;
 		std::shared_ptr<Scene> m_pEditorScene = nullptr;
 
 		std::shared_ptr<UtilityRenderer> m_pUtilityRenderer = nullptr;
 		
-		//OutlinerPanel* m_pOutlinerPanel = nullptr;
-		//UniquePtr<DetailsPanel> m_pDetailsPanel;
-
 		bool m_DisplayOutlinerPanel = true;
 		bool m_DisplayContentBrowserPanel = true;
 		bool m_DisplayPropertiesPanel = true;
@@ -121,11 +114,7 @@ namespace Relentless
 
 		std::shared_ptr<TextureCube> m_SkyBox = nullptr;
 		
-		Ref<HorizontalBox> m_pHorizontalBox = nullptr;
-
-		Ref<CollapsibleSection> m_pSection = nullptr;
-		Ref<FloatDrag> m_pDragger = nullptr;
-
 		DetailsPanel* m_pDetailsPanel = nullptr;
+		OutlinerPanel* m_pOutlinerPanel = nullptr;
 	};
 }

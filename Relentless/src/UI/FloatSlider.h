@@ -11,6 +11,8 @@ namespace Relentless
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 
+		NO_DISCARD Vector2 ReportSize() const noexcept override;
+
 		void SetFormat(const char* pFormat) noexcept;
 		void SetHandleColor(const Color& color) noexcept;
 		void SetHandleSize(float size) noexcept;

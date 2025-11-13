@@ -37,6 +37,9 @@ namespace Relentless
 		virtual void OnRender() noexcept override;
 		void SetActiveWidget(Ref<IBaseWidget> aWidget) noexcept;
 		void SetActiveWidgetIndex(uint32 aSlotIndex) noexcept;
+
+		virtual NO_DISCARD Vector2 ReportSize() const noexcept override;
+
 	private:
 		std::vector<Ref<IBaseWidget>> m_Widgets;
 		int32 m_ActiveIndex = -1;

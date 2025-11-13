@@ -4,7 +4,7 @@
 
 namespace Relentless
 {
-	class HorizontalBox;
+	class HorizontalBoxEx;
 
 	class Float3Drag : public IStylableWidget<Float3Drag>
 	{
@@ -12,6 +12,9 @@ namespace Relentless
 		Float3Drag(float speed = 1.0f, float min = -FLT_MAX, float max = FLT_MAX, const char* pFormat = "", int flags = 0) noexcept;
 
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
+
+		template<typename InstanceType>
+		Float3Drag* Value(InstanceType* instance, Vector3(InstanceType::*method)()) noexcept;
 
 		template<typename T>
 		Float3Drag* Value(T&& callback) noexcept;
@@ -22,12 +25,17 @@ namespace Relentless
 		template<typename T>
 		Float3Drag* OnValueChanged(T&& callback) noexcept;
 
+		template<typename InstanceType>
+		Float3Drag* OnValueChanged(InstanceType* instance, void(InstanceType::*method)(Vector3&)) noexcept;
+
 		Float3Drag* SetDrawColorIndicator(bool state) noexcept;
 		Float3Drag* SetHandleColor(const Color& color) noexcept;
 		Float3Drag* SetHandleSize(float size) noexcept;
 		Float3Drag* SetIndicatorColor(uint8 handleIndex, const Color& color) noexcept;
 
 		Broadcaster<void(bool state)> OnActiveChanged;
+
+
 	private:
 		[[nodiscard]] float GetValue(int componentIndex) const noexcept;
 
@@ -59,7 +67,7 @@ namespace Relentless
 
 		bool m_DrawColorIndicator = false;
 
-		Ref<HorizontalBox> m_pFloatDragBox = nullptr;
+		Ref<HorizontalBoxEx> m_pFloatDragBox = nullptr;
 	};
 
 	template<typename T>
@@ -69,10 +77,25 @@ namespace Relentless
 		return this;
 	}
 
+	template<typename InstanceType>
+	Float3Drag* Float3Drag::OnValueChanged(InstanceType* instance, void(InstanceType::*method)(Vector3&)) noexcept
+	{
+		m_OnChanged = [instance, method](Vector3& aValue) { return (instance->*method)(aValue); };
+		return this;
+	}
+
 	template<typename T>
 	Float3Drag* Float3Drag::Value(T&& callback) noexcept
 	{
 		m_ValueCallback = Callback<Vector3()>(std::forward<T>(callback));
 		return this;
 	}
+
+	template<typename InstanceType>
+	Float3Drag* Float3Drag::Value(InstanceType* instance, Vector3(InstanceType::*method)()) noexcept
+	{
+		m_ValueCallback = [instance, method]() { return (instance->*method)(); };
+		return this;
+	}
+
 }

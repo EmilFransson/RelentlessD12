@@ -10,7 +10,14 @@ namespace Relentless
 		if (!pTable)
 			return;
 
-		ImGui::TableNextRow();
+		float maxHeight = 0.0f;
+		for (uint32 column = 0u; column < m_ColumnWidgets.size(); ++column)
+		{
+			const float height = m_ColumnWidgets[column]->ReportSize().y;
+			maxHeight = Math::Max(maxHeight, height);
+		}
+
+		ImGui::TableNextRow(0, maxHeight);
 
 		const float rowHeight = ImGui::GetFrameHeightWithSpacing();
 		const float minX = pTable->Columns[0].MinX;
@@ -69,6 +76,16 @@ namespace Relentless
 				ImGui::PopID();
 			}
 		}
+	}
+
+	void ITableRow::SetColumnWidget(uint8 aColumnIndex, const Ref<HorizontalBoxEx>& aWidget) noexcept
+	{
+		RLS_ASSERT(GetNumColumns() > aColumnIndex, "[ITableRow::SetColumnWidget]: index out of bounds error.");
+
+		if (m_ColumnWidgets.capacity() < GetNumColumns())
+			m_ColumnWidgets.resize(GetNumColumns());
+
+		m_ColumnWidgets[aColumnIndex] = aWidget;
 	}
 
 }

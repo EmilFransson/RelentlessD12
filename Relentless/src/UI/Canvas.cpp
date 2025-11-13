@@ -10,6 +10,11 @@ namespace Relentless
 		return m_ScreenRect;
 	}
 
+	Vector2 Canvas::ReportSize() const noexcept
+	{
+		return { (float)m_Size.x, (float)m_Size.y };
+	}
+
 	float Canvas::CalcDesiredWidth() const noexcept
 	{
 		return m_Size.x;

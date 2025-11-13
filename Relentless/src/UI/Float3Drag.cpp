@@ -1,7 +1,7 @@
 #include "Float3Drag.h"
 
 #include "FloatDrag.h"
-#include "HorizontalBox.h"
+#include "HorizontalBoxEx.h"
 
 #include "Input/Mouse.h"
 
@@ -15,21 +15,21 @@ namespace Relentless
 	{
 		using namespace std::placeholders;
 
-		m_pFloatDragBox = new HorizontalBox();
+		m_pFloatDragBox = new HorizontalBoxEx();
 
-		m_pFloatDragBox->Add(new FloatDrag(speed, min, max, pFormat, flags))
+		m_pFloatDragBox->AddWidget(new FloatDrag(speed, min, max, pFormat, flags))
 			->Value(std::bind(&Float3Drag::GetValue, this, 0))
 			->OnValueChanged(std::bind(&Float3Drag::SetValue, this, _1, 0))
 			->SetIndicatorColor(Colors::OffRed)
 			->SetSizePolicy(ESizePolicy::Stretch);
 
-		m_pFloatDragBox->Add(new FloatDrag(speed, min, max, pFormat, flags))
+		m_pFloatDragBox->AddWidget(new FloatDrag(speed, min, max, pFormat, flags))
 			->Value(std::bind(&Float3Drag::GetValue, this, 1))
 			->OnValueChanged(std::bind(&Float3Drag::SetValue, this, _1, 1))
 			->SetIndicatorColor(Colors::OffGreen)
 			->SetSizePolicy(ESizePolicy::Stretch);
 
-		m_pFloatDragBox->Add(new FloatDrag(speed, min, max, pFormat, flags))
+		m_pFloatDragBox->AddWidget(new FloatDrag(speed, min, max, pFormat, flags))
 			->Value(std::bind(&Float3Drag::GetValue, this, 2))
 			->OnValueChanged(std::bind(&Float3Drag::SetValue, this, _1, 2))
 			->SetIndicatorColor(Colors::OffBlue)

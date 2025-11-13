@@ -1,30 +1,21 @@
 #pragma once
 
 #include <Relentless.h>
-
-#include "../UI/Views/Details/EntityDetailsCustomizer.h"
-#include "../UI/Views/Outliner/EntityOutlinerView.h"
+#include "IEditorPanel.h"
 
 namespace Relentless
 {
 	enum class ESelectionState : uint8;
-
-	//enum class ETransformSpace : int { Relative = 0, Absolute };
+	enum class ETransformSpace : uint8 { Relative = 0, Absolute };
 	enum class EAxis : uint8 { X, Y, Z };
 
-	class Editor;
+	class EntityDetailsView;
 
-	class DetailsPanel : public PanelBase
+	class DetailsPanel : public IEditorPanel
 	{
 	public:
-		DetailsPanel(const char* pName, ImGuiWindowFlags flags, Editor* pEditor) noexcept;
+		DetailsPanel(Editor* aEditor) noexcept;
 		virtual ~DetailsPanel() noexcept override;
-
-		NO_DISCARD const Ref<EntityOutlinerView>& GetEntityOutlinerView() const noexcept;
-	protected:
-		virtual void OnRender() noexcept override;
-		bool OnKeyPressedEvent(KeyPressedEvent&) noexcept override;
-
 	private:
 		template<typename Widget>
 		Widget* AddRow(
@@ -52,8 +43,6 @@ namespace Relentless
 		[[nodiscard]] Vector3 GetLocation(ComboBox* pTransformSpaceComboBox) const noexcept;
 		[[nodiscard]] Vector3 GetRotation(ComboBox* pTransformSpaceComboBox) const noexcept;
 		[[nodiscard]] Vector3 GetScale(ComboBox* pTransformSpaceComboBox) const noexcept;
-
-
 
 		void OnLightTypeSelectionChanged(const char* selected) noexcept;
 
@@ -106,19 +95,17 @@ namespace Relentless
 
 		void OnPreSceneChanged(Scene* pScene) noexcept;
 
+		void OnRender() noexcept override;
+
 		void OnSceneChanged(Scene* pScene) noexcept;
 		void OnSelectionChanged(entity e, ESelectionState selectionState) noexcept;
 	private:
-		UniquePtr<EntityDetailsCustomizer> m_pEntityDetailsCustomizer = nullptr;
-
 		std::vector<entity> m_SelectedEntities;
 		std::vector<Ref<IDetailsTreeNode>> m_Nodes;
 
-		Editor* m_pEditor = nullptr;
 		bool m_SelectionLocked = false;
 
-		Ref<EntityOutlinerView> m_pEntityOutlinerView = nullptr;
-		Ref<VerticalBox> m_pBox = nullptr;
+		Ref<EntityDetailsView> m_pEntityDetailsView = nullptr;
 	};
 
 	template<> Ref<IBaseWidget> DetailsPanel::CreateComponentSection<DirectionalLightComponent>() noexcept;

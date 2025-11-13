@@ -53,6 +53,7 @@ namespace Relentless
 			}
 		}
 
+		void SetClippingActive(bool aIsActive) noexcept { m_ClippingActive = aIsActive; }
 		void SetItemExpandedState(const ItemType& pItem, bool expandedState) noexcept;
 
 		Broadcaster<void()> OnTreeRefreshed;
@@ -73,6 +74,7 @@ namespace Relentless
 		Callback<void(const ItemType&, std::vector<ItemType>&)> m_OnGetChildren;
 
 		bool m_ShouldRefresh = true;
+		bool m_ClippingActive = true;
 	};
 
 	template<class ItemType>
@@ -216,14 +218,45 @@ namespace Relentless
 			float clipStartPosY = FLT_MAX;
 			float clipItemsHeight = 0.0f;
 
-			while (clipper.Step())
+			if (this->m_ClippingActive)
 			{
-				if (clipStartPosY == FLT_MAX)
-					clipStartPosY = clipper.StartPosY;
-				if (!warmUp)
-					clipItemsHeight = clipper.ItemsHeight;
+				while (clipper.Step())
+				{
+					if (clipStartPosY == FLT_MAX)
+						clipStartPosY = clipper.StartPosY;
+					if (!warmUp)
+						clipItemsHeight = clipper.ItemsHeight;
 
-				for (uint32 row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+					for (uint32 row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+					{
+						const ItemType& item = m_LinearizedItems[row];
+
+						if (!this->m_ItemToRowWidgetMap.contains(item))
+						{
+							this->m_ItemToRowWidgetMap[item] = std::move(this->GenerateNewWidget(item));
+							this->m_OnItemScrolledIntoView.ExecuteIfSet(item);
+						}
+
+						this->m_ItemToRowWidgetMap[item]->Render();
+						lastRowY = ImGui::GetCursorScreenPos().y;
+					}
+
+					if (!warmUp)
+					{
+						if (this->m_VisibleListStart != clipper.DisplayStart || this->m_VisibleListEnd != clipper.DisplayEnd)
+						{
+							this->m_VisibleListStart = clipper.DisplayStart;
+							this->m_VisibleListEnd = clipper.DisplayEnd;
+							clipRangeDirty = true;
+						}
+					}
+
+					warmUp = !warmUp; // ping pong: warmup1 -> no warmup -> warmup2
+				}
+			}
+			else
+			{
+				for (uint32 row = 0u; row < m_LinearizedItems.size(); ++row)
 				{
 					const ItemType& item = m_LinearizedItems[row];
 
@@ -236,18 +269,6 @@ namespace Relentless
 					this->m_ItemToRowWidgetMap[item]->Render();
 					lastRowY = ImGui::GetCursorScreenPos().y;
 				}
-
-				if (!warmUp)
-				{
-					if (this->m_VisibleListStart != clipper.DisplayStart || this->m_VisibleListEnd != clipper.DisplayEnd)
-					{
-						this->m_VisibleListStart = clipper.DisplayStart;
-						this->m_VisibleListEnd = clipper.DisplayEnd;
-						clipRangeDirty = true;
-					}
-				}
-
-				warmUp = !warmUp; // ping pong: warmup1 -> no warmup -> warmup2
 			}
 
 			if (m_PendingScrollItem.has_value() && !m_PendingScroll.IsValid())
@@ -273,7 +294,7 @@ namespace Relentless
 				// Scroll so that 'localY' appears at the chosen spot in view (0=top, .5=center, 1=bottom)
 				ImGui::SetScrollFromPosY(localY, m_PendingScroll.CenterRatio);
 
-					m_PendingScroll = {}; // clear request
+				m_PendingScroll = {}; // clear request
 			}
 
 			ImGui::EndTable();

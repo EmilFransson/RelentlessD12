@@ -76,17 +76,25 @@ namespace Relentless
 
 		m_pOutlinerTreeView->OnTreeRefreshed.Connect(this, &EntityOutlinerView::OnOutlinerTreeRefreshed);
 
-		m_pMainBox = new VerticalBox();
+		m_pMainBox = new VerticalBoxEx();
 		
-		Ref<HorizontalBox> pHorizontalBox = new HorizontalBox();
-		pHorizontalBox->SetMargin(FloatRect(0.0f, 10.0f, 0.0f, 0.0f));
+		Ref<VerticalBoxEx> pTopVerticalBox = new VerticalBoxEx();
+		Ref<VerticalBoxEx> pMiddleVerticalBox = new VerticalBoxEx({}, true);
+		pMiddleVerticalBox->SetSizePolicy(ESizePolicy::Stretch);
 
-		pHorizontalBox->Add(new SearchBar("Search...", true))
+		Ref<HorizontalBoxEx> pHorizontalBox = new HorizontalBoxEx();
+		Ref<HorizontalBoxEx> pLeftBox = new HorizontalBoxEx({}, true);
+		pLeftBox->SetSizePolicy(ESizePolicy::Stretch);
+		Ref<HorizontalBoxEx> pRightBox = new HorizontalBoxEx({}, true);
+
+		pHorizontalBox->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 5.0f));
+
+		pLeftBox->AddWidget(new SearchBar("Search...", true))
 			->OnTextChanged(this, &EntityOutlinerView::OnSearchTextChanged)
 			->OnTextCommitted(this, &EntityOutlinerView::OnSearchTextCommitted)
 			->SetSizePolicy(ESizePolicy::Stretch);
 
-		pHorizontalBox->Add(new Button(ICON_FA_FOLDER_PLUS))
+		pRightBox->AddWidget(new Button(ICON_FA_FOLDER_PLUS))
 			->OnClicked(this, &EntityOutlinerView::OnCreateNewFolderButtonClicked)
 			->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 			->SetBackgroundColor(Colors::Transparent)
@@ -95,19 +103,40 @@ namespace Relentless
 			->SetBorderColor(Colors::Transparent)
 			->SetTooltipText("Create a new folder containing the current selection");
 
-		pHorizontalBox->Add(new Button(ICON_FA_GEAR))
+		pRightBox->AddWidget(new Button(ICON_FA_GEAR))
 			->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 			->SetBackgroundColor(Colors::Transparent)
 			->SetActiveColor(Colors::Transparent)
 			->SetHoverColor(Colors::Gray)
 			->SetBorderColor(Colors::Transparent);
 
-		m_pOutlinerListBox = new VerticalBox(Vector2(0.0f, 0.0f), true);
+		m_pOutlinerListBox = new HorizontalBoxEx(Vector2(0.0f, 0.0f), true);
+		m_pOutlinerListBox->SetSizePolicy(ESizePolicy::Stretch);
 		m_pOutlinerListBox->OnFocusChanged.Connect(this, &EntityOutlinerView::OnFocusChanged);
-		m_pOutlinerListBox->Add(m_pOutlinerTreeView);
+		m_pOutlinerListBox->AddWidget(m_pOutlinerTreeView);
 
-		m_pMainBox->Add(pHorizontalBox);
-		m_pMainBox->Add(m_pOutlinerListBox);
+		pHorizontalBox->AddWidget(pLeftBox);
+		pHorizontalBox->AddWidget(pRightBox);
+
+		pTopVerticalBox->AddWidget(pHorizontalBox);
+		pMiddleVerticalBox->AddWidget(m_pOutlinerListBox);
+
+		m_pMainBox->AddWidget(pTopVerticalBox);
+		m_pMainBox->AddWidget(pMiddleVerticalBox);
+
+		Ref<VerticalBoxEx> pBorderBox = new VerticalBoxEx();
+		pBorderBox->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Bottom);
+
+		Border* pBorder = pBorderBox->AddWidget(new Border());
+		HorizontalBoxEx* pInBox = pBorder->SetContent(new HorizontalBoxEx({}, true));
+		pInBox->SetEnableScrolling(false);
+		pInBox->SetSizePolicy(ESizePolicy::Stretch);
+
+		pInBox->AddWidget(new Label(""))
+			->SetFont(ImGui::GetIO().Fonts->Fonts[2])
+			->SetPadding(Vector2(10.0f, 10.0f));
+
+		m_pMainBox->AddWidget(pBorderBox);
 
 		m_pFilter = std::make_unique<TextFilterExpressionEvaluator>();
 		m_pPolicies = std::make_unique<EntityOutlinerPolicies>();
@@ -141,10 +170,32 @@ namespace Relentless
 		{
 			pScene->OnEntityCreated.Detach(this);
 			pScene->OnEntityPreDestroyed.Detach(this);
+			pScene->OnEntityDestroyed.Detach(this);
 			pScene->OnEntityAttached.Detach(this);
 			pScene->OnEntityDetached.Detach(this);
 			pScene->OnEntityVisibilityChanged.Detach(this);
 		}
+	}
+
+	void EntityOutlinerView::DuplicateSelection() noexcept
+	{
+		std::vector<Ref<OutlinerListItem>> selectedItems;
+		if (m_pOutlinerTreeView->GetSelectedItems(selectedItems) == 0)
+			return;
+
+		std::vector<entity> selectedEntities;
+		std::vector<EntityFolder*> selectedFolders;
+
+		for (const auto& pSelectedItem : selectedItems)
+		{
+			if (pSelectedItem->IsEntity())
+				selectedEntities.push_back(pSelectedItem->AsEntity());
+			else if (pSelectedItem->IsFolder())
+				selectedFolders.push_back(pSelectedItem->AsFolder());
+		}
+
+		if (selectedEntities.empty() && selectedFolders.empty())
+			return;
 	}
 
 	Ref<OutlinerListItem> EntityOutlinerView::CreateEntityListItem(entity aEntity) noexcept
@@ -209,7 +260,7 @@ namespace Relentless
 		const bool targetIsFolder = std::holds_alternative<EntityFolder*>(targetPayload);
 		const bool targetIsScene = std::holds_alternative<Scene*>(targetPayload);
 
-		for (const EntityOutlinerPolicies::ItemResolution& itemResolution : aMovePlan.ResolvedItems)
+		for (const EntityOutlinerPolicies::ItemMoveResolution& itemResolution : aMovePlan.ResolvedItems)
 		{
 			const bool resolvedIsEntity = std::holds_alternative<entity>(itemResolution.Item);
 			const bool resolvedIsFolder = std::holds_alternative<EntityFolder*>(itemResolution.Item);
@@ -357,7 +408,7 @@ namespace Relentless
 			if (!pNewFolder)
 				return;
 
-			EntityOutlinerPolicies::Context context
+			EntityOutlinerPolicies::MoveContext context
 			{
 				.Scene = scene,
 				.FoldersManager = *pFoldersManager,
@@ -381,7 +432,7 @@ namespace Relentless
 
 			if (!selectedItems.empty())
 			{
-				EntityOutlinerPolicies::Context context
+				EntityOutlinerPolicies::MoveContext context
 				{
 					.Scene = scene,
 					.FoldersManager = *pFoldersManager,
@@ -523,7 +574,7 @@ namespace Relentless
 		const Ref<OutlinerListItem>& pHoveredItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
 		Scene* pScene = m_pEditor->GetActiveScene();
 
-		EntityOutlinerPolicies::Context context
+		EntityOutlinerPolicies::MoveContext context
 		{
 			.Scene = *pScene,
 			.FoldersManager = *m_pEditor->GetEntityFoldersManager(),
@@ -546,7 +597,7 @@ namespace Relentless
 		Scene& scene = *m_pEditor->GetActiveScene();
 		const UniquePtr<EntityFoldersManager>& pFoldersManager = m_pEditor->GetEntityFoldersManager();
 
-		EntityOutlinerPolicies::Context context
+		EntityOutlinerPolicies::MoveContext context
 		{
 			.Scene = scene,
 			.FoldersManager = *m_pEditor->GetEntityFoldersManager(),
@@ -634,9 +685,16 @@ namespace Relentless
 	{
 		GetRootSceneItem()->Children.push_back(CreateEntityListItem(newEntity));
 		m_pOutlinerTreeView->RequestTreeRefresh();
+
+		UpdateEntityInfoBorder();
 	}
 
-	void EntityOutlinerView::OnEntityDestroyed(entity destroyedEntity) noexcept
+	void EntityOutlinerView::OnEntityDestroyed(entity aDestroyedEntity) noexcept
+	{
+		UpdateEntityInfoBorder();
+	}
+
+	void EntityOutlinerView::OnEntityPreDestroyed(entity destroyedEntity) noexcept
 	{
 		const Ref<OutlinerListItem>& pDestroyedEntityItem = GetEntityItem(destroyedEntity);
 
@@ -879,6 +937,7 @@ namespace Relentless
 			return;
 
 		pScene->OnEntityCreated.Detach(this);
+		pScene->OnEntityPreDestroyed.Detach(this);
 		pScene->OnEntityDestroyed.Detach(this);
 		pScene->OnEntityAttached.Detach(this);
 		pScene->OnEntityDetached.Detach(this);
@@ -1225,12 +1284,14 @@ namespace Relentless
 			return;
 
 		pScene->OnEntityCreated.Connect(this, &EntityOutlinerView::OnEntityCreated);
-		pScene->OnEntityPreDestroyed.Connect(this, &EntityOutlinerView::OnEntityDestroyed);
+		pScene->OnEntityPreDestroyed.Connect(this, &EntityOutlinerView::OnEntityPreDestroyed);
+		pScene->OnEntityDestroyed.Connect(this, &EntityOutlinerView::OnEntityDestroyed);
 		pScene->OnEntityAttached.Connect(this, &EntityOutlinerView::OnEntityAttached);
 		pScene->OnEntityDetached.Connect(this, &EntityOutlinerView::OnEntityDetached);
 		pScene->OnEntityVisibilityChanged.Connect(this, &EntityOutlinerView::OnEntityVisibilityChanged);
 
 		RecreateItemHierarchy();
+		UpdateEntityInfoBorder();
 	}
 
 	void EntityOutlinerView::OnSearchTextChanged(const char* pText) noexcept
@@ -1333,6 +1394,8 @@ namespace Relentless
 
 	void EntityOutlinerView::OnSelectionChangedExternally(entity aEntity, ESelectionState aSelectionState) noexcept
 	{
+		UpdateEntityInfoBorder();
+
 		if (m_SuspendNotifications)
 			return;
 
@@ -1656,5 +1719,32 @@ namespace Relentless
 		}
 		else
 			scene.GetEntityManager().Collect<IDComponent>().Do([&scene, aToVisible](entity aEntity) { scene.SetEntityVisibleInGame(aEntity, aToVisible); });
+	}
+
+	void EntityOutlinerView::UpdateEntityInfoBorder() noexcept
+	{
+		const UniquePtr<Selection>& pSelection = m_pEditor->GetSelection();
+		if (!pSelection)
+			return;
+
+		Scene* pScene = m_pEditor->GetActiveScene();
+		if (!pScene)
+			return;
+
+		VerticalBoxEx* pContentWidget = m_pMainBox->GetWidget<VerticalBoxEx>(2);
+		if (!pContentWidget)
+			return;
+
+		Border* pInfoBorder = pContentWidget->GetWidget<Border>(0);
+
+		Label* pLabel = static_cast<Label*>(static_cast<HorizontalBoxEx*>(pInfoBorder->GetContent().Get())->GetWidget<Label>(0));
+		if (!pLabel)
+			return;
+
+		const uint32 numTotalEntities = pScene->GetEntityManager().GetEntityAliveCount();
+		const uint32 numSelectedEntities = pSelection->GetSelectedEntityCount();
+		const String entityLabel = numTotalEntities == 1u ? "entity" : "entities";
+
+		pLabel->SetText(std::format("{} {}{}", numTotalEntities, entityLabel, numSelectedEntities > 0u ? std::format(" ({} selected)", numSelectedEntities) : ""));
 	}
 }

@@ -6,7 +6,7 @@
 
 namespace Relentless
 {
-	Fence::Fence(GraphicsDevice* pParent, const char* pName, uint64_t fenceValue) noexcept
+	Fence::Fence(GraphicsDevice* pParent, const char* pName, uint64 fenceValue) noexcept
 		: 
 		DeviceObject(pParent),
 		m_CurrentValue(fenceValue + 1),
@@ -23,7 +23,7 @@ namespace Relentless
 		CPUWait(m_LastSignaled);
 	}
 
-	void Fence::CPUWait(uint64_t fenceValue) noexcept
+	void Fence::CPUWait(uint64 fenceValue) noexcept
 	{
 		if (IsComplete(fenceValue))
 			return;
@@ -35,7 +35,7 @@ namespace Relentless
 		m_LastCompleted = m_pFence->GetCompletedValue();
 	}
 
-	uint64_t Fence::GetCurrentValue() const noexcept
+	uint64 Fence::GetCurrentValue() const noexcept
 	{
 		return m_CurrentValue;
 	}
@@ -45,12 +45,12 @@ namespace Relentless
 		return m_pFence;
 	}
 
-	uint64_t Fence::GetLastSignaledValue() const noexcept
+	uint64 Fence::GetLastSignaledValue() const noexcept
 	{
 		return m_LastSignaled;
 	}
 
-	bool Fence::IsComplete(uint64_t fenceValue) noexcept
+	bool Fence::IsComplete(uint64 fenceValue) noexcept
 	{
 		if (fenceValue <= m_LastCompleted)
 			return true;
@@ -59,7 +59,7 @@ namespace Relentless
 		return fenceValue <= m_LastCompleted;
 	}
 
-	uint64_t Fence::Signal(uint64_t fenceValue) noexcept
+	uint64 Fence::Signal(uint64_t fenceValue) noexcept
 	{
 		m_LastSignaled = fenceValue;
 		m_LastCompleted = fenceValue;
@@ -67,7 +67,7 @@ namespace Relentless
 		return m_LastSignaled;
 	}
 
-	uint64_t Fence::Signal(CommandQueue* pCommandQueue) noexcept
+	uint64 Fence::Signal(CommandQueue* pCommandQueue) noexcept
 	{
 		pCommandQueue->GetCommandQueue()->Signal(m_pFence, m_CurrentValue);
 		m_LastSignaled = m_CurrentValue;
@@ -75,7 +75,7 @@ namespace Relentless
 		return m_LastSignaled;
 	}
 
-	SyncPoint::SyncPoint(Fence* pFence, uint64_t fenceValue) noexcept
+	SyncPoint::SyncPoint(Fence* pFence, uint64 fenceValue) noexcept
 		: 
 		m_pFence(pFence),
 		m_FenceValue(fenceValue)
@@ -87,7 +87,7 @@ namespace Relentless
 		return m_pFence;
 	}
 
-	uint64_t SyncPoint::GetFenceValue() const noexcept
+	uint64 SyncPoint::GetFenceValue() const noexcept
 	{
 		return m_FenceValue;
 	}

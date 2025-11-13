@@ -28,46 +28,23 @@ namespace Relentless
 
 		m_ToolbarID = std::format("{}_Toolbar_{}", pName, renderViewIndex + 1);
 
-		Ref<VerticalBox> pRoot = new VerticalBox();
-		pRoot->SetSpacing(Vector2(0.0f, 0.0f));
+		Ref<VerticalBoxEx> pRoot = new VerticalBoxEx();
 
-		m_pToolbarBox = new HorizontalBox(true, Vector2(0, 40));
-		//m_pToolbarBox->SetMargin(FloatRect(5.0f, 1.0f, 0.0f, 0.0f));
-		m_pToolbarBox->SetFlags(ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse);
+		HorizontalBoxEx* pTopBox = pRoot->AddWidget(new HorizontalBoxEx());
 
-		Ref<HorizontalBox> pToolBarLeftBox = new HorizontalBox("##ToolbarLeftAlignedBox");
-		pToolBarLeftBox->SetAlignmentPolicy(EAlignmentPolicy::Right);
+		HorizontalBoxEx* pTopLeftBox = pTopBox->AddWidget(new HorizontalBoxEx());
+		HorizontalBoxEx* pTopRightBox = pTopBox->AddWidget(new HorizontalBoxEx());
 
-		Ref<Button> m_pWireFrameButton = new Button("Wireframe", Vector2(0, 40));
-		Ref<Button> m_pSolidButton = new Button("Solid", Vector2(0, 40));
-		Ref<Button> m_pTSnappingButton = new Button("T-Snap", Vector2(0, 40));
-		Ref<Button> m_pRSnappingButton = new Button("R-Snap", Vector2(0, 40));
-		
-		pToolBarLeftBox->Add(m_pWireFrameButton);
-		pToolBarLeftBox->Add(m_pSolidButton);
-		pToolBarLeftBox->Add(m_pTSnappingButton);
-		pToolBarLeftBox->Add(m_pRSnappingButton);
+		pTopLeftBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Left);
+		pTopLeftBox->AddWidget(new Button("Lefty", { 0.0f, 40.0f }));
 
-		m_pToolbarBox->Add(pToolBarLeftBox);
+		pTopRightBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);
+		pTopRightBox->AddWidget(new Button("Test", {0.0f, 40.0f}));
 
-		//Ref<HorizontalBox> pToolBarRightBox = new HorizontalBox("##ToolbarRightAlignedBox");
-		//pToolBarRightBox->SetAlignmentPolicy(EAlignmentPolicy::Right);
-		//
-		//Ref<Button> pGearIconButton = new Button("HEY", Vector2(0, 20));
-		//pGearIconButton->OnClicked(this, &ViewportPanel::OnSettingsButtonClicked);
-		////pGearIconButton->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
-		//pToolBarRightBox->Add(pGearIconButton);
-		//
-		//m_pToolbarBox->Add(pToolBarRightBox);
-		
-		pRoot->Add(m_pToolbarBox);
+		m_pCanvasHBox = pRoot->AddWidget(new HorizontalBoxEx());
+		m_pCanvasHBox->SetSizePolicy(ESizePolicy::Stretch);
 
-		m_pCanvasAndSettingsBox = new HorizontalBox("##CanvasAndSettingsBox");
-		m_pCanvasAndSettingsBox->SetSpacing(Vector2(0.0f, 0.0f));
-
-		m_pCanvasHBox = m_pCanvasAndSettingsBox->Add(new HorizontalBox(true, Vector2(0.0f, 0.0f)));
-
-		m_pCanvas = m_pCanvasHBox->Add(new Canvas());
+		m_pCanvas = m_pCanvasHBox->AddWidget(new Canvas());
 		m_pCanvas
 			->Target(this, &ViewportPanel::OnCanvasTargetRequest)
 			->OnHoverStateChanged(this, &ViewportPanel::OnCanvasHoverStateChanged)
@@ -121,9 +98,7 @@ namespace Relentless
 		//		->OnValueChanged(this, &ViewportPanel::OnEV100Changed);
 		//	currentRow++;
 		//}
-		
 
-		pRoot->Add(m_pCanvasAndSettingsBox);
 		SetRoot(pRoot);
 	}
 

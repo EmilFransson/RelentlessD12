@@ -36,6 +36,7 @@ namespace Relentless
 		SetBorderColor(Colors::Normalize(borderCol));
 
 		const ImVec2 cursorStartPosition = ImGui::GetCursorPos();
+
 		DrawSearchBar();
 
 		if (!InputFieldContainsText())
@@ -50,6 +51,8 @@ namespace Relentless
 			if (ImGui::IsPopupOpen("SearchHistoryPopup"))
 				DrawSearchHistoryPopup(cursorStartPosition);
 		}
+
+		ImGui::PopClipRect();
 	}
 
 	void SearchBar::DrawSearchBar() noexcept
@@ -57,7 +60,6 @@ namespace Relentless
 		const ImVec2 cursorPositionPreSearchBar = ImGui::GetCursorPos();
 
 		//We do custom hint solution below
-		ImGui::SetNextItemWidth(-100.0f);
 		const bool inputDone = ImGui::InputTextWithHint("##SearchBar", nullptr, m_FullInputBuffer, IM_ARRAYSIZE(m_FullInputBuffer), ImGuiInputTextFlags_CallbackAlways,
 			[](ImGuiInputTextCallbackData* data) -> int
 			{
@@ -101,6 +103,12 @@ namespace Relentless
 		}
 
 		m_Size = Vector2(ImGui::GetItemRectSize().x, ImGui::GetItemRectSize().y);
+		m_AreaMin = Vector2(ImGui::GetItemRectMin().x, ImGui::GetItemRectMin().y);
+		m_AreaMax = Vector2(ImGui::GetItemRectMax().x, ImGui::GetItemRectMax().y);
+
+		const ImVec2 itemMin = ImVec2(m_AreaMin.x, m_AreaMin.y);
+		const ImVec2 itemMax = ImVec2(m_AreaMax.x, m_AreaMax.y);
+		ImGui::PushClipRect(itemMin, itemMax, true);
 
 		ImGui::SetItemAllowOverlap();
 		m_IsActive = ImGui::IsItemActive();
@@ -237,5 +245,50 @@ namespace Relentless
 
 		for (uint8_t i{ 0u }; i < 8; ++i)
 			m_FullInputBuffer[i] = ' ';
+	}
+
+	Vector2 SearchBar::ReportSize() const noexcept
+	{
+		ImFont* pFont = GetStyle().GetFont();
+		if (pFont) 
+			ImGui::PushFont(pFont);
+
+		const Vector2 padding = GetPadding() * 2.0f;
+		const ImGuiStyle& style = ImGui::GetStyle();
+		const float frameHeight = ImGui::GetFontSize() + padding.y;
+
+		// Icon glyph sizes (Font Awesome)
+		const ImVec2 magSize = ImGui::CalcTextSize(ICON_FA_MAGNIFYING_GLASS);
+		const ImVec2 cancelSize = ImGui::CalcTextSize(ICON_FA_XMARK);
+		const ImVec2 chevronSize = ImGui::CalcTextSize(ICON_FA_CHEVRON_DOWN);
+
+		// Your hardcoded placements
+		constexpr float iconMargin = 5.0f; // you use this on both sides
+		const float inner = style.ItemInnerSpacing.x;
+
+		// Inside-frame occlusions
+		const float leftOcclusion = iconMargin + Math::Max(magSize.x, cancelSize.x);
+		const float rightOcclusion = m_EnableSearchHistory ? (inner + chevronSize.x + iconMargin) : 0.0f;
+
+		// Text budget: hint width OR N average glyphs so it doesn’t collapse
+		const float hintW = m_HintText.empty() ? 0.0f : ImGui::CalcTextSize(m_HintText.c_str()).x;
+		const int   minChars = 12;
+		const float avgW = ImGui::CalcTextSize("M").x;
+		const float desiredTextW = Math::Max(hintW, avgW * (float)minChars);
+
+		// Preferred overall width = occlusions + desired text width
+		float width = leftOcclusion + desiredTextW + rightOcclusion;
+		float height = Math::Max(frameHeight, Math::Max(magSize.y, Math::Max(cancelSize.y, chevronSize.y)));
+
+		// If you expose an explicit size, let it clamp upward (never smaller than preferred)
+		if (m_Size.x > 0.0f) 
+			width = Math::Max(width, m_Size.x);
+		if (m_Size.y > 0.0f) 
+			height = Math::Max(height, m_Size.y);
+
+		if (pFont) 
+			ImGui::PopFont();
+
+		return { width, height };
 	}
 }

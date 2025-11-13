@@ -16,6 +16,8 @@ namespace Relentless
 		EntityOutlinerView(Editor* pEditor) noexcept;
 		virtual ~EntityOutlinerView() noexcept override;
 
+		void DuplicateSelection() noexcept;
+
 		void OnDeleteSelection() noexcept;
 		void OnRenameSelection() noexcept;
 	private:
@@ -50,6 +52,7 @@ namespace Relentless
 		void OnEntityAttached(entity aChildEntity, entity aParentEntity) noexcept;
 		void OnEntityCreated(entity aNewEntity) noexcept;
 		void OnEntityDestroyed(entity aDestroyedEntity) noexcept;
+		void OnEntityPreDestroyed(entity aDestroyedEntity) noexcept;
 		void OnEntityDetached(entity aChildEntity, entity aParentEntity) noexcept;
 		void OnEntityRemovedFromFolder(entity aEntity, const Folder& aFolder) noexcept;
 		void OnEntityAttachedToFolder(entity aEntity, const Folder& aFolder) noexcept;
@@ -97,6 +100,8 @@ namespace Relentless
 		NO_DISCARD bool RenameEntity(entity aEntity, const String& aName) noexcept;
 
 		void ToggleVisibilityForItem(const Ref<OutlinerListItem>& pAOutlinerListItem, bool aToVisible) noexcept;
+
+		void UpdateEntityInfoBorder() noexcept;
 	private:
 		friend class EntityFoldersManager;
 
@@ -109,8 +114,8 @@ namespace Relentless
 		std::unordered_map<UUID, Ref<OutlinerListItem>> m_FolderToItemMap;
 		std::unordered_set<UUID> m_SelectedFolders;
 
-		Ref<VerticalBox> m_pMainBox = nullptr;
-		Ref<VerticalBox> m_pOutlinerListBox = nullptr;
+		Ref<VerticalBoxEx> m_pMainBox = nullptr;
+		Ref<HorizontalBoxEx> m_pOutlinerListBox = nullptr;
 
 		UniquePtr<TextFilterExpressionEvaluator> m_pFilter = nullptr;
 		UniquePtr<EntityOutlinerPolicies> m_pPolicies = nullptr;

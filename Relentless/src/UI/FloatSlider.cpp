@@ -8,6 +8,11 @@ namespace Relentless
 		,m_Min{ min }
 		,m_Max{ max }
 	{
+		if (pFormat == nullptr || pFormat[0] == '\0')
+			m_Format = "%.2f";
+		else
+			m_Format = pFormat;
+
 		SetFlags(flags);
 
 		const Color defaultFrameColor = Colors::Normalize(12.5f, 12.5f, 12.5f, 255.0f);
@@ -20,6 +25,7 @@ namespace Relentless
 		SetHandleSize(20.0f);
 		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
+		SetPadding(Vector2(6.0f, 5.0f));
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
@@ -30,6 +36,29 @@ namespace Relentless
 		const float valueTextWidth = ImGui::CalcTextSize(m_Format.c_str()).x + padding;
 
 		return valueTextWidth + grabSize + 8.0f;
+	}
+
+	Vector2 FloatSlider::ReportSize() const noexcept
+	{
+		ImFont* pFont = m_Style.GetFont();
+		if (pFont)
+			ImGui::PushFont(pFont);
+
+		const Vector2 padding = GetPadding() * 2.0f;
+		const float frameHeight = ImGui::GetFontSize() + padding.y;
+
+		char valueBuffer[64];
+		const float value = m_ValueCallback.IsSet() ? m_ValueCallback() : 0.0f;
+		ImFormatString(valueBuffer, sizeof(valueBuffer), m_Format.c_str(), value);
+
+		const float rawWidth = ImGui::CalcTextSize(valueBuffer).x;
+		float width = rawWidth + padding.x;
+		width = Math::Max(width, 100.0f);
+
+		if (pFont)
+			ImGui::PopFont();
+
+		return { width, frameHeight };
 	}
 
 	void FloatSlider::OnPreRender() noexcept

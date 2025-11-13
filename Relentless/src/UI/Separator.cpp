@@ -20,7 +20,7 @@ namespace Relentless
 		ImGui::SameLine(0.0f, m_Spacing);
 
 		// how much room we have for the line
-		float avail = ImGui::GetContentRegionAvail().x - GetStyle().GetMargin().Right;
+		float avail = ImGui::GetContentRegionAvail().x - GetMargin().Right;
 		if (avail <= 0.0f)
 			return;
 

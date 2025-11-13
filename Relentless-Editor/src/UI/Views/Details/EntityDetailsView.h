@@ -1,20 +1,39 @@
 #pragma once
 #include <Relentless.h>
-#include "EntityDetailsCustomizer.h"
+#include "Customizations/IDetailCustomization.h"
+#include "DetailNode.h"
+#include "IDetailsView.h"
+#include "LayoutBuilders/EntityDetailLayoutBuilder.h"
 
 namespace Relentless
 {
+	class Editor;
+
 	class EntityDetailsView : public IDetailsView
 	{
 	public:
-		EntityDetailsView() noexcept;
-		virtual ~EntityDetailsView() noexcept override = default;
-		void SetEntities(const std::vector<entity>& entities, EntityManager& entityManager) noexcept;
-	private:
-		//std::vector<Ref<IDetailsTreeNode>> m_RootNodes;
+		explicit EntityDetailsView(Editor* aEditor) noexcept;
+		virtual ~EntityDetailsView() noexcept override;
 
-		Ref<SearchBar> m_pSearchBar = nullptr;
-		//Ref<ListView<Ref<IDetailsTreeNode>>> m_pTreeView = nullptr;
-		Ref<EntityDetailsCustomizer> m_pCustomizer = nullptr;
+		NO_DISCARD float CalcDesiredWidth() const noexcept override;
+
+		void OnRender() noexcept override;
+	private:
+		void OnExpandCollapseButtonClicked(Button* aButton, Ref<DetailNode> aItem) noexcept;
+		
+		NO_DISCARD Ref<ITableRow> OnGenerateRow(const Ref<DetailNode>& aItem) noexcept;
+		void OnGetChildren(const Ref<DetailNode>& aParent, std::vector<Ref<DetailNode>>& outChildren) noexcept;
+		NO_DISCARD const std::vector<Ref<DetailNode>>* OnRequestSource() noexcept;
+		void OnSelectionChanged(entity aEntity, ESelectionState aSelectionState) noexcept;
+
+		void Rebuild() noexcept;
+	private:
+		std::vector<Ref<DetailNode>> m_RootNodes;
+
+		Ref<TreeView<Ref<DetailNode>>> m_pEntityDetailsTreeView = nullptr;
+		UniquePtr<EntityDetailLayoutBuilder> m_pLayoutBuilder = nullptr;
+		Ref<VerticalBoxEx> m_pMainBox = nullptr;
+		Ref<HorizontalBoxEx> m_pDetailsListBox = nullptr;
+		Editor* m_pEditor = nullptr;
 	};
 }

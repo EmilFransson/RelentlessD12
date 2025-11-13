@@ -43,6 +43,9 @@ namespace Relentless
 			m_OnTextCommitted = [instance, method](const char* pText, ETextCommitType commitType) { return (instance->*method)(pText, commitType); };
 			return this;
 		}
+
+		virtual NO_DISCARD Vector2 ReportSize() const noexcept override;
+
 	private:
 		Callback<void(const char*)> m_OnTextChanged;
 		Callback<void(const char* pText, ETextCommitType commitType)> m_OnTextCommitted;

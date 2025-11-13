@@ -31,4 +31,18 @@ namespace Relentless
 		else
 			SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 	}
+
+	Vector2 CheckBox::ReportSize() const noexcept
+	{
+		ImFont* pFont = GetStyle().GetFont();
+		if (pFont) 
+			ImGui::PushFont(pFont);
+
+		const float box = ImGui::GetFrameHeight();
+
+		if (pFont) 
+			ImGui::PopFont();
+
+		return { box, box };
+	}
 }

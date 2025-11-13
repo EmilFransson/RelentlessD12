@@ -25,6 +25,8 @@ namespace Relentless
 			return this;
 		}
 
+		NO_DISCARD Vector2 ReportSize() const noexcept override;
+
 		template<typename T>
 		ColorPicker* Value(T&& callBack) noexcept 
 		{

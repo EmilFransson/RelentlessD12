@@ -8,9 +8,9 @@ namespace Relentless
 		: m_pOwningTreeView{ createInfo.pTreeView }
 	{
 		{
-			Ref<HorizontalBox> pColumn0Box = new HorizontalBox();
+			Ref<HorizontalBoxEx> pColumn0Box = new HorizontalBoxEx();
 
-			pColumn0Box->Add(new Button(createInfo.IsVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH))
+			pColumn0Box->AddWidget(new Button(createInfo.IsVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH))
 				->SetBackgroundColor(Colors::Transparent)
 				->SetActiveColor(Colors::Transparent)
 				->SetHoverColor(Colors::Transparent)
@@ -24,10 +24,10 @@ namespace Relentless
 		}
 		
 		{
-			Ref<HorizontalBox> pColumn1Box = new HorizontalBox();
+			Ref<HorizontalBoxEx> pColumn1Box = new HorizontalBoxEx();
 			pColumn1Box->SetMargin(FloatRect(0.0f, 0.0f, 0.0f, 0.0f));
 
-			Button* pButton = pColumn1Box->Add(new Button(createInfo.IsExpanded ? ICON_FA_CHEVRON_DOWN : ICON_FA_CHEVRON_RIGHT, Vector2(25.0f, 30.0f)))
+			Button* pButton = pColumn1Box->AddWidget(new Button(createInfo.IsExpanded ? ICON_FA_CHEVRON_DOWN : ICON_FA_CHEVRON_RIGHT, Vector2(25.0f, 30.0f)))
 				->SetBackgroundColor(Colors::Transparent)
 				->SetActiveColor(Colors::Transparent)
 				->SetHoverColor(Colors::Transparent)
@@ -38,17 +38,17 @@ namespace Relentless
 
 				pButton->SetIsEnabled(createInfo.HasChildren);
 
-			pColumn1Box->Add(new Label(createInfo.Icon, ImGui::GetIO().Fonts->Fonts[2]))
+			pColumn1Box->AddWidget(new Label(createInfo.Icon, ImGui::GetIO().Fonts->Fonts[2]))
 				->SetTooltipText(createInfo.Name)
 				->SetAlpha(0.8f)
 				->SetTextColor(createInfo.IconColor);
 
-			WidgetSwitcher* pSwitcher = pColumn1Box->Add(new WidgetSwitcher());
+			WidgetSwitcher* pSwitcher = pColumn1Box->AddWidget(new WidgetSwitcher());
 			
-			HorizontalBox* pDisplayBox = pSwitcher->Add(new HorizontalBox());
-			pDisplayBox->SetSpacing(Vector2(8.0f, 0.0f));
+			HorizontalBoxEx* pDisplayBox = pSwitcher->Add(new HorizontalBoxEx());
+			pDisplayBox->SetSpacing(8.0f);
 
-			Label* pDisplayNameLabel = pDisplayBox->Add(new Label(createInfo.Name, ImGui::GetIO().Fonts->Fonts[2]));
+			Label* pDisplayNameLabel = pDisplayBox->AddWidget(new Label(createInfo.Name, ImGui::GetIO().Fonts->Fonts[2]));
 			pDisplayNameLabel->SetTooltipText(createInfo.Name);
 
 			pSwitcher->Add(new EditableTextBox(Vector2(-1.0f, 35.0f)));
@@ -59,9 +59,9 @@ namespace Relentless
 		}
 
 		{
-			Ref<HorizontalBox> pColumn2Box = new HorizontalBox();
+			Ref<HorizontalBoxEx> pColumn2Box = new HorizontalBoxEx();
 
-			pColumn2Box->Add(new Label(createInfo.Type, ImGui::GetIO().Fonts->Fonts[2]))
+			pColumn2Box->AddWidget(new Label(createInfo.Type, ImGui::GetIO().Fonts->Fonts[2]))
 				->SetTooltipText(createInfo.Type)
 				->SetAlpha(0.7f);
 
@@ -106,7 +106,7 @@ namespace Relentless
 		}
 
 		//TODO: MOVE into parent -> ONCE, not EVERY ROW!
-		if (m_Hovered && !m_ColumnWidgets[0]->IsHovered() && !(static_cast<HorizontalBox*>(m_ColumnWidgets[1].Get())->GetChild(0)->IsHovered()) && column == 2)
+		if (m_Hovered && !m_ColumnWidgets[0]->IsHovered() && !(static_cast<HorizontalBoxEx*>(m_ColumnWidgets[1].Get())->GetWidget<HorizontalBoxEx>(0)->IsHovered()) && column == 2)
 		{
 			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
 				m_OnDoubleClickedCallback.ExecuteIfSet();
@@ -157,29 +157,29 @@ namespace Relentless
 
 	WidgetSwitcher* OutlinerTableRow::GetWidgetSwitcher() const noexcept
 	{
-		return static_cast<WidgetSwitcher*>(m_ColumnWidgets[1]->GetChild(2).Get());
+		return m_ColumnWidgets[1]->GetWidget<WidgetSwitcher>(2);
 	}
 
 	Button* OutlinerTableRow::GetExpandButton() const noexcept
 	{
-		return static_cast<Button*>(m_ColumnWidgets[1]->GetChild(0).Get());
+		return m_ColumnWidgets[1]->GetWidget<Button>(0);
 	}
 
 	Label* OutlinerTableRow::GetNameLabel() const noexcept
 	{
 		WidgetSwitcher* pSwitcher = GetWidgetSwitcher();
-		HorizontalBox* pDisplayBox = static_cast<HorizontalBox*>(pSwitcher->GetWidget(0).Get());
-		return static_cast<Label*>(pDisplayBox->GetChild(0).Get());
+		HorizontalBoxEx* pDisplayBox = static_cast<HorizontalBoxEx*>(pSwitcher->GetWidget(0).Get());
+		return pDisplayBox->GetWidget<Label>(0);
 	}
 
 	Label* OutlinerTableRow::GetTypeLabel() const noexcept
 	{
-		return static_cast<Label*>(m_ColumnWidgets[2]->GetChild(0).Get());
+		return m_ColumnWidgets[2]->GetWidget<Label>(0);
 	}
 
 	Button* OutlinerTableRow::GetVisibilityButton() const noexcept
 	{
-		return static_cast<Button*>(m_ColumnWidgets[0]->GetChild(0).Get());
+		return m_ColumnWidgets[0]->GetWidget<Button>(0);
 	}
 
 	bool OutlinerTableRow::IsDragDropEligible() noexcept

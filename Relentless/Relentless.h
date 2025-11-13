@@ -32,6 +32,7 @@
 #include <src/EventSystem/MouseEvents.h>
 
 //UI:
+#include <src/UI/Border.h>
 #include <src/UI/Button.h>
 #include <src/UI/Canvas.h>
 #include <src/UI/ColorPicker.h>
@@ -46,6 +47,8 @@
 #include <src/UI/Float3Drag.h>
 #include <src/UI/FloatSlider.h>
 #include <src/UI/HorizontalBox.h>
+#include <src/UI/HorizontalBoxEx.h>
+#include <src/UI/IntDrag.h>
 #include <src/UI/IntSlider.h>
 #include <src/UI/ITableRow.h>
 #include <src/UI/IWidget.h>
@@ -63,6 +66,7 @@
 #include <src/UI/UI.h>
 #include <src/UI/UIManager.h>
 #include <src/UI/VerticalBox.h>
+#include <src/UI/VerticalBoxEx.h>
 #include <src/UI/WidgetSwitcher.h>
 
 #include <src/UI/Nodes/ITreeNode.h>
@@ -70,7 +74,6 @@
 #include <src/UI/Nodes/DetailRowNode.h>
 #include <src/UI/Nodes/IDetailsTreeNode.h>
 
-#include <src/UI/Details/IDetailsView.h>
 #include <src/UI/Details/DetailPropertyRow.h>
 #include <src/UI/Details/DetailCategoryRow.h>
 #include <src/UI/List/ListView.h>

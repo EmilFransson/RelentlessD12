@@ -28,6 +28,8 @@ namespace Relentless
 			return this;
 		}
 
+		NO_DISCARD virtual Vector2 ReportSize() const noexcept override;
+
 		void SetDropDownButtonColor(const Color& color) noexcept;
 		void SetDropDownButtonActiveColor(const Color& color) noexcept;
 		void SetDropDownButtonHoveredColor(const Color& color) noexcept;

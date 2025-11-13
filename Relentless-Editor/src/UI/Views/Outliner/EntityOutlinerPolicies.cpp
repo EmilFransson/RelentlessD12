@@ -9,7 +9,12 @@ namespace Relentless
 		return aScene.GetEntityManager().Get<NameComponent>(aEntity).Name;
 	}
 
-	EntityOutlinerPolicies::MovePlan EntityOutlinerPolicies::ResolveMoveRequest(const Context& aContext) const noexcept
+	EntityOutlinerPolicies::DuplicatePlan EntityOutlinerPolicies::ResolveDuplicateRequest(const DuplicateContext& aContext) const noexcept
+	{
+		return { };
+	}
+
+	EntityOutlinerPolicies::MovePlan EntityOutlinerPolicies::ResolveMoveRequest(const MoveContext& aContext) const noexcept
 	{
 		if (std::holds_alternative<entity>(aContext.TargetPayload))
 			return ResolveMoveToEntity(aContext);
@@ -22,7 +27,7 @@ namespace Relentless
 		return {};
 	}
 
-	EntityOutlinerPolicies::ValidationResponse EntityOutlinerPolicies::ValidateMoveRequest(const Context& aContext) const noexcept
+	EntityOutlinerPolicies::ValidationResponse EntityOutlinerPolicies::ValidateMoveRequest(const MoveContext& aContext) const noexcept
 	{
 		if (std::holds_alternative<entity>(aContext.TargetPayload))
 			return ValidateMoveToEntity(aContext);
@@ -36,7 +41,7 @@ namespace Relentless
 	}
 
 
-	EntityOutlinerPolicies::ValidationResponse EntityOutlinerPolicies::ValidateMoveToEntity(const Context& aContext) const
+	EntityOutlinerPolicies::ValidationResponse EntityOutlinerPolicies::ValidateMoveToEntity(const MoveContext& aContext) const
 	{
 		const entity targetEntity = std::get<entity>(aContext.TargetPayload);
 		const std::string_view targetEntityName = locGetEntityName(targetEntity, aContext.Scene);
@@ -49,7 +54,7 @@ namespace Relentless
 		return { std::format("{}.", targetEntityName), true };
 	}
 
-	EntityOutlinerPolicies::ValidationResponse EntityOutlinerPolicies::ValidateMoveToFolder(const Context& aContext) const
+	EntityOutlinerPolicies::ValidationResponse EntityOutlinerPolicies::ValidateMoveToFolder(const MoveContext& aContext) const
 	{
 		const EntityFolder* pTargetFolder = std::get<EntityFolder*>(aContext.TargetPayload);
 		const std::string_view targetFolderLabel = pTargetFolder->GetLabel();
@@ -69,7 +74,7 @@ namespace Relentless
 		return { std::format("Move into '{}'.", targetFolderLabel), true };
 	}
 
-	EntityOutlinerPolicies::ValidationResponse EntityOutlinerPolicies::ValidateMoveToScene(const Context& aContext) const
+	EntityOutlinerPolicies::ValidationResponse EntityOutlinerPolicies::ValidateMoveToScene(const MoveContext& aContext) const
 	{
 		Scene* pTargetScene = std::get<Scene*>(aContext.TargetPayload);
 		const String& targetSceneName = pTargetScene->GetName();
@@ -126,7 +131,7 @@ namespace Relentless
 		return false;
 	}
 
-	EntityOutlinerPolicies::MovePlan EntityOutlinerPolicies::ResolveMoveToEntity(const Context& aContext) const noexcept
+	EntityOutlinerPolicies::MovePlan EntityOutlinerPolicies::ResolveMoveToEntity(const MoveContext& aContext) const noexcept
 	{
 		/*
 			We know:
@@ -170,7 +175,7 @@ namespace Relentless
 			//Case 1:
 			for (entity draggedEntity : aContext.Entities)
 			{
-				ItemResolution resolution;
+				ItemMoveResolution resolution;
 				resolution.Item = OutlinerPayload(draggedEntity);
 				if (targetHasFolder)
 					resolution.MoveOperation = EMoveOperation::ReattachToParentOfTarget;
@@ -184,7 +189,7 @@ namespace Relentless
 			//Case 2:
 			for (entity draggedEntity : aContext.Entities)
 			{
-				ItemResolution resolution;
+				ItemMoveResolution resolution;
 				resolution.Item = OutlinerPayload(draggedEntity);
 				if (intersectingEntities.contains(draggedEntity))
 					resolution.MoveOperation = EMoveOperation::NoOp;
@@ -198,7 +203,7 @@ namespace Relentless
 			//Case 3:
 			for (entity draggedEntity : aContext.Entities)
 			{
-				ItemResolution resolution;
+				ItemMoveResolution resolution;
 				resolution.Item = OutlinerPayload(draggedEntity);
 				resolution.MoveOperation = EMoveOperation::AttachToTarget;
 				movePlan.ResolvedItems.push_back(resolution);
@@ -208,7 +213,7 @@ namespace Relentless
 		return movePlan;
 	}
 
-	EntityOutlinerPolicies::MovePlan EntityOutlinerPolicies::ResolveMoveToFolder(const Context& aContext) const noexcept
+	EntityOutlinerPolicies::MovePlan EntityOutlinerPolicies::ResolveMoveToFolder(const MoveContext& aContext) const noexcept
 	{
 		/*
 			We know:
@@ -257,7 +262,7 @@ namespace Relentless
 
 		for (entity draggedEntity : aContext.Entities)
 		{
-			ItemResolution resolution;
+			ItemMoveResolution resolution;
 			resolution.Item = OutlinerPayload(draggedEntity);
 			if (descendantEntities.contains(draggedEntity))
 				resolution.MoveOperation = EMoveOperation::NoOp;
@@ -268,7 +273,7 @@ namespace Relentless
 
 		for (EntityFolder* pFolder : aContext.Folders)
 		{
-			ItemResolution resolution;
+			ItemMoveResolution resolution;
 			resolution.Item = OutlinerPayload(pFolder);
 			resolution.MoveOperation = EMoveOperation::AttachToTarget;
 			movePlan.ResolvedItems.push_back(resolution);
@@ -277,7 +282,7 @@ namespace Relentless
 		return movePlan;
 	}
 
-	EntityOutlinerPolicies::MovePlan EntityOutlinerPolicies::ResolveMoveToRoot(const Context& aContext) const noexcept
+	EntityOutlinerPolicies::MovePlan EntityOutlinerPolicies::ResolveMoveToRoot(const MoveContext& aContext) const noexcept
 	{
 		/*
 			We know:

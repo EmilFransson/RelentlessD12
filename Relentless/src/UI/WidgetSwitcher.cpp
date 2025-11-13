@@ -73,4 +73,9 @@ namespace Relentless
 		if (aSlotIndex < GetNumWidgets())
 			m_ActiveIndex = aSlotIndex;
 	}
+
+	Vector2 WidgetSwitcher::ReportSize() const noexcept
+	{
+		return m_ActiveIndex == -1 ? Vector2::Zero : m_Widgets[m_ActiveIndex]->ReportSize();
+	}
 }
