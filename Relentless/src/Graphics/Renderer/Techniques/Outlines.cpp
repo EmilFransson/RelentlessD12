@@ -68,6 +68,8 @@ namespace Relentless
 			m_pSolidOutput = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
 		}
 
+		commandContext.InsertResourceBarrier(m_pSolidOutput, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
 		if (!m_pDepthTarget || m_pDepthTarget->GetWidth() != width || m_pDepthTarget->GetHeight() != height)
 		{
 			const TextureDesc depthTargetDesc = TextureDesc::Create2D(
@@ -125,7 +127,9 @@ namespace Relentless
 		}
 		
 		commandContext.EndRenderPass();
-	
+
+		commandContext.InsertResourceBarrier(m_pSolidOutput, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
 		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
 
 		const TextureDesc blurredColorTargetDesc = TextureDesc::Create2D(
@@ -138,10 +142,18 @@ namespace Relentless
 			m_pSolidOutput->GetSampleCount());
 
 		if (!m_pIntermediateBlurOutput || m_pIntermediateBlurOutput->GetWidth() != width || m_pIntermediateBlurOutput->GetHeight() != height)
+		{
 			m_pIntermediateBlurOutput = m_pDevice->CreateTexture(blurredColorTargetDesc, "Blurred Intermediate Color Target");
+		}
+
+		commandContext.InsertResourceBarrier(m_pIntermediateBlurOutput, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 		if (!m_pBlurredOutput || m_pBlurredOutput->GetWidth() != width || m_pBlurredOutput->GetHeight() != height)
+		{
 			m_pBlurredOutput = m_pDevice->CreateTexture(blurredColorTargetDesc, "Blurred Color Target");
+		}
+
+		commandContext.InsertResourceBarrier(m_pBlurredOutput, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 		commandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());
 		commandContext.SetPipelineState(m_pGaussianBlurPSO);
@@ -166,6 +178,7 @@ namespace Relentless
 		commandContext.Dispatch(ComputeUtils::GetNumThreadGroups(m_pBlurredOutput->GetWidth(), 16, m_pBlurredOutput->GetHeight(), 16));
 	
 		commandContext.InsertUAVBarrier();
+		commandContext.InsertResourceBarrier(m_pIntermediateBlurOutput, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 		params.SourceIndex = m_pIntermediateBlurOutput->GetSRVIndex();
 		params.TargetIndex = m_pBlurredOutput->GetUAVIndex();

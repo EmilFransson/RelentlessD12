@@ -141,7 +141,7 @@ namespace Relentless
 		}
 	};
 
-	class Texture : public DeviceResource, public IAsset
+	class Texture : public DeviceResource
 	{
 	public:
 		Texture(GraphicsDevice* pParent, const TextureDesc& desc, ID3D12Resource2* pResource) noexcept;

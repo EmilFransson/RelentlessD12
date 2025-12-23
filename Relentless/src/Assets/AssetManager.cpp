@@ -26,7 +26,7 @@ namespace Relentless
 		case AssetType::Material:
 			s_AssetStorages.MaterialStorage.IncreaseReferenceCount(assetHandle);
 			break;
-		case AssetType::Texture:
+		case AssetType::Texture2D:
 			s_AssetStorages.TextureStorage.IncreaseReferenceCount(assetHandle);
 			break;
 		case AssetType::Mesh:
@@ -53,7 +53,7 @@ namespace Relentless
 		case AssetType::Material:
 			s_AssetStorages.MaterialStorage.DecreaseReferenceCount(assetHandle);
 			break;
-		case AssetType::Texture:
+		case AssetType::Texture2D:
 			s_AssetStorages.TextureStorage.DecreaseReferenceCount(assetHandle);
 			break;
 		case AssetType::Mesh:

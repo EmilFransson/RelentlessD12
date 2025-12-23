@@ -31,6 +31,17 @@
 #include <src/EventSystem/KeyboardEvents.h>
 #include <src/EventSystem/MouseEvents.h>
 
+//Factories:
+#include <src/Assets/Factory/IFactory.h>
+#include <src/Assets/Factory/MaterialFactory.h>
+#include <src/Assets/Factory/ModelFactory.h>
+#include <src/Assets/Factory/TextureFactory.h>
+
+//Modules:
+#include <src/Module/AssetToolsModule.h>
+#include <src/Module/IModule.h>
+#include <src/Module/ModuleManager.h>
+
 //UI:
 #include <src/UI/Border.h>
 #include <src/UI/Button.h>
@@ -45,6 +56,7 @@
 #include <src/UI/EditableTextBox.h>
 #include <src/UI/FloatDrag.h>
 #include <src/UI/Float3Drag.h>
+#include <src/UI/FloatEntryBox.h>
 #include <src/UI/FloatSlider.h>
 #include <src/UI/HorizontalBox.h>
 #include <src/UI/HorizontalBoxEx.h>
@@ -57,6 +69,7 @@
 #include <src/UI/Separator.h>
 #include <src/UI/SearchBar.h>
 #include <src/UI/Table.h>
+#include <src/UI/Thumbnail.h>
 #include <src/UI/Tooltip.h>
 #include <src/UI/Tree/Tree.h>
 #include <src/UI/Tree/TreeItem.h>
@@ -77,6 +90,7 @@
 #include <src/UI/Details/DetailPropertyRow.h>
 #include <src/UI/Details/DetailCategoryRow.h>
 #include <src/UI/List/ListView.h>
+#include <src/UI/List/TileView.h>
 #include <src/UI/List/TreeView.h>
 
 //Graphics:

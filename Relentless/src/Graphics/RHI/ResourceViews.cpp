@@ -39,9 +39,15 @@ namespace Relentless
 		: ResourceView(pParent, descriptorHandle)
 	{}
 
-	UnorderedAccessView::UnorderedAccessView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept
-		: ResourceView(pParent, descriptorHandle)
+	UnorderedAccessView::UnorderedAccessView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle, const DescriptorHandle& aCPUOpaqueDescriptorHandle) noexcept
+		: ResourceView(pParent, descriptorHandle),
+		  m_CPUOpaqueDescriptorHandle(aCPUOpaqueDescriptorHandle)
 	{}
+
+	D3D12_CPU_DESCRIPTOR_HANDLE UnorderedAccessView::GetCPUOpaqueHandle() const noexcept
+	{
+		return m_CPUOpaqueDescriptorHandle.CPUHandle;
+	}
 
 	RenderTargetView::RenderTargetView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept
 		: ResourceView(pParent, descriptorHandle)

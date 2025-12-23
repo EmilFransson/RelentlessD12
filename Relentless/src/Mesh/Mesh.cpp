@@ -3,55 +3,18 @@
 
 namespace Relentless
 {
-	Mesh::Mesh(const std::string& name) noexcept
-		:m_Name{ name }
-	{}
-
-	Mesh::Mesh(const Mesh& otherMesh) noexcept
-		: m_Name{ otherMesh.m_Name }//,
-	{}
-
-	Mesh::Mesh(Mesh&& otherMesh) noexcept
-		: m_Name{std::move(otherMesh.m_Name)}//,
+	Mesh::Mesh(Ref<Buffer> pVertexBuffer, Ref<Buffer> pIndexBuffer, const std::string& name) noexcept
+		: m_pVertexBuffer{ pVertexBuffer }, m_pIndexBuffer{ pIndexBuffer }
 	{
+		SetName(name);
 	}
 
-	Mesh::Mesh(Ref<Buffer> pVertexBuffer, Ref<Buffer> pIndexBuffer, const std::string& name /*= "Unnamed"*/) noexcept
-		: m_pVertexBuffer{ pVertexBuffer }, m_pIndexBuffer{ pIndexBuffer }, m_Name{ name }
-	{
-	}
-
-	Mesh& Mesh::operator=(Mesh&& otherMesh) noexcept
-	{
-		if (this != &otherMesh)
-		{
-			m_Name = std::move(otherMesh.m_Name);
-		}
-
-		return *this;
-	}
-
-	Mesh& Mesh::operator=(const Mesh& otherMesh) noexcept
-	{
-		if (this != &otherMesh)
-		{
-			m_Name = otherMesh.m_Name;
-		}
-
-		return *this;
-	}
-
-	void Mesh::SetName(const std::string& name) noexcept
-	{
-		m_Name = name;
-	}
-
-	void Mesh::SetOffsetTransform(const Transform& transform) noexcept
+	void Mesh::SetOffsetTransform(const Matrix& transform) noexcept
 	{
 		m_OffsetTransform = transform;
 	}
 
-	const Transform& Mesh::GetOffsetTransform() const noexcept
+	const Matrix& Mesh::GetOffsetTransform() const noexcept
 	{
 		return m_OffsetTransform;
 	}

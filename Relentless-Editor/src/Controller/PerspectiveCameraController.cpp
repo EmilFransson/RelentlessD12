@@ -178,20 +178,20 @@ namespace Relentless
 
 	void PerspectiveCameraController::StepSpeed(bool forward) noexcept
 	{
-		const int sign = forward ? 1 : -1;
+		const float sign = forward ? 1.0f : -1.0f;
 
-		if (m_Speed < 1.0f)
-			m_Speed += 0.1f * sign;
+		if (m_SpeedMultiplier < 1.0f)
+			m_SpeedMultiplier += 0.1f * sign;
 		else if(Math::AreValuesClose(m_Speed, 1.0f))
-			m_Speed = forward ? m_Speed + 0.2f : m_Speed - 0.1f;
+			m_SpeedMultiplier = forward ? m_Speed + 0.2f : m_Speed - 0.1f;
 		else if (m_Speed < 2.0f)
-			m_Speed += 0.2f * sign;
+			m_SpeedMultiplier += 0.2f * sign;
 		else if (Math::AreValuesClose(m_Speed, 2.0f))
-			m_Speed = forward ? m_Speed + 0.5f : m_Speed - 0.2f;
+			m_SpeedMultiplier = forward ? m_Speed + 0.5f : m_Speed - 0.2f;
 		else
-			m_Speed += 0.5f * sign;
+			m_SpeedMultiplier += 0.5f * sign;
 
-		m_Speed = Math::Clamp(m_Speed, m_MinSpeedMultiplierLimit, m_MaxSpeedMultiplierLimit);
+		m_SpeedMultiplier = Math::Clamp(m_SpeedMultiplier, m_MinSpeedMultiplierLimit, m_MaxSpeedMultiplierLimit);
 	}
 
 	void PerspectiveCameraController::ZoomOrbit(float delta) noexcept
@@ -245,32 +245,61 @@ namespace Relentless
 
 	void PerspectiveCameraController::OnFly() noexcept
 	{
+		const float dt = Time::GetDeltaTime();
+
 		const Quaternion& currentRotation = m_pCamera->GetRotation();
 
 		const Vector2i mouseDelta = Mouse::GetDeltaCoordinates();
-		const Quaternion yr = Quaternion::CreateFromYawPitchRoll(0, mouseDelta.y * Time::GetDeltaTime() * 0.3f, 0);
-		const Quaternion pr = Quaternion::CreateFromYawPitchRoll(mouseDelta.x * Time::GetDeltaTime() * 0.3f, 0, 0);
-		Quaternion rotation = yr * currentRotation * pr;
+		const float mouseSensitivity = 0.7f; 
+
+		const Quaternion pitchRot = Quaternion::CreateFromYawPitchRoll(0.0f, mouseDelta.y * dt * mouseSensitivity, 0.0f);
+		const Quaternion yawRot = Quaternion::CreateFromYawPitchRoll(mouseDelta.x * dt * mouseSensitivity, 0.0f, 0.0f);
+
+		Quaternion rotation = pitchRot * currentRotation * yawRot;
 		rotation.Normalize();
 		m_pCamera->SetRotation(rotation);
 
-		Vector3 movement = Vector3::Zero;
-		movement.x -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::A));
-		movement.x += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::D));
-		movement.z -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::S));
-		movement.z += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::W));
-		movement.y -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::Q));
-		movement.y += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::E));
-		movement.Normalize();
+		Vector3 inputDir = Vector3::Zero;
+		inputDir.x -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::A));
+		inputDir.x += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::D));
+		inputDir.z -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::S));
+		inputDir.z += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::W));
+		inputDir.y -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::Q));
+		inputDir.y += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::E));
 
-		movement = Vector3::Transform(movement, rotation);
+		const bool hasInput = inputDir.LengthSquared() > Math::EPSILON;
 
-		m_Velocity = Vector3::SmoothStep(m_Velocity, movement, m_Damping);
+		if (hasInput)
+			inputDir.Normalize();
 
-		float speedMultiplier = Keyboard::IsKeyDown(RLS_Key::LShift) ? 2.0f : 1.0f;
-		speedMultiplier *= m_Speed;
+		const Vector3 moveDirWorld = hasInput ? Vector3::Transform(inputDir, rotation) : Vector3::Zero;
 
-		const Vector3 translation = m_Velocity * Time::GetDeltaTime() * speedMultiplier;
+		const float shiftMultiplier = Keyboard::IsKeyDown(RLS_Key::LShift) ? 2.0f : 1.0f;
+		const float targetSpeed = m_Speed * m_SpeedMultiplier * shiftMultiplier;
+
+		const Vector3 desiredVelocity = hasInput ? moveDirWorld * targetSpeed : Vector3::Zero;              
+
+		constexpr float tauAccel = 0.01f;
+		constexpr float tauDecel = 0.1f;
+
+		const float currentSpeedSq = m_Velocity.LengthSquared();
+		const float desiredSpeedSq = desiredVelocity.LengthSquared();
+
+		const float tau = (desiredSpeedSq > currentSpeedSq) ? tauAccel : tauDecel;
+
+		const float factor = 1.0f - std::exp(-dt / tau);
+
+		m_Velocity += (desiredVelocity - m_Velocity) * factor;
+
+		if (!hasInput)
+		{
+			constexpr float minSpeed = 0.01f;
+			constexpr float minSpeedSq = minSpeed * minSpeed;
+			if (m_Velocity.LengthSquared() < minSpeedSq)
+				m_Velocity = Vector3::Zero;
+		}
+
+		const Vector3 translation = m_Velocity * dt;
 		const Vector3& currentLocation = m_pCamera->GetLocation();
 		m_pCamera->SetLocation(currentLocation + translation);
 	}

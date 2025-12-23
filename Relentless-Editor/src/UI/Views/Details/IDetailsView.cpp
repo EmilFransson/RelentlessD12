@@ -6,4 +6,10 @@ namespace Relentless
 	{
 		return m_IsLocked;
 	}
+
+	void IDetailsView::RequestRefresh() noexcept
+	{
+		m_ShouldRefresh = true;
+	}
+
 }

@@ -216,6 +216,4 @@ struct Transform
 	Vector3 Location	= Vector3::Zero;
 	Quaternion Rotation = Quaternion::Identity;
 	Vector3 Scale		= Vector3::One;
-
-	Matrix Matrix		= Matrix::Identity;
 };

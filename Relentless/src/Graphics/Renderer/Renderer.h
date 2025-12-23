@@ -3,6 +3,7 @@
 #include "Assets/AssetMeta.h"
 #include "Callback/Broadcaster.h"
 
+#include "Graphics/Renderer/Techniques/AutoExposure.h"
 #include "Graphics/Renderer/Techniques/DepthPrePass.h"
 #include "Graphics/Renderer/Techniques/EditorGrid.h"
 #include "Graphics/Renderer/Techniques/ForwardRenderer.h"
@@ -76,6 +77,7 @@ namespace Relentless
 		UniquePtr<DepthPrePass> m_pDepthPrePass = nullptr;
 		UniquePtr<HBAOPlus> m_pHBAOPlus = nullptr;
 		UniquePtr<Outlines> m_pOutlines = nullptr;
+		UniquePtr<AutoExposure> m_pAutoExposure = nullptr;
 
 		AssetHandle m_BRDFLutTextureHandle;
 
@@ -84,5 +86,7 @@ namespace Relentless
 		
 		Ref<PipelineState> m_pEntityIdPSO = nullptr;
 		std::queue<SyncPoint> m_EntityIDSyncs;
+
+		std::unordered_map<UUID, Ref<Texture>> m_TextureCache; //TODO: Centralize ffs.
 	};
 }

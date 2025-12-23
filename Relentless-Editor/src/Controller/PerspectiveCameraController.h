@@ -63,7 +63,8 @@ namespace Relentless
 		ECameraControllerNavigationState m_CurrentState = ECameraControllerNavigationState::None;
 
 		float m_Damping = 0.2f;
-		float m_Speed = 10.0f;
+		float m_Speed = 25.0f;
+		float m_SpeedMultiplier = 1.0f;
 		float m_OrbitDistance = 10.0f;
 		float m_OrbitYaw = 0.0f;
 		float m_OrbitPitch = 0.0f;

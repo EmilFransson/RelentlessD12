@@ -4,6 +4,7 @@
 #include "File/File.h"
 #include "File/FilePath.h"
 #include "Graphics/RHI/Device.h"
+#include "Graphics/Resources/Texture2D.h"
 #include "Utility/FilepathUtils.h"
 
 #include "../../../vendor/includes/DirectXTK/WICTextureLoader.h"
@@ -21,9 +22,9 @@ namespace Relentless
 		}
 	}
 
-	static EExtensionType GetExtensionTypeFromPath(const std::filesystem::path& fullPath) noexcept
+	static EExtensionType GetExtensionTypeFromPath(const Path& fullPath) noexcept
 	{
-		const std::string extension = FilepathUtils::ExtractExtension(fullPath);
+		const String extension = FilepathUtils::ExtractExtension(fullPath);
 		if (extension == ".jpg")
 			return EExtensionType::JPG;
 		else if (extension == ".jpeg")
@@ -89,26 +90,65 @@ namespace Relentless
 		m_IsSRGB = enable;
 	}
 
-	void TextureFactory::Execute(const Path& filePath, GraphicsDevice* pDevice) noexcept
+	bool TextureFactory::CanCreateNew() const noexcept
 	{
-		if (!File::Exists(filePath))
+		return false;
+	}
+
+	bool TextureFactory::CanImport(const Path& aPath) const noexcept
+	{
+		const String extension = FilepathUtils::ExtractExtension(aPath);
+		return std::ranges::any_of(m_SupportedExensions, [&extension](const String& aExtension) { return aExtension == extension; });
+	}
+
+	Ref<IFactory> TextureFactory::Clone() noexcept
+	{
+		return new TextureFactory();
+	}
+
+	bool TextureFactory::DoesSupportAsset(IAsset* aAsset) const noexcept
+	{
+		return dynamic_cast<Texture2D*>(aAsset) != nullptr;
+	}
+
+	std::vector<String> TextureFactory::GetSupportedFileExtensions() const noexcept
+	{
+		return std::vector<String>(m_SupportedExensions.begin(), m_SupportedExensions.end());
+	}
+
+	std::vector<String> TextureFactory::GetFormats() const noexcept
+	{
+		return std::vector<String>(m_SupportedFormats.begin(), m_SupportedFormats.end());
+	}
+
+	const FactoryImportResult& TextureFactory::ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext) noexcept
+	{
+		if (!File::Exists(aPath))
 		{
-			Finalize(false);
-			return;
+			return std::unexpected{"File does not exist."};
 		}
 
-		m_SrcPath = filePath;
-		m_pDevice = pDevice;
+		m_SrcPath = aPath;
 
-		if (ImportTexture())
-			Finalize(true);
-		else
-			Finalize(false);
+		if (!ImportTexture())
+			return std::unexpected{ "Failed to import texture." };
+
+		return m_ImportedAsset;
+	}
+
+	void TextureFactory::SetGraphicsDevice(GraphicsDevice* aGraphicsDevice) noexcept
+	{
+		m_pDevice = aGraphicsDevice;
+	}
+
+	bool TextureFactory::SupportsFileExtension(const std::string_view aFileExtension) const noexcept
+	{
+		return std::ranges::any_of(m_SupportedExensions, [&aFileExtension](const String& aExtension) { return aExtension == aFileExtension; });
 	}
 
 	void TextureFactory::Finalize(bool success) noexcept
 	{
-		OnDone(m_ImportedTextureAsset, success);
+		//OnDone(m_ImportedTextureAsset, success);
 	}
 
 	bool TextureFactory::ImportTexture() noexcept
@@ -193,26 +233,28 @@ namespace Relentless
 		auto& metaData = image.GetMetadata();
 		const std::string fileName = FilepathUtils::ExtractFilename(m_SrcPath);
 
-		const DirectX::Image* pImg = image.GetImages();
-		std::vector<D3D12_SUBRESOURCE_DATA> initData;
-		for (uint32_t i{ 0u }; i < image.GetImageCount(); ++i, ++pImg)
-		{
-			D3D12_SUBRESOURCE_DATA subresourceData = {};
-			subresourceData.pData = pImg->pixels;
-			subresourceData.RowPitch = pImg->rowPitch;
-			subresourceData.SlicePitch = pImg->slicePitch;
+		//const DirectX::Image* pImg = image.GetImages();
+		//std::vector<D3D12_SUBRESOURCE_DATA> initData;
+		//for (uint32_t i{ 0u }; i < image.GetImageCount(); ++i, ++pImg)
+		//{
+		//	D3D12_SUBRESOURCE_DATA subresourceData = {};
+		//	subresourceData.pData = pImg->pixels;
+		//	subresourceData.RowPitch = pImg->rowPitch;
+		//	subresourceData.SlicePitch = pImg->slicePitch;
+		//
+		//	initData.push_back(subresourceData);
+		//}
 
-			initData.push_back(subresourceData);
-		}
+		//m_pDevice->CreateTexture(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), fileName.c_str(), initData);
 
-		Ref<Texture> pNewTexture = m_pDevice->CreateTexture(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), fileName.c_str(), initData);
-		const uint32 index = AssetManager::GetStorage<Texture>().Add(pNewTexture);
-		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Texture);
+		Ref<Texture2D> pNewTexture = new Texture2D(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), std::move(image));
+		pNewTexture->SetName(fileName);
 
-		m_ImportedTextureAsset.Handle = handle->second;
-		m_ImportedTextureAsset.pAsset = pNewTexture;
-		m_ImportedTextureAsset.Type = AssetType::Texture;
+		const uint32 index = AssetManager::GetStorage<Texture2D>().Add(pNewTexture);
+		auto [handle, _] = AssetManager::InsertMetaData(pNewTexture->GetUUID(), index, AssetType::Texture2D);
 
+		handle->second.Type = AssetType::Texture2D;
+		m_ImportedAsset = handle->second;
 		return true;
 	}
 }

@@ -5,103 +5,73 @@
 
 namespace Relentless
 {
-	enum class EBlendMode : uint8_t {Opaque, AlphaMask, AlphaBlend};
+	enum class EBlendMode	: uint8 { Opaque = 0u, AlphaMask, AlphaBlend };
+	enum class ETextureType : uint8 { Albedo = 0u, Metallic, Roughness, NormalMap, DisplacementMap, AmbientOcclusion, Emission, Count };
 
-	class Texture;
-	class Material : public IAsset, public RefCounted<Material>
+	struct UVTransform
+	{
+		Vector2 TilingFactor	= Vector2::One;
+		Vector2 Offset			= Vector2::Zero;
+	};
+
+	struct MaterialTextureEntry
+	{
+		AssetHandle TextureHandle	= NULL_HANDLE;
+		UVTransform UVTransform;
+		bool IsEnabled				= true;
+	};
+
+	class Texture2D;
+	class Material : public IAsset
 	{
 	public:
-		explicit Material() noexcept;
-		Material(const Material& otherMaterial) noexcept;
-		Material& operator=(const Material& otherMaterial) noexcept;
-		Material(Material&& otherMaterial) noexcept;
-		Material& operator=(Material&& otherMaterial) noexcept;
-		virtual ~Material() noexcept override = default;
-		void SetAlbedoTexture(const AssetHandle& albedoTextureHandle) noexcept;
-		void SetMetallicTexture(const AssetHandle& metallicTextureHandle) noexcept;
-		void SetRoughnessTexture(const AssetHandle& roughnessTextureHandle) noexcept;
-		void SetNormalMap(const AssetHandle& normalMapHandle) noexcept;
-		void SetHeightMap(const AssetHandle& heightMapHandle) noexcept;
-		void SetAmbientOcclusionTexture(const AssetHandle& ambientOcclusionTextureHandle) noexcept;
-		void SetEmissionTexture(const AssetHandle& emissionTextureHandle) noexcept;
-		void RemoveAlbedoTexture() noexcept;
-		void RemoveMetallicTexture() noexcept;
-		void RemoveRoughnessTexture() noexcept;
-		void RemoveNormalMap() noexcept;
-		void RemoveHeightMap() noexcept;
-		void RemoveAmbientOcclusionTexture() noexcept;
-		void RemoveEmissionTexture() noexcept;
-		void SetName(const std::string& materialName) noexcept;
-		void SetBlendMode(const EBlendMode blendMode) noexcept;
-		void SetIsTwoSided(bool state) noexcept;
-		[[nodiscard]] bool HasAlbedoTexture() const noexcept;
-		[[nodiscard]] bool HasMetallicTexture() const noexcept;
-		[[nodiscard]] bool HasRoughnessTexture() const noexcept;
-		[[nodiscard]] bool HasNormalMap() const noexcept;
-		[[nodiscard]] bool HasHeightMap() const noexcept;
-		[[nodiscard]] bool HasAmbientOcclusionTexture() const noexcept;
-		[[nodiscard]] bool HasEmissionTexture() const noexcept;
-		[[nodiscard]] Ref<Texture> GetAlbedoTexture() const noexcept;
-		[[nodiscard]] Ref<Texture> GetMetallicTexture() const noexcept;
-		[[nodiscard]] Ref<Texture> GetRoughnessTexture() const noexcept;
-		[[nodiscard]] Ref<Texture> GetNormalMap() const noexcept;
-		[[nodiscard]] Ref<Texture> GetHeightMap() const noexcept;
-		[[nodiscard]] Ref<Texture> GetAmbientOcclusionTexture() const noexcept;
-		[[nodiscard]] Ref<Texture> GetEmissionTexture() const noexcept;
-		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
-		[[nodiscard]] const EBlendMode GetBlendMode() const noexcept;
-		void ToggleAlbedoTextureUsage() noexcept;
-		void ToggleMetallicTextureUsage() noexcept;
-		void ToggleRoughnessTextureUsage() noexcept;
-		void ToggleNormalMapUsage() noexcept;
-		void ToggleHeightMapUsage() noexcept;
-		void ToggleAmbientOcclusionTextureUsage() noexcept;
-		void ToggleEmissionTextureUsage() noexcept;
-	public:
-		DirectX::XMFLOAT4 m_AlbedoColor;
-		DirectX::XMFLOAT4 m_EmissionColor;
-		float m_Metallic;
-	private:
-		float m_Padding[3];
-	public:
-		float m_EmissionIntensity;
-		float m_Roughness;
-	private:
-		uint32 m_AlbedoTextureIndex;
-		uint32 m_MetallicTextureIndex;
-		uint32 m_RoughnessTextureIndex;
-		uint32 m_NormalMapIndex;
-		uint32 m_HeightMapIndex;
-		uint32 m_AmbientOcclusionTextureIndex;
-		uint32 m_EmissionTextureIndex;
-	public:
-		float m_HeightScale;
-		float m_AOScale;
-		uint32_t m_CombinedRoughnessMetallnesMap;
-		DirectX::XMFLOAT2 m_TilingFactor;
-		DirectX::XMFLOAT2 m_Offset;
-	private:
-		std::string m_Name;
-		AssetHandle m_AlbedoTextureHandle;
-		AssetHandle m_MetallicTextureHandle;
-		AssetHandle m_RoughnessTextureHandle;
-		AssetHandle m_NormalMapHandle;
-		AssetHandle m_HeightMapHandle;
-		AssetHandle m_AmbientOcclusionTextureHandle;
-		AssetHandle m_EmissionTextureHandle;
+		NO_DISCARD const Vector4& GetAlbedoColor() const noexcept;
+		NO_DISCARD float GetAmbientOcclusionIntensity() const noexcept;
+		NO_DISCARD EBlendMode GetBlendMode() const noexcept;
+		NO_DISCARD float GetDisplacementIntensity() const noexcept;
+		NO_DISCARD const Vector4& GetEmissiveColor() const noexcept;
+		NO_DISCARD float GetEmissiveIntensity() const noexcept;
+		NO_DISCARD const Vector2& GetGlobalOffset() const noexcept;
+		NO_DISCARD const Vector2& GetGlobalTilingFactor() const noexcept;
+		NO_DISCARD float GetMetalness() const noexcept;
+		NO_DISCARD float GetRoughness() const noexcept;
+		NO_DISCARD Ref<Texture2D> GetTexture(ETextureType aTextureType) const noexcept;
 
-		bool m_UseAlbedoTexture;
-		bool m_UseMetallicTexture;
-		bool m_UseRoughnessTexture;
-		bool m_UseNormalMap;
-		bool m_UseHeightMap;
-		bool m_UseAmbientOcclusionTexture;
-		bool m_UseEmissionTexture;
+		NO_DISCARD bool HasTexture(ETextureType aTextureType) const noexcept;
 
-		bool m_IsTwoSided = false;
-	public:
-		EBlendMode m_BlendMode = EBlendMode::Opaque;
+		NO_DISCARD bool IsTwoSided() const noexcept;
 
-		friend class Serializer;
+		void RemoveTexture(ETextureType aTextureType) noexcept;
+		
+		void SetAlbedoColor(const Vector4& aColor) noexcept;
+		void SetAlbedoColor(const Color& aColor) noexcept;
+		void SetAmbientOcclusionIntensity(float aAmbientOcclusionIntensity) noexcept;
+		void SetBlendMode(const EBlendMode aBlendMode) noexcept;
+		void SetDisplacementIntensity(float aDisplacementIntensity) noexcept;
+		void SetEmissiveColor(const Vector4& aColor) noexcept;
+		void SetEmissiveColor(const Color& aColor) noexcept;
+		void SetEmissiveIntensity(float aEmissiveIntensity) noexcept;
+		void SetGlobalOffset(const Vector2& aOffset) noexcept;
+		void SetGlobalTilingFactor(const Vector2& aTilingFactor) noexcept;
+		void SetIsTwoSided(bool aIsTwoSided) noexcept;
+		void SetMetalness(float aMetalness) noexcept;
+		void SetRoughness(float aRoughness) noexcept;
+		void SetTexture(ETextureType aTextureType, const AssetHandle& aTextureHandle) noexcept;
+		void SetTextureEnabled(ETextureType aTextureType, bool aEnable) noexcept;
+	private:
+		std::array<MaterialTextureEntry, (size_t)ETextureType::Count> m_Textures;
+
+		Vector4 m_AlbedoColor				= Vector4(0.5f, 0.5f, 0.5f, 1.0f);
+		Vector4 m_EmissiveColor				= Vector4::Zero;
+
+		UVTransform m_GlobalUVTransform;
+
+		EBlendMode m_BlendMode				= EBlendMode::Opaque;
+		float m_Metallic					= 0.0f;
+		float m_EmissionIntensity			= 0.0f;
+		float m_Roughness					= 0.5f;
+		float m_DisplacementIntensity		= 1.0f;
+		float m_AmbientOcclusionIntensity	= 1.0f;
+		bool m_IsTwoSided					= false;
 	};
 }

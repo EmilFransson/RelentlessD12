@@ -37,7 +37,7 @@ namespace Relentless
 		}
 	}
 
-	const UniquePtr<Editor>& RelentlessEditor::GetEditor() const noexcept
+	const std::shared_ptr<Editor>& RelentlessEditor::GetEditor() const noexcept
 	{
 		return m_pEditorLayer->GetEditor();
 	}

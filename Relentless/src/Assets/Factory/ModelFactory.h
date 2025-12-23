@@ -9,6 +9,8 @@
 
 namespace Relentless
 {
+	class Texture2D;
+
 	class ModelFactory : public IFactory
 	{
 	public:
@@ -49,15 +51,26 @@ namespace Relentless
 		void SetImportMaterialsAndTextures(bool enable) noexcept;
 		void SetTextureCompressionType(ETextureCompressionType compressionType) noexcept;
 
-		Broadcaster<void(const std::vector<ImportedAsset>& importedAssets, bool success)> OnDone;
-		Broadcaster<void(float progress)> OnProgressIncreased;
+		NO_DISCARD bool CanCreateNew() const noexcept override;
+		NO_DISCARD bool CanImport(const Path& aPath) const noexcept override;
+		virtual Ref<IFactory> Clone() noexcept override;
+
+		NO_DISCARD bool DoesSupportAsset(IAsset* aAsset) const noexcept override;
+
+		NO_DISCARD std::vector<String> GetSupportedFileExtensions() const noexcept override;
+		NO_DISCARD std::vector<String> GetFormats() const noexcept override;
+
+		virtual const FactoryImportResult& ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept override;
+
+		void SetGraphicsDevice(GraphicsDevice* aGraphicsDevice) noexcept;	
+		NO_DISCARD bool SupportsFileExtension(const std::string_view aFileExtension) const noexcept override;
 	private:
-		virtual void Execute(const Path& filePath, GraphicsDevice* pDevice) noexcept override;
+		//virtual void Execute(const Path& filePath, GraphicsDevice* pDevice) noexcept override;
 		void Finalize(bool succeeded) noexcept;
 		void ImportMaterials() noexcept;
 		void ImportModel() noexcept;
 		void ImportTextures() noexcept;
-		[[nodiscard]] bool ImportTexture(const Path& absolutePath, bool srgb, Ref<Texture>& pOutTexture, AssetHandle& outAssetHandle) noexcept;
+		[[nodiscard]] bool ImportTexture(const Path& absolutePath, bool srgb, Ref<Texture2D>& pOutTexture, AssetHandle& outAssetHandle) noexcept;
 		void ImportMeshes() noexcept;
 		[[nodiscard]] bool ImportMesh(const aiMesh* pMesh, Ref<Mesh>& pOutMesh, AssetHandle& outHandle) noexcept;
 		void IncreaseProgress() noexcept;
@@ -67,10 +80,12 @@ namespace Relentless
 		void ParseMeshes() noexcept;
 		void ResolveSceneNodeHierarchy() noexcept;
 		void SetProgress(float progress) noexcept;
-		void StoreImportedAsset(const ImportedAsset& asset) noexcept;
+		void StoreImportedAsset(const FactoryImportResult& asset) noexcept;
 	private:
-		std::vector<ImportedAsset> m_ImportedAssets;
-		
+		//std::vector<ImportedAsset> m_ImportedAssets;
+		std::array<String, 4> m_SupportedExtensions = { ".fbx", ".gltf", ".glb", ".obj" };
+		std::array<String, 4> m_SupportedFormats = { "FBX", "GLTF", "GLB", "OBJ" };
+
 		//Embedded:
 		std::vector<MaterialImportInfo> m_UniqueMaterials;
 		std::vector<MeshImportInfo> m_UniqueMeshes;
@@ -96,5 +111,6 @@ namespace Relentless
 		bool m_OptimizeMeshes = true;
 		bool m_ImportMaterialsAndTextures = true;
 		bool m_GenerateTextureMipmaps = true;
+		bool m_MainAssetDone = false;
 	};
 }

@@ -4,6 +4,7 @@
 #include "Core/Application.h"
 #include "File/File.h"
 #include "Graphics/Resources/Material.h"
+#include "Graphics/Resources/Texture2D.h"
 #include "Importer.h"
 #include "ImportSettings.h"
 #include "Mesh/Mesh.h"
@@ -22,9 +23,9 @@ namespace Relentless
 	};
 
 	template<>
-	struct AssetTypeTrait<Texture>
+	struct AssetTypeTrait<Texture2D>
 	{
-		static constexpr AssetType value = AssetType::Texture;
+		static constexpr AssetType value = AssetType::Texture2D;
 	};
 
 	template<>
@@ -164,6 +165,17 @@ namespace Relentless
 			{
 				RLS_ASSERT(RefCounts[physicalIndex] > 0, "Reference count is already at 0.");
 				RefCounts[physicalIndex]--;
+			}
+		}
+
+		void ForEachAsset(const Callback<bool(const Ref<AssetType>&)>& aOperation) noexcept
+		{
+			std::lock_guard<Mutex> lock;
+
+			for (const auto& asset : Assets)
+			{
+				if (!aOperation(asset))
+					break;
 			}
 		}
 
@@ -312,7 +324,7 @@ namespace Relentless
 		struct AssetStorages
 		{
 			AssetStorage<Mesh> MeshStorage;
-			AssetStorage<Texture> TextureStorage;
+			AssetStorage<Texture2D> TextureStorage;
 			AssetStorage<Material> MaterialStorage;
 		};
 
@@ -335,7 +347,7 @@ namespace Relentless
 	};
 
 	template<>
-	inline AssetStorage<Texture>& AssetManager::GetStorage<Texture>() noexcept { return s_AssetStorages.TextureStorage; }
+	inline AssetStorage<Texture2D>& AssetManager::GetStorage<Texture2D>() noexcept { return s_AssetStorages.TextureStorage; }
 
 	template<>
 	inline AssetStorage<Mesh>& AssetManager::GetStorage<Mesh>() noexcept { return s_AssetStorages.MeshStorage; }

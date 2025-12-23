@@ -101,536 +101,536 @@ namespace Relentless
 			ImGui::PopItemWidth();
 			ImGui::PopStyleVar();
 
-			bool combined = material->m_CombinedRoughnessMetallnesMap;
-			if (ImGui::Checkbox("Combined Roughness & Metalness", &combined))
-			{
-				material->m_CombinedRoughnessMetallnesMap = combined;
-				changedMaterial = true;
-			}
-
-			ImGui::Columns(1);
-			ImGui::Separator();
-
-			auto boldFont = io.Fonts->Fonts[OPENSANS_BOLD_18];
-			ImGui::PushFont(boldFont);
-			ImGui::Text("Maps");
-			ImGui::PopFont();
-			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);
-
-			ImGui::Columns(2);
-			ImGui::SetColumnWidth(0, 120.0f);
-			ImGui::SetColumnWidth(1, 297.0f);
-
-			if (material->HasAlbedoTexture())
-			{
-				Ref<Texture> albedoTexture = material->GetAlbedoTexture();
-				ImGui::ImageButton((ImTextureID)albedoTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetAlbedoTexture(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				else
-				{
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::BeginTooltip();
-						ImGui::Text(albedoTexture->GetName().c_str());
-						ImGui::EndTooltip();
-					}
-				}
-
-				ImGui::SameLine();
-				ImGui::Text("Albedo");
-				if (ImGui::BeginPopupContextItem("AlbedoContextMenu"))
-				{
-					if (ImGui::MenuItem("Reset"))
-					{
-						material->RemoveAlbedoTexture();
-						changedMaterial = true;
-					}
-					ImGui::EndPopup();
-				}
-			}
-			else
-			{
-				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
-				ImGui::ColorButton("##MyColor", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetAlbedoTexture(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-
-				ImGui::SameLine();
-				ImGui::Text("Albedo");
-			}
-
-			ImGui::NextColumn();
-
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, ImGui::GetStyle().ItemSpacing.y));
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, ImGui::GetStyle().ItemInnerSpacing.y));
-
-			float yOffset = 1.0f;
-			ImVec2 cursorPos = ImGui::GetCursorPos(); // Get the current cursor position
-			cursorPos.y += yOffset; // Add your desired offset
-			ImGui::SetCursorPos(cursorPos); // Set the new cursor position
-
-			for (uint8_t i{ 1u }; i < 8; ++i)
-			{
-				std::string name = "##Color" + std::to_string(i);
-				changedMaterial |= ImGui::ColorEdit4(name.c_str(), &material->m_AlbedoColor.x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoBorder | ImGuiColorEditFlags_::ImGuiColorEditFlags_HDR);
-				ImGui::SameLine();
-			}
-
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-			//ImGui::ImageButton((ImTextureID)m_pColorPickerWidgetTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImGui::GetItemRectSize(), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-			ImGui::PopStyleColor();
-
-			ImGui::PopStyleVar(2);
-
-			ImGui::Columns(1);
-
-			ImGui::Columns(2);
+			//bool combined = material->m_CombinedRoughnessMetallnesMap;
+			//if (ImGui::Checkbox("Combined Roughness & Metalness", &combined))
+			//{
+			//	material->m_CombinedRoughnessMetallnesMap = combined;
+			//	changedMaterial = true;
+			//}
+			//
+			//ImGui::Columns(1);
+			//ImGui::Separator();
+			//
+			//auto boldFont = io.Fonts->Fonts[OPENSANS_BOLD_18];
+			//ImGui::PushFont(boldFont);
+			//ImGui::Text("Maps");
+			//ImGui::PopFont();
+			//ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);
+			//
+			//ImGui::Columns(2);
+			//ImGui::SetColumnWidth(0, 120.0f);
+			//ImGui::SetColumnWidth(1, 297.0f);
+			//
+			//if (material->HasAlbedoTexture())
+			//{
+			//	Ref<Texture> albedoTexture = material->GetAlbedoTexture();
+			//	ImGui::ImageButton((ImTextureID)albedoTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetAlbedoTexture(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	else
+			//	{
+			//		if (ImGui::IsItemHovered())
+			//		{
+			//			ImGui::BeginTooltip();
+			//			ImGui::Text(albedoTexture->GetName().c_str());
+			//			ImGui::EndTooltip();
+			//		}
+			//	}
+			//
+			//	ImGui::SameLine();
+			//	ImGui::Text("Albedo");
+			//	if (ImGui::BeginPopupContextItem("AlbedoContextMenu"))
+			//	{
+			//		if (ImGui::MenuItem("Reset"))
+			//		{
+			//			material->RemoveAlbedoTexture();
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndPopup();
+			//	}
+			//}
+			//else
+			//{
+			//	static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+			//	static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
+			//	ImGui::ColorButton("##MyColor", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetAlbedoTexture(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//
+			//	ImGui::SameLine();
+			//	ImGui::Text("Albedo");
+			//}
+			//
+			//ImGui::NextColumn();
+			//
+			//ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, ImGui::GetStyle().ItemSpacing.y));
+			//ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, ImGui::GetStyle().ItemInnerSpacing.y));
+			//
+			//float yOffset = 1.0f;
+			//ImVec2 cursorPos = ImGui::GetCursorPos(); // Get the current cursor position
+			//cursorPos.y += yOffset; // Add your desired offset
+			//ImGui::SetCursorPos(cursorPos); // Set the new cursor position
+			//
+			//for (uint8_t i{ 1u }; i < 8; ++i)
+			//{
+			//	std::string name = "##Color" + std::to_string(i);
+			//	changedMaterial |= ImGui::ColorEdit4(name.c_str(), &material->m_AlbedoColor.x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoBorder | ImGuiColorEditFlags_::ImGuiColorEditFlags_HDR);
+			//	ImGui::SameLine();
+			//}
+			//
+			//ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+			////ImGui::ImageButton((ImTextureID)m_pColorPickerWidgetTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImGui::GetItemRectSize(), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//ImGui::PopStyleColor();
+			//
+			//ImGui::PopStyleVar(2);
+			//
+			//ImGui::Columns(1);
+			//
+			//ImGui::Columns(2);
+			//
+			//if (material->HasMetallicTexture())
+			//{
+			//	Ref<Texture> metallicTexture = material->GetMetallicTexture();
+			//	ImGui::ImageButton((ImTextureID)metallicTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetMetallicTexture(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	else
+			//	{
+			//		if (ImGui::IsItemHovered())
+			//		{
+			//			ImGui::BeginTooltip();
+			//			ImGui::Text(metallicTexture->GetName().c_str());
+			//			ImGui::EndTooltip();
+			//		}
+			//	}
+			//
+			//	ImGui::SameLine();
+			//	ImGui::Text("Metallic");
+			//	if (ImGui::BeginPopupContextItem("MetallicContextMenu"))
+			//	{
+			//		if (ImGui::MenuItem("Reset"))
+			//		{
+			//			material->RemoveMetallicTexture(); 
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndPopup();
+			//	}
+			//}
+			//else
+			//{
+			//	static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+			//	static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
+			//	ImGui::ColorButton("##MyColor3", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetMetallicTexture(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	ImGui::SameLine();
+			//	ImGui::Text("Metallic");
+			//}
+			//
+			//ImGui::NextColumn();
+			//
+			//changedMaterial |= ImGui::DragFloat("##Metallic", &material->m_Metallic, 0.006f, 0.0f, 1.0f);
+			//
+			//ImGui::Columns(1);
+			//
+			//ImGui::Columns(2);
+			//
+			//if (material->HasRoughnessTexture())
+			//{
+			//	Ref<Texture> roughnessTexture = material->GetRoughnessTexture();
+			//	ImGui::ImageButton((ImTextureID)roughnessTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetRoughnessTexture(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	else
+			//	{
+			//		if (ImGui::IsItemHovered())
+			//		{
+			//			ImGui::BeginTooltip();
+			//			ImGui::Text(roughnessTexture->GetName().c_str());
+			//			ImGui::EndTooltip();
+			//		}
+			//	}
+			//
+			//	ImGui::SameLine();
+			//	ImGui::Text("Roughness");
+			//	if (ImGui::BeginPopupContextItem("RoughnessContextMenu"))
+			//	{
+			//		if (ImGui::MenuItem("Reset"))
+			//		{
+			//			material->RemoveRoughnessTexture();
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndPopup();
+			//	}
+			//}
+			//else
+			//{
+			//	static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+			//	static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
+			//	ImGui::ColorButton("##MyColor4", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetRoughnessTexture(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//
+			//	ImGui::SameLine();
+			//	ImGui::Text("Roughness");
+			//}
+			//
+			//ImGui::NextColumn();
+			//
+			//changedMaterial |= ImGui::DragFloat("##Roughness", &material->m_Roughness, 0.006f, 0.0f, 1.0f);
+			//
+			//ImGui::Columns(1);
+			//
+			//ImGui::Columns(2);
+			//
+			//if (material->HasNormalMap())
+			//{
+			//	Ref<Texture> normalMap = material->GetNormalMap();
+			//	ImGui::ImageButton((ImTextureID)normalMap->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetNormalMap(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	else
+			//	{
+			//		if (ImGui::IsItemHovered())
+			//		{
+			//			ImGui::BeginTooltip();
+			//			ImGui::Text(normalMap->GetName().c_str());
+			//			ImGui::EndTooltip();
+			//		}
+			//	}
+			//
+			//	ImGui::SameLine();
+			//	ImGui::Text("Normal");
+			//	if (ImGui::BeginPopupContextItem("NormalContextMenu"))
+			//	{
+			//		if (ImGui::MenuItem("Reset"))
+			//		{
+			//			material->RemoveNormalMap();
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndPopup();
+			//	}
+			//}
+			//else
+			//{
+			//	static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+			//	static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
+			//	ImGui::ColorButton("##MyColor15", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetNormalMap(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	ImGui::SameLine();
+			//	ImGui::Text("Normal");
+			//}
+			//
+			//
+			//ImGui::NextColumn();
+			//ImGui::Columns(1);
+			//
+			//
+			//ImGui::Columns(2);
+			//
+			//if (material->HasHeightMap())
+			//{
+			//	Ref<Texture> heightMap = material->GetHeightMap();
+			//	ImGui::ImageButton((ImTextureID)heightMap->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetHeightMap(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	else
+			//	{
+			//		if (ImGui::IsItemHovered())
+			//		{
+			//			ImGui::BeginTooltip();
+			//			ImGui::Text(heightMap->GetName().c_str());
+			//			ImGui::EndTooltip();
+			//		}
+			//	}
+			//
+			//	ImGui::SameLine();
+			//	ImGui::Text("Height");
+			//	if (ImGui::BeginPopupContextItem("HeightContextMenu"))
+			//	{
+			//		if (ImGui::MenuItem("Reset"))
+			//		{
+			//			material->RemoveHeightMap();
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndPopup();
+			//	}
+			//}
+			//else
+			//{
+			//	static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+			//	static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
+			//	ImGui::ColorButton("##MyColor88", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetHeightMap(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	ImGui::SameLine();
+			//	ImGui::Text("Height");
+			//}
 			
-			if (material->HasMetallicTexture())
-			{
-				Ref<Texture> metallicTexture = material->GetMetallicTexture();
-				ImGui::ImageButton((ImTextureID)metallicTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetMetallicTexture(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				else
-				{
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::BeginTooltip();
-						ImGui::Text(metallicTexture->GetName().c_str());
-						ImGui::EndTooltip();
-					}
-				}
 
-				ImGui::SameLine();
-				ImGui::Text("Metallic");
-				if (ImGui::BeginPopupContextItem("MetallicContextMenu"))
-				{
-					if (ImGui::MenuItem("Reset"))
-					{
-						material->RemoveMetallicTexture(); 
-						changedMaterial = true;
-					}
-					ImGui::EndPopup();
-				}
-			}
-			else
-			{
-				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
-				ImGui::ColorButton("##MyColor3", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetMetallicTexture(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				ImGui::SameLine();
-				ImGui::Text("Metallic");
-			}
-			
-			ImGui::NextColumn();
-			
-			changedMaterial |= ImGui::DragFloat("##Metallic", &material->m_Metallic, 0.006f, 0.0f, 1.0f);
+			//ImGui::NextColumn();
+			//
+			//if (material->HasHeightMap())
+			//{
+			//	changedMaterial |= ImGui::DragFloat("##HeightScale", &material->m_HeightScale, 0.0004f, 0.005f, 0.08f);
+			//}
+			//
+			//ImGui::Columns(1);
+			//
+			//ImGui::Columns(2);
+			//
+			//if (material->HasAmbientOcclusionTexture())
+			//{
+			//	Ref<Texture> ambientOcclusionTexture = material->GetAmbientOcclusionTexture();
+			//	ImGui::ImageButton((ImTextureID)ambientOcclusionTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetAmbientOcclusionTexture(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	else
+			//	{
+			//		if (ImGui::IsItemHovered())
+			//		{
+			//			ImGui::BeginTooltip();
+			//			ImGui::Text(ambientOcclusionTexture->GetName().c_str());
+			//			ImGui::EndTooltip();
+			//		}
+			//	}
+			//
+			//	ImGui::SameLine();
+			//	ImGui::Text("AO");
+			//	if (ImGui::BeginPopupContextItem("AOContextMenu"))
+			//	{
+			//		if (ImGui::MenuItem("Reset"))
+			//		{
+			//			material->RemoveAmbientOcclusionTexture();
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndPopup();
+			//	}
+			//}
+			//else
+			//{
+			//	static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+			//	static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
+			//	ImGui::ColorButton("##MyColor5", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetAmbientOcclusionTexture(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	ImGui::SameLine();
+			//	ImGui::Text("AO");
+			//}
+			//
+			//ImGui::NextColumn();
+			//
+			//if (material->HasAmbientOcclusionTexture())
+			//{
+			//	changedMaterial |= ImGui::DragFloat("##AOScale", &material->m_AOScale, 0.006f, 0.0f, 1.0f);
+			//}
+			//
+			//ImGui::Columns(3);
+			//ImGui::SetColumnWidth(0, 120.0f);
+			//
+			//if (material->HasEmissionTexture())
+			//{
+			//	Ref<Texture> emissionTexture = material->GetEmissionTexture();
+			//	ImGui::ImageButton((ImTextureID)emissionTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetEmissionTexture(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	else
+			//	{
+			//		if (ImGui::IsItemHovered())
+			//		{
+			//			ImGui::BeginTooltip();
+			//			ImGui::Text(emissionTexture->GetName().c_str());
+			//			ImGui::EndTooltip();
+			//		}
+			//	}
+			//
+			//	ImGui::SameLine();
+			//	ImGui::Text("Emission");
+			//	if (ImGui::BeginPopupContextItem("EmissionContextMenu"))
+			//	{
+			//		if (ImGui::MenuItem("Reset"))
+			//		{
+			//			material->RemoveEmissionTexture();
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndPopup();
+			//	}
+			//}
+			//else
+			//{
+			//	static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+			//	static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
+			//	ImGui::ColorButton("##MyColor6", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
+			//	if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
+			//	{
+			//		if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
+			//		{
+			//			AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
+			//			material->SetEmissionTexture(*textureHandle);
+			//			changedMaterial = true;
+			//		}
+			//		ImGui::EndDragDropTarget();
+			//	}
+			//	ImGui::SameLine();
+			//	ImGui::Text("Emission");
+			//}
+			//
+			//ImGui::NextColumn();
+			//
+			//ImGui::SetColumnWidth(1, 110.0f);
+			//ImGui::SetColumnWidth(2, 120.0f);
+			//
+			//ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, ImGui::GetStyle().ItemSpacing.y));
+			//ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, ImGui::GetStyle().ItemInnerSpacing.y));
 
-			ImGui::Columns(1);
-		
-			ImGui::Columns(2);
-			
-			if (material->HasRoughnessTexture())
-			{
-				Ref<Texture> roughnessTexture = material->GetRoughnessTexture();
-				ImGui::ImageButton((ImTextureID)roughnessTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetRoughnessTexture(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				else
-				{
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::BeginTooltip();
-						ImGui::Text(roughnessTexture->GetName().c_str());
-						ImGui::EndTooltip();
-					}
-				}
-
-				ImGui::SameLine();
-				ImGui::Text("Roughness");
-				if (ImGui::BeginPopupContextItem("RoughnessContextMenu"))
-				{
-					if (ImGui::MenuItem("Reset"))
-					{
-						material->RemoveRoughnessTexture();
-						changedMaterial = true;
-					}
-					ImGui::EndPopup();
-				}
-			}
-			else
-			{
-				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
-				ImGui::ColorButton("##MyColor4", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetRoughnessTexture(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-
-				ImGui::SameLine();
-				ImGui::Text("Roughness");
-			}
-
-			ImGui::NextColumn();
-
-			changedMaterial |= ImGui::DragFloat("##Roughness", &material->m_Roughness, 0.006f, 0.0f, 1.0f);
-
-			ImGui::Columns(1);
-	
-			ImGui::Columns(2);
-
-			if (material->HasNormalMap())
-			{
-				Ref<Texture> normalMap = material->GetNormalMap();
-				ImGui::ImageButton((ImTextureID)normalMap->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetNormalMap(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				else
-				{
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::BeginTooltip();
-						ImGui::Text(normalMap->GetName().c_str());
-						ImGui::EndTooltip();
-					}
-				}
-
-				ImGui::SameLine();
-				ImGui::Text("Normal");
-				if (ImGui::BeginPopupContextItem("NormalContextMenu"))
-				{
-					if (ImGui::MenuItem("Reset"))
-					{
-						material->RemoveNormalMap();
-						changedMaterial = true;
-					}
-					ImGui::EndPopup();
-				}
-			}
-			else
-			{
-				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
-				ImGui::ColorButton("##MyColor15", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetNormalMap(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				ImGui::SameLine();
-				ImGui::Text("Normal");
-			}
-			
-
-			ImGui::NextColumn();
-			ImGui::Columns(1);
-
-
-			ImGui::Columns(2);
-
-			if (material->HasHeightMap())
-			{
-				Ref<Texture> heightMap = material->GetHeightMap();
-				ImGui::ImageButton((ImTextureID)heightMap->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetHeightMap(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				else
-				{
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::BeginTooltip();
-						ImGui::Text(heightMap->GetName().c_str());
-						ImGui::EndTooltip();
-					}
-				}
-
-				ImGui::SameLine();
-				ImGui::Text("Height");
-				if (ImGui::BeginPopupContextItem("HeightContextMenu"))
-				{
-					if (ImGui::MenuItem("Reset"))
-					{
-						material->RemoveHeightMap();
-						changedMaterial = true;
-					}
-					ImGui::EndPopup();
-				}
-			}
-			else
-			{
-				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
-				ImGui::ColorButton("##MyColor88", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetHeightMap(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				ImGui::SameLine();
-				ImGui::Text("Height");
-			}
-			
-
-			ImGui::NextColumn();
-
-			if (material->HasHeightMap())
-			{
-				changedMaterial |= ImGui::DragFloat("##HeightScale", &material->m_HeightScale, 0.0004f, 0.005f, 0.08f);
-			}
-
-			ImGui::Columns(1);
-
-			ImGui::Columns(2);
-			
-			if (material->HasAmbientOcclusionTexture())
-			{
-				Ref<Texture> ambientOcclusionTexture = material->GetAmbientOcclusionTexture();
-				ImGui::ImageButton((ImTextureID)ambientOcclusionTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetAmbientOcclusionTexture(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				else
-				{
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::BeginTooltip();
-						ImGui::Text(ambientOcclusionTexture->GetName().c_str());
-						ImGui::EndTooltip();
-					}
-				}
-
-				ImGui::SameLine();
-				ImGui::Text("AO");
-				if (ImGui::BeginPopupContextItem("AOContextMenu"))
-				{
-					if (ImGui::MenuItem("Reset"))
-					{
-						material->RemoveAmbientOcclusionTexture();
-						changedMaterial = true;
-					}
-					ImGui::EndPopup();
-				}
-			}
-			else
-			{
-				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
-				ImGui::ColorButton("##MyColor5", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetAmbientOcclusionTexture(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				ImGui::SameLine();
-				ImGui::Text("AO");
-			}
-
-			ImGui::NextColumn();
-		
-			if (material->HasAmbientOcclusionTexture())
-			{
-				changedMaterial |= ImGui::DragFloat("##AOScale", &material->m_AOScale, 0.006f, 0.0f, 1.0f);
-			}
-
-			ImGui::Columns(3);
-			ImGui::SetColumnWidth(0, 120.0f);
-			
-			if (material->HasEmissionTexture())
-			{
-				Ref<Texture> emissionTexture = material->GetEmissionTexture();
-				ImGui::ImageButton((ImTextureID)emissionTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("TEXTURE2D_DRAG_DROP"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetEmissionTexture(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				else
-				{
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::BeginTooltip();
-						ImGui::Text(emissionTexture->GetName().c_str());
-						ImGui::EndTooltip();
-					}
-				}
-
-				ImGui::SameLine();
-				ImGui::Text("Emission");
-				if (ImGui::BeginPopupContextItem("EmissionContextMenu"))
-				{
-					if (ImGui::MenuItem("Reset"))
-					{
-						material->RemoveEmissionTexture();
-						changedMaterial = true;
-					}
-					ImGui::EndPopup();
-				}
-			}
-			else
-			{
-				static ImVec4 buttonColor = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-				static ImGuiColorEditFlags buttonFlags = ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoDragDrop;
-				ImGui::ColorButton("##MyColor6", buttonColor, buttonFlags, ImVec2(m_MaterialMapThumbnailSize, m_MaterialMapThumbnailSize));
-				if (!isDefaultMaterial && ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM_TEXTURE"))
-					{
-						AssetHandle* textureHandle = (AssetHandle*)payLoad->Data;
-						material->SetEmissionTexture(*textureHandle);
-						changedMaterial = true;
-					}
-					ImGui::EndDragDropTarget();
-				}
-				ImGui::SameLine();
-				ImGui::Text("Emission");
-			}
-
-			ImGui::NextColumn();
-
-			ImGui::SetColumnWidth(1, 110.0f);
-			ImGui::SetColumnWidth(2, 120.0f);
-
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, ImGui::GetStyle().ItemSpacing.y));
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, ImGui::GetStyle().ItemInnerSpacing.y));
-
-			yOffset = 1.0f;
-			cursorPos = ImGui::GetCursorPos(); // Get the current cursor position
-			cursorPos.y += yOffset; // Add your desired offset
-			ImGui::SetCursorPos(cursorPos); // Set the new cursor position
-
-			for (uint8_t i{ 1u }; i < 4; ++i)
-			{
-				std::string name = "##EmissionColor" + std::to_string(i);
-				changedMaterial |= ImGui::ColorEdit3(name.c_str(), &material->m_EmissionColor.x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoBorder);
-				ImGui::SameLine();
-			}
-
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-			//ImGui::ImageButton((ImTextureID)m_pColorPickerWidgetTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImGui::GetItemRectSize(), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
-			ImGui::PopStyleColor();
-
-			ImGui::PopStyleVar(2);
-
-			ImGui::NextColumn();
-
-			changedMaterial |= ImGui::DragFloat("##EmissionIntensity", &material->m_EmissionIntensity, 0.01f, 0.0f, FLT_MAX);
-			
-			ImGui::Columns(1);
-
-			ImGui::Separator();
-
-			changedMaterial |= DrawVec2Control("Tiling", material->m_TilingFactor, 0.06f, 1.0f, 0.0f, 100.0f, 120.0f);
-			
-			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2.0f);
-			ImGui::Separator();
-			changedMaterial |= DrawVec2Control("Offset", material->m_Offset, 0.06f, 0.0f, 0.0f, 100.0f, 120.0f);
-			
-			if (changedMaterial)
-			{
-				RLS_ASSERT(false, "!!");
-				//Application::Get().GetMemorymanager().SetDirtyMaterial(m_InspectedAssetHandle);
-			}
-
-			if (material->GetName() == "Default-Material")
-			{
-				ImGui::PopItemFlag();
-			}
-
+			//yOffset = 1.0f;
+			//cursorPos = ImGui::GetCursorPos(); // Get the current cursor position
+			//cursorPos.y += yOffset; // Add your desired offset
+			//ImGui::SetCursorPos(cursorPos); // Set the new cursor position
+			//
+			//for (uint8_t i{ 1u }; i < 4; ++i)
+			//{
+			//	std::string name = "##EmissionColor" + std::to_string(i);
+			//	changedMaterial |= ImGui::ColorEdit3(name.c_str(), &material->m_EmissionColor.x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_::ImGuiColorEditFlags_NoBorder);
+			//	ImGui::SameLine();
+			//}
+			//
+			//ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+			////ImGui::ImageButton((ImTextureID)m_pColorPickerWidgetTexture->GetSRVDescriptorHandle().GPUHandle.ptr, ImGui::GetItemRectSize(), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0, 0, 0, 0));
+			//ImGui::PopStyleColor();
+			//
+			//ImGui::PopStyleVar(2);
+			//
+			//ImGui::NextColumn();
+			//
+			//changedMaterial |= ImGui::DragFloat("##EmissionIntensity", &material->m_EmissionIntensity, 0.01f, 0.0f, FLT_MAX);
+			//
+			//ImGui::Columns(1);
+			//
+			//ImGui::Separator();
+			//
+			//changedMaterial |= DrawVec2Control("Tiling", material->m_TilingFactor, 0.06f, 1.0f, 0.0f, 100.0f, 120.0f);
+			//
+			//ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2.0f);
+			//ImGui::Separator();
+			//changedMaterial |= DrawVec2Control("Offset", material->m_Offset, 0.06f, 0.0f, 0.0f, 100.0f, 120.0f);
+			//
+			//if (changedMaterial)
+			//{
+			//	RLS_ASSERT(false, "!!");
+			//	//Application::Get().GetMemorymanager().SetDirtyMaterial(m_InspectedAssetHandle);
+			//}
+			//
+			//if (material->GetName() == "Default-Material")
+			//{
+			//	ImGui::PopItemFlag();
+			//}
+			//
 		}
 	}
 

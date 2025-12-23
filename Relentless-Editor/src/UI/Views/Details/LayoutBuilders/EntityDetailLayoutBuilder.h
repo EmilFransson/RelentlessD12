@@ -5,8 +5,10 @@
 
 #include "../Customizations/TransformComponentDetailCustomization.h"
 #include "../Customizations/DirectionalLightComponentDetailCustomization.h"
+#include "../Customizations/PointLightComponentDetailCustomization.h"
+#include "../Customizations/SpotLightComponentDetailCustomization.h"
 
-#include "../../../../Core/Selection.h"
+#include "../EntityDetailsView.h"
 
 namespace Relentless
 {
@@ -15,20 +17,19 @@ namespace Relentless
 	class EntityDetailLayoutBuilder : public IDetailLayoutBuilder
 	{
 	public:
-		EntityDetailLayoutBuilder(IDetailsView* aDetailsView, Scene& aScene, Selection& aSelection) noexcept;
+		EntityDetailLayoutBuilder(IDetailsView* aDetailsView, Scene& aScene) noexcept;
 		virtual ~EntityDetailLayoutBuilder() noexcept override = default;
 
 		template<typename T>
 		void ConditionallyAddCustomization() noexcept;
 
 		NO_DISCARD Scene& GetScene() const noexcept;
-		NO_DISCARD Selection& GetSelection() const noexcept;
 
 		NO_DISCARD std::vector<Ref<DetailNode>> Rebuild() noexcept;
+		void RequestRefresh() noexcept;
 	private:
 		std::vector<UniquePtr<IDetailCustomization>> m_Customizations;
 		Scene& m_Scene;
-		Selection& m_Selection;
 	};
 
 	template<class T>
@@ -36,18 +37,22 @@ namespace Relentless
 
 	template<> struct DetailCustomizationFor<TransformComponent> { using type = TransformComponentDetailCustomization; };
 	template<> struct DetailCustomizationFor<DirectionalLightComponent> { using type = DirectionalLightComponentDetailCustomization; };
+	template<> struct DetailCustomizationFor<PointLightComponent> { using type = PointLightComponentDetailCustomization; };
+	template<> struct DetailCustomizationFor<SpotLightComponent> { using type = SpotLightComponentDetailCustomization; };
 
 	template<typename T>
 	void EntityDetailLayoutBuilder::ConditionallyAddCustomization() noexcept
 	{
-		const std::vector<entity>& selectedEntities = m_Selection.GetSelectedEntities();
+		EntityDetailsView* pView = static_cast<EntityDetailsView*>(m_pView);
+
+		const std::vector<entity>& inspectedEntities = pView->GetInspectedEntities();
 		EntityManager& entityManager = m_Scene.GetEntityManager();
 
-		if (!std::ranges::all_of(selectedEntities, [&entityManager](entity aEntity) { return entityManager.Has<T>(aEntity); }))
+		if (!std::ranges::all_of(inspectedEntities, [&entityManager](entity aEntity) { return entityManager.Has<T>(aEntity); }))
 			return;
 
 		using C = typename DetailCustomizationFor<T>::type;
-		m_Customizations.push_back(std::make_unique<C>());
+		m_Customizations.push_back(MakeUnique<C>());
 		m_Customizations.back()->CustomizeDetails(static_cast<IDetailLayoutBuilder&>(*this));
 	}
 

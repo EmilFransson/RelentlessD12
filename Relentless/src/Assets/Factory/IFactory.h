@@ -2,24 +2,38 @@
 
 #include "Assets/AssetMeta.h"
 #include "Assets/ImportSettings.h"
+#include "FeedbackContext.h"
 #include "Core/IAsset.h"
 #include "Graphics/RHI/RHI.h"
 
 namespace Relentless
 {
 	enum class EExtensionType : uint8_t { UNKNOWN = 0, TGA, JPG, JPEG, PNG, BMP, DDS, TIFF, HDR, EXR, FBX, OBJ, GLTF };
-	
-	struct ImportedAsset
-	{
-		IAsset* pAsset = nullptr;
-		AssetHandle Handle = NULL_HANDLE;
-		AssetType Type = AssetType::Undefined;
-	};
+
+	using FactoryImportResult = std::expected<AssetHandle, String>;
 
 	class IFactory : public RefCounted<IFactory>
 	{
 	public:
 		virtual ~IFactory() = default;
-		virtual void Execute(const Path& filePath, GraphicsDevice* pDevice) noexcept = 0;
+
+		virtual NO_DISCARD bool CanCreateNew() const noexcept = 0;
+		virtual NO_DISCARD bool CanImport(const Path& aPath) const noexcept = 0;
+		virtual NO_DISCARD Ref<IFactory> Clone() noexcept = 0;
+		virtual AssetHandle CreateNew(const String& aName, const Path& aPackagePath) noexcept { return NULL_HANDLE; }
+
+		virtual NO_DISCARD bool DoesSupportAsset(IAsset* aAsset) const noexcept = 0;
+
+		NO_DISCARD const std::vector<FactoryImportResult>& GetAdditionalImportedAssets() const noexcept { return m_AdditionalImportedAssets; }
+		virtual NO_DISCARD String GetDefaultNewAssetName() const noexcept { return "NewAsset"; }
+		virtual NO_DISCARD std::vector<String> GetSupportedFileExtensions() const noexcept { return {}; }
+		virtual NO_DISCARD std::vector<String> GetFormats() const noexcept { return {}; }
+
+		virtual const FactoryImportResult& ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept { return NULL_HANDLE; }
+
+		virtual NO_DISCARD bool SupportsFileExtension(const std::string_view aFileExtension) const noexcept { return false; }
+	protected:
+		std::vector<FactoryImportResult> m_AdditionalImportedAssets;
+		FactoryImportResult m_ImportedAsset;
 	};
 }

@@ -29,7 +29,12 @@ namespace Relentless
 
 	ComboBox* ComboBox::AddSelectables(Span<const char*> selectables) noexcept
 	{
+		if (selectables.GetSize() == 0u)
+			return this;
+
 		m_Selectables = selectables.Copy();
+		m_CurrentSelection.Name = m_Selectables[0];
+
 		return this;
 	}
 
@@ -52,12 +57,12 @@ namespace Relentless
 
 	const char* ComboBox::GetSelectedItem() const
 	{
-		return m_Selectables[m_Selected];
+		return m_CurrentSelection.Name;
 	}
 
 	int ComboBox::GetSelectedIndex() const
 	{
-		return m_Selected;
+		return m_CurrentSelection.Index;
 	}
 
 	void ComboBox::SetDropDownButtonColor(const Color& color) noexcept
@@ -75,16 +80,28 @@ namespace Relentless
 		m_Style.SetStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.R(), color.G(), color.B(), color.A()));
 	}
 
-	ComboBox* ComboBox::SetInitiallySelectedItem(const char* pItem) noexcept
+	ComboBox* ComboBox::SetSelectedItem(const char* pItem) noexcept
 	{
 		for (uint32 i = 0u; i < m_Selectables.size(); ++i)
 		{
 			if (strcmp(pItem, m_Selectables[i]) == 0)
 			{
-				m_Selected = i;
+				m_CurrentSelection.Index = i;
+				m_CurrentSelection.Name = m_Selectables[i];
 				break;
 			}
 		}
+
+		return this;
+	}
+
+	ComboBox* ComboBox::SetSelectedItem(int aIndex) noexcept
+	{
+		if (m_Selectables.size() < aIndex)
+			return this;
+
+		m_CurrentSelection.Index = aIndex;
+		m_CurrentSelection.Name = m_Selectables[aIndex];
 
 		return this;
 	}
@@ -110,17 +127,19 @@ namespace Relentless
 		else
 			SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 
-		if (ImGui::BeginCombo("##ComboBox", m_Selectables[m_Selected]))
+		if (ImGui::BeginCombo("##ComboBox", m_Selectables[m_CurrentSelection.Index]))
 		{
 			for (int i = 0; i < m_Selectables.size(); ++i)
 			{
-				const bool isSelected = m_Selected == i;
+				const bool isSelected = m_CurrentSelection.Index == i;
 				if (ImGui::Selectable(m_Selectables[i], isSelected))
 				{
-					if (m_Selected != i)
+					if (m_CurrentSelection.Index != i)
 					{
-						m_Selected = i;
-						m_OnSelectionChanged(m_Selectables[m_Selected]);
+						m_CurrentSelection.Index = i;
+						m_CurrentSelection.Name = m_Selectables[m_CurrentSelection.Index];
+
+						m_OnSelectionChanged(m_CurrentSelection);
 					}
 				}
 
@@ -151,7 +170,7 @@ namespace Relentless
 		const float inner = style.ItemInnerSpacing.x;
 		const float padX = padding.x;
 
-		const float textWidth = ImGui::CalcTextSize(m_Selectables[m_Selected]).x;
+		const float textWidth = ImGui::CalcTextSize(m_CurrentSelection.Name).x;
 
 		float width = textWidth + inner + arrowW + padX;
 		float height = frameHeight;

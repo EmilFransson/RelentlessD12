@@ -47,6 +47,8 @@ namespace Relentless
 			m_pColorTarget = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
 		}
 		
+		commandContext.InsertResourceBarrier(m_pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
 		RenderPassInfo info;
 		info.RenderTargets[0].pTarget = m_pColorTarget;
 		info.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Clear;

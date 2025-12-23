@@ -1,9 +1,9 @@
 #pragma once
 #include "Callback/Callback.h"
 #include "Callback/Broadcaster.h"
-#include "ImGui/ImguiLayer.h"
-
 #include "Core/Time.h"
+#include "ImGui/ImguiLayer.h"
+#include "Input/Mouse.h"
 
 #include "Tooltip.h"
 
@@ -242,7 +242,6 @@ namespace Relentless
 		void Discard() noexcept;
 
 		NO_DISCARD ImFont* GetFont() const noexcept;
-		//NO_DISCARD const IntRect& GetMargin() const noexcept;
 		NO_DISCARD Vector2 GetPadding() const noexcept;
 
 		void SetFont(ImFont* pFont) noexcept;
@@ -366,8 +365,7 @@ namespace Relentless
 
 		DerivedType* SetMargin(const IntRect& margin) noexcept
 		{
-			/*m_Margin = */IBaseWidget::SetMargin(FloatRect(static_cast<float>(margin.Left), static_cast<float>(margin.Top), static_cast<float>(margin.Right), static_cast<float>(margin.Bottom)));
-			//m_Style.SetMargin(margin);
+			IBaseWidget::SetMargin(FloatRect(static_cast<float>(margin.Left), static_cast<float>(margin.Top), static_cast<float>(margin.Right), static_cast<float>(margin.Bottom)));
 			return static_cast<DerivedType*>(this);
 		}
 

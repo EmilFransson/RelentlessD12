@@ -12,7 +12,7 @@ namespace Relentless
 		virtual void Initialize() noexcept override;
 		virtual void Update() noexcept override;
 
-		NO_DISCARD const UniquePtr<Editor>& GetEditor() const noexcept;
+		NO_DISCARD const std::shared_ptr<Editor>& GetEditor() const noexcept;
 		NO_DISCARD const UniquePtr<Renderer>& GetRenderer() const noexcept;
 	private:
 		UniquePtr<EditorLayer> m_pEditorLayer = nullptr;

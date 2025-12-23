@@ -1,6 +1,7 @@
 #pragma once
 
 #define NO_DISCARD [[nodiscard]]
+#define MAYBE_UNUSED [[maybe_unused]]
 
 typedef uint8_t		uint8;
 typedef uint16_t	uint16;
@@ -14,6 +15,12 @@ typedef int64_t		int64;
 
 template<typename T>
 using UniquePtr = std::unique_ptr<T>;
+
+template<typename T, typename... Args>
+std::unique_ptr<T> MakeUnique(Args&&... args)
+{
+	return std::make_unique<T>(std::forward<Args>(args)...);
+}
 
 using Path = std::filesystem::path;
 using String = std::string;

@@ -1,5 +1,7 @@
 #include "TransformGizmoController.h"
 
+#include "../Core/Editor.h"
+
 namespace Relentless
 {
 	namespace TransformGizmoController_private
@@ -90,16 +92,31 @@ namespace Relentless
 		if (context.Entities.empty())
 			return;
 
-		std::vector<entity> entities = context.Entities;
-
 		Scene* pScene = context.pScene;
+		EntityManager& entityManager = pScene->GetEntityManager();
+
+		// Copy selection so we can pop_back etc
+		std::vector<entity> entities = context.Entities;
 		const entity pivotEntity = entities.back();
 
-		Matrix pivot = m_CurrentMode == ETransformGizmoMode::World ? pScene->GetWorldTransform(pivotEntity) : pScene->GetLocalTransform(pivotEntity);
-		const Matrix pivotNonManipulated = pivot;
+		// ---------------------------------------------------------------------
+		// 1) Cache ORIGINAL world matrices for all selected entities
+		//    This is critical so we don't mix "before" and "after" transforms
+		// ---------------------------------------------------------------------
+		std::unordered_map<entity, Matrix> originalWorld;
+		originalWorld.reserve(entities.size());
 
+		for (entity e : entities)
+			originalWorld.emplace(e, entityManager.Get<TransformComponent>(e).GetWorldMatrix());
+
+		// Use the ORIGINAL pivot matrix as input to ImGuizmo
+		Matrix pivot = originalWorld[pivotEntity];
+		const Matrix pivotOriginal = pivot; // keep a copy explicitly
+
+		// ImGuizmo mode: LOCAL/WORLD only affects orientation, not what matrix we pass
 		const ImGuizmo::MODE mode = (m_CurrentType == ETransformGizmoType::Scale) ? ImGuizmo::LOCAL : (ImGuizmo::MODE)m_CurrentMode;
 
+		// Snap setup
 		float snapValues[3];
 		if (m_CurrentType == ETransformGizmoType::Translate)
 			TransformGizmoController_private::FillSnap(snapValues, m_TranslationSnapDelta);
@@ -107,29 +124,89 @@ namespace Relentless
 			TransformGizmoController_private::FillSnap(snapValues, m_RotationSnapDelta);
 
 		float* pSnapDelta = nullptr;
-		if ((m_CurrentType == ETransformGizmoType::Translate && m_CurrentTranslationMovementMode == ETransformGizmoMovementMode::Snap)
-			|| m_CurrentType == ETransformGizmoType::Rotate && m_CurrentRotationMovementMode == ETransformGizmoMovementMode::Snap)
+		if ((m_CurrentType == ETransformGizmoType::Translate && m_CurrentTranslationMovementMode == ETransformGizmoMovementMode::Snap) ||
+			(m_CurrentType == ETransformGizmoType::Rotate && m_CurrentRotationMovementMode == ETransformGizmoMovementMode::Snap))
 		{
 			pSnapDelta = snapValues;
 		}
 
-		const bool manipulated = ImGuizmo::Manipulate(*context.WorldToView.m, *context.ViewToClip.m, (ImGuizmo::OPERATION)m_CurrentType, mode, pivot.m[0], nullptr, pSnapDelta);
-		if (manipulated && m_AllowManipulation)
+		// ---------------------------------------------------------------------
+		// 2) Let ImGuizmo modify the pivot matrix IN PLACE
+		// ---------------------------------------------------------------------
+		const bool manipulated = ImGuizmo::Manipulate(
+			*context.WorldToView.m,
+			*context.ViewToClip.m,
+			(ImGuizmo::OPERATION)m_CurrentType,
+			mode,
+			pivot.m[0],       // IN: original pivot world, OUT: new pivot world
+			nullptr,
+			pSnapDelta
+		);
+
+		if (!manipulated || !m_AllowManipulation)
+			return;
+
+		// ---------------------------------------------------------------------
+		// 3) Decompose the NEW pivot matrix and apply to pivot entity (world space)
+		// ---------------------------------------------------------------------
+		Vector3    scale = Vector3::One;
+		Quaternion rotation = Quaternion::Identity;
+		Vector3    location = Vector3::Zero;
+
+		if (!pivot.Decompose(scale, rotation, location))
+			return;
+
 		{
-			pScene->SetWorldTransform(pivotEntity, pivot);
+			auto& pivotTC = entityManager.Get<TransformComponent>(pivotEntity);
+			pivotTC.SetWorldScale(scale);
+			pivotTC.SetWorldRotation(rotation);
+			pivotTC.SetWorldLocation(location);
 
-			const Matrix pivotInverseMatrix = pivotNonManipulated.Invert();
+			Editor::OnEntityTransformed(pivotEntity);
+		}
 
-			entities.pop_back();
+		// ---------------------------------------------------------------------
+		// 4) Compute a clean delta matrix: oldPivot -> newPivot
+		//
+		//     P0 = pivotOriginal
+		//     P1 = pivot (new)
+		//     delta = P0^-1 * P1
+		//
+		//  Then for each entity:
+		//     E0' = E0 * delta
+		// ---------------------------------------------------------------------
+		const Matrix pivotOriginalInv = pivotOriginal.Invert();
+		const Matrix delta = pivotOriginalInv * pivot;
 
-			for (auto e : entities)
-			{
-				const Matrix entityWorld = pScene->GetWorldTransform(e);
-				const Matrix entityLocalToPivotMatrix = entityWorld * pivotInverseMatrix;
-				const Matrix newEntityMatrix = entityLocalToPivotMatrix * pivot;
+		// We already handled the pivot entity itself
+		entities.pop_back();
 
-				pScene->SetWorldTransform(e, newEntityMatrix);
-			}
+		// ---------------------------------------------------------------------
+		// 5) Apply the SAME delta to each other selected entity,
+		//    using their ORIGINAL world matrix (from before any changes).
+		// ---------------------------------------------------------------------
+		for (entity e : entities)
+		{
+			auto it = originalWorld.find(e);
+			if (it == originalWorld.end())
+				continue;
+
+			const Matrix& entityWorldOriginal = it->second;
+			Matrix  newEntityWorld = entityWorldOriginal * delta;
+
+			Vector3    eScale;
+			Quaternion eRotation;
+			Vector3    eLocation;
+
+			if (!newEntityWorld.Decompose(eScale, eRotation, eLocation))
+				continue;
+
+			auto& entityTC = entityManager.Get<TransformComponent>(e);
+			entityTC.SetWorldScale(eScale);
+			entityTC.SetWorldRotation(eRotation);
+			entityTC.SetWorldLocation(eLocation);
+
+			Editor::OnEntityTransformed(e);
 		}
 	}
 

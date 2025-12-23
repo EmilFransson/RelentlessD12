@@ -58,6 +58,16 @@ namespace Relentless
 		m_pCommandList->CopyBufferRegion(pTarget->GetResource(), destinationOffset, pSource->GetResource(), sourceOffset, size);
 	}
 
+	void CommandContext::ClearBufferUInt(const Buffer* pBuffer, uint32 value)
+	{
+		RLS_ASSERT(pBuffer, "[CommandContext::ClearBufferUInt]: Buffer is invalid.");
+
+		FlushResourceBarriers();
+
+		uint32 values[4] = { value, value, value, value };
+		m_pCommandList->ClearUnorderedAccessViewUint(pBuffer->GetUAV()->GetGPUHandle(), pBuffer->GetUAV()->GetCPUOpaqueHandle(), pBuffer->GetResource(), values, 0, nullptr);
+	}
+
 	void CommandContext::BeginRenderPass(const RenderPassInfo& renderPassInfo) noexcept
 	{
 		RLS_ASSERT(!m_InRenderPass, "[CommandContext::BeginRenderPass] Already In Render Pass.");
@@ -145,6 +155,7 @@ namespace Relentless
 				renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[2] = clearBinding.Color.B();
 				renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[3] = clearBinding.Color.A();
 			}
+
 		}
 
 		D3D12_RENDER_PASS_FLAGS flags = D3D12_RENDER_PASS_FLAG_NONE;
@@ -357,6 +368,11 @@ namespace Relentless
 				localResourceState.Set(afterState, subResource);
 			}
 		}
+	}
+
+	void CommandContext::InsertResourceBarrier(DeviceResource* pResource, D3D12_RESOURCE_STATES aNewState, uint32 subResource) noexcept
+	{
+		InsertResourceBarrier(pResource, pResource->GetResourceState(), aNewState, subResource);
 	}
 
 	void CommandContext::InsertUAVBarrier(const DeviceResource* pResource /*= nullptr*/) noexcept

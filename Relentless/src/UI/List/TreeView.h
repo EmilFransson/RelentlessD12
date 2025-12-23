@@ -160,7 +160,7 @@ namespace Relentless
 	{
 		//Todo: Perhaps move to ITreeViewBase! Also check source vs linearized items.
 		this->m_pSource = this->m_OnRequestSource();
-		RLS_ASSERT(this->HasValidItemSource(), "[TreeView::OnRender]: Items source is invalid.");
+		RLS_ASSERT(this->HasValidItemSource(), "[TreeView::RefreshTree]: Items source is invalid.");
 
 		this->m_ItemToRowWidgetMap.clear();
 

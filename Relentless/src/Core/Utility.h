@@ -1,9 +1,26 @@
 #pragma once
 namespace Relentless
 {
-	[[nodiscard]] std::string ConvertWstringToString(std::wstring const& wstr) noexcept;
-	[[nodiscard]] std::string ConvertWideStringToString(std::wstring const& wstr) noexcept;
-	[[nodiscard]] std::wstring ConvertStringToWstring(const std::string& string) noexcept;
+	NO_DISCARD std::string ConvertWstringToString(std::wstring const& wstr) noexcept;
+	NO_DISCARD std::string ConvertWideStringToString(std::wstring const& wstr) noexcept;
+	NO_DISCARD std::wstring ConvertStringToWstring(const std::string& string) noexcept;
+
+	struct ScopedSuspend
+	{
+		ScopedSuspend(bool& aSuspendFlag) noexcept
+			: SuspendVar(aSuspendFlag)
+		{
+			SuspendVar = true;
+		}
+
+		~ScopedSuspend()
+		{
+			SuspendVar = false;
+		}
+
+	private:
+		bool& SuspendVar;
+	};
 
 	static constexpr unsigned int crc_table[256] = {
 0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,

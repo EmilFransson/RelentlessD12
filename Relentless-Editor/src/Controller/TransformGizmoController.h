@@ -1,3 +1,4 @@
+#pragma once
 #include <Relentless.h>
 
 namespace Relentless

@@ -158,6 +158,23 @@ namespace Relentless
 	{
 	}
 
+	bool EntityFoldersManager::AnyFolderContainsEntity(Scene& aScene, entity aEntity) const noexcept
+	{
+		return aScene.GetEntityManager().Exists(aEntity) && aScene.GetEntityManager().Has<FolderComponent>(aEntity);
+	}
+
+	void EntityFoldersManager::AttachEntityToFolder(Scene& aScene, entity aEntity, const Folder& aFolder) noexcept
+	{
+		if (aScene.EntityHasAncestors(aEntity))
+			aScene.DetachEntity(aEntity);
+
+		if (!ContainsFolder(aScene, aFolder))
+			CreateFolder(aScene, aFolder);
+
+		aScene.GetEntityManager().AddOrReplace<FolderComponent>(aEntity).Folder = aFolder;
+		OnEntityAttachedToFolder(aEntity, aFolder);
+	}
+
 	EntityFolder* EntityFoldersManager::CreateFolder(Scene& aScene, const String& aPath) noexcept
 	{
 		if (!IsInitializedForScene(aScene))
@@ -277,6 +294,11 @@ namespace Relentless
 		}
 
 		DeduplicateByPath(aScene); 
+	}
+
+	bool EntityFoldersManager::FolderContainsEntity(Scene& aScene, const Folder& aFolder, entity aEntity) noexcept
+	{
+		return aScene.GetEntityManager().Has<FolderComponent>(aEntity) && aScene.GetEntityManager().Get<FolderComponent>(aEntity).Folder == aFolder;
 	}
 
 	void EntityFoldersManager::ForEachEntityInFolders(Scene& aScene, const std::unordered_set<String>& somePaths, Callback<bool(entity)> aOperation) noexcept
@@ -454,6 +476,16 @@ namespace Relentless
 	const EntityFoldersManager::FolderContainer& EntityFoldersManager::GetFolderContainer(const FolderRoot& aRoot) const noexcept
 	{
 		return m_SceneToFolders.at(aRoot.UUID);
+	}
+
+	void EntityFoldersManager::RemoveEntityFromCurrentFolder(Scene& aScene, entity aEntity) noexcept
+	{
+		if (AnyFolderContainsEntity(aScene, aEntity))
+		{
+			const Folder folder = aScene.GetEntityManager().Get<FolderComponent>(aEntity).Folder;
+			aScene.GetEntityManager().Remove<FolderComponent>(aEntity);
+			OnEntityRemovedFromFolder(aEntity, folder);
+		}
 	}
 
 	bool EntityFoldersManager::RenameFolder(Scene& aScene, const String& aOldPath, const String& aNewPath) noexcept

@@ -36,6 +36,11 @@ float2 TexelToUV(uint2 texel, float2 texelSize)
     return ((float2) texel + 0.5f) * texelSize;
 }
 
+float GetLuminance(float3 color)
+{
+    return dot(color, float3(0.2126729, 0.7151522, 0.0721750));
+}
+
 static const float PI = 3.14159265359f;
 static const float RECIPROCAL_PI = 0.3183098861837907f;
 static const float EPSILON = 0.0000001f;

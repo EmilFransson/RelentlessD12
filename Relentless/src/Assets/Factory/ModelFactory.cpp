@@ -8,6 +8,7 @@
 #include "Mesh/Vertex.h"
 #include "Utility/FilepathUtils.h"
 #include "Graphics/Resources/Material.h"
+#include "Graphics/Resources/Texture2D.h"
 
 #include "../../../vendor/includes/DirectXTK/WICTextureLoader.h"
 #include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
@@ -119,39 +120,111 @@ namespace Relentless
 		m_TextureCompressionType = compressionType;
 	}
 
-	void ModelFactory::Execute(const Path& filePath, GraphicsDevice* pDevice) noexcept
+	bool ModelFactory::CanCreateNew() const noexcept
 	{
-		if (!File::Exists(filePath))
+		return false;
+	}
+
+	bool ModelFactory::CanImport(const Path& aPath) const noexcept
+	{
+		const String extension = FilepathUtils::ExtractExtension(aPath);
+		return std::ranges::any_of(m_SupportedExtensions, [&](const String& aExtension) { return aExtension == extension; });
+	}
+
+	Ref<IFactory> ModelFactory::Clone() noexcept
+	{
+		return new ModelFactory();
+	}
+
+	bool ModelFactory::DoesSupportAsset(IAsset* aAsset) const noexcept
+	{
+		return dynamic_cast<Mesh*>(aAsset) != nullptr;
+	}
+
+	std::vector<String> ModelFactory::GetSupportedFileExtensions() const noexcept
+	{
+		return std::vector<String>(m_SupportedExtensions.begin(), m_SupportedExtensions.end());
+	}
+
+	std::vector<String> ModelFactory::GetFormats() const noexcept
+	{
+		return std::vector<String>(m_SupportedFormats.begin(), m_SupportedFormats.end());
+	}
+
+	const FactoryImportResult& ModelFactory::ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext /*= nullptr*/) noexcept
+	{
+		if (!File::Exists(aPath))
 		{
 			Finalize(false);
-			return;
+			return std::unexpected{ "File does not exist." };
 		}
 
-		m_MainModelPath = filePath;
-		m_pDevice = pDevice;
+		m_pDevice = Application::Get().GetGraphicsDevice();
+		m_MainModelPath = aPath;
 
 		if (!InitializeImporter())
 		{
 			Finalize(false);
-			return;
+			return std::unexpected{ "Failed to initialize importer." };
 		}
 
 		if (!ParseModel())
 		{
 			Finalize(false);
-			return;
+			return std::unexpected{ "Failed to parse model." };
 		}
 
 		ImportModel();
 		ResolveSceneNodeHierarchy();
 
 		Finalize(true);
+
+		return m_ImportedAsset;
 	}
+
+	void ModelFactory::SetGraphicsDevice(GraphicsDevice* aGraphicsDevice) noexcept
+	{
+		m_pDevice = aGraphicsDevice;
+	}
+
+	bool ModelFactory::SupportsFileExtension(const std::string_view aFileExtension) const noexcept
+	{
+		return std::ranges::any_of(m_SupportedExtensions, [&](const String& aExtension) { return aExtension == aFileExtension; });
+	}
+
+	//void ModelFactory::Execute(const Path& filePath, GraphicsDevice* pDevice) noexcept
+	//{
+	//	if (!File::Exists(filePath))
+	//	{
+	//		Finalize(false);
+	//		return;
+	//	}
+	//
+	//	m_MainModelPath = filePath;
+	//	m_pDevice = pDevice;
+	//
+	//	if (!InitializeImporter())
+	//	{
+	//		Finalize(false);
+	//		return;
+	//	}
+	//
+	//	if (!ParseModel())
+	//	{
+	//		Finalize(false);
+	//		return;
+	//	}
+	//
+	//	ImportModel();
+	//	ResolveSceneNodeHierarchy();
+	//
+	//	Finalize(true);
+	//}
 
 	void ModelFactory::Finalize(bool succeeded) noexcept
 	{
-		SetProgress(1.0f);
-		OnDone(m_ImportedAssets, succeeded);
+		//SetProgress(1.0f);
+		//OnDone(m_ImportedAssets, succeeded);
 	}
 
 	void ModelFactory::ImportMaterials() noexcept
@@ -173,7 +246,7 @@ namespace Relentless
 			pNewMaterial->SetName(materialInfo.Name);
 			pNewMaterial->SetBlendMode(materialInfo.Opacity < 1.0f ? EBlendMode::AlphaBlend : EBlendMode::Opaque);
 			pNewMaterial->SetIsTwoSided(materialInfo.TwoSided);
-			pNewMaterial->m_AlbedoColor = materialInfo.DiffuseColor;
+			pNewMaterial->SetAlbedoColor(materialInfo.DiffuseColor);
 
 			for (auto& textureDependency : materialInfo.TextureDependencies)
 			{
@@ -185,26 +258,26 @@ namespace Relentless
 				{
 				case aiTextureType_BASE_COLOR:
 				case aiTextureType_DIFFUSE:
-					pNewMaterial->SetAlbedoTexture(textureHandle);
+					pNewMaterial->SetTexture(ETextureType::Albedo, textureHandle);
 					break;
 				case aiTextureType_METALNESS:
-					pNewMaterial->SetMetallicTexture(textureHandle);
+					pNewMaterial->SetTexture(ETextureType::Metallic, textureHandle);
 					break;
 				case aiTextureType_DIFFUSE_ROUGHNESS:
-					pNewMaterial->SetRoughnessTexture(textureHandle);
+					pNewMaterial->SetTexture(ETextureType::Roughness, textureHandle);
 					break;
 				case aiTextureType_NORMALS:
 				case aiTextureType_NORMAL_CAMERA:
-					pNewMaterial->SetNormalMap(textureHandle);
+					pNewMaterial->SetTexture(ETextureType::NormalMap, textureHandle);
 					break;
 				case aiTextureType_AMBIENT_OCCLUSION:
-					pNewMaterial->SetAmbientOcclusionTexture(textureHandle);
+					pNewMaterial->SetTexture(ETextureType::AmbientOcclusion, textureHandle);
 					break;
 				case aiTextureType_EMISSION_COLOR:
-					pNewMaterial->SetEmissionTexture(textureHandle);
+					pNewMaterial->SetTexture(ETextureType::Emission, textureHandle);
 					break;
 				case aiTextureType_DISPLACEMENT:
-					pNewMaterial->SetHeightMap(textureHandle);
+					pNewMaterial->SetTexture(ETextureType::DisplacementMap, textureHandle);
 					break;
 				default:
 					RLS_ASSERT(false, "[Importer]: Unknown texture type encountered.");
@@ -217,10 +290,10 @@ namespace Relentless
 
 			materialInfo.HandleToImportedMaterial = handle->second;
 
-			ImportedAsset importedAsset;
-			importedAsset.Handle = handle->second;
-			importedAsset.pAsset = pNewMaterial;
-			importedAsset.Type = AssetType::Material;
+			FactoryImportResult importedAsset;
+
+			handle->second.Type = AssetType::Material;
+			importedAsset = handle->second;
 			
 			StoreImportedAsset(std::move(importedAsset));
 			IncreaseProgress();
@@ -251,16 +324,15 @@ namespace Relentless
 				{
 					TextureImportInfo& importInfo = m_UniqueTextures[i];
 
-					Ref<Texture> pTexture = nullptr;
+					Ref<Texture2D> pTexture = nullptr;
 					AssetHandle assetHandle = NULL_HANDLE;
 					if (ImportTexture(importInfo.AbsolutePath, importInfo.IsSRGB, pTexture, assetHandle))
 					{
 						importInfo.HandleToImportedTexture = assetHandle;
 
-						ImportedAsset importedAsset;
-						importedAsset.pAsset = pTexture;
-						importedAsset.Handle = assetHandle;
-						importedAsset.Type = AssetType::Texture;
+						FactoryImportResult importedAsset;
+						assetHandle.Type = AssetType::Texture2D;
+						importedAsset = assetHandle;
 						StoreImportedAsset(std::move(importedAsset));
 					}
 					IncreaseProgress();
@@ -271,7 +343,7 @@ namespace Relentless
 			textureFuture.wait();
 	}
 
-	bool ModelFactory::ImportTexture(const Path& absolutePath, bool srgb, Ref<Texture>& pOutTexture, AssetHandle& outAssetHandle) noexcept
+	bool ModelFactory::ImportTexture(const Path& absolutePath, bool srgb, Ref<Texture2D>& pOutTexture, AssetHandle& outAssetHandle) noexcept
 	{
 		DirectX::ScratchImage image;
 		HRESULT result = S_OK;
@@ -353,21 +425,23 @@ namespace Relentless
 		auto& metaData = image.GetMetadata();
 		const std::string fileName = FilepathUtils::ExtractFilename(absolutePath);
 
-		const DirectX::Image* pImg = image.GetImages();
-		std::vector<D3D12_SUBRESOURCE_DATA> initData;
-		for (uint32_t i{ 0u }; i < image.GetImageCount(); ++i, ++pImg)
-		{
-			D3D12_SUBRESOURCE_DATA subresourceData = {};
-			subresourceData.pData = pImg->pixels;
-			subresourceData.RowPitch = pImg->rowPitch;
-			subresourceData.SlicePitch = pImg->slicePitch;
+		//const DirectX::Image* pImg = image.GetImages();
+		//std::vector<D3D12_SUBRESOURCE_DATA> initData;
+		//for (uint32_t i{ 0u }; i < image.GetImageCount(); ++i, ++pImg)
+		//{
+		//	D3D12_SUBRESOURCE_DATA subresourceData = {};
+		//	subresourceData.pData = pImg->pixels;
+		//	subresourceData.RowPitch = pImg->rowPitch;
+		//	subresourceData.SlicePitch = pImg->slicePitch;
+		//
+		//	initData.push_back(subresourceData);
+		//}
 
-			initData.push_back(subresourceData);
-		}
-
-		Ref<Texture> pNewTexture = m_pDevice->CreateTexture(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), fileName.c_str(), initData);
-		const uint32 index = AssetManager::GetStorage<Texture>().Add(pNewTexture);
-		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Texture);
+		Ref<Texture2D> pNewTexture = new Texture2D(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), std::move(image));  //m_pDevice->CreateTexture(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), fileName.c_str(), initData);
+		pNewTexture->SetName(fileName);
+		
+		const uint32 index = AssetManager::GetStorage<Texture2D>().Add(pNewTexture);
+		auto [handle, _] = AssetManager::InsertMetaData(pNewTexture->GetUUID(), index, AssetType::Texture2D);
 
 		pOutTexture = pNewTexture;
 		outAssetHandle = handle->second;
@@ -395,11 +469,11 @@ namespace Relentless
 						pMesh->SetDefaultMaterial(m_UniqueMaterials[importInfo.pMesh->mMaterialIndex].HandleToImportedMaterial);
 
 						importInfo.HandleToImportedMesh = assetHandle;
+						assetHandle.Type = AssetType::Mesh;
 
-						ImportedAsset importedAsset;
-						importedAsset.pAsset = pMesh;
-						importedAsset.Handle = assetHandle;
-						importedAsset.Type = AssetType::Mesh;
+						FactoryImportResult importedAsset;
+						importedAsset = assetHandle;
+
 						StoreImportedAsset(std::move(importedAsset));
 					}
 
@@ -493,7 +567,7 @@ namespace Relentless
 		Ref<Mesh> pNewMesh = new Mesh(pVertexBuffer, pIndexBuffer, sanitizedName);
 
 		const uint32_t sparseIndex = AssetManager::GetStorage<Mesh>().Add(pNewMesh);
-		const auto& [handle, _] = AssetManager::InsertMetaData(CreateUUID(), sparseIndex, AssetType::Mesh);
+		const auto& [handle, _] = AssetManager::InsertMetaData(pNewMesh->GetUUID(), sparseIndex, AssetType::Mesh);
 
 		RLS_CORE_INFO("Loaded mesh '{0}' with GUID: '{1}'.", pNewMesh->GetName(), ConvertUUIDToString(handle->second.Uuid));
 
@@ -505,10 +579,10 @@ namespace Relentless
 
 	void ModelFactory::IncreaseProgress() noexcept
 	{
-		std::lock_guard guard(m_ProgressionMutex);
-
-		m_Progress += m_ProgressPerAsset;
-		OnProgressIncreased(m_Progress);
+		//std::lock_guard guard(m_ProgressionMutex);
+		//
+		//m_Progress += m_ProgressPerAsset;
+		//OnProgressIncreased(m_Progress);
 	}
 
 	bool ModelFactory::InitializeImporter() noexcept
@@ -629,7 +703,7 @@ namespace Relentless
 		}
 	}
 
-	static void ResolveMeshHierarchy(aiNode* pNode, const aiScene* pAssimpScene, const Matrix& inTransform, std::unordered_map<const aiMesh*, Transform>& aiMeshToImportedTransformMap) noexcept
+	static void ResolveMeshHierarchy(aiNode* pNode, const aiScene* pAssimpScene, const Matrix& inTransform, std::unordered_map<const aiMesh*, Matrix>& aiMeshToImportedTransformMap) noexcept
 	{
 		RLS_ASSERT(pNode && pAssimpScene, "Assimp data is invalid.");
 
@@ -639,12 +713,7 @@ namespace Relentless
 		for (uint32 i{ 0u }; i < pNode->mNumMeshes; ++i)
 		{
 			const aiMesh* pMesh = pAssimpScene->mMeshes[pNode->mMeshes[i]];
-
-			Transform transform;
-			transform.Matrix = accumulatedTransform;
-			transform.Matrix.Decompose(transform.Scale, transform.Rotation, transform.Location);
-
-			aiMeshToImportedTransformMap[pMesh] = transform;
+			aiMeshToImportedTransformMap[pMesh] = accumulatedTransform;
 		}
 
 		for (uint32 i{ 0u }; i < pNode->mNumChildren; ++i)
@@ -664,7 +733,7 @@ namespace Relentless
 				return NULL_HANDLE;
 			};
 
-		std::unordered_map<const aiMesh*, Transform> aiMeshToImportedTransformMap;
+		std::unordered_map<const aiMesh*, Matrix> aiMeshToImportedTransformMap;
 
 		const Matrix identity = Matrix::Identity;
 		ResolveMeshHierarchy(m_pScene->mRootNode, m_pScene, identity, aiMeshToImportedTransformMap);
@@ -679,16 +748,22 @@ namespace Relentless
 
 	void ModelFactory::SetProgress(float progress) noexcept
 	{
-		std::lock_guard guard(m_ProgressionMutex);
-
-		m_Progress = progress;
-		OnProgressIncreased(m_Progress);
+		//std::lock_guard guard(m_ProgressionMutex);
+		//
+		//m_Progress = progress;
+		//OnProgressIncreased(m_Progress);
 	}
 
-	void ModelFactory::StoreImportedAsset(const ImportedAsset& asset) noexcept
+	void ModelFactory::StoreImportedAsset(const FactoryImportResult& asset) noexcept
 	{
 		std::lock_guard guard(m_ImportAssetMutex);
-		m_ImportedAssets.push_back(asset);
+
+		if (!m_MainAssetDone)
+			m_ImportedAsset = asset;
+		else
+			m_AdditionalImportedAssets.push_back(asset);
+
+		m_MainAssetDone = true;
 	}
 
 }

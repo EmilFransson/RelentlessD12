@@ -84,7 +84,7 @@ namespace Relentless
 				pHorizontal->AddWidget(new Label("Combo box"));
 				pHorizontal->AddWidget(new ComboBox())
 					->AddSelectables({ "Jacke", "Kappe" })
-					->OnSelectionChanged([](const char* aSelection) {});
+					->OnSelectionChanged([](const ComboBox::SelectionInfo& aInfo) {});
 			}
 
 			{

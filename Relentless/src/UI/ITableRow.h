@@ -64,6 +64,8 @@ namespace Relentless
 		Callback<void(const PointerInfo& pointerInfo)> m_OnClickedCallback;
 		Callback<void()> m_OnDoubleClickedCallback;
 		
+		bool m_CustomHoverLogic = false;
 		bool m_Hovered = false;
+		bool m_Tiled = false;
 	};
 }

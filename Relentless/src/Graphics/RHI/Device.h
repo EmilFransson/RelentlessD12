@@ -6,6 +6,8 @@
 #include "Graphics/Shaders/ShaderLibrary.h"
 #include "RHI.h"
 
+#include "../../vendor/includes/directxtex/DirectXTex.h"
+
 namespace Relentless
 {
 	struct GraphicsDeviceOptions
@@ -28,6 +30,7 @@ namespace Relentless
 		NO_DISCARD Ref<Buffer> CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData = (const void*)nullptr) noexcept;
 		NO_DISCARD Ref<DepthStencilView> CreateDSV(Texture* pTexture, const TextureDSVDesc& textureDSVDesc) noexcept;            
 		NO_DISCARD Ref<Texture> CreateTexture(const TextureDesc& desc, const char* pName, Span<D3D12_SUBRESOURCE_DATA> initData = {}) noexcept;
+		NO_DISCARD Ref<Texture> CreateTexture(const TextureDesc& desc, const char* pName, const DirectX::ScratchImage& aImage) noexcept;
 		NO_DISCARD Ref<Texture> CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept;
 		NO_DISCARD Ref<PipelineState> CreatePipeline(const PipelineStateInitializer& pipelineStateInitializer) noexcept;
 		NO_DISCARD Ref<PipelineState> CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName, const char* pEntryPoint) noexcept;
@@ -35,6 +38,7 @@ namespace Relentless
 		NO_DISCARD Ref<ShaderResourceView> CreateSRV(Buffer* pBuffer, const BufferSRVDesc& desc) noexcept;
 		NO_DISCARD Ref<ShaderResourceView> CreateSRV(Texture* pTexture, const TextureSRVDesc& srvDesc) noexcept;
 		NO_DISCARD Ref<UnorderedAccessView> CreateUAV(Texture* pTexture, const TextureUAVDesc& desc) noexcept;
+		NO_DISCARD Ref<UnorderedAccessView> CreateUAV(Buffer* pBuffer, const BufferUAVDesc& desc) noexcept;
 
 		void DeferReleaseObject(ID3D12Object* pResource) noexcept;
 		void FreeCommandContext(CommandContext* pCommandContext) noexcept;

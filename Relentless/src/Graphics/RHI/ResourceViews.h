@@ -29,8 +29,12 @@ namespace Relentless
 	class UnorderedAccessView : public ResourceView
 	{
 	public:
-		UnorderedAccessView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
+		UnorderedAccessView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle, const DescriptorHandle& aCPUOpaqueDescriptorHandle = {}) noexcept;
 		virtual ~UnorderedAccessView() noexcept override = default;
+
+		NO_DISCARD D3D12_CPU_DESCRIPTOR_HANDLE GetCPUOpaqueHandle() const noexcept;
+	private:
+		DescriptorHandle m_CPUOpaqueDescriptorHandle;
 	};
 
 	class RenderTargetView : public ResourceView
@@ -109,6 +113,23 @@ namespace Relentless
 		bool Raw				= false;
 		uint32 ElementOffset	= 0u;
 		uint32 NumElements		= 0u;
+	};
+
+	struct BufferUAVDesc
+	{
+		BufferUAVDesc(ResourceFormat format = ResourceFormat::Unknown, bool raw = false, bool counter = false)
+			: Format(format), Raw(raw), Counter(counter)
+		{
+		}
+
+		static BufferUAVDesc CreateRaw()
+		{
+			return BufferUAVDesc(ResourceFormat::Unknown, true, false);
+		}
+
+		ResourceFormat Format	= ResourceFormat::Unknown;;
+		bool Raw				= false;
+		bool Counter			= false;
 	};
 
 	struct TextureSRVDesc

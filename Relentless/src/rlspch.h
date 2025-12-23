@@ -34,6 +34,7 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <crtdbg.h>
 #include <cwctype>
 #include <execution>
+#include <expected>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -44,6 +45,7 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <mutex>
 #include <ranges>
 #include <set>
+#include <shared_mutex>
 #include <span>
 #include <stdint.h>
 #include <sstream>

@@ -15,16 +15,15 @@ namespace Relentless
 
 		WNDCLASSEX wc{};
 		wc.cbSize = sizeof(WNDCLASSEX);
-		wc.style = CS_OWNDC;
 		wc.hInstance = ::GetModuleHandleA(0);
 		wc.hbrBackground = (HBRUSH)::GetStockObject(WHITE_BRUSH);
 		wc.lpfnWndProc = WndProcStatic;
-		wc.style = CS_HREDRAW | CS_VREDRAW;
+		wc.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
 		wc.lpszClassName = WINDOW_CLASS_NAME;
 		wc.hCursor = ::LoadCursorA(nullptr, IDC_ARROW);
 		RLS_VERIFY(::RegisterClassExA(&wc), "[Window::Window] Window Class Registration Failed.");
 
-		const DWORD windowStyle = WS_POPUP;
+		const DWORD windowStyle = WS_POPUP | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_THICKFRAME;
 		RECT windowRect = { 0, 0, (LONG)width, (LONG)height };
 		::AdjustWindowRect(&windowRect, windowStyle, false);
 	
@@ -112,11 +111,90 @@ namespace Relentless
 
 	LRESULT WindowEx::HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 	{
+		switch (msg)
+		{
+		case WM_LBUTTONDOWN:
+		{
+			const POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+			constexpr LONG titlebarHeight = 40u;
+			const bool pointIsInTitlebar = point.y >= 0 && point.y <= titlebarHeight && point.x > 100;
+
+			if (pointIsInTitlebar)
+			{
+				POINT screenPoint = point;
+				::ClientToScreen(hWnd, &screenPoint);
+				::ReleaseCapture();
+				::SendMessageW(hWnd, WM_NCLBUTTONDOWN, HTCAPTION, MAKELPARAM(screenPoint.x, screenPoint.y));
+
+				return 0;
+			}
+			break;
+		}
+		case WM_LBUTTONDBLCLK:
+		{
+			const POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+			constexpr LONG titlebarHeight = 40u;
+			const bool pointIsInTitlebar = point.y >= 0 && point.y <= titlebarHeight && point.x > 100;
+
+			if (pointIsInTitlebar)
+			{
+				const bool isMaximized = ::IsZoomed(hWnd) != 0;
+				::ShowWindow(hWnd, isMaximized ? SW_RESTORE : SW_MAXIMIZE);
+				return 0;
+			}
+
+			break;
+		}
+		}
+
 		if (::ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
 			return true;
 
 		switch (msg)
 		{
+		case WM_NCCALCSIZE:
+		{
+			//Make the client area cover the whole window including the title bar and borders.
+			if (wParam)
+				return 0;
+
+			break;
+		}
+		case WM_NCHITTEST:
+		{
+			const LONG x = GET_X_LPARAM(lParam);
+			const LONG y = GET_Y_LPARAM(lParam);
+
+			RECT windowRect{};
+			::GetWindowRect(hWnd, &windowRect);
+			
+			constexpr LONG borderWidth = 6;
+
+			const bool onLeft = x >= windowRect.left && x < windowRect.left + borderWidth;
+			const bool onRight = x < windowRect.right && x >= windowRect.right - borderWidth;
+			const bool onTop = y >= windowRect.top && y < windowRect.top + borderWidth;
+			const bool onBottom = y < windowRect.bottom && y >= windowRect.bottom - borderWidth;
+
+			if (onTop && onLeft)
+				return HTTOPLEFT;
+			else if (onTop && onRight)
+				return HTTOPRIGHT;
+			else if (onBottom && onLeft)
+				return HTBOTTOMLEFT;
+			else if (onBottom && onRight)
+				return HTBOTTOMRIGHT;
+			else if (onLeft)
+				return HTLEFT;
+			else if (onRight)
+				return HTRIGHT;
+			else if (onTop)
+				return HTTOP;
+			else if (onBottom)
+				return HTBOTTOM;
+
+			return HTCLIENT;
+
+		}
 		case WM_CLOSE:
 		case WM_DESTROY:
 			OnCloseOrDestroy();

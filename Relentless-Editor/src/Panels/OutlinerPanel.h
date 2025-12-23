@@ -9,7 +9,7 @@ namespace Relentless
 	class OutlinerPanel : public IEditorPanel
 	{
 	public:
-		OutlinerPanel(Editor* aEditor) noexcept;
+		OutlinerPanel(std::weak_ptr<Editor> aEditor) noexcept;
 		virtual ~OutlinerPanel() noexcept override = default;
 
 		const Ref<EntityOutlinerView>& GetEntityOutlinerView() const noexcept;

@@ -2,6 +2,9 @@
 #include "Assets/Factory/TextureFactory.h"
 #include "Graphics/RHI/ResourceViews.h"
 
+#include "Module/AssetToolsModule.h"
+#include "Module/ModuleManager.h"
+
 namespace Relentless
 {
 	namespace COLOR
@@ -25,26 +28,55 @@ namespace Relentless
 		std::vector<AssetImportTask> importTasks;
 		importTasks.reserve(3);
 		
-		auto&& CreateUIImportTask = [&importTasks](const Path& srcPath, AssetHandle& handleToSet)
-			{
-				Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
-				pTextureFactory->SetImportAsSRGB(true);
-				pTextureFactory->OnDone.Connect([&](const ImportedAsset& asset, bool success)
-					{
-						RLS_VERIFY(success, "[OutlinerPanel] Error importing UI texture asset.");
-						handleToSet = asset.Handle;
-					});
+		//auto&& CreateUIImportTask = [&importTasks](const Path& srcPath, AssetHandle& handleToSet)
+		//	{
+		//		Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
+		//		pTextureFactory->SetImportAsSRGB(true);
+		//		pTextureFactory->OnDone.Connect([&](const ImportedAsset& asset, bool success)
+		//			{
+		//				RLS_VERIFY(success, "[OutlinerPanel] Error importing UI texture asset.");
+		//				handleToSet = asset.Handle;
+		//			});
+		//
+		//		AssetImportTask& importTask = importTasks.emplace_back();
+		//		importTask.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, srcPath);
+		//		importTask.pFactory = pTextureFactory;
+		//	};
+		//
+		//CreateUIImportTask("Textures\\Icons\\searchicon.png", UI::SearchIconTextureHandle);
+		//CreateUIImportTask("Textures\\Icons\\cancelicon.png", UI::CancelIconTextureHandle);
+		//CreateUIImportTask("Textures\\Icons\\arrowdownicon.png", UI::ArrowDownIconTextureHandle);
 
-				AssetImportTask& importTask = importTasks.emplace_back();
-				importTask.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, srcPath);
-				importTask.pFactory = pTextureFactory;
-			};
+		//Importer::RequestAsyncLoad(importTasks).Wait();
 
-		CreateUIImportTask("Textures\\Icons\\searchicon.png", UI::SearchIconTextureHandle);
-		CreateUIImportTask("Textures\\Icons\\cancelicon.png", UI::CancelIconTextureHandle);
-		CreateUIImportTask("Textures\\Icons\\arrowdownicon.png", UI::ArrowDownIconTextureHandle);
+		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		
+		{
+			AssetImportTask& task = importTasks.emplace_back();
+			task.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\searchicon.png");
+			Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
+			pTextureFactory->SetImportAsSRGB(true);
+			task.pFactory = pTextureFactory;
+		}
+		{
+			AssetImportTask& task = importTasks.emplace_back();
+			task.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\cancelicon.png");
+			Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
+			pTextureFactory->SetImportAsSRGB(true);
+			task.pFactory = pTextureFactory;
+		}
+		{
+			AssetImportTask& task = importTasks.emplace_back();
+			task.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\arrowdownicon.png");
+			Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
+			pTextureFactory->SetImportAsSRGB(true);
+			task.pFactory = pTextureFactory;
+		}
 
-		Importer::RequestAsyncLoad(importTasks).Wait();
+		const std::vector<AssetImportResult> importResults = assetToolsModule.Import(importTasks);
+		UI::SearchIconTextureHandle = importResults[0].Handle;
+		UI::CancelIconTextureHandle = importResults[1].Handle;
+		UI::ArrowDownIconTextureHandle = importResults[2].Handle;
 	}
 
 	std::string UI::Utility::ShortenStringToFitClipRect(const std::string& originalString, const ImVec2& topLeft, const ImVec2& bottomRight) noexcept

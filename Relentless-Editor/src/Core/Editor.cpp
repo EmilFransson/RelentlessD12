@@ -2,36 +2,12 @@
 #include "RelentlessEditorApp.h"
 
 #include "../Panels/TestPanel.h"
+#include "../Panels/ContentBrowserPanelEx.h"
 #include "../UI/Views/Outliner/EntityOutlinerView.h"
 
 namespace Relentless
 {
 	Editor::~Editor() noexcept {}
-
-	bool Editor::AnyFolderContainsEntity(entity aEntity) const noexcept
-	{
-		return m_pActiveScene && m_pActiveScene->GetEntityManager().Exists(aEntity) && m_pActiveScene->GetEntityManager().Has<FolderComponent>(aEntity);
-	}
-
-	void Editor::AttachEntityToFolder(entity aEntity, const Folder& aFolder) noexcept
-	{
-		if (!m_pActiveScene)
-			return;
-
-		if (m_pActiveScene->EntityHasAncestors(aEntity))
-			m_pActiveScene->DetachEntity(aEntity);
-		
-		if (!m_pEntityFoldersManager->ContainsFolder(*m_pActiveScene, aFolder))
-			m_pEntityFoldersManager->CreateFolder(*m_pActiveScene, aFolder);
-
-		m_pActiveScene->GetEntityManager().AddOrReplace<FolderComponent>(aEntity).Folder = aFolder;
-		OnEntityAttachedToFolder(aEntity, aFolder);
-	}
-
-	bool Editor::FolderContainsEntity(const Folder& aFolder, entity aEntity) noexcept
-	{
-		return m_pActiveScene && m_pActiveScene->GetEntityManager().Has<FolderComponent>(aEntity) && m_pActiveScene->GetEntityManager().Get<FolderComponent>(aEntity).Folder == aFolder;
-	}
 
 	const Ref<EntityOutlinerView> Editor::GetEntityOutlinerView() const noexcept
 	{
@@ -80,7 +56,12 @@ namespace Relentless
 		
 		if (ImGui::Button("Spawn viewport"))
 			SpawnViewport();
-		
+
+		ImGui::DragFloat("Min Log Luminance", &m_MinLogLuminance, 0.1f, -100.0f, 100.0f);
+		ImGui::DragFloat("Min EV100", &m_MinEV100, 0.1f, -10.0f, 20.0f);
+		ImGui::DragFloat("Max EV100", &m_MaxEV100, 0.1f, -10.0f, 20.0f);
+		ImGui::DragFloat("Exposure Compensation", &m_ExposureCompensation, 0.1f, -15.0f, 15.0f);
+
 		static int counter = 0;
 		if (ImGui::Button("Spawn Entity"))
 		{
@@ -94,29 +75,6 @@ namespace Relentless
 
 		ImGui::End();
 		
-
-		////UI_DrawSceneStateIcons();
-	
-		//if (ImGui::BeginDragDropTarget())
-		//{
-		//	if (const ImGuiPayload* payLoad = ImGui::AcceptDragDropPayload("MULTIPLE_ENTRIES_DRAG_DROP"))
-		//	{
-		//		const std::vector<std::string>& selectedEntries = m_ContentBrowserPanel.GetSelectedEntries();
-		//		std::for_each(selectedEntries.begin(), selectedEntries.end(), [this](const std::string& path)
-		//			{
-		//				if (!AssetRegistry::IsFilepathMapped(path))
-		//					return;
-		//
-		//		const AssetHandle handle = AssetManager::GetHandleByPath(path);
-		//		if (handle.Type != AssetType::Mesh)
-		//			return;
-		//
-		//		CreateEntityFromDroppedMesh(handle);
-		//			});
-		//	}
-		//	ImGui::EndDragDropTarget();
-		//}
-
 		ImGui::Begin("TEST");
 
 		ImGui::Text("FPS: %d", Time::GetFramesPerSecond());
@@ -147,57 +105,19 @@ namespace Relentless
 		SetActiveScene(std::make_shared<Scene>());
 		CreateStartScene();
 
-		m_pDetailsPanel = UIManager::Get().AddPanel(std::make_unique<DetailsPanel>(this));
+		m_pDetailsPanel = UIManager::Get().AddPanel(std::make_unique<DetailsPanel>(weak_from_this()));
 		m_pDetailsPanel->SetPadding(Vector2(2.0f, 0.0f));
 
-		m_pOutlinerPanel = UIManager::Get().AddPanel(std::make_unique<OutlinerPanel>(this));
+		m_pOutlinerPanel = UIManager::Get().AddPanel(std::make_unique<OutlinerPanel>(weak_from_this()));
 		m_pOutlinerPanel->SetPadding(Vector2(2.0f, 0.0f));
+
+		ContentBrowserPanelEx* pContentBrowserPanel = UIManager::Get().AddPanel(MakeUnique<ContentBrowserPanelEx>(weak_from_this()));
+		pContentBrowserPanel->SetPadding(Vector2(2.0f, 0.0f));
 
 		UIManager::Get().AddPanel(std::make_unique<TestPanel>("Test", ImGuiWindowFlags_None));
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 		app.GetRenderer()->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
-
-		//LoadStarterMeshes();
-		
-		//
-		//m_ContentBrowserPanel.SetOnAssetSelectedCallback([this](const AssetHandle& AssetHandle, const InspectedAssetType inspectedAssetType)
-		//	{
-		//		m_InspectorPanel.SetContext(AssetHandle, inspectedAssetType);
-		//		if (inspectedAssetType == InspectedAssetType::NONE)
-		//			m_DisplayInspectorPanel = false;
-		//		else
-		//			m_DisplayInspectorPanel = true;
-		//	});
-		//
-		////m_PlayButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PlayButton.png"), "");
-		//m_StopButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StopButton.png"), "");
-		//m_PauseButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\PauseButton.png"), "");
-		//m_SimulateButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\SimulateButton.png"), "");
-		//m_StepButtonTextureHandle = AssetManager::LoadFromFile<Texture2D>(EDITOR_RESOURCE_DIRECTORY + std::string("Icons\\StepButton.png"), "");
-		//
-		//const std::filesystem::path srcPath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures/puresky.rasset");
-		//
-		//AssetHandle handle;
-		//if (AssetManager::RequestLoadAsset(srcPath, handle))
-		//{
-		//	std::shared_ptr<Texture2D> pTexture = AssetManager::Get<Texture2D>(handle);
-		//	m_pUtilityRenderer->ConvertEquirectangularToCubeMap(pTexture, [this](std::shared_ptr<TextureCube> pTextureCube)
-		//		{
-		//			m_pActiveScene->m_pSkyBox = pTextureCube;
-		//	m_pUtilityRenderer->CreateIrradianceMap(pTextureCube, [this, pTextureCube](std::shared_ptr<TextureCube> pIrradianceMap)
-		//		{
-		//			m_pActiveScene->m_pIrradianceMap = pIrradianceMap;
-		//		});
-		//	m_pUtilityRenderer->CreateRadianceMap(pTextureCube, [this, pTextureCube](std::shared_ptr<TextureCube> pRadianceMap)
-		//		{
-		//			m_pActiveScene->m_pRadianceMap = pRadianceMap;
-		//		});
-		//		});
-		//}
-		//
-		//m_PropertiesPanel.SetActiveScene(m_pActiveScene.get());
-		//m_SceneRendererPanel.SetActiveRenderer(m_pSceneRenderer);
 	}
 
 	void Editor::OnDestroy() noexcept
@@ -245,7 +165,12 @@ namespace Relentless
 			renderView.NearPlane				= cameraViewTransform.NearPlane;
 			renderView.FarPlane					= cameraViewTransform.FarPlane;
 
-			renderView.MouseHoverCoordinates = pViewportPanel->IsClientAreaHovered() ? pViewportPanel->GetClientHoverCoordinates() : Vector2i(-1, -1);
+			renderView.MouseHoverCoordinates	= pViewportPanel->IsClientAreaHovered() ? pViewportPanel->GetClientHoverCoordinates() : Vector2i(-1, -1);
+
+			renderView.MinLogLuminance			= m_MinLogLuminance;
+			renderView.MinEV100					= m_MinEV100;
+			renderView.MaxEV100					= m_MaxEV100;
+			renderView.ExposureCompensation		= m_ExposureCompensation;
 		}
 	}
 
@@ -340,527 +265,144 @@ namespace Relentless
 
 	void Editor::CreateStartScene() noexcept
 	{
-		//{
-		//	Ref<ModelFactory> pFactory = new ModelFactory();
-		//	pFactory->OnDone.Connect([this](const std::vector<ImportedAsset>& assets, bool success)
-		//		{
-		//			RLS_VERIFY(success, "[Editor::CreateStartScene] Failed to import Sponza.");
-		//
-		//			EntityManager& entityManager = m_pActiveScene->GetEntityManager();
-		//
-		//			for (auto& asset : assets)
-		//			{
-		//				if (asset.Type != AssetType::Mesh)
-		//					continue;
-		//
-		//				Ref<Mesh> pMesh = AssetManager::Get<Mesh>(asset.Handle);
-		//				const entity newEntity = m_pActiveScene->CreateEntity(pMesh->GetName().c_str());
-		//
-		//				MeshRendererComponent& mrc = entityManager.Add<MeshRendererComponent>(newEntity);
-		//				mrc.AssetHandle = pMesh->GetDefaultMaterialHandle();
-		//				RLS_VERIFY(mrc.AssetHandle != NULL_HANDLE, "[Editor::CreateStartScene] AssetHandle Is invalid.");
-		//
-		//				MeshFilterComponent& mfc = entityManager.Add<MeshFilterComponent>(newEntity);
-		//				mfc.AssetHandle = asset.Handle;
-		//
-		//				const Transform& transform = pMesh->GetOffsetTransform();
-		//
-		//				auto& tc = entityManager.Get<TransformComponent>(newEntity);
-		//				m_pActiveScene->SetWorldTransform(newEntity, transform.Matrix);
-		//			}
-		//		});
-		//
-		//	std::vector<AssetImportTask> tasks;
-		//	AssetImportTask& task = tasks.emplace_back();
-		//	task.FilePath = "C:/Users/emilf/Downloads/main_sponza/Main.1_Sponza/NewSponza_Main_glTF_002.gltf";
-		//	task.pFactory = pFactory;
-		//
-		//	Importer::RequestAsyncLoad(tasks).Wait();
-		//}
+		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
 
-		entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
-		auto& dlc = m_pActiveScene->GetEntityManager().Add<DirectionalLightComponent>(dirEntity);
-		dlc.Color = Math::MakeFromColorTemperature(5'900.0f);
-		dlc.Intensity = Math::LuxToRadiantIrradiance(100'000.0f);
+		{
+			entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
+			auto& dlc = entityManager.Add<DirectionalLightComponent>(dirEntity);
+			dlc.SetColor(Math::MakeFromColorTemperature(5'900.0f));
+			dlc.SetIntensityLux(100'000.0f);
+
+			auto& tc = entityManager.Get<TransformComponent>(dirEntity);
+			tc.SetWorldRotationEulerDegrees(Vector3(-90.0f, 0.0f, 0.0f));
+		}
 
 		Ref<Material> pWhiteMaterial = new Material();
 		pWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
-		pWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-		pWhiteMaterial->m_Metallic = 0.0f;
-		pWhiteMaterial->m_Roughness = 0.5f;
-
+		pWhiteMaterial->SetAlbedoColor(Colors::White);
 		const uint32 index = AssetManager::GetStorage<Material>().Add(pWhiteMaterial);
 		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Material);
 
 		Ref<Material> pNewWhiteMaterial = new Material();
 		pNewWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
-		pNewWhiteMaterial->m_AlbedoColor = DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-		pNewWhiteMaterial->m_Metallic = 0.0f;
-		pNewWhiteMaterial->m_Roughness = 1.0f;
+		pNewWhiteMaterial->SetAlbedoColor(Vector4(0.5f, 0.5f, 0.5f, 1.0f));
+		pNewWhiteMaterial->SetRoughness(1.0f);
 		const uint32 index2 = AssetManager::GetStorage<Material>().Add(pNewWhiteMaterial);
 		auto [handle2, __] = AssetManager::InsertMetaData(CreateUUID(), index2, AssetType::Material);
 
 		entity ground = m_pActiveScene->CreateEntity("Ground");
+		auto& groundTC = entityManager.Get<TransformComponent>(ground);
+		groundTC.AddWorldOffset(Vector3(0.0f, -1.0f, 0.0f));
+		auto& mrcGround = entityManager.Add<MeshRendererComponent>(ground);
+		mrcGround.AssetHandle = handle2->second;
 
-		m_pActiveScene->AddWorldOffset(ground, Vector3(0.0f, -1.0f, 0.0f));
-		m_pActiveScene->SetWorldScale(ground, Vector3(4.0f, 0.5f, 4.0f));
-
-		{
-			auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(ground);
-			mrc.AssetHandle = handle2->second;
-		}
-
-		entity e = m_pActiveScene->CreateEntity("Sphere");
-
-		m_pActiveScene->AttachEntity(e, ground);
-
-		m_pActiveScene->GetEntityManager().Add<RotatorComponent>(e);
-
-		auto& mrc = m_pActiveScene->GetEntityManager().Add<MeshRendererComponent>(e);
+		entity sphere = m_pActiveScene->CreateEntity("Sphere");
+		m_pActiveScene->AttachEntity(sphere, ground);
+		auto& mrc = entityManager.Add<MeshRendererComponent>(sphere);
 		mrc.AssetHandle = handle->second;
 
+		auto& tc = entityManager.Get<TransformComponent>(sphere);
+		tc.AddLocalOffset(Vector3::Up);
+
+		entity topGround = m_pActiveScene->CreateEntity("TopGround");
+		m_pActiveScene->AttachEntity(topGround, sphere);
+		auto& mrcTopGround = entityManager.Add<MeshRendererComponent>(topGround);
+		mrcTopGround.AssetHandle = handle->second;
+
+		auto& tcTopGround = entityManager.Get<TransformComponent>(topGround);
+		tcTopGround.AddLocalOffset(Vector3::Up);
+
 		{
+			//std::vector<AssetImportTask> tasks;
+
+			//std::mutex entityManagerAccessMutex;
+			//auto&& CreateModelImportTask = [&tasks, this, &entityManagerAccessMutex](const Path& relativePath, Span<entity> entities)
+			//	{
+			//		Ref<ModelFactory> pFactory = RLS_NEW ModelFactory();
+			//		pFactory->OnDone.Connect([this, someEntities = entities.Copy(), &entityManagerAccessMutex](const std::vector<ImportedAsset>& assets, bool success)
+			//			{
+			//				RLS_VERIFY(success, "[Editor::OnCreate] Asset import failed.");
+			//
+			//				std::lock_guard guard(entityManagerAccessMutex);
+			//
+			//				for (auto aEntity : someEntities)
+			//				{
+			//					auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(aEntity);
+			//
+			//					for (auto& asset : assets)
+			//					{
+			//						if (asset.Type == AssetType::Mesh)
+			//						{
+			//							mfc.AssetHandle = asset.Handle;
+			//							break;
+			//						}
+			//					}
+			//				}
+			//			});
+			//
+			//		AssetImportTask& task = tasks.emplace_back();
+			//		task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), relativePath);
+			//		task.pFactory = pFactory;
+			//	};
+
+			//CreateModelImportTask("Assets/Models/StarterContent/Sphere.obj", sphere);
+			//CreateModelImportTask("Assets/Models/StarterContent/Cube.obj", { ground, topGround });
+
 			std::vector<AssetImportTask> tasks;
-
-			auto&& CreateTextureImportTask = [&tasks, this](const Path& relativePath, entity entity, bool srgb, auto SetTextureFunc)
-				{
-					Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
-					pFactory->SetImportAsSRGB(srgb);
-
-					pFactory->OnDone.Connect([this, entity, SetTextureFunc](const ImportedAsset& asset, bool success)
-						{
-							RLS_VERIFY(success, "[Editor::OnCreate] Asset import failed.");
-
-							auto& mrc = m_pActiveScene->GetEntityManager().Get<MeshRendererComponent>(entity);
-							Ref<Material> pMaterial = AssetManager::Get<Material>(mrc.AssetHandle);
-							(pMaterial.Get()->*SetTextureFunc)(asset.Handle);
-						});
-
-					AssetImportTask& task = tasks.emplace_back();
-					task.FilePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, relativePath);
-					task.pFactory = pFactory;
-				};
-
-			std::mutex entityManagerAccessMutex;
-			auto&& CreateModelImportTask = [&tasks, this, &entityManagerAccessMutex](const Path& relativePath, entity entity)
-				{
-					Ref<ModelFactory> pFactory = RLS_NEW ModelFactory();
-					pFactory->OnDone.Connect([this, entity, &entityManagerAccessMutex](const std::vector<ImportedAsset>& assets, bool success)
-						{
-							RLS_VERIFY(success, "[Editor::OnCreate] Asset import failed.");
-
-							std::lock_guard guard(entityManagerAccessMutex);
-							auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(entity);
-
-							for (auto& asset : assets)
-							{
-								if (asset.Type == AssetType::Mesh)
-								{
-									mfc.AssetHandle = asset.Handle;
-									break;
-								}
-							}
-						});
-
-					AssetImportTask& task = tasks.emplace_back();
-					task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), relativePath);
-					task.pFactory = pFactory;
-				};
-
-			CreateModelImportTask("Assets/Models/StarterContent/Sphere.obj", e);
-			CreateModelImportTask("Assets/Models/StarterContent/Cube.obj", ground);
-
-			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_albedo.png", e, true, &Material::SetAlbedoTexture);
-			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_metallic.png", e, false, &Material::SetMetallicTexture);
-			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_roughness.png", e, false, &Material::SetRoughnessTexture);
-			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_ao.png", e, false, &Material::SetAmbientOcclusionTexture);
-			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_normal-dx.png", e, false, &Material::SetNormalMap);
-			//CreateTextureImportTask("Textures/rusty-metal-ue/rusty-metal_height.png", e, false, &Material::SetHeightMap);
-
-			Importer::RequestAsyncLoad(tasks).Wait();
-		}
-
-		//const entity parent = m_pActiveScene->CreateShape(Shape::Cube);
-		//const entity child = m_pActiveScene->CreateShape(Shape::Torus);
-		//const entity otherCube = m_pActiveScene->CreateShape(Shape::Capsule);
-		//const entity other = m_pActiveScene->CreateShape(Shape::Sphere);
-		//m_pActiveScene->SetWorldLocation(parent, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
-		//m_pActiveScene->SetWorldLocation(child, DirectX::XMFLOAT3(5.0f, 0.0f, 0.0f));
-		//m_pActiveScene->SetWorldLocation(otherCube, DirectX::XMFLOAT3(-5.0f, 0.0f, 0.0f));
-		//m_pActiveScene->SetWorldLocation(other, DirectX::XMFLOAT3(-8.0f, 0.0f, 0.0f));
-		//
-		
-		//RunFolderComprehensiveTest();
-
-		AttachEntityToFolder(ground, Folder(FolderRoot::CreateFromScene(*m_pActiveScene), "StarterContent/Entities"));
-	}
-
-	// Helper: quick starts_with for String
-	static bool StartsWith(const String& s, std::string_view prefix) {
-		return s.size() >= prefix.size() && s.compare(0, prefix.size(), prefix) == 0;
-	}
-
-	static bool ConsoleIsUTF8()
-	{
-#ifdef _WIN32
-		return GetConsoleOutputCP() == 65001; // CP_UTF8
-#else
-		return true; // most non-Windows terminals are UTF-8
-#endif
-	}
-	struct TreeGlyphs { const char* elbow; const char* tee; const char* pipe; const char* space; };
-
-	void Editor::RunFolderComprehensiveTest()
-	{
-		RLS_ASSERT(m_pActiveScene && m_pEntityFoldersManager, "Active scene or folders manager missing");
-		Scene& scene = *m_pActiveScene;
-		auto& F = *m_pEntityFoldersManager;
-		const FolderRoot root = FolderRoot::CreateFromScene(scene);
-
-		auto dump = [&](std::string_view tag)
+			
 			{
-				const TreeGlyphs g = ConsoleIsUTF8()
-					? TreeGlyphs{ "└─ ", "├─ ", "│  ", "   " }   // UTF-8 bytes in source
-				: TreeGlyphs{ "\\- ", "|- ", "|  ", "   " }; // ASCII fallback
+				AssetImportTask& task = tasks.emplace_back();
+				task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Sphere.obj");
 
-				std::cout << "\n=== " << tag << " ===\n";
+			}
 
-				// Gather folders
-				auto& cont = F.GetFolderContainer(scene).Folders;
-				std::vector<EntityFolder*> nodes; nodes.reserve(cont.size());
-				for (auto& rf : cont) nodes.push_back(rf);
+			{
+				AssetImportTask& task = tasks.emplace_back();
+				task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Cube.obj");
+			}
 
-				// Build children map by parent*
-				std::unordered_map<EntityFolder*, std::vector<EntityFolder*>> children;
-				for (auto* n : nodes) children[n->GetParent()].push_back(n);
-				for (auto& [p, ch] : children)
-					std::sort(ch.begin(), ch.end(),
-						[](auto* a, auto* b) { return a->GetLabel() < b->GetLabel(); });
-
-				// Tree print
-				std::function<void(EntityFolder*, std::string, bool)> dfs =
-					[&](EntityFolder* n, std::string indent, bool last)
-					{
-						std::cout << indent << (last ? g.elbow : g.tee) << n->GetPath() << "\n";
-						auto it = children.find(n);
-						if (it == children.end()) return;
-						auto& ch = it->second;
-						for (size_t i = 0; i < ch.size(); ++i)
-							dfs(ch[i], indent + (last ? g.space : g.pipe), i + 1 == ch.size());
-					};
-
-				std::cout << "[Folders :: tree]\n";
-				if (auto it = children.find(nullptr); it != children.end()) {
-					auto& roots = it->second;
-					for (size_t i = 0; i < roots.size(); ++i)
-						dfs(roots[i], "", i + 1 == roots.size());
-				}
-				else {
-					std::cout << "(no folders)\n";
-				}
-
-				// Flat list + duplicates
-				std::vector<EntityFolder*> sorted = nodes;
-				std::sort(sorted.begin(), sorted.end(),
-					[](auto* a, auto* b) { return a->GetPath() < b->GetPath(); });
-
-				std::unordered_map<String, int> pathCount;
-				for (auto* n : sorted) ++pathCount[n->GetPath()];
-
-				std::cout << "\n[Folders :: flat]\n";
-				for (auto* n : sorted) {
-					const auto* p = n->GetParent();
-					const bool dup = pathCount[n->GetPath()] > 1;
-					std::cout << " - " << n->GetPath()
-						<< "   (label=\"" << n->GetLabel() << "\""
-						<< ", parent=" << (p ? p->GetPath() : "<null>")
-						<< (dup ? ", DUPLICATE" : "") << ")\n";
-				}
-
-				// Entities
-				struct Row { entity e; String name; String path; };
-				std::vector<Row> rows;
-				scene.GetEntityManager().Collect<FolderComponent>().Do(
-					[&](entity e, const FolderComponent& fc)
-					{
-						rows.push_back({ e,
-										 scene.GetEntityManager().Get<NameComponent>(e).Name,
-										 fc.Folder.GetPath() });
-					});
-				std::sort(rows.begin(), rows.end(),
-					[](const Row& a, const Row& b) {
-						if (a.path != b.path) return a.path < b.path;
-						return a.name < b.name;
-					});
-
-				std::cout << "\n[Entities]\n";
-				for (const auto& r : rows)
-					std::cout << " - " << r.path << "   " << r.name
-					<< " (e=" << (uint64_t)r.e << ")\n";
-			};
-
-		// Clean start (optional): ensure no pre-existing conflicting folders/entities
-		// You can clear your scene here if you have a helper.
-
-		F.CreateFolder(scene, "Root/A/B");
-		F.CreateFolder(scene, "Root/B/A/A");
-		entity e = scene.CreateEntity("X");
-		AttachEntityToFolder(e, Folder(root, "Root/B/A/A"));
-
-		dump("before delete Root/B");
-		F.DeleteFolder(scene, "Root/B");
-		dump("after delete Root/B");
-
-		RLS_ASSERT(scene.GetEntityManager().Get<FolderComponent>(e).Folder.GetPath() == "Root/A/A", "Should be merged under Root/A/A");
-
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 1) Create chain and idempotency
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			EntityFolder* a = F.CreateFolder(scene, "A");
-			RLS_ASSERT(a && a->GetLabel() == "A", "Create A failed");
-
-			EntityFolder* ab = F.CreateFolder(scene, "A/B");
-			RLS_ASSERT(ab && ab->GetLabel() == "B" && ab->GetParent() == a, "Create A/B failed");
-
-			// Idempotent create: returns the same object and keeps correct parent
-			EntityFolder* ab2 = F.CreateFolder(scene, "A/B");
-			RLS_ASSERT(ab2 == ab, "Idempotent CreateFolder returned a different object");
-			RLS_ASSERT(ab2->GetParent() == a, "Idempotent CreateFolder changed parent incorrectly");
-		}
-
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 2) Default name uniqueness
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			String p = F.GetDefaultFolderName(scene, "A");
-			RLS_ASSERT(p == "A/New Folder", "Expected A/New Folder");
-
-			F.CreateFolder(scene, p); // create it
-
-			String p2 = F.GetDefaultFolderName(scene, "A");
-			RLS_ASSERT(p2 == "A/New Folder2", "Expected A/New Folder2");
-		}
-
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 3) Boundary correctness: "Foo" vs "FooBar"
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			F.CreateFolder(scene, "Foo");
-			F.CreateFolder(scene, "FooBar"); // must not be affected by renaming Foo
-
-			const entity eFoo = scene.CreateEntity("InFoo");
-			const entity eFooBar = scene.CreateEntity("InFooBar");
-
-			AttachEntityToFolder(eFoo, Folder(root, "Foo"));
-			AttachEntityToFolder(eFooBar, Folder(root, "FooBar"));
-
-			// Rename Foo -> Baz
-			bool ok = F.RenameFolder(scene, "Foo", "Baz");
-			RLS_ASSERT(ok, "Rename Foo->Baz failed");
-
-			const auto& pFoo = scene.GetEntityManager().Get<FolderComponent>(eFoo).Folder.GetPath();
-			const auto& pFooB = scene.GetEntityManager().Get<FolderComponent>(eFooBar).Folder.GetPath();
-			RLS_ASSERT(pFoo == "Baz", "Entity in Foo not remapped to Baz");
-			RLS_ASSERT(pFooB == "FooBar", "Entity in FooBar should not be affected");
-		}
-
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 4) Deep subtree rename + entity remap
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			F.CreateFolder(scene, "StarterContent/Entities/Monsters");
-			F.CreateFolder(scene, "StarterContent/Entities/Monsters/Bosses");
-			F.CreateFolder(scene, "StarterContent/Props");
-
-			const entity ground = scene.CreateEntity("Ground");
-			const entity troll = scene.CreateEntity("TrollBoss");
-			const entity crate = scene.CreateEntity("Crate");
-
-			AttachEntityToFolder(ground, Folder(root, "StarterContent/Entities/Monsters"));
-			AttachEntityToFolder(troll, Folder(root, "StarterContent/Entities/Monsters/Bosses"));
-			AttachEntityToFolder(crate, Folder(root, "StarterContent/Props"));
-
-			dump("before deep rename");
-
-			// Monsters -> Enemies
-			bool ok = F.RenameFolder(scene,
-				"StarterContent/Entities/Monsters",
-				"StarterContent/Entities/Enemies");
-			RLS_ASSERT(ok, "Rename Monsters->Enemies failed");
-
-			dump("after deep rename");
-
-			const auto& groundPath = scene.GetEntityManager().Get<FolderComponent>(ground).Folder.GetPath();
-			const auto& trollPath = scene.GetEntityManager().Get<FolderComponent>(troll).Folder.GetPath();
-			const auto& cratePath = scene.GetEntityManager().Get<FolderComponent>(crate).Folder.GetPath();
-
-			RLS_ASSERT(groundPath == "StarterContent/Entities/Enemies", "Remap failed for ground");
-			RLS_ASSERT(trollPath == "StarterContent/Entities/Enemies/Bosses", "Remap failed for troll");
-			RLS_ASSERT(cratePath == "StarterContent/Props", "Unrelated entity changed unexpectedly");
-		}
-
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 5) Invalid rename: into own descendant
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			F.CreateFolder(scene, "X/Y");
-			F.CreateFolder(scene, "X/Y/Z");
-
-			bool ok = F.RenameFolder(scene, "X/Y", "X/Y/Z"); // invalid
-			RLS_ASSERT(!ok, "Should not allow rename into own descendant");
-		}
-
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 6) Rename to an existing path (should fail, no changes)
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			F.CreateFolder(scene, "Alpha");
-			F.CreateFolder(scene, "Beta");
-
-			// Put an entity in Alpha to detect unintended changes
-			const entity a = scene.CreateEntity("A");
-			AttachEntityToFolder(a, Folder(root, "Alpha"));
-
-			bool ok = F.RenameFolder(scene, "Alpha", "Beta");
-			RLS_ASSERT(!ok, "Rename to existing folder should fail");
-
-			const auto& pathA = scene.GetEntityManager().Get<FolderComponent>(a).Folder.GetPath();
-			RLS_ASSERT(pathA == "Alpha", "Entity path changed despite failed rename");
-		}
-
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 7) Delete middle parent: children re-parent and entities remap away from prefix
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			F.CreateFolder(scene, "SC/Entities/Enemies/Minions");
-			const entity m1 = scene.CreateEntity("Minion1");
-			const entity m2 = scene.CreateEntity("Minion2");
-
-			AttachEntityToFolder(m1, Folder(root, "SC/Entities/Enemies"));
-			AttachEntityToFolder(m2, Folder(root, "SC/Entities/Enemies/Minions"));
-
-			dump("before delete SC/Entities");
-
-			// Delete middle parent "SC/Entities"
-			F.DeleteFolder(scene, "SC/Entities");
-
-			dump("after delete SC/Entities");
-
-			const auto& mp1 = scene.GetEntityManager().Get<FolderComponent>(m1).Folder.GetPath();
-			const auto& mp2 = scene.GetEntityManager().Get<FolderComponent>(m2).Folder.GetPath();
-
-			// Policy-agnostic check: old prefix must be gone
-			RLS_ASSERT(!StartsWith(mp1, "SC/Entities/"), "m1 still has deleted prefix");
-			RLS_ASSERT(!StartsWith(mp2, "SC/Entities/"), "m2 still has deleted prefix");
-		}
-
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 8) ForEachEntityInFolders: selection + early break
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			F.CreateFolder(scene, "Pick/One");
-			F.CreateFolder(scene, "Pick/Two");
-
-			const entity e1 = scene.CreateEntity("Pick1");
-			const entity e2 = scene.CreateEntity("Pick2");
-			const entity e3 = scene.CreateEntity("Pick3");
-
-			AttachEntityToFolder(e1, Folder(root, "Pick/One"));
-			AttachEntityToFolder(e2, Folder(root, "Pick/Two"));
-			AttachEntityToFolder(e3, Folder(root, "Pick/Two"));
-
-			std::unordered_set<String> paths = { "Pick/One", "Pick/Two" };
-
-			std::vector<entity> visited;
-			m_pEntityFoldersManager->ForEachEntityInFolders(scene, paths,
-				[&](entity e)
+			AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+			std::vector<AssetImportResult> importResults = assetToolsModule.Import(tasks);
+			
+			{
+				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(sphere);
+				for (auto& result : importResults)
 				{
-					visited.push_back(e);
-					// Early break after 2
-					return visited.size() < 2;
-				});
+					if (result.Handle.Type == AssetType::Mesh && result.FilePath.string() == tasks[0].FilePath)
+					{
+						mfc.AssetHandle = result.Handle;
+						break;
+					}
+				}
 
-			RLS_ASSERT(visited.size() == 2, "Early-break in ForEachEntityInFolders failed");
+			}
+			{
+
+				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(ground);
+				for (auto& result : importResults)
+				{
+					if (result.Handle.Type == AssetType::Mesh && result.FilePath.string() == tasks[1].FilePath)
+					{
+						mfc.AssetHandle = result.Handle;
+						break;
+					}
+				}
+			}
+			{
+				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(topGround);
+				for (auto& result : importResults)
+				{
+					if (result.Handle.Type == AssetType::Mesh && result.FilePath.string() == tasks[1].FilePath)
+					{
+						mfc.AssetHandle = result.Handle;
+						break;
+					}
+				}
+			}
+
 		}
 
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 9) Expanded state flag round-trip
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			F.CreateFolder(scene, "UI/Windows");
-			RLS_ASSERT(F.IsFolderExpanded(scene, "UI/Windows"), "Expected collapsed by default");
-
-			if (Ref<EntityFolder> f = F.GetFolder(scene, "UI/Windows"))
-				f->SetExpandedState(false);
-
-			RLS_ASSERT(!F.IsFolderExpanded(scene, "UI/Windows"), "Expanded state not persisted");
-		}
-
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 10) Root-level rename (no parent)
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			F.CreateFolder(scene, "Top");
-			const entity t = scene.CreateEntity("TopGuy");
-			AttachEntityToFolder(t, Folder(root, "Top"));
-
-			bool ok = F.RenameFolder(scene, "Top", "TopRenamed");
-			RLS_ASSERT(ok, "Root-level rename failed");
-
-			const auto& tp = scene.GetEntityManager().Get<FolderComponent>(t).Folder.GetPath();
-			RLS_ASSERT(tp == "TopRenamed", "Root-level entity not remapped");
-		}
-
-		// ─────────────────────────────────────────────────────────────────────────────
-		// 11) Delete leaf, no crash, entity policy respected (no old prefix)
-		// ─────────────────────────────────────────────────────────────────────────────
-		{
-			F.CreateFolder(scene, "Leaf");
-			const entity l = scene.CreateEntity("Leafy");
-			AttachEntityToFolder(l, Folder(root, "Leaf"));
-
-			F.DeleteFolder(scene, "Leaf");
-			bool has = scene.GetEntityManager().Has<FolderComponent>(l);
-			RLS_ASSERT(!has, "Leaf entity still references deleted folder");
-		}
-
-		std::cout << "\nAll folder tests passed ✅\n";
-	}
-
-	void Editor::UI_DrawStatisticsPanel() noexcept
-	{
-		if (!m_DisplayStatisticsPanel || m_ImmersiveModeEnabled)
-			return;
-
-		ImGui::Begin("Stats");
-		ImGui::Text("Hovered entity:");
-		ImGui::SameLine();
-
-		if (m_HoveredEntity != NULL_ENTITY && m_pActiveScene->GetEntityManager().Exists(m_HoveredEntity))
-			ImGui::Text("%s (%d)", m_pActiveScene->GetEntityManager().Get<NameComponent>(m_HoveredEntity).Name.c_str(), (m_HoveredEntity >> 12));
-		else
-			ImGui::Text("None");
-
-		ImGui::Text("#Shader bindable descriptors: ");
-		ImGui::SameLine();
-		//ImGui::Text("%d", Application::Get().GetMemorymanager().GetShaderBindableDescriptorHeap()->GetNrOfDescriptorsInUse());
-
-		ImGui::Text("#CBV/SRV/UAV descriptors: ");
-		ImGui::SameLine();
-		//ImGui::Text("%d", Application::Get().GetMemorymanager().GetCBVSRVUAVDescriptorHeap()->GetNrOfDescriptorsInUse());
-
-		ImGui::Text("#RTV descriptors: ");
-		ImGui::SameLine();
-		//ImGui::Text("%d", Application::Get().GetMemorymanager().GetRTVDescriptorHeap()->GetNrOfDescriptorsInUse());
-
-		ImGui::Text("#DSV descriptors: ");
-		ImGui::SameLine();
-		//ImGui::Text("%d", Application::Get().GetMemorymanager().GetDSVDescriptorHeap()->GetNrOfDescriptorsInUse());
-
-		ImGui::Text("#Constant buffer sets: TODO!!");
-
-		ImGui::End();
+		m_pEntityFoldersManager->AttachEntityToFolder(*m_pActiveScene, ground, Folder(FolderRoot::CreateFromScene(*m_pActiveScene), "StarterContent/Entities"));
 	}
 
 	void Editor::UI_DrawMainMenuBar() noexcept
@@ -910,33 +452,6 @@ namespace Relentless
 		}
 
 		ImGui::EndMainMenuBar();
-
-		static bool isDragging = false;
-		static Vector2u dragStartCursorPos = {};
-		static Vector2u dragStartWindowPos = {};
-
-		const ImVec2 vMax = ImVec2(menuBarPos.x + menuBarSize.x, menuBarPos.y + menuBarSize.y);
-		const bool hovering = ImGui::IsMouseHoveringRect(menuBarPos, vMax, false);
-		
-		if (hovering && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-		{
-			if (!isDragging)
-			{
-				isDragging = true;
-				dragStartCursorPos = Mouse::GetCursorScreenPosition();
-				dragStartWindowPos = Application::Get().GetWindow()->GetTopLeft();
-			}
-			else
-			{
-				const Vector2u currentCursorPos = Mouse::GetCursorScreenPosition();
-				const Vector2u delta = currentCursorPos - dragStartCursorPos;
-				Application::Get().GetWindow()->SetPosition(dragStartWindowPos + delta);
-			}
-		}
-		else
-		{
-			isDragging = false;
-		}
 	}
 
 	void Editor::CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept
@@ -951,10 +466,20 @@ namespace Relentless
 		MeshFilterComponent& mfc = entityManager.Add<MeshFilterComponent>(newEntity);
 		mfc.AssetHandle = meshHandle;
 		
-		const Transform& transform = pMesh->GetOffsetTransform();
+		Matrix transform = pMesh->GetOffsetTransform();
 		
 		auto& tc = entityManager.Get<TransformComponent>(newEntity);
-		m_pActiveScene->SetWorldTransform(newEntity, transform.Matrix);
+
+		Vector3 scale		= Vector3::One;
+		Quaternion rotation = Quaternion::Identity;
+		Vector3 location	= Vector3::Zero;
+
+		if (!transform.Decompose(scale, rotation, location))
+			return;
+
+		tc.SetWorldScale(scale);
+		tc.SetWorldRotation(rotation);
+		tc.SetWorldScale(scale);
 	}
 
 	void Editor::OnEntityFolderDeleted(EntityFolder* apFolder) noexcept
@@ -1095,23 +620,13 @@ namespace Relentless
 		{
 			const entity duplicatedEntity = m_pActiveScene->DuplicateEntity(selectedEntity, false);
 			if (EntityFolder* pFolder = GetFolderContainingEntity(selectedEntity))
-				AttachEntityToFolder(duplicatedEntity, Folder(FolderRoot::CreateFromScene(*m_pActiveScene), pFolder->GetPath()));
+				m_pEntityFoldersManager->AttachEntityToFolder(*m_pActiveScene, duplicatedEntity, Folder(FolderRoot::CreateFromScene(*m_pActiveScene), pFolder->GetPath()));
 
 			newEntities.push_back(duplicatedEntity);
 		}
 
 		m_pSelection->DeselectAllEntities();
 		m_pSelection->SelectEntities(newEntities);
-	}
-
-	void Editor::RemoveEntityFromCurrentFolder(entity aEntity) noexcept
-	{
-		if (AnyFolderContainsEntity(aEntity))
-		{
-			Folder folder = m_pActiveScene->GetEntityManager().Get<FolderComponent>(aEntity).Folder;
-			m_pActiveScene->GetEntityManager().Remove<FolderComponent>(aEntity);
-			OnEntityRemovedFromFolder(aEntity, folder);
-		}
 	}
 
 	void Editor::SetVisibilityForSelectedEntities(bool aVisibilityState) noexcept
@@ -1188,7 +703,7 @@ namespace Relentless
 	{
 		m_RenderViews.push_back(ViewportRenderView());
 		
-		ViewportPanel* pViewport = UIManager::Get().AddPanel(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, this, m_EditorViewports.size()));
+		ViewportPanel* pViewport = UIManager::Get().AddPanel(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, weak_from_this(), m_EditorViewports.size()));
 
 		pViewport->OnClickedOnViewport.Connect(this, &Editor::OnViewportClicked);
 		pViewport->OnHotkeyPressed.Connect(this, &Editor::OnViewportHotkeyPressed);

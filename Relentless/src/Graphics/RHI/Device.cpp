@@ -285,10 +285,15 @@ namespace Relentless
 		}
 
 		const bool isRaw = EnumHasAnyFlags(desc.Flags, BufferFlag::ByteAddress);
+		const bool withCounter = !isRaw && desc.Format == ResourceFormat::Unknown;
 
 		if (EnumHasAnyFlags(desc.Flags, BufferFlag::ShaderResource))
 		{
 			pBuffer->SetSRV(CreateSRV(pBuffer, BufferSRVDesc(desc.Format, isRaw)));
+		}
+		if (EnumHasAnyFlags(desc.Flags, BufferFlag::UnorderedAccess))
+		{
+			pBuffer->SetUAV(CreateUAV(pBuffer, BufferUAVDesc(desc.Format, isRaw, withCounter)));
 		}
 
 		if (pInitData)
@@ -446,6 +451,23 @@ namespace Relentless
 		}
 
 		return pTexture;
+	}
+
+	Ref<Texture> GraphicsDevice::CreateTexture(const TextureDesc& desc, const char* pName, const DirectX::ScratchImage& aImage) noexcept
+	{
+		const DirectX::Image* pImg = aImage.GetImages();
+		std::vector<D3D12_SUBRESOURCE_DATA> initData;
+		for (uint32_t i{ 0u }; i < aImage.GetImageCount(); ++i, ++pImg)
+		{
+			D3D12_SUBRESOURCE_DATA subresourceData = {};
+			subresourceData.pData = pImg->pixels;
+			subresourceData.RowPitch = pImg->rowPitch;
+			subresourceData.SlicePitch = pImg->slicePitch;
+		
+			initData.push_back(subresourceData);
+		}
+
+		return CreateTexture(desc, pName, initData);
 	}
 
 	Ref<Texture> GraphicsDevice::CreateTextureForSwapchain(ID3D12ResourceX* pResource, uint32 index) noexcept
@@ -627,6 +649,40 @@ namespace Relentless
 		GetDevice()->CreateUnorderedAccessView(pTexture->GetResource(), nullptr, &uavDesc, descriptorHandle.CPUHandle);
 
 		return RLS_NEW UnorderedAccessView(this, descriptorHandle);
+	}
+
+	Ref<UnorderedAccessView> GraphicsDevice::CreateUAV(Buffer* pBuffer, const BufferUAVDesc& desc) noexcept
+	{
+		RLS_ASSERT(pBuffer, "[GraphicsDevice::CreateUAV]: Buffer is invalid.");
+		const BufferDesc& bufferDesc = pBuffer->GetDesc();
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		uavDesc.Format = D3D::ConvertFormat(desc.Format);
+		uavDesc.Buffer.CounterOffsetInBytes = 0;
+		uavDesc.Buffer.FirstElement = 0;
+		uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+		uavDesc.Buffer.NumElements = bufferDesc.NumElements();
+		uavDesc.Buffer.StructureByteStride = 0;
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+
+		if (desc.Raw)
+		{
+			uavDesc.Buffer.Flags |= D3D12_BUFFER_UAV_FLAG_RAW;
+			uavDesc.Buffer.NumElements *= bufferDesc.ElementSize / 4;
+			uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+		}
+		else
+		{
+			uavDesc.Buffer.StructureByteStride = uavDesc.Format == DXGI_FORMAT_UNKNOWN ? bufferDesc.ElementSize : 0;
+		}
+
+		const DescriptorHandle descriptorHandle = RegisterGlobalDescriptor(DescriptorHandleType::UAV);
+		GetDevice()->CreateUnorderedAccessView(pBuffer->GetResource(), nullptr, &uavDesc, descriptorHandle.CPUHandle);
+
+		const DescriptorHandle descriptorHandleCPUOpaque = RegisterGlobalDescriptor(DescriptorHandleType::UAV_NV);
+		GetDevice()->CreateUnorderedAccessView(pBuffer->GetResource(), nullptr, &uavDesc, descriptorHandleCPUOpaque.CPUHandle);
+
+		return RLS_NEW UnorderedAccessView(this, descriptorHandle, descriptorHandleCPUOpaque);
 	}
 
 	Ref<RenderTargetView> GraphicsDevice::CreateRTV(Texture* pTexture, const TextureRTVDesc& textureRTVDesc) noexcept

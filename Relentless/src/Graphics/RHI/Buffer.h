@@ -47,6 +47,13 @@ namespace Relentless
 			return { .Size = (uint64)elementCount * elementSize, .ElementSize = elementSize, .Flags = flags | BufferFlag::ShaderResource };
 		}
 
+		static BufferDesc CreateTyped(uint32 elementCount, ResourceFormat format, BufferFlag flags = BufferFlag::None)
+		{
+			const FormatInfo& info = RHI::GetFormatInfo(format);
+			RLS_ASSERT(!info.IsBC, "[BufferDesc::CreateTyped]: Block Compressed Format Is Unsupported.");
+			return { .Size = (uint64)elementCount * info.BytesPerBlock, .ElementSize = info.BytesPerBlock, .Flags = flags | BufferFlag::ShaderResource, .Format = format };
+		}
+
 		[[nodiscard]] uint32 NumElements() const noexcept
 		{
 			return static_cast<uint32>(Size / ElementSize);
@@ -59,19 +66,27 @@ namespace Relentless
 		Buffer(GraphicsDevice* pParent, const BufferDesc& desc, ID3D12Resource2* pResource) noexcept;
 		virtual ~Buffer() noexcept override;
 
-		[[nodiscard]] const BufferDesc& GetDesc() const noexcept;
-		[[nodiscard]] void* GetMappedData() const noexcept;
-		[[nodiscard]] uint64 GetSize() const noexcept;
-		[[nodiscard]] uint64 GetNrOfElements() const noexcept;
-		[[nodiscard]] ShaderResourceView* GetSRV() const noexcept;
-		[[nodiscard]] uint32 GetSRVIndex() const noexcept;
+		NO_DISCARD const BufferDesc& GetDesc() const noexcept;
+		NO_DISCARD void* GetMappedData() const noexcept;
+		NO_DISCARD uint64 GetSize() const noexcept;
+		NO_DISCARD uint64 GetNrOfElements() const noexcept;
+		NO_DISCARD ShaderResourceView* GetSRV() const noexcept;
+		NO_DISCARD uint32 GetSRVIndex() const noexcept;
+
+		NO_DISCARD UnorderedAccessView* GetUAV() const noexcept;
+		NO_DISCARD UnorderedAccessView* GetUAVNonVisible() const noexcept;
+		NO_DISCARD uint32 GetUAVIndex() const noexcept;
 
 		void Map(uint32 subresource, const D3D12_RANGE* pRange) noexcept;
 		void Unmap(uint32 subresource, const D3D12_RANGE* pRange) noexcept;
 		void SetSRV(Ref<ShaderResourceView> pSRV) noexcept;
+		void SetUAV(Ref<UnorderedAccessView> pUAV) noexcept;
+		void SetUAVNonVisible(Ref<UnorderedAccessView> pUAV) noexcept;
 	private:
 		const BufferDesc m_Desc;
 		void* m_pMappedPtr = nullptr;
 		Ref<ShaderResourceView> m_pSRV = nullptr;
+		Ref<UnorderedAccessView> m_pUAV = nullptr;
+		Ref<UnorderedAccessView> m_pUAVNonVisible= nullptr;
 	};
 }

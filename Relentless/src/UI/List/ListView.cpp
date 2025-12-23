@@ -21,9 +21,6 @@ namespace Relentless
 
 	void HeaderRow::OnRender() noexcept
 	{
-		if (!m_IsVisible)
-			return;
-
 		if (m_IsPinned)
 			ImGui::TableSetupScrollFreeze(0, 1);
 
@@ -37,6 +34,9 @@ namespace Relentless
 			const Column& column = GetColumn(col);
 			ImGui::TableSetupColumn(column.pLabel->GetText().c_str(), column.Flags, column.Weight, ColumnIDs[col]);
 		}
+
+		if (!m_IsVisible)
+			return;
 
 		ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
 		for (uint32 col = 0u; col < GetNumColumns(); ++col)

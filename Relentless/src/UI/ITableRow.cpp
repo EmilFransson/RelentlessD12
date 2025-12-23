@@ -6,52 +6,68 @@ namespace Relentless
 {
 	void ITableRow::OnRender() noexcept
 	{
-		ImGuiTable* pTable = ImGui::GetCurrentTable();
-		if (!pTable)
-			return;
+		ImVec2 rowStart;
+		ImVec2 rowEnd;
+		float fullWidth;
+		float rowHeight;
 
-		float maxHeight = 0.0f;
-		for (uint32 column = 0u; column < m_ColumnWidgets.size(); ++column)
+		if (!m_Tiled)
 		{
-			const float height = m_ColumnWidgets[column]->ReportSize().y;
-			maxHeight = Math::Max(maxHeight, height);
-		}
+			ImGuiTable* pTable = ImGui::GetCurrentTable();
+			if (!pTable)
+				return;
 
-		ImGui::TableNextRow(0, maxHeight);
-
-		const float rowHeight = ImGui::GetFrameHeightWithSpacing();
-		const float minX = pTable->Columns[0].MinX;
-		const float maxX = pTable->Columns[pTable->ColumnsCount - 1].MaxX;
-		const float fullWidth = maxX - minX;
-
-		const ImVec2 rowStart(minX, ImGui::GetCursorScreenPos().y);
-		const ImVec2 rowEnd(maxX, rowStart.y + rowHeight);
-
-		for (uint32 column = 0u; column < GetNumColumns(); ++column)
-		{
-			ImGui::TableSetColumnIndex(column);
-			OnRenderColumn(column);
-		}
-
-		{
-			ImGui::TablePushBackgroundChannel();
-
-			Color bgCol = GetBackgroundColor();
-			ImGui::GetWindowDrawList()->AddRectFilled(rowStart, rowEnd, ImGui::ColorConvertFloat4ToU32(ImVec4(bgCol.x, bgCol.y, bgCol.z, bgCol.w)));
-
-			const bool isHovering = ImGui::IsMouseHoveringRect(rowStart, rowEnd);
-			if (!m_Hovered && isHovering)
+			float maxHeight = 0.0f;
+			for (uint32 column = 0u; column < m_ColumnWidgets.size(); ++column)
 			{
-				m_Hovered = true;
-				m_OnMouseEnterCallback.ExecuteIfSet(this);
-			}
-			else if (m_Hovered && !isHovering)
-			{
-				m_Hovered = false;
-				m_OnMouseExitCallback.ExecuteIfSet(this);
+				const float height = m_ColumnWidgets[column]->ReportSize().y;
+				maxHeight = Math::Max(maxHeight, height);
 			}
 
-			ImGui::TablePopBackgroundChannel();
+			ImGui::TableNextRow(0, maxHeight);
+
+			rowHeight = ImGui::GetFrameHeightWithSpacing();
+			const float minX = pTable->Columns[0].MinX;
+			const float maxX = pTable->Columns[pTable->ColumnsCount - 1].MaxX;
+			fullWidth = maxX - minX;
+
+			rowStart = ImVec2(minX, ImGui::GetCursorScreenPos().y);
+			rowEnd = ImVec2(maxX, rowStart.y + rowHeight);
+
+			for (uint32 column = 0u; column < GetNumColumns(); ++column)
+			{
+				ImGui::TableSetColumnIndex(column);
+				OnRenderColumn(column);
+			}
+		}
+		else
+		{
+			for (uint32 column = 0u; column < GetNumColumns(); ++column)
+				OnRenderColumn(column);
+		}
+		
+		{
+			if (!m_CustomHoverLogic)
+			{
+				ImGui::TablePushBackgroundChannel();
+
+				Color bgCol = GetBackgroundColor();
+				ImGui::GetWindowDrawList()->AddRectFilled(rowStart, rowEnd, ImGui::ColorConvertFloat4ToU32(ImVec4(bgCol.x, bgCol.y, bgCol.z, bgCol.w)));
+
+				const bool isHovering = ImGui::IsMouseHoveringRect(rowStart, rowEnd);
+				if (!m_Hovered && isHovering)
+				{
+					m_Hovered = true;
+					m_OnMouseEnterCallback.ExecuteIfSet(this);
+				}
+				else if (m_Hovered && !isHovering)
+				{
+					m_Hovered = false;
+					m_OnMouseExitCallback.ExecuteIfSet(this);
+				}
+
+				ImGui::TablePopBackgroundChannel();
+			}
 		}
 
 		{

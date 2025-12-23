@@ -94,11 +94,11 @@ namespace Relentless
 			auto& tc = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
 			bool changedValues = true;
 
-			changedValues = DrawVec3Control("Location", tc.WorldTransform.Location, 0.06f);
+			//changedValues = DrawVec3Control("Location", tc.WorldTransform.Location, 0.06f);
 			ImGui::Separator();
 			//changedValues |= DrawVec3Control("Rotation", tc.Rotation, 0.03f);
 			ImGui::Separator();
-			changedValues |= DrawVec3Control("Scale", tc.WorldTransform.Scale, 0.03f, 1.0f, 0.01f);
+			//changedValues |= DrawVec3Control("Scale", tc.WorldTransform.Scale, 0.03f, 1.0f, 0.01f);
 			
 			ImGui::TreePop();
 
@@ -107,11 +107,11 @@ namespace Relentless
 			{
 				auto& transformComponent = m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity);
 
-				changedValues = DrawVec3Control("Local Location", transformComponent.LocalTransform.Location, 0.06f);
+				//changedValues = DrawVec3Control("Local Location", transformComponent.LocalTransform.Location, 0.06f);
 				ImGui::Separator();
 				//changedValues |= DrawVec3Control("Local Rotation", transformComponent.LocalRotation, 0.03f);
 				ImGui::Separator();
-				changedValues |= DrawVec3Control("Local Scale", transformComponent.LocalTransform.Scale, 0.03f, 1.0f, 0.01f);
+				//changedValues |= DrawVec3Control("Local Scale", transformComponent.LocalTransform.Scale, 0.03f, 1.0f, 0.01f);
 
 				ImGui::TreePop();
 			}
@@ -121,7 +121,7 @@ namespace Relentless
 		DrawComponentNode<DirectionalLightComponent>("Light", [this]()
 			{
 				constexpr const char* lightTypeStrings[] = { "Directional", "Point" };
-				constexpr const char* currentLightTypeString = lightTypeStrings[(int)LightType::Directional];
+				constexpr const char* currentLightTypeString = lightTypeStrings[(int)ELightType::Directional];
 				auto& lc = m_pScene->GetEntityManager().Get<DirectionalLightComponent>(m_SelectedEntity);
 				
 				if (ImGui::BeginCombo("Type", currentLightTypeString))
@@ -131,15 +131,15 @@ namespace Relentless
 						bool isSelected = currentLightTypeString == lightTypeStrings[i];
 						if (ImGui::Selectable(lightTypeStrings[i], isSelected))
 						{
-							if (!isSelected)
-							{
-								auto color = lc.Color;
-								auto intensity = lc.Intensity;
-								m_pScene->GetEntityManager().Remove<DirectionalLightComponent>(m_SelectedEntity);
-								auto& dlc = m_pScene->GetEntityManager().Add<PointLightComponent>(m_SelectedEntity);
-								dlc.Color = color;
-								dlc.Intensity = intensity;
-							}
+							//if (!isSelected)
+							//{
+							//	auto color = lc.Color;
+							//	auto intensity = lc.Intensity;
+							//	m_pScene->GetEntityManager().Remove<DirectionalLightComponent>(m_SelectedEntity);
+							//	auto& dlc = m_pScene->GetEntityManager().Add<PointLightComponent>(m_SelectedEntity);
+							//	dlc.Color = color;
+							//	dlc.Intensity = intensity;
+							//}
 						}
 						if (isSelected)
 							ImGui::SetItemDefaultFocus();
@@ -152,7 +152,7 @@ namespace Relentless
 		DrawComponentNode<PointLightComponent>("Light", [&]()
 			{
 				constexpr const char* lightTypeStrings[] = { "Directional", "Point" };
-				constexpr const char* currentLightTypeString = lightTypeStrings[(int)LightType::Point];
+				constexpr const char* currentLightTypeString = lightTypeStrings[(int)ELightType::Point];
 				auto& lc = m_pScene->GetEntityManager().Get<PointLightComponent>(m_SelectedEntity);
 
 				if (ImGui::BeginCombo("Type", currentLightTypeString))
@@ -162,17 +162,17 @@ namespace Relentless
 						bool isSelected = currentLightTypeString == lightTypeStrings[i];
 						if (ImGui::Selectable(lightTypeStrings[i], isSelected))
 						{
-							if (!isSelected)
-							{
-								auto color = lc.Color;
-								auto intensity = lc.Intensity;
-								m_pScene->GetEntityManager().Remove<PointLightComponent>(m_SelectedEntity);
-								auto& dlc = m_pScene->GetEntityManager().Add<DirectionalLightComponent>(m_SelectedEntity);
-								dlc.Color = Color(color.x, color.y, color.z);
-								dlc.Intensity = intensity;
-
-								//m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
-							}
+							//if (!isSelected)
+							//{
+							//	auto color = lc.Color;
+							//	auto intensity = lc.Intensity;
+							//	m_pScene->GetEntityManager().Remove<PointLightComponent>(m_SelectedEntity);
+							//	auto& dlc = m_pScene->GetEntityManager().Add<DirectionalLightComponent>(m_SelectedEntity);
+							//	dlc.Color = Color(color.x, color.y, color.z);
+							//	dlc.Intensity = intensity;
+							//
+							//	//m_pScene->GetEntityManager().Get<TransformComponent>(m_SelectedEntity).Rotation = DirectX::XMFLOAT3(50.0f, -30.0f, 0.0f);
+							//}
 						}
 						if (isSelected)
 							ImGui::SetItemDefaultFocus();

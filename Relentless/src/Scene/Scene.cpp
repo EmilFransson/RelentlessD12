@@ -47,6 +47,18 @@ namespace Relentless
 		};
 
 		DeferredEntityDeletionSystem::Execute(state);
+
+		//Collection<TransformComponent, MeshRendererComponent, MeshFilterComponent> instanceCollection = GetEntityManager().Collect<TransformComponent, MeshRendererComponent, MeshFilterComponent>();
+		//
+		//std::vector<ShaderInterop::InstanceData> instanceDatas;
+		//instanceDatas.reserve(instanceCollection.Size());
+		//
+		//int i = 0;
+		//instanceCollection.Do([&](entity e, TransformComponent& tc, MeshRendererComponent& mrc, MeshFilterComponent& mc) 
+		//	{
+		//		i++;
+		//	});
+		//RLS_CORE_INFO("i IS: {0}", i);
 	}
 
 	entity Scene::DuplicateEntity(entity entityToCopy, bool preserveHierarchy) noexcept
@@ -80,6 +92,10 @@ namespace Relentless
 			AttachEntity(newEntity, m_EntityManager.Get<IsChildComponent>(entityToCopy).Parent);
 
 		CopyComponentIfExists<TransformComponent>(entityToCopy, newEntity);
+		auto& tc = m_EntityManager.Get<TransformComponent>(newEntity);
+		tc.Scene = this;
+		tc.Self = newEntity;
+
 		CopyComponentIfExists<MeshFilterComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<MeshRendererComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<DirectionalLightComponent>(entityToCopy, newEntity);
@@ -100,7 +116,11 @@ namespace Relentless
 	entity Scene::CreateEntityWithUUID(const char* name, const UUID& guid) noexcept
 	{
 		auto entity = m_EntityManager.CreateEntity();
-		m_EntityManager.Add<TransformComponent>(entity);
+
+		auto& tc = m_EntityManager.Add<TransformComponent>(entity);
+		tc.Self = entity;
+		tc.Scene = this;
+
 		m_EntityManager.Add<NameComponent>(entity, name);
 		m_EntityManager.Add<IDComponent>(entity, guid);
 		m_EntityManager.Add<RootComponent>(entity);
@@ -110,22 +130,21 @@ namespace Relentless
 		return entity;
 	}
 
-	entity Scene::CreateLight(const char* name, LightType type) noexcept
+	entity Scene::CreateLight(const char* name, ELightType aLightTypetype) noexcept
 	{
 		auto lightEntity = CreateEntity(name);
-		if (type == LightType::Directional)
+		if (aLightTypetype == ELightType::Directional)
 		{
-			auto& tc = m_EntityManager.Get<TransformComponent>(lightEntity);
-			SetLocalRotationFromEulerDegrees(lightEntity, 50.0f, -30.0f, 0.0f);
-			tc.WorldTransform.Location = { 0.0f, 3.0f, 0.0f };
-			auto& dlc = m_EntityManager.Add<DirectionalLightComponent>(lightEntity);
-			dlc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
+			m_EntityManager.Add<DirectionalLightComponent>(lightEntity);
 		}
-		else if (type == LightType::Point)
+		else if (aLightTypetype == ELightType::Point)
 		{
-			m_EntityManager.Get<TransformComponent>(lightEntity).WorldTransform.Location = { 0.0f, 3.0f, 0.0f };
-			auto& plc = m_EntityManager.Add<PointLightComponent>(lightEntity);
-			plc.Color = { (255.0f / 255.0f), (244.0f / 255.0f), (214.0f / 255.0f) };
+			m_EntityManager.Add<PointLightComponent>(lightEntity);
+		}
+		else
+		{
+			RLS_ASSERT(aLightTypetype == ELightType::Spot, "[Scene::CreateLight]: Invalid Light Type");
+			m_EntityManager.Add<SpotLightComponent>(lightEntity);
 		}
 		
 		return lightEntity;
@@ -264,14 +283,14 @@ namespace Relentless
 		auto camera = CreateEntity(name);
 		auto& cc = m_EntityManager.Add<CameraComponent>(camera);
 		auto& tc = m_EntityManager.Get<TransformComponent>(camera);
-		tc.WorldTransform.Location = {0.0f, 0.0f, -5.0f};
+		tc.SetWorldLocation({0.0f, 0.0f, -5.0f});
 
-		Vector3 forward = Vector3::Zero - tc.WorldTransform.Location;
+		Vector3 forward = Vector3::Zero - Vector3(0.0f, 0.0f, -5.0f);
 		forward.Normalize();
 		
-		const Vector3 lookAt = tc.WorldTransform.Location + forward;
+		const Vector3 lookAt = Vector3(0.0f, 0.0f, -5.0f) + forward;
 
-		cc.WorldToView = Math::CreateLookToMatrix(tc.WorldTransform.Location, forward, Vector3::Up);
+		cc.WorldToView = Math::CreateLookToMatrix(Vector3(0.0f, 0.0f, -5.0f), forward, Vector3::Up);
 		cc.ViewToClip = Math::CreatePerspectiveMatrix(cc.FieldOfViewDegrees, 16.0f / 9.0f, cc.ClippingPlaneNear, cc.ClippingPlaneFar);
 
 		return camera;
@@ -360,11 +379,20 @@ namespace Relentless
 		auto& parentTransformComponent = m_EntityManager.Get<TransformComponent>(toBecomeParent);
 		auto& childTransformComponent = m_EntityManager.Get<TransformComponent>(toBecomeChild);
 
-		const Matrix childWorldMatrix = childTransformComponent.WorldTransform.Matrix;
-		Matrix inverseParentWorldMatrix = parentTransformComponent.WorldTransform.Matrix;
+		const Matrix childWorldMatrix = childTransformComponent.GetWorldMatrix();
+		Matrix inverseParentWorldMatrix = parentTransformComponent.GetWorldMatrix();
 		inverseParentWorldMatrix = inverseParentWorldMatrix.Invert();
 
-		SetLocalTransform(toBecomeChild, childWorldMatrix * inverseParentWorldMatrix);
+		Matrix childLocalMatrix = childWorldMatrix * inverseParentWorldMatrix;
+
+		Vector3 scale		= Vector3::One;
+		Quaternion rotation = Quaternion::Identity;
+		Vector3 location	= Vector3::Zero;
+
+		childLocalMatrix.Decompose(scale, rotation, location);
+		childTransformComponent.SetLocalLocation(location);
+		childTransformComponent.SetLocalRotation(rotation);
+		childTransformComponent.SetLocalScale(scale);
 
 		OnEntityAttached(toBecomeChild, toBecomeParent);
 	}
@@ -504,375 +532,15 @@ namespace Relentless
 		return m_EntityManager.Get<IsChildComponent>(e).Parent;
 	}
 
-	void Scene::SetLocalTransform(entity e, const Matrix& localTransform) noexcept
-	{
-		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
-
-		Matrix localMatrix = localTransform;
-		Vector3 scale = Vector3::Zero;
-		Quaternion rotationQuat = Quaternion::Identity;
-		Vector3 location = Vector3::Zero;
-
-		if (localMatrix.Decompose(scale, rotationQuat, location))
-		{
-			tc.LocalTransform.Matrix = localMatrix;
-			tc.LocalTransform.Scale = scale;
-			tc.LocalTransform.Rotation = rotationQuat;
-			tc.LocalTransform.Location = location;
-
-			std::vector<entity> descendants = GetAllEntityDescendants(e);
-			//for (auto& child : descendants)
-			//{
-				//IMPORTANT TO FIX!
-				//RLS_ASSERT(false, "NOPE");
-				//m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
-			//}
-		}
-	}
-
-	void Scene::SetLocalLocation(entity e, const Vector3& localLocation) noexcept
-	{
-		m_EntityManager.Get<TransformComponent>(e).LocalTransform.Location = localLocation;
-		UpdateLocalTransform(e);
-	}
-
-	void Scene::SetLocalRotation(entity e, const Quaternion& localQuaternion) noexcept
-	{
-		m_EntityManager.Get<TransformComponent>(e).LocalTransform.Rotation = localQuaternion;
-		UpdateLocalTransform(e);
-	}
-
-	void Scene::SetLocalScale(entity e, const Vector3& localScale) noexcept
-	{
-		m_EntityManager.Get<TransformComponent>(e).LocalTransform.Scale = localScale;
-		UpdateLocalTransform(e);
-	}
-
-	void Scene::AddLocalOffset(entity e, const Vector3& localOffset) noexcept
-	{
-		const Vector3 currentLocalLocation = GetLocalLocation(e);
-
-		const Vector3 desiredLocalLocation =
-		{
-			currentLocalLocation.x + localOffset.x,
-			currentLocalLocation.y + localOffset.y,
-			currentLocalLocation.z + localOffset.z
-		};
-
-		SetLocalLocation(e, desiredLocalLocation);
-	}
-
-	void Scene::AddLocalRotation(entity e, const Vector3& rotationEulerAnglesDegrees) noexcept
-	{
-		const float pitchRadians = Math::DegToRad(rotationEulerAnglesDegrees.x);
-		const float yawRadians = Math::DegToRad(rotationEulerAnglesDegrees.y);
-		const float rollRadians = Math::DegToRad(rotationEulerAnglesDegrees.z);
-
-		const Quaternion rotationIncrementQuat = Quaternion::CreateFromYawPitchRoll(yawRadians, pitchRadians, rollRadians);
-		
-		const Quaternion localRotation = GetLocalRotation(e);
-		Quaternion newLocalRotationQuat =  rotationIncrementQuat * localRotation;
-		newLocalRotationQuat.Normalize();
-
-		SetLocalRotation(e, newLocalRotationQuat);
-	}
-
-	void Scene::AddLocalScale(entity e, const Vector3& localScale) noexcept
-	{
-		const Vector3 currentLocalScale = GetLocalScale(e);
-		const Vector3 newScale = currentLocalScale + localScale;
-		SetLocalScale(e, newScale);
-	}
-
-	void Scene::SetWorldTransform(entity e, const Matrix& worldMatrix) noexcept
-	{
-		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
-		Matrix parentLocalMatrix = Matrix::Identity;
-		if (HasParent(e))
-		{
-			parentLocalMatrix = GetWorldTransform(GetParent(e));
-			parentLocalMatrix = parentLocalMatrix.Invert();
-		}
-
-		Matrix localMatrix = worldMatrix * parentLocalMatrix;
-		Vector3 scale = Vector3::Zero;
-		Quaternion rotationQuat = Quaternion::Identity;
-		Vector3 translation = Vector3::Zero;
-
-		if (localMatrix.Decompose(scale, rotationQuat, translation))
-		{
-			tc.LocalTransform.Matrix = localMatrix;
-			rotationQuat.Normalize();
-			tc.LocalTransform.Scale = scale;
-			tc.LocalTransform.Rotation = rotationQuat;
-			tc.LocalTransform.Location = translation;
-		
-			const std::vector<entity> descendants = GetAllEntityDescendants(e);
-			//for (auto& child : descendants)
-			//{
-				//RLS_ASSERT(false, "TODO");
-				//m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
-			//}
-		}
-
-		UpdateWorldTransform(e);
-	}
-
-	void Scene::SetWorldLocation(entity e, const Vector3& worldLocation) noexcept
-	{
-		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
-		
-		Matrix parentWorldTransform = Matrix::Identity;
-		if (HasParent(e)) 
-		{
-			parentWorldTransform = GetWorldTransform(GetParent(e));
-			parentWorldTransform = parentWorldTransform.Invert();
-		}
-		tc.LocalTransform.Location = Vector3::Transform(worldLocation, parentWorldTransform);
-		
-		UpdateLocalTransform(e);
-	}
-
-	void Scene::SetWorldRotation(entity e, const Quaternion& worldQuaternion) noexcept
-	{
-		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
-
-		Quaternion parentWorldRotation = Quaternion::Identity;
-		if (HasParent(e)) 
-		{
-			parentWorldRotation = GetWorldRotation(GetParent(e));
-			parentWorldRotation.Inverse(parentWorldRotation);
-		}
-		tc.LocalTransform.Rotation = parentWorldRotation * worldQuaternion;
-		
-		UpdateLocalTransform(e);
-	}
-
-	void Scene::SetWorldScale(entity e, const Vector3& worldScale) noexcept
-	{
-		// Assuming uniform scaling in the hierarchy for simplicity
-		// Non-uniform scaling in parents complicates this process
-		using namespace DirectX;
-		Vector3 parentWorldScale = Vector3::One;
-		if (HasParent(e)) 
-			parentWorldScale = GetWorldScale(GetParent(e));
-
-		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
-
-		tc.LocalTransform.Scale.x = worldScale.x / parentWorldScale.x;
-		tc.LocalTransform.Scale.y = worldScale.y / parentWorldScale.y;
-		tc.LocalTransform.Scale.z = worldScale.z / parentWorldScale.z;
-		UpdateLocalTransform(e);
-	}
-
-	void Scene::AddWorldOffset(entity e, const Vector3& worldOffset) noexcept
-	{
-		const Vector3 currentWorldLocation = GetWorldLocation(e);
-
-		const Vector3 desiredWorldLocation = 
-		{
-			currentWorldLocation.x + worldOffset.x,
-			currentWorldLocation.y + worldOffset.y,
-			currentWorldLocation.z + worldOffset.z
-		};
-
-		SetWorldLocation(e, desiredWorldLocation);
-	}
-
-	void Scene::AddWorldRotation(entity e, const Vector3& rotationEulerAnglesDegrees) noexcept
-	{
-		const float pitchRadians = Math::DegToRad(rotationEulerAnglesDegrees.x);
-		const float yawRadians = Math::DegToRad(rotationEulerAnglesDegrees.y);
-		const float rollRadians = Math::DegToRad(rotationEulerAnglesDegrees.z);
-
-		const Quaternion rollPitchYawQuat = Quaternion::CreateFromYawPitchRoll(yawRadians, pitchRadians, rollRadians);
-		const Quaternion currentRotation = GetWorldRotation(e);
-		Quaternion desiredWorldRotationQuat =  currentRotation * rollPitchYawQuat;
-		desiredWorldRotationQuat.Normalize();
-
-		Quaternion parentRotation = Quaternion::Identity;
-		if (HasParent(e))
-		{
-			parentRotation = GetWorldRotation(GetParent(e));
-			parentRotation.Inverse(parentRotation);
-			parentRotation.Normalize();
-		}
-
-		Quaternion newLocalRotationQuat = parentRotation * desiredWorldRotationQuat;
-		newLocalRotationQuat.Normalize();
-
-		SetLocalRotation(e, newLocalRotationQuat);
-	}
-
-	Matrix Scene::GetWorldTransform(entity e) noexcept
-	{
-		UpdateWorldTransformIfDirty(e);
-		return m_EntityManager.Get<TransformComponent>(e).WorldTransform.Matrix;
-	}
-
-	Vector3 Scene::GetWorldLocation(entity e) noexcept
-	{
-		UpdateWorldTransformIfDirty(e);
-		return m_EntityManager.Get<TransformComponent>(e).WorldTransform.Location;
-	}
-
-	Vector3 Scene::GetWorldScale(entity e) noexcept
-	{
-		UpdateWorldTransformIfDirty(e);
-		return m_EntityManager.Get<TransformComponent>(e).WorldTransform.Scale;
-	}
-
-	Quaternion Scene::GetWorldRotation(entity e) noexcept
-	{
-		UpdateWorldTransformIfDirty(e);
-		return m_EntityManager.Get<TransformComponent>(e).WorldTransform.Rotation;
-	}
-
-	Vector3 Scene::GetWorldForward(entity e) noexcept
-	{
-		Quaternion worldRotation = GetWorldRotation(e);
-		worldRotation.Normalize();
-
-		Vector3 worldForwardVector = Vector3::Transform(Vector3::Forward, worldRotation);
-		worldForwardVector.Normalize();
-
-		return worldForwardVector;
-	}
-
-	Vector3 Scene::GetWorldRight(entity e) noexcept
-	{
-		Quaternion worldRotation = GetWorldRotation(e);
-		worldRotation.Normalize();
-
-		Vector3 worldRightVector = Vector3::Transform(Vector3::Right, worldRotation);
-		worldRightVector.Normalize();
-
-		return worldRightVector;
-	}
-
-	Vector3 Scene::GetWorldUp(entity e) noexcept
-	{
-		Quaternion worldRotation = GetWorldRotation(e);
-		worldRotation.Normalize();
-
-		Vector3 worldUpVector = Vector3::Transform(Vector3::Up, worldRotation);
-		worldUpVector.Normalize();
-
-		return worldUpVector;
-	}
-
-	Matrix Scene::GetLocalTransform(entity e) noexcept
-	{
-		return m_EntityManager.Get<TransformComponent>(e).LocalTransform.Matrix;
-	}
-
-	Vector3 Scene::GetLocalLocation(entity e) noexcept
-	{
-		return m_EntityManager.Get<TransformComponent>(e).LocalTransform.Location;
-	}
-
-	Quaternion Scene::GetLocalRotation(entity e) noexcept
-	{
-		return m_EntityManager.Get<TransformComponent>(e).LocalTransform.Rotation;
-	}
-
-	Vector3 Scene::GetLocalScale(entity e) noexcept
-	{
-		return m_EntityManager.Get<TransformComponent>(e).LocalTransform.Scale;
-	}
-
 	bool Scene::IsEntityVisible(entity e) noexcept
 	{
 		return !m_EntityManager.Has<HiddenInGameComponent>(e);
 	}
 
-	void Scene::SetLocalRotationFromEulerDegrees(entity e, float pitchDegrees, float yawDegrees, float rollDegrees) noexcept
-	{
-		const float pitchRadians = Math::DegToRad(pitchDegrees);
-		const float yawRadians = Math::DegToRad(yawDegrees);
-		const float rollRadians = Math::DegToRad(rollDegrees);
-
-		Quaternion quaternion = Quaternion::CreateFromYawPitchRoll(yawRadians, pitchRadians, rollRadians);
-		quaternion.Normalize();
-
-		SetLocalRotation(e, quaternion);
-	}
-
-	Vector3 Scene::GetLocalRotationInEulerDegrees(entity e)
-	{
-		const Quaternion& localRotation = m_EntityManager.Get<TransformComponent>(e).LocalTransform.Rotation;
-
-		const Matrix matrix = Matrix::CreateFromQuaternion(localRotation);
-
-		const float pitchRad = std::asinf(-matrix._32);
-		const float rollRad = atan2f(matrix._12, matrix._22);
-		const float yawRad = atan2f(matrix._31, matrix._33);
-
-		Vector3 euler = Vector3::Zero;;
-		euler.x = Math::RadToDeg(pitchRad);
-		euler.y = Math::RadToDeg(yawRad);
-		euler.z = Math::RadToDeg(rollRad);
-
-		return euler;
-	}
-
-	void Scene::UpdateWorldTransformIfDirty(entity e) noexcept
-	{
-		//TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
-		//if (tc.IsDirty)
-		//{
-			UpdateWorldTransform(e);
-			//tc.IsDirty = false;
-		//}
-	}
-
-	void Scene::UpdateWorldTransform(entity e) noexcept
-	{
-		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
-
-		Matrix worldMatrix = Matrix::Identity;
-		if (HasParent(e)) 
-		{
-			const entity parent = GetParent(e);
-			const Matrix parentWorld = GetWorldTransform(parent);
-			worldMatrix = tc.LocalTransform.Matrix * parentWorld;
-		}
-		else 
-			worldMatrix = tc.LocalTransform.Matrix;
-
-		Vector3 scale = Vector3::Zero;
-		Quaternion rotationQuat = Quaternion::Identity;
-		Vector3 location = Vector3::Zero;
-		if (worldMatrix.Decompose(scale, rotationQuat, location))
-		{
-			tc.WorldTransform.Matrix = worldMatrix;
-			tc.WorldTransform.Scale = scale;
-			tc.WorldTransform.Rotation = rotationQuat;
-			tc.WorldTransform.Location = location;
-		}
-	}
-
-	void Scene::UpdateLocalTransform(entity e) noexcept
-	{
-		const Vector3 localLocation = GetLocalLocation(e);
-		const Quaternion localRotation = GetLocalRotation(e);
-		const Vector3 localScale = GetLocalScale(e);
-
-		const Matrix scaleMatrix = Matrix::CreateScale(localScale);
-		const Matrix rotationMatrix = Matrix::CreateFromQuaternion(localRotation);
-		const Matrix translationMatrix = Matrix::CreateTranslation(localLocation);
-
-		TransformComponent& tc = m_EntityManager.Get<TransformComponent>(e);
-		tc.LocalTransform.Matrix = scaleMatrix * rotationMatrix * translationMatrix;
-
-		std::vector<entity> descendants = GetAllEntityDescendants(e);
-		//for (auto& child : descendants)
-		//{
-			//RLS_ASSERT(false, "TODO!");
-
-			//m_EntityManager.AddOrReplace<DirtyTransformComponent>(child);
-		//}
-	}
+ 	void Scene::MarkDirty() noexcept
+ 	{
+ 		m_IsDirty = true;
+ 	}
 
 	template<typename ComponentType>
 	void CopyComponent(std::shared_ptr<Scene> srcScene, std::shared_ptr<Scene> dstScene, std::unordered_map<UUID, entity>& idToEntityMap) noexcept

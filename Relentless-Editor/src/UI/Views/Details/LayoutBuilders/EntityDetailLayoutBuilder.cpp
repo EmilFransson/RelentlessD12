@@ -5,10 +5,9 @@
 
 namespace Relentless
 {
-	EntityDetailLayoutBuilder::EntityDetailLayoutBuilder(IDetailsView* aDetailsView, Scene& aScene, Selection& aSelection) noexcept
+	EntityDetailLayoutBuilder::EntityDetailLayoutBuilder(IDetailsView* aDetailsView, Scene& aScene) noexcept
 		:IDetailLayoutBuilder(aDetailsView),
-		 m_Scene{ aScene },
-		 m_Selection{ aSelection }
+		 m_Scene{ aScene }
 	{
 	}
 
@@ -17,22 +16,21 @@ namespace Relentless
 		return m_Scene;
 	}
 
-	Selection& EntityDetailLayoutBuilder::GetSelection() const noexcept
-	{
-		return m_Selection;
-	}
-
 	std::vector<Ref<DetailNode>> EntityDetailLayoutBuilder::Rebuild() noexcept
 	{
 		m_Customizations.clear();
 		m_Categories.clear();
 
+		EntityDetailsView* pView = static_cast<EntityDetailsView*>(m_pView);
+
 		std::vector<Ref<DetailNode>> nodesToReturn;
-		if (m_Selection.GetSelectedEntityCount() == 0)
+		if (pView->GetNumInspectedEntities() == 0u)
 			return nodesToReturn;
 
 		ConditionallyAddCustomization<TransformComponent>();
 		ConditionallyAddCustomization<DirectionalLightComponent>();
+		ConditionallyAddCustomization<PointLightComponent>();
+		ConditionallyAddCustomization<SpotLightComponent>();
 
 		for (auto& [name, pBuilder] : m_Categories)
 		{
@@ -48,4 +46,10 @@ namespace Relentless
 		
 		return nodesToReturn;
 	}
+
+	void EntityDetailLayoutBuilder::RequestRefresh() noexcept
+	{
+		m_pView->RequestRefresh();
+	}
+
 }

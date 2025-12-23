@@ -13,4 +13,10 @@ namespace Relentless
 		auto [it, inserted] = m_Categories.try_emplace(aName, std::make_unique<IDetailCategoryBuilder>(aName));
 		return *(it->second);
 	}
+
+	IDetailsView* IDetailLayoutBuilder::GetDetailsView() const noexcept
+	{
+		return m_pView;
+	}
+
 }

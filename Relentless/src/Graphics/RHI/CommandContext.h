@@ -93,14 +93,18 @@ namespace Relentless
 		void BindRootCBV(uint32 rootIndex, const void* pData, uint32 dataSize) noexcept;
 		void BindRootCBV(uint32 rootIndex, const Buffer* allocation) noexcept;
 		void BeginRenderPass(const RenderPassInfo& renderPassInfo) noexcept;
+		
 		void CopyBuffer(const Buffer* pSource, const Buffer* pTarget, uint64 size, uint64 sourceOffset, uint64 destinationOffset) noexcept;
+		void ClearBufferUInt(const Buffer* pBuffer, uint32 value = 0);
 		void ClearState() noexcept;
+
 		void CopyResource(const DeviceResource* pSource, const DeviceResource* pTarget) noexcept;
 		void CopyTexture(const Texture* pSource, const Buffer* pTarget, const D3D12_BOX& sourceRegion, uint32 sourceSubresource = 0u, uint32 destinationOffset = 0u) noexcept;
 		void CopyTexture(const Texture* pSource, const Texture* pDestination, const D3D12_BOX& sourceRegion, const D3D12_BOX& destinationRegion, uint32 sourceSubresource = 0, uint32 destinationSubresource = 0) noexcept;
 		void Dispatch(uint32 groupCountX, uint32 groupCountY = 1, uint32 groupCountZ = 1) noexcept;
 		void Dispatch(const Vector3i groupCount) noexcept;
 		void InsertResourceBarrier(DeviceResource* pResource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState, uint32 subResource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) noexcept;
+		void InsertResourceBarrier(DeviceResource* pResource, D3D12_RESOURCE_STATES aNewState, uint32 subResource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) noexcept;
 		void InsertUAVBarrier(const DeviceResource* pResource = nullptr) noexcept;
 		void Draw(uint32_t vertexStart, uint32_t vertexCount, uint32_t instanceStart, uint32_t instanceCount) noexcept;
 		void DrawIndexedInstanced(uint32_t indexCount, uint32_t indexStart, uint32_t instances, uint32_t instanceStart, int vertexBaseLocation) noexcept;

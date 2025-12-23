@@ -16,8 +16,8 @@ namespace Relentless
 		virtual void OnUpdate(const float deltaTime) noexcept override final;
 		virtual void OnRender() noexcept override final;
 
-		[[nodiscard]] const UniquePtr<Editor>& GetEditor() const noexcept;
+		[[nodiscard]] const std::shared_ptr<Editor>& GetEditor() const noexcept;
 	private:
-		UniquePtr<Editor> m_pEditor = nullptr;
+		std::shared_ptr<Editor> m_pEditor = nullptr;
 	};
 }

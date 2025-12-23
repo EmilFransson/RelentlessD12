@@ -23,7 +23,7 @@ namespace Relentless
 
 	void EditorLayer::OnAttach() noexcept
 	{
-		m_pEditor = std::make_unique<Editor>();
+		m_pEditor = std::make_shared<Editor>();
 		m_pEditor->OnCreate();
 	}
 
@@ -43,7 +43,7 @@ namespace Relentless
 		m_pEditor->OnRender();
 	}
 	
-	const UniquePtr<Editor>& EditorLayer::GetEditor() const noexcept
+	const std::shared_ptr<Editor>& EditorLayer::GetEditor() const noexcept
 	{
 		return m_pEditor;
 	}

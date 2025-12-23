@@ -5,15 +5,16 @@
 #include "Threading/ThreadSafeQueue.h"
 namespace Relentless
 {
-	enum class Shape : uint8_t { Triangle = 0, Cube, Cylinder, Capsule, Cone, Sphere, IcoSphere, Torus, Quad, Plane };
-	enum class Extra : uint8_t { UtahTeapot = 0u };
-	enum class LightType : uint8_t { Directional = 0, Point };
+	enum class Shape : uint8 { Triangle = 0, Cube, Cylinder, Capsule, Cone, Sphere, IcoSphere, Torus, Quad, Plane };
+	enum class Extra : uint8 { UtahTeapot = 0u };
+	enum class ELightType : uint8 { Directional = 0, Point, Spot };
 
 	class Scene
 	{
 	public:
 		explicit Scene(const char* name = "Sample Scene") noexcept;
 		virtual ~Scene() noexcept = default;
+
 		NO_DISCARD bool AnyEntityHasName(const char* pName) const noexcept;
 
 		NO_DISCARD const UUID& GetUUID() const noexcept;
@@ -24,7 +25,7 @@ namespace Relentless
 		entity CreateCamera(const char* name) noexcept;
 		entity CreateEntity(const char* tag) noexcept;
 		entity CreateEntityWithUUID(const char* tag, const UUID& guid) noexcept;
-		entity CreateLight(const char* name, LightType type) noexcept;
+		entity CreateLight(const char* aName, ELightType aLightType) noexcept;
 		entity CreateShape(const Shape shape) noexcept;
 		entity CreateExtra(const Extra extra) noexcept;
 		NO_DISCARD String GetFullShapePath(const Shape shape) noexcept;
@@ -61,49 +62,14 @@ namespace Relentless
 		NO_DISCARD bool IsPaused() const noexcept { return m_IsPaused; }
 
 		static NO_DISCARD std::shared_ptr<Scene> Copy(std::shared_ptr<Scene> pSrcScene) noexcept;
-		void SetHoveredEntity(entity hoveredEntity) noexcept;
-		NO_DISCARD entity GetHoveredEntity() const noexcept;
-
-		//Transform
-		void SetLocalTransform(entity e, const Matrix& localMatrix) noexcept;
-		void SetLocalLocation(entity e, const Vector3& localLocation) noexcept;
-		void SetLocalRotation(entity e, const Quaternion& localQuaternion) noexcept;
-		void SetLocalScale(entity e, const Vector3& localScale) noexcept;
-
-		void AddLocalOffset(entity e, const Vector3& localOffset) noexcept;
-		void AddLocalRotation(entity e, const Vector3& rotationEulerAnglesDegrees) noexcept;
-		void AddLocalScale(entity e, const Vector3& localScale) noexcept;
-
-		void SetWorldTransform(entity e, const Matrix& worldMatrix) noexcept;
-		void SetWorldLocation(entity e, const Vector3& worldLocation) noexcept;
-		void SetWorldRotation(entity e, const Quaternion& worldQuaternion) noexcept;
-		void SetWorldScale(entity e, const Vector3& worldScale) noexcept;
-
-		void AddWorldOffset(entity e, const Vector3& worldOffset) noexcept;
-		void AddWorldRotation(entity e, const Vector3& rotationEulerAnglesDegrees) noexcept;
-		void AddWorldScale(entity e, const Vector3& worldscale) noexcept;
 
 		template<typename ComponentType>
 		void CopyComponentIfExists(entity srcEntity, entity dstEntity) noexcept;
 
-		NO_DISCARD Matrix GetWorldTransform(entity e) noexcept;
-		NO_DISCARD Vector3 GetWorldLocation(entity e) noexcept;
-		NO_DISCARD Vector3 GetWorldScale(entity e) noexcept;
-		NO_DISCARD Quaternion GetWorldRotation(entity e) noexcept;
-		NO_DISCARD Vector3 GetWorldForward(entity e) noexcept;
-		NO_DISCARD Vector3 GetWorldRight(entity e) noexcept;
-		NO_DISCARD Vector3 GetWorldUp(entity e) noexcept;
-
-		NO_DISCARD Matrix GetLocalTransform(entity e) noexcept;
-		NO_DISCARD Vector3 GetLocalLocation(entity e) noexcept;
-		NO_DISCARD Quaternion GetLocalRotation(entity e) noexcept;
-		NO_DISCARD Vector3 GetLocalScale(entity e) noexcept;
-
 		NO_DISCARD bool IsEntityVisible(entity e) noexcept;
 
-		void SetLocalRotationFromEulerDegrees(entity e, float pitchDegrees, float yawDegrees, float rollDegrees) noexcept;
-		NO_DISCARD Vector3 GetLocalRotationInEulerDegrees(entity e);
-		
+		void MarkDirty() noexcept;
+
 		//std::shared_ptr<TextureCube> m_pSkyBox = nullptr;
 		//std::shared_ptr<TextureCube> m_pIrradianceMap = nullptr;
 		//std::shared_ptr<TextureCube> m_pRadianceMap = nullptr;
@@ -116,10 +82,6 @@ namespace Relentless
 		Broadcaster<void(entity e, bool visibilityState)> OnEntityVisibilityChanged;
 
 	private:
-		void UpdateWorldTransformIfDirty(entity e) noexcept;
-		void UpdateWorldTransform(entity e) noexcept;
-		void UpdateLocalTransform(entity e) noexcept;
-	private:
 		friend class SceneSerializer;
 		friend struct DeferredEntityDeletionSystem;
 		
@@ -129,6 +91,7 @@ namespace Relentless
 		UUID m_UUID = NULL_UUID;
 		String m_Name;
 		bool m_IsPaused = false;
+		bool m_IsDirty = false;
 	};
 
 	struct SceneState
@@ -137,8 +100,6 @@ namespace Relentless
 		EntityManager& EntityManager;
 		float DeltaTime = 0.0f;
 	};
-
-	//FIX FOR EMPTY STRUCTS TO BE COMPATIBLE!
 
 	template<typename ComponentType>
 	void Scene::CopyComponentIfExists(entity srcEntity, entity dstEntity) noexcept

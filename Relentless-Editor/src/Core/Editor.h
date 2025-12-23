@@ -16,16 +16,11 @@ namespace Relentless
 {
 	enum class ESceneState : uint8 { Edit = 0, Play, Simulate };
 
-	class Editor
+	class Editor : public std::enable_shared_from_this<Editor>
 	{
 	public:
 		Editor() noexcept = default;
 		virtual ~Editor() noexcept;
-
-		NO_DISCARD bool AnyFolderContainsEntity(entity aEntity) const noexcept;
-		void AttachEntityToFolder(entity aEntity, const Folder& aFolder) noexcept;
-
-		NO_DISCARD bool FolderContainsEntity(const Folder& aFolder, entity aEntity) noexcept;
 
 		NO_DISCARD const Ref<EntityOutlinerView> GetEntityOutlinerView() const noexcept;
 
@@ -47,23 +42,19 @@ namespace Relentless
 
 		void OnViewportEntityDuplicationRequest() noexcept;
 
-		void RemoveEntityFromCurrentFolder(entity aEntity) noexcept;
-
 		void SetVisibilityForSelectedEntities(bool aVisibilityState) noexcept;
 
-		Broadcaster<void(entity, const Folder&)> OnEntityAttachedToFolder;
-		Broadcaster<void(entity, const Folder&)> OnEntityRemovedFromFolder;
-
-		Broadcaster<void()> OnShutDown;
+		inline static Broadcaster<void(entity aEntity)> OnEntityTransformed;
+		inline static Broadcaster<void()> OnShutDown;
 		Broadcaster<void(Scene*)> OnPreSceneChanged;
 		Broadcaster<void(Scene*)> OnSceneChanged;
+
 	private:
 		void SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept;
 		void LoadStarterMeshes() noexcept;
 
 		void CreateStartScene() noexcept;
 
-		void UI_DrawStatisticsPanel() noexcept;
 		void UI_DrawMainMenuBar() noexcept;
 
 		void CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept;
@@ -77,7 +68,6 @@ namespace Relentless
 		void OnViewportHotkeyPressed(ViewportPanel* pPanel, RLS_Key key) noexcept;
 		void OnViewportClicked(ViewportPanel* pPanel, Vector2u relativeMouseCoords) noexcept;
 
-		void RunFolderComprehensiveTest();
 		void SpawnViewport() noexcept;
 	private:
 		std::vector<ViewportRenderView> m_RenderViews;
@@ -116,5 +106,9 @@ namespace Relentless
 		
 		DetailsPanel* m_pDetailsPanel = nullptr;
 		OutlinerPanel* m_pOutlinerPanel = nullptr;
+		float m_MinLogLuminance = -4.0f;
+		float m_MinEV100 = -10.0f;
+		float m_MaxEV100 = 20.0f;
+		float m_ExposureCompensation = 1.0f;
 	};
 }

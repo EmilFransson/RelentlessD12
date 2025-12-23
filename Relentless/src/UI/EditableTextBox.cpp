@@ -34,10 +34,10 @@ namespace Relentless
 	{
 		const Color borderCol = m_IsActive ? SearchBarEx_private::SearchbarActiveColor : m_IsHovered ? SearchBarEx_private::SearchbarHoveredColor : SearchBarEx_private::SearchbarBorderColor;
 		SetBorderColor(Colors::Normalize(borderCol));
-
+		
 		const float frameHeight = ImGui::GetFrameHeight();
 
-		const float width = GetSizePolicy() == ESizePolicy::Stretch ? ImGui::CalcItemWidth() : (m_Size.x > 0.0f) ? m_Size.x : frameHeight;
+		const float width = GetSizePolicy() == ESizePolicy::Stretch ? -1.0f : (m_Size.x > 0.0f) ? m_Size.x : frameHeight;
 		const float height = (m_Size.y > 0.0f) ? m_Size.y : frameHeight;
 
 		const bool inputDone = ImGui::InputTextEx("##EditableTextBox", m_HintText.c_str(), m_InputBuffer, IM_ARRAYSIZE(m_InputBuffer), ImVec2(width, height), ImGuiInputTextFlags_None);

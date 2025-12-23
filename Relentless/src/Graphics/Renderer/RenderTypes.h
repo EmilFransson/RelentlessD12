@@ -55,7 +55,10 @@ namespace Relentless
 		Ref<Texture> pTarget			= nullptr;
 		bool DrawGrid					= true;
 		RenderModeEx RenderMode			= RenderModeEx::Solid;
-		float Exposure					= 1.0f;
+		float MinLogLuminance			= -4.0f;
+		float MinEV100					= -10.0f;
+		float MaxEV100					= 20.0f;
+		float ExposureCompensation		= 1.0f;
 	};
 
 	struct RenderView : public ViewTransform

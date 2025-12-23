@@ -7,29 +7,21 @@
 
 namespace Relentless
 {
-	class Mesh : public IAsset, public RefCounted<Mesh>
+	class Mesh : public IAsset
 	{
 	public:
-		explicit Mesh(const std::string& name = "Unnamed") noexcept;
 		Mesh(Ref<Buffer> pVertexBuffer, Ref<Buffer> pIndexBuffer, const std::string& name = "Unnamed") noexcept;
 		
-		Mesh(const Mesh& otherMesh) noexcept;
-		Mesh& operator=(const Mesh& otherMesh) noexcept;
-		Mesh(Mesh&& otherMesh) noexcept;
-		Mesh& operator=(Mesh&& otherMesh) noexcept;
-		[[nodiscard]] const std::string& GetName() const noexcept { return m_Name; }
-		void SetName(const std::string& name) noexcept;
-		void SetOffsetTransform(const Transform& transform) noexcept;
-		[[nodiscard]] const Transform& GetOffsetTransform() const noexcept;
+		void SetOffsetTransform(const Matrix& transform) noexcept;
+		NO_DISCARD const Matrix& GetOffsetTransform() const noexcept;
 
-		[[nodiscard]] const AssetHandle& GetDefaultMaterialHandle() noexcept;
-		[[nodiscard]] Buffer* GetVertexBuffer() const noexcept;
-		[[nodiscard]] Buffer* GetIndexBuffer() const noexcept;
+		NO_DISCARD const AssetHandle& GetDefaultMaterialHandle() noexcept;
+		NO_DISCARD Buffer* GetVertexBuffer() const noexcept;
+		NO_DISCARD Buffer* GetIndexBuffer() const noexcept;
 
 		void SetDefaultMaterial(const AssetHandle& handle) noexcept;
 	private:
-		std::string m_Name;
-		Transform m_OffsetTransform{};
+		Matrix m_OffsetTransform{};
 		Ref<Buffer> m_pVertexBuffer = nullptr;
 		Ref<Buffer> m_pIndexBuffer = nullptr;
 

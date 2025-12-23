@@ -19,14 +19,14 @@ namespace Relentless
 
 	//Deserialize
 	std::unordered_map<AssetType, std::function<bool(const std::string&, AssetHandle&)>> DeserializerFuncs = {
-		{AssetType::Texture, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Texture>(path, outHandle); }},
+		{AssetType::Texture2D, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Texture2D>(path, outHandle); }},
 		{AssetType::Material, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Material>(path, outHandle); }},
 		{AssetType::Mesh, [](const std::string& path, AssetHandle& outHandle) { return Serializer::Deserialize<Mesh>(path, outHandle); }}
 	};
 
 	//Serialize
 	std::unordered_map<AssetType, std::function<bool(const std::string&, const AssetHandle&, bool)>> SerializerFuncs = {
-		{AssetType::Texture, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<Texture>(assetHandle, path, isABlockingOperation); }},
+		{AssetType::Texture2D, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<Texture2D>(assetHandle, path, isABlockingOperation); }},
 		{AssetType::Material, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<Material>(assetHandle, path, isABlockingOperation); }},
 		{AssetType::Mesh, [](const std::string& path, const AssetHandle& assetHandle, bool isABlockingOperation) { return Serializer::Serialize<Mesh>(assetHandle, path, isABlockingOperation); }}
 	};
@@ -82,38 +82,38 @@ namespace Relentless
 	template<>
 	bool Serializer::Serialize<Material>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept
 	{
-		Ref<Material> material = AssetManager::Get<Material>(assetHandle);
-		
-		MaterialData data{};
-		data.RenderMode = static_cast<uint8_t>(material->GetBlendMode());
-		data.AlbedoColor = material->m_AlbedoColor;
-		data.Metallic = material->m_Metallic;
-		data.EmissionColor = material->m_EmissionColor;
-		data.EmissionIntensity = material->m_EmissionIntensity;
-		data.Roughness = material->m_Roughness;
-		data.TilingFactor = material->m_TilingFactor;
-		data.Offset = material->m_Offset;
-		data.HeightScale = material->m_HeightScale;
-		data.AOScale = material->m_AOScale;
-		data.CombinedRoughnessMetallness = material->m_CombinedRoughnessMetallnesMap;
-
-		data.AlbedoTextureUUID = material->m_AlbedoTextureHandle.Uuid;
-		data.MetallicTextureUUID = material->m_MetallicTextureHandle.Uuid;
-		data.RoughnessTextureUUID = material->m_RoughnessTextureHandle.Uuid;
-		data.NormalMapUUID = material->m_NormalMapHandle.Uuid;
-		data.HeightMapUUID = material->m_HeightMapHandle.Uuid;
-		data.AmbientOcclusionTextureUUID = material->m_AmbientOcclusionTextureHandle.Uuid;
-		data.EmissionTextureUUID = material->m_EmissionTextureHandle.Uuid;
-
-		std::ofstream outFile(filepath, std::ios::binary);
-		RLS_ASSERT(outFile.is_open(), "[Serializer]: Failed to open output file.");
-
-		SerializeRassetHeader(assetHandle, outFile);
-		SerializeAssetTags(assetHandle, outFile);
-
-		outFile.write(reinterpret_cast<char*>(&data), sizeof(data));
-
-		outFile.close();
+		//Ref<Material> material = AssetManager::Get<Material>(assetHandle);
+		//
+		//MaterialData data{};
+		//data.RenderMode = static_cast<uint8_t>(material->GetBlendMode());
+		//data.AlbedoColor = material->m_AlbedoColor;
+		//data.Metallic = material->m_Metallic;
+		//data.EmissionColor = material->m_EmissionColor;
+		//data.EmissionIntensity = material->m_EmissionIntensity;
+		//data.Roughness = material->m_Roughness;
+		//data.TilingFactor = material->m_TilingFactor;
+		//data.Offset = material->m_Offset;
+		//data.HeightScale = material->m_HeightScale;
+		//data.AOScale = material->m_AOScale;
+		//data.CombinedRoughnessMetallness = material->m_CombinedRoughnessMetallnesMap;
+		//
+		//data.AlbedoTextureUUID = material->m_AlbedoTextureHandle.Uuid;
+		//data.MetallicTextureUUID = material->m_MetallicTextureHandle.Uuid;
+		//data.RoughnessTextureUUID = material->m_RoughnessTextureHandle.Uuid;
+		//data.NormalMapUUID = material->m_NormalMapHandle.Uuid;
+		//data.HeightMapUUID = material->m_HeightMapHandle.Uuid;
+		//data.AmbientOcclusionTextureUUID = material->m_AmbientOcclusionTextureHandle.Uuid;
+		//data.EmissionTextureUUID = material->m_EmissionTextureHandle.Uuid;
+		//
+		//std::ofstream outFile(filepath, std::ios::binary);
+		//RLS_ASSERT(outFile.is_open(), "[Serializer]: Failed to open output file.");
+		//
+		//SerializeRassetHeader(assetHandle, outFile);
+		//SerializeAssetTags(assetHandle, outFile);
+		//
+		//outFile.write(reinterpret_cast<char*>(&data), sizeof(data));
+		//
+		//outFile.close();
 
 		return true;
 	}
@@ -194,13 +194,13 @@ namespace Relentless
 	}
 
 	template<>
-	bool Serializer::Serialize<Texture>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept
+	bool Serializer::Serialize<Texture2D>(const AssetHandle& assetHandle, const std::filesystem::path& filepath, bool isABlockingOperation) noexcept
 	{
 		RLS_ASSERT(false, "TODO!");
 
-		Ref<Texture> texture = AssetManager::Get<Texture>(assetHandle);
-		ID3D12Resource* gpuInterface = texture->GetResource();
-		const D3D12_RESOURCE_DESC textureDescriptor = gpuInterface->GetDesc();
+		//Ref<Texture> texture = AssetManager::Get<Texture>(assetHandle);
+		//ID3D12Resource* gpuInterface = texture->GetResource();
+		//const D3D12_RESOURCE_DESC textureDescriptor = gpuInterface->GetDesc();
 
 		//GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
 		//ComPtr<ID3D12GraphicsCommandList4> pCopyCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
@@ -220,130 +220,130 @@ namespace Relentless
 		//else
 		//	ScheduleCommandListAndWaitForCompletion(pDirectCommandList);
 
-		const uint32_t mipLevels = textureDescriptor.MipLevels;
-		Texture2DSerializationContext context = {};
-		context.Path = filepath.string();
-		std::vector<ComPtr<ID3D12Resource>> stagingResources(mipLevels);
-		for (uint32_t mipLevel = 0u; mipLevel < mipLevels; ++mipLevel)
-		{
-			D3D12_HEAP_PROPERTIES heapProperties = {};
-			heapProperties.Type = D3D12_HEAP_TYPE_READBACK;
-			heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			heapProperties.CreationNodeMask = 1;
-			heapProperties.VisibleNodeMask = 1;
-
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = {};
-			uint64_t mipSize = 0u;
-			//DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&textureDescriptor, mipLevel, 1, 0, &footprint, nullptr, nullptr, &mipSize));
-
-			// Create buffer resource description for staging
-			D3D12_RESOURCE_DESC bufferDesc = {};
-			bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-			bufferDesc.Width = mipSize;
-			bufferDesc.Height = 1;
-			bufferDesc.DepthOrArraySize = 1;
-			bufferDesc.MipLevels = 1;
-			bufferDesc.SampleDesc.Count = 1;
-			bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-// 			DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
-// 				&heapProperties,
-// 				D3D12_HEAP_FLAG_NONE,
-// 				&bufferDesc,
-// 				D3D12_RESOURCE_STATE_COPY_DEST,
-// 				nullptr,
-// 				IID_PPV_ARGS(&stagingResources[mipLevel])));
-
-			// Copy the mip level to the staging resource
-			D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
-			srcLocation.pResource = gpuInterface;
-			srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-			srcLocation.SubresourceIndex = mipLevel;
-
-			D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
-			dstLocation.pResource = stagingResources[mipLevel].Get();
-			dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-			dstLocation.PlacedFootprint = footprint;
-		
-			//DXCall_STD(pCopyCommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
-		}
-
-		//if (isABlockingOperation)
-		//	Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pCopyCommandList);
-		//else
-		//	ScheduleCommandListAndWaitForCompletion(pCopyCommandList);
-
-		//ComPtr<ID3D12GraphicsCommandList4> pTransitionCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
-
-		resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		resourceTransitionBarrier.Transition.pResource = texture->GetResource();
-		resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
-		resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-		resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		//DXCall_STD(pTransitionCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
-
-		s_Data.UUIDToStagingResources[assetHandle.Uuid] = context;
-
-		//if (isABlockingOperation)
-		//	Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pTransitionCommandList);
-		//else
-		//	ScheduleCommandListAndWaitForCompletion(pTransitionCommandList);
-
-		//.........................................................//
-
-		std::ofstream outFile(s_Data.UUIDToStagingResources[assetHandle.Uuid].Path, std::ios::binary);
-		if (!outFile.is_open())
-		{
-			RLS_CORE_ERROR("[Serializer]: Unable to serialize Texture2D to path '{0}'; Unable to open output file.", s_Data.UUIDToStagingResources[assetHandle.Uuid].Path.c_str());
-			return false;
-		}
-
-		SerializeRassetHeader(assetHandle, outFile);
-		SerializeAssetTags(assetHandle, outFile);
-
-		TextureHeader textureHeader
-		{
-			.BaseWidth = texture->GetWidth(),
-			.BaseHeight = texture->GetHeight(),
-			.NrOfMips = mipLevels,
-			.Samples = texture->GetSampleCount(),
-			.Format = D3D::ConvertFormat(texture->GetFormat()),
-			.IsSRGB = EnumHasAnyFlags(texture->GetDesc().Flags, TextureFlag::sRGB)
-		};
-		outFile.write(reinterpret_cast<char*>(&textureHeader), sizeof(textureHeader));
-
-		// Process each mip level
-		for (uint32_t mipLevel = 0; mipLevel < mipLevels; ++mipLevel)
-		{
-			ComPtr<ID3D12Resource> pStagingResource = stagingResources[mipLevel];
-
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
-			uint64_t mipSize = 0u;
-
-// 			DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
-// 			(
-// 				&textureDescriptor,
-// 				mipLevel,
-// 				1u,
-// 				0u,
-// 				&mipFootprint,
-// 				nullptr,
-// 				nullptr,
-// 				&mipSize
-// 			));
-
-			// Map the staging resource
-			BYTE* pData = nullptr;
-			D3D12_RANGE readRange = { 0, mipSize };
-			//DXCall(pStagingResource->Map(0, &readRange, reinterpret_cast<void**>(&pData)));
-
-			outFile.write(reinterpret_cast<const char*>(pData), mipSize);
-
-			//DXCall_STD(pStagingResource->Unmap(0, nullptr));
-		}
-		outFile.close();
+		//const uint32_t mipLevels = textureDescriptor.MipLevels;
+		//Texture2DSerializationContext context = {};
+		//context.Path = filepath.string();
+		//std::vector<ComPtr<ID3D12Resource>> stagingResources(mipLevels);
+		//for (uint32_t mipLevel = 0u; mipLevel < mipLevels; ++mipLevel)
+		//{
+		//	D3D12_HEAP_PROPERTIES heapProperties = {};
+		//	heapProperties.Type = D3D12_HEAP_TYPE_READBACK;
+		//	heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		//	heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		//	heapProperties.CreationNodeMask = 1;
+		//	heapProperties.VisibleNodeMask = 1;
+		//
+		//	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = {};
+		//	uint64_t mipSize = 0u;
+		//	//DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints(&textureDescriptor, mipLevel, 1, 0, &footprint, nullptr, nullptr, &mipSize));
+		//
+		//	// Create buffer resource description for staging
+		//	D3D12_RESOURCE_DESC bufferDesc = {};
+		//	bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		//	bufferDesc.Width = mipSize;
+		//	bufferDesc.Height = 1;
+		//	bufferDesc.DepthOrArraySize = 1;
+		//	bufferDesc.MipLevels = 1;
+		//	bufferDesc.SampleDesc.Count = 1;
+		//	bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		//
+// 		//	DXCall(D3D12Core::GetDevice()->CreateCommittedResource(
+// 		//		&heapProperties,
+// 		//		D3D12_HEAP_FLAG_NONE,
+// 		//		&bufferDesc,
+// 		//		D3D12_RESOURCE_STATE_COPY_DEST,
+// 		//		nullptr,
+// 		//		IID_PPV_ARGS(&stagingResources[mipLevel])));
+		//
+		//	// Copy the mip level to the staging resource
+		//	D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
+		//	srcLocation.pResource = gpuInterface;
+		//	srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		//	srcLocation.SubresourceIndex = mipLevel;
+		//
+		//	D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
+		//	dstLocation.pResource = stagingResources[mipLevel].Get();
+		//	dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		//	dstLocation.PlacedFootprint = footprint;
+		//
+		//	//DXCall_STD(pCopyCommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr));
+		//}
+		//
+		////if (isABlockingOperation)
+		////	Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pCopyCommandList);
+		////else
+		////	ScheduleCommandListAndWaitForCompletion(pCopyCommandList);
+		//
+		////ComPtr<ID3D12GraphicsCommandList4> pTransitionCommandList = gpuTaskManager.RequestCommandList(CommandType::Direct);
+		//
+		//resourceTransitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		//resourceTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		//resourceTransitionBarrier.Transition.pResource = texture->GetResource();
+		//resourceTransitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+		//resourceTransitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		//resourceTransitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		////DXCall_STD(pTransitionCommandList->ResourceBarrier(1u, &resourceTransitionBarrier));
+		//
+		//s_Data.UUIDToStagingResources[assetHandle.Uuid] = context;
+		//
+		////if (isABlockingOperation)
+		////	Application::Get().GetGPUTaskManager().ExecuteCommandListBlocking(pTransitionCommandList);
+		////else
+		////	ScheduleCommandListAndWaitForCompletion(pTransitionCommandList);
+		//
+		////.........................................................//
+		//
+		//std::ofstream outFile(s_Data.UUIDToStagingResources[assetHandle.Uuid].Path, std::ios::binary);
+		//if (!outFile.is_open())
+		//{
+		//	RLS_CORE_ERROR("[Serializer]: Unable to serialize Texture2D to path '{0}'; Unable to open output file.", s_Data.UUIDToStagingResources[assetHandle.Uuid].Path.c_str());
+		//	return false;
+		//}
+		//
+		//SerializeRassetHeader(assetHandle, outFile);
+		//SerializeAssetTags(assetHandle, outFile);
+		//
+		//TextureHeader textureHeader
+		//{
+		//	.BaseWidth = texture->GetWidth(),
+		//	.BaseHeight = texture->GetHeight(),
+		//	.NrOfMips = mipLevels,
+		//	.Samples = texture->GetSampleCount(),
+		//	.Format = D3D::ConvertFormat(texture->GetFormat()),
+		//	.IsSRGB = EnumHasAnyFlags(texture->GetDesc().Flags, TextureFlag::sRGB)
+		//};
+		//outFile.write(reinterpret_cast<char*>(&textureHeader), sizeof(textureHeader));
+		//
+		//// Process each mip level
+		//for (uint32_t mipLevel = 0; mipLevel < mipLevels; ++mipLevel)
+		//{
+		//	ComPtr<ID3D12Resource> pStagingResource = stagingResources[mipLevel];
+		//
+		//	D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
+		//	uint64_t mipSize = 0u;
+		//
+// 		//	DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
+// 		//	(
+// 		//		&textureDescriptor,
+// 		//		mipLevel,
+// 		//		1u,
+// 		//		0u,
+// 		//		&mipFootprint,
+// 		//		nullptr,
+// 		//		nullptr,
+// 		//		&mipSize
+// 		//	));
+		//
+		//	// Map the staging resource
+		//	BYTE* pData = nullptr;
+		//	D3D12_RANGE readRange = { 0, mipSize };
+		//	//DXCall(pStagingResource->Map(0, &readRange, reinterpret_cast<void**>(&pData)));
+		//
+		//	outFile.write(reinterpret_cast<const char*>(pData), mipSize);
+		//
+		//	//DXCall_STD(pStagingResource->Unmap(0, nullptr));
+		//}
+		//outFile.close();
 
 		return true;
 	}
@@ -569,99 +569,99 @@ namespace Relentless
 	}
 
 	template<>
-	bool Serializer::Deserialize<Texture>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
+	bool Serializer::Deserialize<Texture2D>(const std::filesystem::path& filepath, AssetHandle& outHandle) noexcept
 	{
-		std::ifstream inFile(filepath, std::ios::binary);
-		RLS_ASSERT(inFile.is_open(), "[Serializer]: Unable to open file with path '{0}'", filepath.string().c_str());
-
-		auto [signature, headerVersion] = DeserializeHeaderSignatureAndVersion(inFile);
-		if (signature != RASSET_SIGNATURE)
-		{
-			RLS_CORE_ERROR("[Serializer]: Unable to load asset file with path '{0}'. Asset is either invalid or corrupt.", filepath.string().c_str());
-			outHandle = NULL_HANDLE;
-			return false;
-		}
-
-		AssetType type = AssetType::Undefined;
-		UUID uuid = NULL_UUID;
-		std::string name = "";
-		uint16_t tagsByteSize = 0u;
-
-		switch (headerVersion)
-		{
-		case 1:
-		{
-			const RassetHeader_1 header = DeserializeRAssetHeaderVersion1(inFile);
-			type = header.AssetType;
-			uuid = header.UUID;
-			name = header.Name;
-			tagsByteSize = header.TagsByteSize;
-			break;
-		}
-		default:
-			RLS_CORE_ERROR("[Serializer]: Unable to load asset file with path {0}. Asset version '{1}' does not support deserialization.", filepath.string().c_str(), std::to_string(headerVersion).c_str());
-			outHandle = NULL_HANDLE;
-			return false;
-		}
-
-		RLS_ASSERT(type == AssetType::Texture, "[Serializer]: Asset type mismatch encountered.");
-
-		//Move past eventual tag data:
-		inFile.seekg(tagsByteSize, std::ios_base::cur);
-
-		TextureHeader textureHeader = {};
-		inFile.read(reinterpret_cast<char*>(&textureHeader), sizeof(TextureHeader));
-
-		//Texture2DSpecification specification;
-// 		specification.Name = name;
-// 		specification.Width = textureHeader.BaseWidth;
-// 		specification.Height = textureHeader.BaseHeight;
-// 		specification.Format = textureHeader.Format;
-// 		specification.MipCount = textureHeader.NrOfMips;
-// 		specification.IsSRGB = textureHeader.IsSRGB;
-// 		specification.SampleCount = textureHeader.Samples;
-
-		//const AssetHandle handle = AssetManager::CreateNew<Texture2D>(specification, uuid, filepath.string());
-		//Ref<TextureEx> pTexture = AssetManager::Get<TextureEx>(handle);
-
-		//const D3D12_RESOURCE_DESC textureResourceDescriptor = pTexture->GetInterface()->GetDesc();
-		//DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
-		//uploadBatch.Begin();
-
-		//GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
-		for (uint32_t mipLevel = 0u; mipLevel < textureHeader.NrOfMips; ++mipLevel)
-		{
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
-			uint64_t mipSize = 0u;
-
-			//DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
-			//(
-			//	&textureResourceDescriptor,
-			//	mipLevel,
-			//	1u,
-			//	0u,
-			//	&mipFootprint,
-			//	nullptr,
-			//	nullptr,
-			//	&mipSize
-			//));
-
-			std::vector<BYTE> mipData(mipSize);
-			inFile.read(reinterpret_cast<char*>(mipData.data()), mipSize);
-
-			D3D12_SUBRESOURCE_DATA subresourceData = {};
-			subresourceData.pData = mipData.data();
-			subresourceData.RowPitch = mipFootprint.Footprint.RowPitch;
-			subresourceData.SlicePitch = subresourceData.RowPitch * mipFootprint.Footprint.Height;
-
-			//uploadBatch.Upload(pTexture->GetInterface().Get(), mipLevel, &subresourceData, 1);
-		}
-		//uploadBatch.Transition(pTexture->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		//auto future = uploadBatch.End(gpuTaskManager.GetCommandQueue(CommandType::Direct).Get());
-		//pTexture->SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		//future.wait();
-
-		//outHandle = handle;
+		//std::ifstream inFile(filepath, std::ios::binary);
+		//RLS_ASSERT(inFile.is_open(), "[Serializer]: Unable to open file with path '{0}'", filepath.string().c_str());
+		//
+		//auto [signature, headerVersion] = DeserializeHeaderSignatureAndVersion(inFile);
+		//if (signature != RASSET_SIGNATURE)
+		//{
+		//	RLS_CORE_ERROR("[Serializer]: Unable to load asset file with path '{0}'. Asset is either invalid or corrupt.", filepath.string().c_str());
+		//	outHandle = NULL_HANDLE;
+		//	return false;
+		//}
+		//
+		//AssetType type = AssetType::Undefined;
+		//UUID uuid = NULL_UUID;
+		//std::string name = "";
+		//uint16_t tagsByteSize = 0u;
+		//
+		//switch (headerVersion)
+		//{
+		//case 1:
+		//{
+		//	const RassetHeader_1 header = DeserializeRAssetHeaderVersion1(inFile);
+		//	type = header.AssetType;
+		//	uuid = header.UUID;
+		//	name = header.Name;
+		//	tagsByteSize = header.TagsByteSize;
+		//	break;
+		//}
+		//default:
+		//	RLS_CORE_ERROR("[Serializer]: Unable to load asset file with path {0}. Asset version '{1}' does not support deserialization.", filepath.string().c_str(), std::to_string(headerVersion).c_str());
+		//	outHandle = NULL_HANDLE;
+		//	return false;
+		//}
+		//
+		//RLS_ASSERT(type == AssetType::Texture, "[Serializer]: Asset type mismatch encountered.");
+		//
+		////Move past eventual tag data:
+		//inFile.seekg(tagsByteSize, std::ios_base::cur);
+		//
+		//TextureHeader textureHeader = {};
+		//inFile.read(reinterpret_cast<char*>(&textureHeader), sizeof(TextureHeader));
+		//
+		////Texture2DSpecification specification;
+// 		//specification.Name = name;
+// 		//specification.Width = textureHeader.BaseWidth;
+// 		//specification.Height = textureHeader.BaseHeight;
+// 		//specification.Format = textureHeader.Format;
+// 		//specification.MipCount = textureHeader.NrOfMips;
+// 		//specification.IsSRGB = textureHeader.IsSRGB;
+// 		//specification.SampleCount = textureHeader.Samples;
+		//
+		////const AssetHandle handle = AssetManager::CreateNew<Texture2D>(specification, uuid, filepath.string());
+		////Ref<TextureEx> pTexture = AssetManager::Get<TextureEx>(handle);
+		//
+		////const D3D12_RESOURCE_DESC textureResourceDescriptor = pTexture->GetInterface()->GetDesc();
+		////DirectX::ResourceUploadBatch uploadBatch(D3D12Core::GetDevice().Get());
+		////uploadBatch.Begin();
+		//
+		////GPUTaskManager& gpuTaskManager = Application::Get().GetGPUTaskManager();
+		//for (uint32_t mipLevel = 0u; mipLevel < textureHeader.NrOfMips; ++mipLevel)
+		//{
+		//	D3D12_PLACED_SUBRESOURCE_FOOTPRINT mipFootprint = {};
+		//	uint64_t mipSize = 0u;
+		//
+		//	//DXCall_STD(D3D12Core::GetDevice()->GetCopyableFootprints
+		//	//(
+		//	//	&textureResourceDescriptor,
+		//	//	mipLevel,
+		//	//	1u,
+		//	//	0u,
+		//	//	&mipFootprint,
+		//	//	nullptr,
+		//	//	nullptr,
+		//	//	&mipSize
+		//	//));
+		//
+		//	std::vector<BYTE> mipData(mipSize);
+		//	inFile.read(reinterpret_cast<char*>(mipData.data()), mipSize);
+		//
+		//	D3D12_SUBRESOURCE_DATA subresourceData = {};
+		//	subresourceData.pData = mipData.data();
+		//	subresourceData.RowPitch = mipFootprint.Footprint.RowPitch;
+		//	subresourceData.SlicePitch = subresourceData.RowPitch * mipFootprint.Footprint.Height;
+		//
+		//	//uploadBatch.Upload(pTexture->GetInterface().Get(), mipLevel, &subresourceData, 1);
+		//}
+		////uploadBatch.Transition(pTexture->GetInterface().Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		////auto future = uploadBatch.End(gpuTaskManager.GetCommandQueue(CommandType::Direct).Get());
+		////pTexture->SetCurrentState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		////future.wait();
+		//
+		////outHandle = handle;
 		return true;
 	}
 

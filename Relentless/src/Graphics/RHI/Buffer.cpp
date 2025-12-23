@@ -47,6 +47,22 @@ namespace Relentless
 		return m_pSRV->GetDescriptorIndex();
 	}
 
+	UnorderedAccessView* Buffer::GetUAV() const noexcept
+	{
+		return m_pUAV;
+	}
+
+	UnorderedAccessView* Buffer::GetUAVNonVisible() const noexcept
+	{
+		return m_pUAVNonVisible;
+	}
+
+	uint32 Buffer::GetUAVIndex() const noexcept
+	{
+		RLS_ASSERT(m_pUAV, "Unordered Access View Is Invalid.");
+		return m_pUAV->GetDescriptorIndex();
+	}
+
 	void Buffer::Map(uint32 subresource, const D3D12_RANGE* pRange) noexcept
 	{
 		ID3D12Resource* pResource = GetResource();
@@ -67,6 +83,16 @@ namespace Relentless
 	void Buffer::SetSRV(Ref<ShaderResourceView> pSRV) noexcept
 	{
 		m_pSRV = pSRV;
+	}
+
+	void Buffer::SetUAV(Ref<UnorderedAccessView> pUAV) noexcept
+	{
+		m_pUAV = pUAV;
+	}
+
+	void Buffer::SetUAVNonVisible(Ref<UnorderedAccessView> pUAV) noexcept
+	{
+		m_pUAVNonVisible = pUAV;
 	}
 
 }

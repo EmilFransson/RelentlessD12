@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Callback/Broadcaster.h"
-#include "Graphics/RHI/RHI.h"
 #include "IFactory.h"
 
 namespace Relentless
@@ -9,18 +8,33 @@ namespace Relentless
 	class TextureFactory : public IFactory
 	{
 	public:
-		Broadcaster<void(const ImportedAsset& importedAsset, bool success)> OnDone;
+		//Broadcaster<void(const ImportedAsset& importedAsset, bool success)> OnDone;
 
 		void SetCompressionType(ETextureCompressionType compressionType) noexcept;
 		void SetGenerateMipmaps(bool enable) noexcept;
 		void SetImportAsSRGB(bool enable) noexcept;
 
+		NO_DISCARD bool CanCreateNew() const noexcept override;
+		NO_DISCARD bool CanImport(const Path& aPath) const noexcept override;
+		virtual Ref<IFactory> Clone() noexcept override;
+
+		NO_DISCARD bool DoesSupportAsset(IAsset* aAsset) const noexcept override;
+
+		NO_DISCARD std::vector<String> GetSupportedFileExtensions() const noexcept override;
+		NO_DISCARD std::vector<String> GetFormats() const noexcept override;
+
+		const FactoryImportResult& ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept override;
+
+		void SetGraphicsDevice(GraphicsDevice* aGraphicsDevice) noexcept;
+		NO_DISCARD bool SupportsFileExtension(const std::string_view aFileExtension) const noexcept override;
 	private:
-		virtual void Execute(const Path& filePath, GraphicsDevice* pDevice) noexcept override;
 		void Finalize(bool success) noexcept;
 		[[nodiscard]] bool ImportTexture() noexcept;
 	private:
-		ImportedAsset m_ImportedTextureAsset;
+		std::array<String, 9> m_SupportedExensions { ".exr", ".tga", ".jpg", ".jpeg", ".png", ".bmp", ".dds", ".tif", ".hdr" };
+		std::array<String, 9> m_SupportedFormats{ "EXR", "TGA", "JPG", "JPEG", "PNG", "BMP", "DDS", "TIFF", "HDR" };
+
+		//ImportedAsset m_ImportedTextureAsset;
 		Path m_SrcPath;
 
 		GraphicsDevice* m_pDevice = nullptr;

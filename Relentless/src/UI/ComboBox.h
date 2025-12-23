@@ -9,22 +9,28 @@ namespace Relentless
 	public:
 		ComboBox(int flags = 0) noexcept;
 
+		struct SelectionInfo
+		{
+			const char* Name = nullptr;
+			int Index = 0;
+		};
+		
 		ComboBox* AddSelectables(Span<const char*> selectables) noexcept;
 		virtual [[nodiscard]] float CalcDesiredWidth() const noexcept override;
 		[[nodiscard]] const char* GetSelectedItem() const;
 		[[nodiscard]] int GetSelectedIndex() const;
 
 		template<typename InstanceType>
-		ComboBox* OnSelectionChanged(InstanceType* instance, void(InstanceType::* method)(const char*)) noexcept
+		ComboBox* OnSelectionChanged(InstanceType* instance, void(InstanceType::* method)(const SelectionInfo&)) noexcept
 		{
-			m_OnSelectionChanged = [instance, method](const char* selected) { return (instance->*method)(selected); };
+			m_OnSelectionChanged = [instance, method](const SelectionInfo& aSelection) { return (instance->*method)(aSelection); };
 			return this;
 		}
 
 		template<typename T>
 		ComboBox* OnSelectionChanged(T&& callback) noexcept
 		{
-			m_OnSelectionChanged = Callback<void(const char*)>(std::forward<T>(callback));
+			m_OnSelectionChanged = Callback<void(const SelectionInfo&)>(std::forward<T>(callback));
 			return this;
 		}
 
@@ -34,7 +40,8 @@ namespace Relentless
 		void SetDropDownButtonActiveColor(const Color& color) noexcept;
 		void SetDropDownButtonHoveredColor(const Color& color) noexcept;
 
-		ComboBox* SetInitiallySelectedItem(const char* pItem) noexcept;
+		ComboBox* SetSelectedItem(const char* pItem) noexcept;
+		ComboBox* SetSelectedItem(int aIndex) noexcept;
 
 		void SetSelectableBackgroundColor(const Color& color) noexcept;
 
@@ -42,10 +49,10 @@ namespace Relentless
 		virtual void OnPreRender() noexcept override;
 		virtual void OnRender() noexcept override;
 	private:
-		Callback<void(const char* selected)> m_OnSelectionChanged;
+		Callback<void(const SelectionInfo&)> m_OnSelectionChanged;
 
 		std::vector<const char*> m_Selectables;
-		int m_Selected = 0;
+		SelectionInfo m_CurrentSelection;
 		bool m_IsHovered = false;
 	};
 }

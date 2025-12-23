@@ -51,7 +51,8 @@ namespace Relentless
 			Label* pDisplayNameLabel = pDisplayBox->AddWidget(new Label(createInfo.Name, ImGui::GetIO().Fonts->Fonts[2]));
 			pDisplayNameLabel->SetTooltipText(createInfo.Name);
 
-			pSwitcher->Add(new EditableTextBox(Vector2(-1.0f, 35.0f)));
+			pSwitcher->Add(new EditableTextBox())
+				->SetSizePolicy(ESizePolicy::Stretch);
 
 			pSwitcher->SetActiveWidgetIndex(0);
 

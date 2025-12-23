@@ -238,34 +238,107 @@ namespace Relentless
 			return frustum;
 		}
 
-		inline constexpr [[nodiscard]] float CandelaToRadiantIntensity(float candela) noexcept
+		inline NO_DISCARD float Cos(float aRadians) noexcept
 		{
-			return candela / Math::PhotopicEfficacy;
+			return std::cos(aRadians);
 		}
 
-		inline constexpr [[nodiscard]] float LumenToRadiantIntensity(float lumen, float solidAngleSr = 4.0f * Math::PI) noexcept
-		{
-			return (lumen / Math::PhotopicEfficacy) / solidAngleSr;
-		}
+// 		inline NO_DISCARD float Luminance(const Vector3& rgb)
+// 		{
+// 			return rgb.Dot(Vector3(0.2126f, 0.7152f, 0.0722f));
+// 		}
+// 
+		//inline NO_DISCARD float ConeSolidAngle(float aHalfAngleRadians) noexcept
+		//{
+		//	// Ω = 2π(1 - cos(theta))
+		//	return 2.0f * Math::PI * (1.0f - Math::Cos(aHalfAngleRadians));
+		//}
+// 
+// 		inline constexpr NO_DISCARD float CandelaToRadiantIntensity(float candela) noexcept
+// 		{
+// 			return candela / Math::PhotopicEfficacy;
+// 		}
+// 
+// 		inline NO_DISCARD float CandelaToLumen_Spot(float aCandelaValue, float aOuterHalfAngleRadians) noexcept
+// 		{
+// 			return aCandelaValue * ConeSolidAngle(aOuterHalfAngleRadians);
+// 		}
+// 
+// 		inline NO_DISCARD float LumenToCandela_Spot(float aLumenValue, float aOuterHalfAngleRadians) noexcept
+// 		{
+// 			const float omega = ConeSolidAngle(aOuterHalfAngleRadians);
+// 			return (omega > 1e-6f) ? (aLumenValue / omega) : 0.0f;
+// 		}
+// 
+// 		inline constexpr NO_DISCARD float LumenToRadiantIntensity(float lumen, float solidAngleSr = 4.0f * Math::PI) noexcept
+// 		{
+// 			return (lumen / Math::PhotopicEfficacy) / solidAngleSr;
+// 		}
+// 
+// 		inline constexpr NO_DISCARD float LumenToCandela_Point(float aLumenValue) noexcept
+// 		{
+// 			return aLumenValue / (4.0f * Math::PI);
+// 		}
+// 
+// 		inline constexpr NO_DISCARD float CandelaToLumen_Point(float aCandelaValue) noexcept
+// 		{
+// 			return aCandelaValue * (4.0f * PI);
+// 		}
+// 
+// 		inline constexpr [[nodiscard]] float LuxToRadiantIrradiance(float lux) noexcept
+// 		{
+// 			return lux / Math::PhotopicEfficacy;
+// 		}
+// 
+// 		inline constexpr [[nodiscard]] float RadiantIrradianceToLux(float radiantIrradiance) noexcept
+// 		{
+// 			return radiantIrradiance * Math::PhotopicEfficacy;
+// 		}
+// 
+// 		inline constexpr NO_DISCARD float RadiantIntensityToCandela(float radiantIntensity) noexcept
+// 		{
+// 			return radiantIntensity * Math::PhotopicEfficacy;
+// 		}
+// 
+// 		inline constexpr [[nodiscard]] float RadiantIntensityToLumen(float radiantIntensity, float solidAngleSr = 4.0f * Math::PI) noexcept
+// 		{
+// 			return radiantIntensity * solidAngleSr * Math::PhotopicEfficacy;
+// 		}
 
-		inline constexpr [[nodiscard]] float LuxToRadiantIrradiance(float lux) noexcept
+		namespace Photometry
 		{
-			return lux / Math::PhotopicEfficacy;
-		}
+			inline NO_DISCARD float SolidAngle_Cone(float aOuterConeAngleRadians) noexcept
+			{
+				const float c = Math::Cos(aOuterConeAngleRadians);
+				return 2.0f * Math::PI * (1.0f - c);
+			}
 
-		inline constexpr [[nodiscard]] float RadiantIrradianceToLux(float radiantIrradiance) noexcept
-		{
-			return radiantIrradiance * Math::PhotopicEfficacy;
-		}
+			inline constexpr NO_DISCARD float CandelaToLumen_Point(float aCandelaValue) noexcept
+			{
+				return aCandelaValue * (4.0f * Math::PI);
+			}
 
-		inline constexpr [[nodiscard]] float RadiantIntensityToCandela(float radiantIntensity) noexcept
-		{
-			return radiantIntensity * Math::PhotopicEfficacy;
-		}
+			inline NO_DISCARD float CandelaToLumen_Spot(float aCandelaValue, float aOuterHalfAngleRadians) noexcept
+			{
+				return aCandelaValue * SolidAngle_Cone(aOuterHalfAngleRadians);
+			}
 
-		inline constexpr [[nodiscard]] float RadiantIntensityToLumen(float radiantIntensity, float solidAngleSr = 4.0f * Math::PI) noexcept
-		{
-			return radiantIntensity * solidAngleSr * Math::PhotopicEfficacy;
+			inline NO_DISCARD float Luminance(const Vector3& rgb)
+			{
+				return rgb.Dot(Vector3(0.2126f, 0.7152f, 0.0722f));
+			}
+
+			inline NO_DISCARD float LumenToCandela_Point(float aLumenValue) noexcept
+			{
+				return aLumenValue / (4.0f * Math::PI);
+			}
+
+			inline NO_DISCARD float LumenToCandela_Spot(float aLumenValue, float aOuterConeAngleRadians) noexcept
+			{
+				const float omega = SolidAngle_Cone(aOuterConeAngleRadians);
+				const float safeOmega = Math::Max(omega, 1e-6f);
+				return aLumenValue / safeOmega;
+			}
 		}
 
 		[[nodiscard]] Color MakeFromColorTemperature(float Temp) noexcept;

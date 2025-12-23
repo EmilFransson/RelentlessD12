@@ -3,8 +3,8 @@
 
 namespace Relentless
 {
-	ViewportPanel::ViewportPanel(const char* pName, ImGuiWindowFlags flags, Editor* pEditor, uint32 renderViewIndex) noexcept
-		: PanelBase(pName, flags), m_pEditor{pEditor}, m_RenderViewIndex{renderViewIndex}
+	ViewportPanel::ViewportPanel(const char* pName, ImGuiWindowFlags flags, std::weak_ptr<Editor> aEditor, uint32 renderViewIndex) noexcept
+		: IEditorPanel(pName, flags, aEditor), m_RenderViewIndex{renderViewIndex}
 	{
 		m_pCamera = PerspectiveCamera::Create();
 
@@ -156,6 +156,23 @@ namespace Relentless
 
 	void ViewportPanel::Update() noexcept
 	{
+		{
+			//CHANGE!
+
+			const IntRect screenRect = m_pCanvas->GetScreenRect();
+
+			m_ScreenPosition = Vector2u(screenRect.Left, screenRect.Top);
+
+			constexpr int cameraRectHorizontalOffset = 4;
+			constexpr int cameraRectTopOffset = 60;
+			constexpr int cameraRectBottomOffset = 8;
+
+			m_CameraValidScreenRect.Left = screenRect.Left + cameraRectHorizontalOffset;
+			m_CameraValidScreenRect.Top = screenRect.Top + cameraRectTopOffset;
+			m_CameraValidScreenRect.Right = screenRect.Right - cameraRectHorizontalOffset;
+			m_CameraValidScreenRect.Bottom = screenRect.Bottom - cameraRectBottomOffset;
+		}
+
 		m_pCameraController->Update();
 		m_pCamera->Update();
 	}
@@ -208,7 +225,11 @@ namespace Relentless
 
 	void ViewportPanel::HandleTransformGizmoInteraction() noexcept
 	{
-		std::vector<entity> participatingEntities = m_pEditor->GetTransformSelection();
+		auto pEditor = m_pEditor.lock();
+		if (!pEditor)
+			return;
+
+		std::vector<entity> participatingEntities = pEditor->GetTransformSelection();
 		if (participatingEntities.empty())
 			return;
 
@@ -218,7 +239,7 @@ namespace Relentless
 			.WorldToView = m_pCamera->GetViewTransform().WorldToView,
 			.ViewToClip = m_pCamera->GetViewTransform().ViewToClip,
 			.Rect = m_pCanvas->GetScreenRect(),
-			.pScene = m_pEditor->GetActiveScene(),
+			.pScene = pEditor->GetActiveScene(),
 		};
 
 		m_pTransformController->Execute(transformContext);
@@ -287,7 +308,11 @@ namespace Relentless
 
 	Texture* ViewportPanel::OnCanvasTargetRequest() const noexcept
 	{
-		return m_pEditor->GetRenderView(m_RenderViewIndex).pTarget.Get();
+		auto pEditor = m_pEditor.lock();
+		if (!pEditor)
+			return nullptr;
+
+		return pEditor->GetRenderView(m_RenderViewIndex).pTarget.Get();
 	}
 
 	void ViewportPanel::OnCanvasRenderEnd() noexcept
@@ -360,7 +385,13 @@ namespace Relentless
 			case ETransformGizmoType::Rotate:
 			{
 				if (Keyboard::IsKeyDown(RLS_Key::Alt))
-					m_pEditor->OnViewportEntityDuplicationRequest();
+				{
+					auto pEditor = m_pEditor.lock();
+					if (!pEditor)
+						return false;
+
+					pEditor->OnViewportEntityDuplicationRequest();
+				}
 				break;
 			}
 			}
@@ -594,12 +625,20 @@ namespace Relentless
 
 	float ViewportPanel::OnEV100Requested() const noexcept
 	{
-		return Math::Log2f(m_pEditor->GetRenderView(m_RenderViewIndex).Exposure);
+		auto pEditor = m_pEditor.lock();
+		if (!pEditor)
+			return 0.0f;
+
+		return Math::Log2f(1.0f/*pEditor->GetRenderView(m_RenderViewIndex).Exposure*/);
 	}
 
 	void ViewportPanel::OnEV100Changed(float ev100) noexcept
 	{
-		m_pEditor->GetRenderView(m_RenderViewIndex).Exposure = Math::Pow2f(ev100);
+		auto pEditor = m_pEditor.lock();
+		if (!pEditor)
+			return;
+
+		pEditor->GetRenderView(m_RenderViewIndex)./*Exposure*/MinLogLuminance = Math::Pow2f(ev100);
 	}
 
 	void ViewportPanel::OnCameraFarViewPlaneChanged(float farPlane) noexcept

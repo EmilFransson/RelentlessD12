@@ -73,7 +73,7 @@ namespace Relentless
 	public:
 		static Ref<IFactory> CreateDefaultFactory(ExtensionType extensionType) noexcept;
 
-		static AssetImportBatch RequestAsyncLoad(Span<AssetImportTask> importTasks, Ref<ImporterFeedbackContext> pFeedbackContext = nullptr) noexcept;
+		//static AssetImportBatch RequestAsyncLoad(Span<AssetImportTask> importTasks, Ref<ImporterFeedbackContext> pFeedbackContext = nullptr) noexcept;
 
 		//static std::future<void> RequestAsyncLoadFromFile(const std::filesystem::path& filepath, const std::filesystem::path& dstAssetDirectorPath, const std::optional<AssetImportSettingsVariant>& optionalImportSettings = std::nullopt) noexcept;
 		//static [[nodiscard]] bool ImportModel(const std::filesystem::path& fullPath, const std::filesystem::path& dstAssetDirectorPath, bool isABlockingOperation, const MeshImportSettings& importSettings = {}) noexcept;

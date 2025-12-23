@@ -1,9 +1,10 @@
 #pragma once
-
 #include <Relentless.h>
 
 #include "../Controller/PerspectiveCameraController.h"
 #include "../Controller/TransformGizmoController.h"
+
+#include "IEditorPanel.h"
 
 namespace Relentless
 {
@@ -11,10 +12,10 @@ namespace Relentless
 
 	enum class EViewportState : uint8 { None = 0u, Default, NavigatingScene, TransformingGizmo };
 
-	class ViewportPanel : public PanelBase
+	class ViewportPanel : public IEditorPanel
 	{
 	public:
-		ViewportPanel(const char* pName, ImGuiWindowFlags flags, Editor* pEditor, uint32 renderViewIndex) noexcept;
+		ViewportPanel(const char* pName, ImGuiWindowFlags flags, std::weak_ptr<Editor> aEditor, uint32 renderViewIndex) noexcept;
 		virtual ~ViewportPanel() noexcept override = default;
 
 		[[nodiscard]] std::shared_ptr<PerspectiveCamera> GetCamera() const noexcept;
@@ -111,7 +112,6 @@ namespace Relentless
 		Vector2u m_ScreenPosition = Vector2u::Zero();
 		Vector2i m_ViewportSize = Vector2i::Zero();
 
-		Editor* m_pEditor = nullptr;
 		std::shared_ptr<PerspectiveCamera> m_pCamera = nullptr;
 
 		uint32 m_RenderViewIndex = std::numeric_limits<uint32>::max();

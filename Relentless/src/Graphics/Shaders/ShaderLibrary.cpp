@@ -18,6 +18,9 @@ namespace Relentless
 
 		Add(Shader::Create(ShaderType::Compute, "PostProcessShader.hlsl", "cs_main"));
 		Add(Shader::Create(ShaderType::Compute, "GaussianBlurSeparable.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "DownsampleColor.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "AverageLuminance.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "LuminanceHistogram.hlsl", "cs_main"));
 
 		//Add(Shader::Create(ShaderType::VERTEX, "FullScreenTriVertexShader.hlsl"));
 		//Add(Shader::Create(ShaderType::PIXEL, "PickingPixelShader.hlsl"));

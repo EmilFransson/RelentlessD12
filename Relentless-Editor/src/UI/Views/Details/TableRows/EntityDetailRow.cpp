@@ -9,7 +9,7 @@ namespace Relentless
 
 	uint32 EntityDetailRow::GetNumColumns() noexcept
 	{
-		return 2u;
+		return 3u;
 	}
 
 	bool EntityDetailRow::IsDragDropEligible() noexcept

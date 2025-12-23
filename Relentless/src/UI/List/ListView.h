@@ -8,6 +8,7 @@
 #include "UI/IWidget.h"
 #include "UI/ITableRow.h"
 #include "UI/UIManager.h"
+#include "UI/IWidgetContainer.h"
 
 namespace Relentless
 {
@@ -67,9 +68,8 @@ namespace Relentless
 			Keyboard::OnKeyStateChanged.Detach(this);
 		}
 
-		NO_DISCARD ETableViewMode GetMode() const noexcept { return m_Mode; }
 		NO_DISCARD bool IsFocused() const noexcept { return m_IsFocused; }
-		
+
 		virtual void SelectAll() noexcept = 0;
 	private:
 		void OnKeyStateChanged(RLS_Key key, bool pressed) noexcept
@@ -92,6 +92,10 @@ namespace Relentless
 			}
 		}
 	protected:
+		std::unordered_map<ItemType, Ref<ITableRow>> m_ItemToRowWidgetMap;
+		std::unordered_set<ItemType> m_SelectedItems;
+		std::unordered_set<ItemType> m_HighlightedItems;
+
 		TableViewStyle m_Style;
 		bool m_IsFocused = false;
 		
@@ -99,6 +103,7 @@ namespace Relentless
 		EOrientation m_Orientation				= EOrientation::Vertical;
 		ETableViewMode m_Mode					= ETableViewMode::List;
 		std::shared_ptr<HeaderRow> m_pHeaderRow = nullptr;
+		const std::vector<ItemType>* m_pSource = nullptr;
 	};
 
 	template<class ItemType>
@@ -120,7 +125,7 @@ namespace Relentless
 		NO_DISCARD uint32 GetNumItemsSelected() const noexcept;
 		virtual NO_DISCARD String GetReferencerName() const noexcept;
 		uint32 GetSelectedItems(std::vector<ItemType>& outSelectedItems) const noexcept;
-		NO_DISCARD Ref<ITableRow> GetRowWidget(const ItemType& item) const noexcept;;
+		NO_DISCARD Ref<ITableRow> GetRowWidget(const ItemType& item) const noexcept;
 
 		NO_DISCARD bool HasValidItemSource() const noexcept;
 
@@ -180,10 +185,6 @@ namespace Relentless
 		void OnRowDoubleClicked(const ItemType& pItem) noexcept;
 
 	protected:
-		std::unordered_map<ItemType, Ref<ITableRow>> m_ItemToRowWidgetMap;
-		std::unordered_set<ItemType> m_SelectedItems;
-		std::unordered_set<ItemType> m_HighlightedItems;
-
 		Callback<void(const PointerInfo& pointerInfo, const ItemType& item)> m_OnClick;
 		Callback<Ref<ContextMenu>(const ItemType& item)> m_OnContextMenuOpening;
 		Callback<String(const ItemType&)> m_OnDebugItemToString;
@@ -201,8 +202,6 @@ namespace Relentless
 		std::optional<ItemType> m_ItemToScrollIntoView;
 		std::optional<ItemType> m_RangeSelectionStart;
 
-		const std::vector<ItemType>* m_pSource = nullptr;
-
 		uint32 m_VisibleListStart = 0u;
 		uint32 m_VisibleListEnd = 0u;
 
@@ -219,23 +218,23 @@ namespace Relentless
 	template<class ItemType>
 	Ref<ITableRow> ListView<ItemType>::GetRowWidget(const ItemType& item) const noexcept
 	{
-		RLS_ASSERT(m_ItemToRowWidgetMap.contains(item), "[ListView::GetRowWidget]: Widget does not exist for item '{}'", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
-		return m_ItemToRowWidgetMap.at(item);
+		RLS_ASSERT(this->m_ItemToRowWidgetMap.contains(item), "[ListView::GetRowWidget]: Widget does not exist for item '{}'", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
+		return this->m_ItemToRowWidgetMap.at(item);
 	}
 
 	template<class ItemType>
 	bool ListView<ItemType>::IsItemVisible(const ItemType& item) const noexcept
 	{
-		return m_ItemToRowWidgetMap.contains(item);
+		return this->m_ItemToRowWidgetMap.contains(item);
 	}
 
 	template<class ItemType>
 	void ListView<ItemType>::ReleaseInvisibleWidgets() noexcept
 	{
-		if (!m_pSource)
+		if (!this->m_pSource)
 			return;
 
-		const std::vector<ItemType>& source = *m_pSource;
+		const std::vector<ItemType>& source = *this->m_pSource;
 		if (source.empty())
 			return;
 
@@ -245,7 +244,7 @@ namespace Relentless
 		for (uint32 row = m_VisibleListStart; row < m_VisibleListEnd; ++row)
 			visibleItems.insert(source[row]);
 
-		std::erase_if(m_ItemToRowWidgetMap, [&](auto& keyValuePair) 
+		std::erase_if(this->m_ItemToRowWidgetMap, [&](auto& keyValuePair)
 			{
 				if (visibleItems.find(keyValuePair.first) == visibleItems.end())
 				{
@@ -260,16 +259,16 @@ namespace Relentless
 	template<class ItemType>
 	uint32 ListView<ItemType>::GetNumGeneratedWidgets() const noexcept
 	{
-		return static_cast<uint32>(m_ItemToRowWidgetMap.size());
+		return static_cast<uint32>(this->m_ItemToRowWidgetMap.size());
 	}
 
 	template<class ItemType>
 	void ListView<ItemType>::SelectAll() noexcept
 	{
-		if (!m_pSource)
+		if (!this->m_pSource)
 			return;
 
-		for (const auto& item : *m_pSource)
+		for (const auto& item : *this->m_pSource)
 		{
 			if (!IsItemSelected(item))
 				SetItemSelection(item, ESelectionType::Selected);
@@ -289,7 +288,7 @@ namespace Relentless
 	template<class ItemType>
 	uint32 ListView<ItemType>::GetSelectedItems(std::vector<ItemType>& outSelectedItems) const noexcept
 	{
-		std::vector<ItemType> selectedItems(m_SelectedItems.begin(), m_SelectedItems.end());
+		std::vector<ItemType> selectedItems(this->m_SelectedItems.begin(), this->m_SelectedItems.end());
 		outSelectedItems = std::move(selectedItems);
 
 		return static_cast<uint32>(outSelectedItems.size());
@@ -298,9 +297,9 @@ namespace Relentless
 	template<class ItemType>
 	uint32 ListView<ItemType>::GetItemIndex(const ItemType& item) const noexcept
 	{
-		for (size_t i = 0u; i < m_pSource->size(); ++i)
+		for (size_t i = 0u; i < this->m_pSource->size(); ++i)
 		{
-			if (item == (*m_pSource)[i])
+			if (item == (*this->m_pSource)[i])
 				return static_cast<uint32>(i);
 		}
 	}
@@ -322,13 +321,13 @@ namespace Relentless
 	template<class ItemType>
 	bool ListView<ItemType>::IsItemHighlighted(const ItemType& item) const noexcept
 	{
-		return m_HighlightedItems.contains(item);
+		return this->m_HighlightedItems.contains(item);
 	}
 
 	template<class ItemType>
 	bool ListView<ItemType>::IsItemSelected(const ItemType& item) const noexcept
 	{
-		return m_SelectedItems.contains(item);
+		return this->m_SelectedItems.contains(item);
 	}
 
 	template<class ItemType>
@@ -361,7 +360,7 @@ namespace Relentless
 				}
 				else
 				{
-					const std::vector<ItemType> selectedItems(m_SelectedItems.begin(), m_SelectedItems.end());
+					const std::vector<ItemType> selectedItems(this->m_SelectedItems.begin(), this->m_SelectedItems.end());
 					for (const auto& selectedItem : selectedItems)
 					{
 						if (selectedItem != pItem)
@@ -380,10 +379,10 @@ namespace Relentless
 				else
 				{
 					SetItemSelection(pItem, ESelectionType::Deselected);
-					if (m_SelectedItems.empty())
+					if (this->m_SelectedItems.empty())
 						m_RangeSelectionStart = std::nullopt;
 					else
-						m_RangeSelectionStart = *(m_SelectedItems.begin());
+						m_RangeSelectionStart = *(this->m_SelectedItems.begin());
 				}
 
 				break;
@@ -402,8 +401,8 @@ namespace Relentless
 
 					for (uint32 i = rangeBegin; i <= rangeEnd; ++i)
 					{
-						if (!IsItemSelected((*m_pSource)[i]))
-							SetItemSelection((*m_pSource)[i], ESelectionType::Selected);
+						if (!IsItemSelected((*this->m_pSource)[i]))
+							SetItemSelection((*this->m_pSource)[i], ESelectionType::Selected);
 					}
 				}
 
@@ -455,10 +454,10 @@ namespace Relentless
 	template<class ItemType>
 	void ListView<ItemType>::ClearSelection() noexcept
 	{
-		if (m_SelectedItems.empty())
+		if (this->m_SelectedItems.empty())
 			return;
 
-		std::vector<ItemType> selectedItemsCopy(m_SelectedItems.begin(), m_SelectedItems.end());
+		std::vector<ItemType> selectedItemsCopy(this->m_SelectedItems.begin(), this->m_SelectedItems.end());
 		
 		for (const ItemType& item : selectedItemsCopy)
 			SetItemSelection(item, ESelectionType::Deselected);
@@ -479,27 +478,28 @@ namespace Relentless
 	ListView<ItemType>::ListView(std::shared_ptr<HeaderRow> pHeaderRow, const TableViewStyle& style) noexcept
 		: ITableViewBase<ItemType>(pHeaderRow)
 	{
-		ITableViewBase<ItemType>::m_Orientation = EOrientation::Vertical;
-		ITableViewBase<ItemType>::m_Style = style;
+		this->m_Mode = ETableViewMode::List;
+		this->m_Orientation = EOrientation::Vertical;
+		this->m_Style = style;
 	}
 
 	template<class ItemType>
 	void ListView<ItemType>::ClearHightlightedItems() noexcept
 	{
-		m_HighlightedItems.clear();
+		this->m_HighlightedItems.clear();
 	}
 
 	template<class ItemType>
 	void ListView<ItemType>::ClearItemsSource() noexcept
 	{
-		m_pSource = nullptr;
-		m_ItemToRowWidgetMap.clear();
+		this->m_pSource = nullptr;
+		this->m_ItemToRowWidgetMap.clear();
 	}
 
 	template<class ItemType>
 	const ItemType& ListView<ItemType>::GetItemFromWidget(const ITableRow* pWidgetToFind) const noexcept
 	{
-		auto it = std::find_if(m_ItemToRowWidgetMap.begin(), m_ItemToRowWidgetMap.end(), [&](const auto& pair) 
+		auto it = std::find_if(this->m_ItemToRowWidgetMap.begin(), this->m_ItemToRowWidgetMap.end(), [&](const auto& pair)
 {
 				return pair.second.Get() == pWidgetToFind;
 			}
@@ -511,13 +511,13 @@ namespace Relentless
 	template<class ItemType>
 	bool ListView<ItemType>::HasValidItemSource() const noexcept
 	{
-		return m_pSource != nullptr;
+		return this->m_pSource != nullptr;
 	}
 
 	template<class ItemType>
 	uint32 ListView<ItemType>::GetNumItemsSelected() const noexcept
 	{
-		return m_SelectedItems.size();
+		return this->m_SelectedItems.size();
 	}
 
 	template<class ItemType>
@@ -612,9 +612,9 @@ namespace Relentless
 	void ListView<ItemType>::SetItemHighlighted(const ItemType& item, bool highlight) noexcept
 	{
 		if (highlight)
-			m_HighlightedItems.insert(item);
+			this->m_HighlightedItems.insert(item);
 		else
-			m_HighlightedItems.erase(item);
+			this->m_HighlightedItems.erase(item);
 	}
 
 	template<class ItemType>
@@ -629,8 +629,8 @@ namespace Relentless
 			if (!selectable)
 				return;
 
-			RLS_ASSERT(!m_SelectedItems.contains(item), "[ListView::SetItemSelection]: Item {} is already selected.", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
-			m_SelectedItems.insert(item);
+			RLS_ASSERT(!this->m_SelectedItems.contains(item), "[ListView::SetItemSelection]: Item {} is already selected.", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
+			this->m_SelectedItems.insert(item);
 			m_OnSelectionChanged.ExecuteIfSet(item, selectionType);
 
 			//if (m_RangeSelectionStart == std::nullopt)
@@ -640,8 +640,8 @@ namespace Relentless
 		}
 		else
 		{
-			RLS_ASSERT(m_SelectedItems.contains(item), "[ListView::SetItemSelection]: Item '{}' is not selected.", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
-			m_SelectedItems.erase(item);
+			RLS_ASSERT(this->m_SelectedItems.contains(item), "[ListView::SetItemSelection]: Item '{}' is not selected.", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
+			this->m_SelectedItems.erase(item);
 			m_OnSelectionChanged.ExecuteIfSet(item, selectionType);
 
 			if (m_RangeSelectionStart == item)
@@ -668,11 +668,11 @@ namespace Relentless
 	template<class ItemType>
 	void ListView<ItemType>::OnRender() noexcept
 	{
-		m_pSource = m_OnRequestSource();
+		this->m_pSource = m_OnRequestSource();
 
 		RLS_ASSERT(HasValidItemSource(), "[ListView::OnRender]: Items source is invalid.");
 
-		const std::vector<ItemType>& source = *m_pSource;
+		const std::vector<ItemType>& source = *(this->m_pSource);
 		if (source.empty())
 			return;
 
@@ -703,13 +703,13 @@ namespace Relentless
 				{
 					const ItemType& item = source[row];
 					
-					if (!m_ItemToRowWidgetMap.contains(item))
+					if (!this->m_ItemToRowWidgetMap.contains(item))
 					{
-						m_ItemToRowWidgetMap[item] = std::move(GenerateNewWidget(item));
+						this->m_ItemToRowWidgetMap[item] = std::move(GenerateNewWidget(item));
 						m_OnItemScrolledIntoView.ExecuteIfSet(item);
 					}
 
-					m_ItemToRowWidgetMap[item]->Render();
+					this->m_ItemToRowWidgetMap[item]->Render();
 					lastRowY = ImGui::GetCursorScreenPos().y;
 				}
 

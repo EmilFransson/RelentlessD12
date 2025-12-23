@@ -8,6 +8,8 @@
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/RingBufferAllocator.h"
+#include "Module/AssetToolsModule.h"
+#include "Module/ModuleManager.h"
 #include "Scene/Scene.h"
 
 namespace Relentless
@@ -21,6 +23,7 @@ namespace Relentless
 		m_pDepthPrePass = std::make_unique<DepthPrePass>(pDevice);
 		m_pHBAOPlus = std::make_unique<HBAOPlus>(pDevice);
 		m_pOutlines = std::make_unique<Outlines>(pDevice);
+		m_pAutoExposure = MakeUnique<AutoExposure>(pDevice);
 
 		InitializePipelines();
 
@@ -29,18 +32,14 @@ namespace Relentless
 		Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
 		pFactory->SetImportAsSRGB(true);
 		pFactory->SetGenerateMipmaps(false);
-		pFactory->OnDone.Connect([this](const ImportedAsset& asset, bool success)
-			{
-				RLS_VERIFY(success, "[Renderer] Failed to import BRDF LUT.");
-				m_BRDFLutTextureHandle = asset.Handle;
-			});
 
 		std::vector<AssetImportTask> tasks;
 		AssetImportTask& task = tasks.emplace_back();
 		task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
 		task.pFactory = pFactory;
 
-		Importer::RequestAsyncLoad(tasks).Wait();
+		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		m_BRDFLutTextureHandle = assetToolsModule.Import(tasks)[0].Handle;
 	}
 
 	void Renderer::Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept
@@ -70,7 +69,10 @@ namespace Relentless
 		bool drawGrid = false;
 		bool drawEntityMask = false;
 		RenderModeEx renderMode = RenderModeEx::Solid;
-		float exposure = 1.0f;
+		float minLogLuminance = -4.0f;
+		float minEV100 = -10.0f;
+		float maxEV100 = 20.0f;
+		float exposureCompensation = 1.0f;
 
 		ViewportRenderView* pViewportRenderView = dynamic_cast<ViewportRenderView*>(pViewTransform);
 		if (pViewportRenderView)
@@ -78,7 +80,10 @@ namespace Relentless
 			drawGrid = pViewportRenderView->DrawGrid;
 			drawEntityMask = pViewportRenderView->MouseHoverCoordinates != Vector2i(-1, -1);
 			renderMode = pViewportRenderView->RenderMode;
-			exposure = pViewportRenderView->Exposure;
+			minLogLuminance = pViewportRenderView->MinLogLuminance;
+			minEV100 = pViewportRenderView->MinEV100;
+			maxEV100 = pViewportRenderView->MaxEV100;
+			exposureCompensation = pViewportRenderView->ExposureCompensation;
 		}
 
 		//Set up render view:
@@ -105,7 +110,7 @@ namespace Relentless
 			m_MainView.PerspectiveFrustum	= pViewTransform->PerspectiveFrustum;
 			m_MainView.OrthographicFrustum	= pViewTransform->OrthographicFrustum;
 
-			m_MainView.Exposure				= exposure;
+			m_MainView.Exposure				= minLogLuminance;
 		}
 		
 		if (!m_pColortarget || m_pColortarget->GetWidth() != width || m_pColortarget->GetHeight() != height)
@@ -169,20 +174,10 @@ namespace Relentless
 
 		//HBAO+
 		{
-			//PROFILE_SCOPE("Renderer::Render::HBAO+");
-			//
-			//CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			//m_pHBAOPlus->Render(*pCommandContext, m_MainView, m_SceneTextures);
-			//pCommandContext->Execute();
-		}
-
-		//Editor Grid:
-		if (drawGrid)
-		{
-			PROFILE_SCOPE("Renderer::Render::Editor Grid");
-
+			PROFILE_SCOPE("Renderer::Render::HBAO+");
+			
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			m_pEditorGrid->Render(*pCommandContext, m_MainView, m_SceneTextures);
+			m_pHBAOPlus->Render(*pCommandContext, m_MainView, m_SceneTextures);
 			pCommandContext->Execute();
 		}
 
@@ -296,6 +291,24 @@ namespace Relentless
 			pCommandContext->Execute();
 		}
 
+		//Auto Exposure:
+		{
+			PROFILE_SCOPE("Renderer::Render::AutoExposure");
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			m_pAutoExposure->Render(*pCommandContext, m_MainView, m_SceneTextures, minLogLuminance, minEV100, maxEV100, exposureCompensation);
+			pCommandContext->Execute();
+		}
+
+		//Editor Grid:
+		if (drawGrid)
+		{
+			PROFILE_SCOPE("Renderer::Render::Editor Grid");
+		
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			m_pEditorGrid->Render(*pCommandContext, m_MainView, m_SceneTextures);
+			pCommandContext->Execute();
+		}
+
 		//Post processing:
 		{
 			PROFILE_SCOPE("Renderer::Render::Post Process");
@@ -303,7 +316,7 @@ namespace Relentless
 			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
 
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(D3D12_COMMAND_LIST_TYPE_COMPUTE);
-			m_pPostProcessing->Render(*pCommandContext, m_MainView, m_SceneTextures, m_pOutlines->GetSelectedEntityIDOutput(), m_pOutlines->GetBlurredOutput());
+			m_pPostProcessing->Render(*pCommandContext, m_MainView, m_SceneTextures, m_pOutlines->GetSelectedEntityIDOutput(), m_pOutlines->GetBlurredOutput(), m_pAutoExposure->GetAverageLuminanceBuffer());
 			pCommandContext->Execute();
 
 			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
@@ -315,12 +328,12 @@ namespace Relentless
 
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			
-			pCommandContext->InsertResourceBarrier(pTarget, pTarget->GetResourceState(), D3D12_RESOURCE_STATE_COPY_DEST);
-			pCommandContext->InsertResourceBarrier(m_SceneTextures.pColorTarget, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			pCommandContext->InsertResourceBarrier(pTarget, D3D12_RESOURCE_STATE_COPY_DEST);
+			pCommandContext->InsertResourceBarrier(m_SceneTextures.pColorTarget, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		
 			pCommandContext->CopyResource(m_SceneTextures.pColorTarget, pTarget);
 		
-			pCommandContext->InsertResourceBarrier(pTarget, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			pCommandContext->InsertResourceBarrier(pTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			pCommandContext->Execute();
 		}
 
@@ -381,7 +394,6 @@ namespace Relentless
 		outViewUniform.WorldToClip.Invert(outViewUniform.ClipToWorld);
 
 		outViewUniform.ViewLocation				= renderView.Location;
-		outViewUniform.BRDFfLutTextureIndex		= m_BRDFLutTextureHandle.IsValid() ? AssetManager::Get<Texture>(m_BRDFLutTextureHandle)->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 
 		outViewUniform.ViewportDimensions		= Vector2(renderView.Viewport.GetWidth(), renderView.Viewport.GetHeight());
 		outViewUniform.ViewportDimensionsInv	= Vector2(1.0f / renderView.Viewport.GetWidth(), 1.0f / renderView.Viewport.GetHeight());
@@ -402,6 +414,18 @@ namespace Relentless
 		outViewUniform.LightsIndex				= m_LightsBuffer.pBuffer ? m_LightsBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 	
 		outViewUniform.Exposure					= renderView.Exposure;
+		
+		if (m_BRDFLutTextureHandle.IsValid())
+		{
+			Ref<Texture2D> pBRDFLUT = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle);
+			if (!m_TextureCache.contains(pBRDFLUT->GetUUID()))
+				m_TextureCache[pBRDFLUT->GetUUID()] = m_pDevice->CreateTexture(pBRDFLUT->GetDesc(), pBRDFLUT->GetName().c_str(), pBRDFLUT->GetImage());
+
+			outViewUniform.BRDFfLutTextureIndex = m_TextureCache[pBRDFLUT->GetUUID()]->GetSRVIndex();
+		}
+		else
+			outViewUniform.BRDFfLutTextureIndex	= ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+
 	}
 
 	void Renderer::InitializePipelines()
@@ -458,7 +482,7 @@ namespace Relentless
 			std::vector<ShaderInterop::InstanceData> instanceDatas;
 			instanceDatas.reserve(instanceCollection.Size());
 
-			instanceCollection.Do([&](entity e, MeshRendererComponent& mrc, MeshFilterComponent& mc)
+			instanceCollection.Do([&](entity e, TransformComponent& tc, MeshRendererComponent& mrc, MeshFilterComponent& mc)
 				{
 					if (m_pCurrentScene->GetEntityManager().Has<HiddenInGameComponent>(e))
 						return;
@@ -484,12 +508,12 @@ namespace Relentless
 
 					ShaderInterop::InstanceData& instanceData = instanceDatas.emplace_back();
 					instanceData.ID = instanceID;
-					instanceData.LocalToWorld = m_pCurrentScene->GetWorldTransform(e);
+					instanceData.LocalToWorld = tc.GetWorldMatrix();
 					instanceData.MaterialIndex = materialIndex;
 					instanceData.MeshDataIndex = meshIndex;
 
 					Batch& batch = batches.emplace_back();
-					batch.Location = m_pCurrentScene->GetWorldLocation(e);
+					batch.Location = tc.GetWorldLocation();
 					batch.InstanceID = instanceID;
 					batch.MaterialIndex = materialIndex;
 					batch.MeshIndex = meshIndex;
@@ -499,6 +523,7 @@ namespace Relentless
 
 					instanceID++;
 				});
+
 			CopyBufferData((uint32)instanceDatas.size(), sizeof(ShaderInterop::InstanceData), "Instances", instanceDatas.data(), m_InstancesBuffer);
 		}
 		
@@ -507,30 +532,46 @@ namespace Relentless
 			std::vector<ShaderInterop::Material> materials;
 			materials.reserve(materialStorage.Assets.size());
 
+			auto&& ConditionallyCreateAndReturnTextureIndex = [&](ETextureType textureType, const Ref<Material>& pMaterial) -> uint32
+				{
+					if (pMaterial->HasTexture(textureType))
+					{
+						Ref<Texture2D> pTexture = pMaterial->GetTexture(textureType);
+						if (!m_TextureCache.contains(pTexture->GetUUID()))
+							m_TextureCache[pTexture->GetUUID()] = m_pDevice->CreateTexture(pTexture->GetDesc(), pTexture->GetName().c_str(), pTexture->GetImage());
+
+						return m_TextureCache[pTexture->GetUUID()]->GetSRVIndex();
+					}
+
+					return ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+				};
+
 			for (uint32 i = 0; i < materialStorage.Assets.size(); ++i)
 			{
-				const auto& pMaterial = materialStorage.Assets[i];
+				const Ref<Material>& pMaterial = materialStorage.Assets[i];
+
+				// pMaterial->HasTexture(ETextureType::Albedo) ? pMaterial->GetTexture(ETextureType::Albedo)->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 
 				ShaderInterop::Material& material = materials.emplace_back();
-				material.AlbedoIndex = pMaterial->HasAlbedoTexture() ? pMaterial->GetAlbedoTexture()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
-				material.NormalIndex = pMaterial->HasNormalMap() ? pMaterial->GetNormalMap()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
-				material.RoughnessIndex = pMaterial->HasRoughnessTexture() ? pMaterial->GetRoughnessTexture()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
-				material.MetalnessIndex = pMaterial->HasMetallicTexture() ? pMaterial->GetMetallicTexture()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
-				material.EmissiveIndex = pMaterial->HasEmissionTexture() ? pMaterial->GetEmissionTexture()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
-				material.HeightMapIndex = pMaterial->HasHeightMap() ? pMaterial->GetHeightMap()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
-				material.AOIndex = pMaterial->HasAmbientOcclusionTexture() ? pMaterial->GetAmbientOcclusionTexture()->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+				material.AlbedoIndex	= ConditionallyCreateAndReturnTextureIndex(ETextureType::Albedo, pMaterial);
+				material.NormalIndex	= ConditionallyCreateAndReturnTextureIndex(ETextureType::NormalMap, pMaterial);
+				material.RoughnessIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Roughness, pMaterial);
+				material.MetalnessIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Metallic, pMaterial);
+				material.EmissiveIndex	= ConditionallyCreateAndReturnTextureIndex(ETextureType::Emission, pMaterial);
+				material.HeightMapIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::DisplacementMap, pMaterial);
+				material.AOIndex		= ConditionallyCreateAndReturnTextureIndex(ETextureType::AmbientOcclusion, pMaterial);
 				material.RoughnessMetalnessIndex = ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 
-				material.BaseColorFactor = pMaterial->m_AlbedoColor;
-				material.EmissiveFactor = pMaterial->m_EmissionColor;
-				material.MetalnessFactor = pMaterial->m_Metallic;
-				material.RoughnessFactor = pMaterial->m_Roughness;
-				material.AOFactor = pMaterial->m_AOScale;
-				material.HeightFactor = pMaterial->m_HeightScale;
-				material.EmissionIntensity = pMaterial->m_EmissionIntensity;
+				material.BaseColorFactor = pMaterial->GetAlbedoColor();
+				material.EmissiveFactor = pMaterial->GetEmissiveColor();
+				material.MetalnessFactor = pMaterial->GetMetalness();
+				material.RoughnessFactor = pMaterial->GetRoughness();
+				material.AOFactor = pMaterial->GetAmbientOcclusionIntensity();
+				material.HeightFactor = pMaterial->GetDisplacementIntensity();
+				material.EmissionIntensity = pMaterial->GetEmissiveIntensity();
 
-				material.TilingFactor = pMaterial->m_TilingFactor;
-				material.Offset = pMaterial->m_Offset;
+				material.TilingFactor = pMaterial->GetGlobalTilingFactor();
+				material.Offset = pMaterial->GetGlobalOffset();
 			}
 			CopyBufferData((uint32)materials.size(), sizeof(ShaderInterop::Material), "Materials", materials.data(), m_MaterialsBuffer);
 		}
@@ -555,79 +596,79 @@ namespace Relentless
 		//Lights
 		{
 			EntityManager& entityManager = m_pCurrentScene->GetEntityManager();
-			Collection<DirectionalLightComponent> directionalLightCollection = entityManager.Collect<DirectionalLightComponent>();
-			Collection<PointLightComponent> pointLightCollection = entityManager.Collect<PointLightComponent>();
-			Collection<SpotLightComponent> spotLightCollection = entityManager.Collect<SpotLightComponent>();
+			Collection<TransformComponent, DirectionalLightComponent> directionalLightCollection = entityManager.Collect<TransformComponent, DirectionalLightComponent>();
+			Collection<TransformComponent, PointLightComponent> pointLightCollection = entityManager.Collect<TransformComponent, PointLightComponent>();
+			Collection<TransformComponent, SpotLightComponent> spotLightCollection = entityManager.Collect<TransformComponent, SpotLightComponent>();
 
 			std::vector<ShaderInterop::Light> lights;
 			lights.reserve(directionalLightCollection.Size() + pointLightCollection.Size() + spotLightCollection.Size());
 
-			directionalLightCollection.Do([&](entity e, DirectionalLightComponent& dlc)
+			directionalLightCollection.Do([&](entity e, TransformComponent& tc, DirectionalLightComponent& dlc)
 				{
 					if (entityManager.Has<HiddenInGameComponent>(e))
 						return;
 
 					ShaderInterop::Light& light = lights.emplace_back();
-					light.Intensity = dlc.Intensity;
+					light.Intensity = dlc.GetIntensity();
 					light.IsDirectional = true;
 					light.IsPoint = light.IsSpot = false;
-					light.Color = Vector3(dlc.Color.x, dlc.Color.y, dlc.Color.z);
-					if (dlc.UseTemperature)
+					light.Color = Vector3(dlc.GetColor().x, dlc.GetColor().y, dlc.GetColor().z);
+					if (dlc.IsUsingTemperature())
 					{
-						const Color tempColor = Math::MakeFromColorTemperature(dlc.Temperature);
+						const Color tempColor = Math::MakeFromColorTemperature(dlc.GetTemperature());
 						const Vector3 vTempColor = Vector3(tempColor.x, tempColor.y, tempColor.z);
 						light.Color *= vTempColor;
 					}
 
-					light.Direction = m_pCurrentScene->GetWorldForward(e);
-					light.IsEnabled = dlc.Intensity > 0.0f;
+					light.Direction = tc.GetWorldForward();
+					light.IsEnabled = dlc.GetIntensity() > 0.0f;
 				});
 
-			pointLightCollection.Do([&](entity e, PointLightComponent& plc)
+			pointLightCollection.Do([&](entity e, TransformComponent& tc, PointLightComponent& plc)
 				{
 					if (entityManager.Has<HiddenInGameComponent>(e))
 						return;
 
 					ShaderInterop::Light& light = lights.emplace_back();
-					light.Intensity = plc.Intensity;
+					light.Intensity = plc.GetIntensity();
 					light.IsPoint = true;
 					light.IsDirectional = light.IsSpot = false;
-					light.Color = Vector3(plc.Color.x, plc.Color.y, plc.Color.z);
-					if (plc.UseTemperature)
+					light.Color = Vector3(plc.GetColor().x, plc.GetColor().y, plc.GetColor().z);
+					if (plc.IsUsingTemperature())
 					{
-						const Color tempColor = Math::MakeFromColorTemperature(plc.Temperature);
+						const Color tempColor = Math::MakeFromColorTemperature(plc.GetTemperature());
 						const Vector3 vTempColor = Vector3(tempColor.x, tempColor.y, tempColor.z);
 						light.Color *= vTempColor;
 					}
 
-					light.Position = m_pCurrentScene->GetWorldLocation(e);
-					light.IsEnabled = plc.Intensity > 0.0f;
-					light.Range = plc.AttenuationRadius;
+					light.Position = tc.GetWorldLocation();
+					light.IsEnabled = plc.GetIntensity() > 0.0f;
+					light.Range = plc.GetAttenuationRadius() > 0.0f ? (1.0f / (plc.GetAttenuationRadius() * plc.GetAttenuationRadius())) : 0.0f;
 				});
 
-			spotLightCollection.Do([&](entity e, SpotLightComponent& slc)
+			spotLightCollection.Do([&](entity e, TransformComponent& tc, SpotLightComponent& slc)
 				{
 					if (entityManager.Has<HiddenInGameComponent>(e))
 						return;
 
 					ShaderInterop::Light& light = lights.emplace_back();
-					light.Intensity = slc.Intensity;
+					light.Intensity = slc.GetIntensity();
 					light.IsSpot = true;
 					light.IsDirectional = light.IsPoint = false;
-					light.Color = Vector3(slc.Color.x, slc.Color.y, slc.Color.z);
-					if (slc.UseTemperature)
+					light.Color = Vector3(slc.GetColor().x, slc.GetColor().y, slc.GetColor().z);
+					if (slc.IsUsingTemperature())
 					{
-						const Color tempColor = Math::MakeFromColorTemperature(slc.Temperature);
+						const Color tempColor = Math::MakeFromColorTemperature(slc.GetTemperature());
 						const Vector3 vTempColor = Vector3(tempColor.x, tempColor.y, tempColor.z);
 						light.Color *= vTempColor;
 					}
 
-					light.Position = m_pCurrentScene->GetWorldLocation(e);
-					light.IsEnabled = slc.Intensity > 0.0f;
-					light.Range = slc.AttenuationRadius;
-					light.SpotlightAngles.x = std::cos(slc.InnerConeAngle / 2.0f);
-					light.SpotlightAngles.y = std::cos(slc.OuterConeAngle / 2.0f);
-					light.Direction = m_pCurrentScene->GetWorldForward(e);
+					light.Position = tc.GetWorldLocation();
+					light.IsEnabled = slc.GetIntensity() > 0.0f;
+					light.Range = slc.GetAttenuationRadius() > 0.0f ? (1.0f / (slc.GetAttenuationRadius() * slc.GetAttenuationRadius())) : 0.0f;
+					light.SpotlightAngles.x = Math::Cos(slc.GetInnerConeAngleRadians() / 2.0f);
+					light.SpotlightAngles.y = Math::Cos(slc.GetOuterConeAngleRadians() / 2.0f);
+					light.Direction = tc.GetWorldForward();
 				});
 
 

@@ -153,27 +153,27 @@ namespace Relentless
 		}
 	}
 
-	AssetImportBatch Importer::RequestAsyncLoad(Span<AssetImportTask> importTasks, Ref<ImporterFeedbackContext> pFeedbackContext /*= nullptr*/) noexcept
-	{
-		ThreadPool& threadPool = Application::Get().GetThreadPool();
-		GraphicsDevice* pDevice = Application::Get().GetGraphicsDevice();
-
-		AssetImportBatch batch;
-		batch.Futures.reserve(importTasks.GetSize());
-
-		for (const AssetImportTask& task : importTasks)
-		{
-			batch.Futures.push_back(threadPool.Submit([pDevice, task, pFeedbackContext]()
-				{
-					if (task.pFactory)
-						task.pFactory->Execute(task.FilePath, pDevice);
-					else
-						CreateDefaultFactory(GetExtensionTypeFromPath(task.FilePath))->Execute(task.FilePath, pDevice);
-				}));
-		}
-
-		return batch;
-	}
+	//AssetImportBatch Importer::RequestAsyncLoad(Span<AssetImportTask> importTasks, Ref<ImporterFeedbackContext> pFeedbackContext /*= nullptr*/) noexcept
+	//{
+	//	ThreadPool& threadPool = Application::Get().GetThreadPool();
+	//	GraphicsDevice* pDevice = Application::Get().GetGraphicsDevice();
+	//
+	//	AssetImportBatch batch;
+	//	batch.Futures.reserve(importTasks.GetSize());
+	//
+	//	for (const AssetImportTask& task : importTasks)
+	//	{
+	//		batch.Futures.push_back(threadPool.Submit([pDevice, task, pFeedbackContext]()
+	//			{
+	//				if (task.pFactory)
+	//					task.pFactory->Execute(task.FilePath, pDevice);
+	//				else
+	//					CreateDefaultFactory(GetExtensionTypeFromPath(task.FilePath))->Execute(task.FilePath, pDevice);
+	//			}));
+	//	}
+	//
+	//	return batch;
+	//}
 
 	//bool Importer::ImportAssimpMesh(aiMesh* pMesh, const std::filesystem::path& srcPath, const std::filesystem::path& destinationDirectory, bool isABlockingOperation, AssetHandle& outHandle) noexcept
 	//{

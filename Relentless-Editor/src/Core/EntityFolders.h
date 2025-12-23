@@ -43,6 +43,9 @@ namespace Relentless
 
 		explicit EntityFoldersManager(Editor* pAEditor) noexcept;
 
+		NO_DISCARD bool AnyFolderContainsEntity(Scene& aScene, entity aEntity) const noexcept;
+		void AttachEntityToFolder(Scene& aScene, entity aEntity, const Folder& aFolder) noexcept;
+
 		EntityFolder* CreateFolder(Scene& aScene, const String& aPath) noexcept;
 		EntityFolder* CreateFolder(Scene& aScene, const Folder& aFolder) noexcept;
 		EntityFolder* CreateFolderContainingSelection(Scene& aScene) noexcept;
@@ -52,6 +55,7 @@ namespace Relentless
 		void DeleteFolder(Scene& aScene, const Folder& aFolder) noexcept;
 		void DeleteFolder(Scene& aScene, const String& aPath) noexcept;
 
+		NO_DISCARD bool FolderContainsEntity(Scene& aScene, const Folder& aFolder, entity aEntity) noexcept;
 		static void ForEachEntityInFolders(Scene& aScene, const std::unordered_set<String>& somePaths, Callback<bool(entity)> aOperation) noexcept;
 		void ForEachFolder(const Callback<bool(const EntityFolder&)>& aOperation) noexcept;
 		void ForEachFolderWithRootObject(const FolderRoot& aRoot, const Callback<bool(const EntityFolder&)>& aOperation) noexcept;
@@ -71,6 +75,7 @@ namespace Relentless
 		NO_DISCARD Ref<EntityFolder> GetFolder(const Scene& aScene, const String& aPath) const noexcept;
 		NO_DISCARD Ref<EntityFolder> GetFolder(const Scene& aScene, const UUID& aFolderUUID) const noexcept;
 
+		void RemoveEntityFromCurrentFolder(Scene& aScene, entity aEntity) noexcept;
 		bool RenameFolder(Scene& aScene, const String& aOldPath, const String& aNewPath) noexcept;
 
 		mutable Broadcaster<void(EntityFolder* apFolder)> OnEntityFolderCreate;
@@ -81,6 +86,9 @@ namespace Relentless
 
 		NO_DISCARD FolderContainer& GetFolderContainer(const Scene& aScene) noexcept;
 		NO_DISCARD FolderContainer& GetFolderContainer(const FolderRoot& aRoot) noexcept;
+
+		Broadcaster<void(entity, const Folder&)> OnEntityAttachedToFolder;
+		Broadcaster<void(entity, const Folder&)> OnEntityRemovedFromFolder;
 	private:
 		void DeleteFolderContainer(const FolderRoot& aRoot) noexcept;
 
