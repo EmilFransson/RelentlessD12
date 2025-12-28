@@ -5,6 +5,9 @@
 
 #include "Core/Application.h"
 
+#include "Graphics/Resources/Material.h"
+#include "Graphics/Resources/Texture2D.h"
+
 namespace Relentless
 {
 	std::vector<AssetImportResult> AssetToolsModule::Import(Span<AssetImportTask> someImportTasks) noexcept
@@ -33,14 +36,14 @@ namespace Relentless
 
 			futures.push_back(threadPool.Submit([pFactory, task, &importedAssetsMutex, &importedAssets]() 
 				{
-					std::vector<FactoryImportResult> importResults;
+					std::vector<FactoryResult> importResults;
 					importResults.push_back(pFactory->ImportFromFile(task.FilePath, "TODO", task.FilePath.stem().string()));
 
-					const std::vector<FactoryImportResult>& additionalImportedAssets = pFactory->GetAdditionalImportedAssets();
+					const std::vector<FactoryResult>& additionalImportedAssets = pFactory->GetAdditionalImportedAssets();
 					importResults.insert(importResults.end(), additionalImportedAssets.begin(), additionalImportedAssets.end());
 
 					std::lock_guard<std::mutex> lock(importedAssetsMutex);
-					for (const FactoryImportResult& importResult : importResults)
+					for (const FactoryResult& importResult : importResults)
 					{
 						if (importResult)
 							importedAssets.push_back({ importResult.value(), task.FilePath });
@@ -112,15 +115,15 @@ namespace Relentless
 
 			importBatch.Futures.push_back(threadPool.Submit([this, pFactory, task, pAsyncImportResult, TryFinish]()
 				{
-					std::vector<FactoryImportResult> importResults;
+					std::vector<FactoryResult> importResults;
 					importResults.push_back(pFactory->ImportFromFile(task.FilePath, "TODO", task.FilePath.stem().string()));
 
-					const std::vector<FactoryImportResult>& additionalImportedAssets = pFactory->GetAdditionalImportedAssets();
+					const std::vector<FactoryResult>& additionalImportedAssets = pFactory->GetAdditionalImportedAssets();
 					importResults.insert(importResults.end(), additionalImportedAssets.begin(), additionalImportedAssets.end());
 
 					{
 						std::lock_guard<std::mutex> lock(pAsyncImportResult->Mutex);
-						for (const FactoryImportResult& importResult : importResults)
+						for (const FactoryResult& importResult : importResults)
 						{
 							if (importResult)
 								pAsyncImportResult->ImportResults.push_back({ importResult.value(), task.FilePath });
@@ -140,14 +143,14 @@ namespace Relentless
 
 	void AssetToolsModule::OnLoad()
 	{
-		m_RegisteredFactories.push_back(new MaterialFactory);
-		m_RegisteredFactories.push_back(new TextureFactory);
-		m_RegisteredFactories.push_back(new ModelFactory);
+		RegisterFactory<Material>(new MaterialFactory());
+		RegisterFactory<Mesh>(new ModelFactory());
+		RegisterFactory<Texture2D>(new TextureFactory());
 	}
 
 	Ref<IFactory> AssetToolsModule::GetSupportingFactory(const Path& aPath) const noexcept
 	{
-		for (const Ref<IFactory>& pFactory : m_RegisteredFactories)
+		for (const auto&[id, pFactory] : m_RegisteredFactories)
 		{
 			if (pFactory->CanImport(aPath))
 				return pFactory->Clone();

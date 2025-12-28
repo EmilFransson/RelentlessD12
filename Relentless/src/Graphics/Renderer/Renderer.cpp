@@ -5,12 +5,15 @@
 #include "Core/Time.h"
 #include "ECS/Component.h"
 #include "File/FilePath.h"
+#include "Graphics/Resources/Material.h"
+#include "Graphics/Resources/Texture2D.h"
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/RingBufferAllocator.h"
 #include "Module/AssetToolsModule.h"
 #include "Module/ModuleManager.h"
 #include "Scene/Scene.h"
+#include "Utility/FilepathUtils.h"
 
 namespace Relentless
 {
@@ -109,8 +112,6 @@ namespace Relentless
 
 			m_MainView.PerspectiveFrustum	= pViewTransform->PerspectiveFrustum;
 			m_MainView.OrthographicFrustum	= pViewTransform->OrthographicFrustum;
-
-			m_MainView.Exposure				= minLogLuminance;
 		}
 		
 		if (!m_pColortarget || m_pColortarget->GetWidth() != width || m_pColortarget->GetHeight() != height)
@@ -412,20 +413,17 @@ namespace Relentless
 		outViewUniform.MeshesIndex				= m_MeshesBuffer.pBuffer ? m_MeshesBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 		outViewUniform.MaterialsIndex			= m_MaterialsBuffer.pBuffer ? m_MaterialsBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 		outViewUniform.LightsIndex				= m_LightsBuffer.pBuffer ? m_LightsBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
-	
-		outViewUniform.Exposure					= renderView.Exposure;
 		
 		if (m_BRDFLutTextureHandle.IsValid())
 		{
 			Ref<Texture2D> pBRDFLUT = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle);
-			if (!m_TextureCache.contains(pBRDFLUT->GetUUID()))
-				m_TextureCache[pBRDFLUT->GetUUID()] = m_pDevice->CreateTexture(pBRDFLUT->GetDesc(), pBRDFLUT->GetName().c_str(), pBRDFLUT->GetImage());
+			if (!pBRDFLUT->GetResource())
+				pBRDFLUT->CreateResource();
 
-			outViewUniform.BRDFfLutTextureIndex = m_TextureCache[pBRDFLUT->GetUUID()]->GetSRVIndex();
+			outViewUniform.BRDFfLutTextureIndex = pBRDFLUT->GetResource()->GetSRVIndex();
 		}
 		else
 			outViewUniform.BRDFfLutTextureIndex	= ShaderInterop::INVALID_DESCRIPTOR_INDEX;
-
 	}
 
 	void Renderer::InitializePipelines()
@@ -472,9 +470,6 @@ namespace Relentless
 
 		uint32 instanceID = 0u;
 
-		AssetStorage<Material>& materialStorage = AssetManager::GetStorage<Material>();
-		AssetStorage<Mesh>& meshStorage = AssetManager::GetStorage<Mesh>();
-
 		//Instances
 		{
 			Collection<TransformComponent, MeshRendererComponent, MeshFilterComponent> instanceCollection = m_pCurrentScene->GetEntityManager().Collect<TransformComponent, MeshRendererComponent, MeshFilterComponent>();
@@ -490,8 +485,8 @@ namespace Relentless
 					const Ref<Material> pMaterial = AssetManager::Get<Material>(mrc.AssetHandle);
 					const Ref<Mesh> pMesh = AssetManager::Get<Mesh>(mc.AssetHandle);
 
-					const uint32 materialIndex = materialStorage.GetPhysicalIndex(mrc.AssetHandle);
-					const uint32 meshIndex = meshStorage.GetPhysicalIndex(mc.AssetHandle);
+					const uint32 materialIndex = AssetManager::GetPhysicalIndex<Material>(mrc.AssetHandle);
+					const uint32 meshIndex = AssetManager::GetPhysicalIndex<Mesh>(mc.AssetHandle);
 
 					auto&& GetBlendMode = [](EBlendMode renderMode) -> Batch::Blending
 						{
@@ -530,65 +525,64 @@ namespace Relentless
 		//Materials
 		{
 			std::vector<ShaderInterop::Material> materials;
-			materials.reserve(materialStorage.Assets.size());
+			materials.reserve(AssetManager::GetNumAssets<Material>());
 
-			auto&& ConditionallyCreateAndReturnTextureIndex = [&](ETextureType textureType, const Ref<Material>& pMaterial) -> uint32
+			auto&& ConditionallyCreateAndReturnTextureIndex = [&](ETextureType textureType, const Material& aMaterial) -> uint32
 				{
-					if (pMaterial->HasTexture(textureType))
+					if (aMaterial.HasTexture(textureType))
 					{
-						Ref<Texture2D> pTexture = pMaterial->GetTexture(textureType);
-						if (!m_TextureCache.contains(pTexture->GetUUID()))
-							m_TextureCache[pTexture->GetUUID()] = m_pDevice->CreateTexture(pTexture->GetDesc(), pTexture->GetName().c_str(), pTexture->GetImage());
+						Ref<Texture2D> pTexture = aMaterial.GetTexture(textureType);
+						if (!pTexture->GetResource())
+							pTexture->CreateResource();
 
-						return m_TextureCache[pTexture->GetUUID()]->GetSRVIndex();
+						return pTexture->GetResource()->GetSRVIndex();
 					}
 
 					return ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 				};
 
-			for (uint32 i = 0; i < materialStorage.Assets.size(); ++i)
-			{
-				const Ref<Material>& pMaterial = materialStorage.Assets[i];
+			AssetManager::ForEachAsset<Material>([&](Material& aMaterial)
+				{
+					ShaderInterop::Material& material = materials.emplace_back();
+					material.AlbedoIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Albedo, aMaterial);
+					material.NormalIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::NormalMap, aMaterial);
+					material.RoughnessIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Roughness, aMaterial);
+					material.MetalnessIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Metallic, aMaterial);
+					material.EmissiveIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Emission, aMaterial);
+					material.HeightMapIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::DisplacementMap, aMaterial);
+					material.AOIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::AmbientOcclusion, aMaterial);
+					material.RoughnessMetalnessIndex = ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 
-				// pMaterial->HasTexture(ETextureType::Albedo) ? pMaterial->GetTexture(ETextureType::Albedo)->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+					material.BaseColorFactor = aMaterial.GetAlbedoColor();
+					material.EmissiveFactor = aMaterial.GetEmissiveColor();
+					material.MetalnessFactor = aMaterial.GetMetalness();
+					material.RoughnessFactor = aMaterial.GetRoughness();
+					material.AOFactor = aMaterial.GetAmbientOcclusionIntensity();
+					material.HeightFactor = aMaterial.GetDisplacementIntensity();
+					material.EmissionIntensity = aMaterial.GetEmissiveIntensity();
 
-				ShaderInterop::Material& material = materials.emplace_back();
-				material.AlbedoIndex	= ConditionallyCreateAndReturnTextureIndex(ETextureType::Albedo, pMaterial);
-				material.NormalIndex	= ConditionallyCreateAndReturnTextureIndex(ETextureType::NormalMap, pMaterial);
-				material.RoughnessIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Roughness, pMaterial);
-				material.MetalnessIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Metallic, pMaterial);
-				material.EmissiveIndex	= ConditionallyCreateAndReturnTextureIndex(ETextureType::Emission, pMaterial);
-				material.HeightMapIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::DisplacementMap, pMaterial);
-				material.AOIndex		= ConditionallyCreateAndReturnTextureIndex(ETextureType::AmbientOcclusion, pMaterial);
-				material.RoughnessMetalnessIndex = ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+					material.TilingFactor = aMaterial.GetGlobalTilingFactor();
+					material.Offset = aMaterial.GetGlobalOffset();
 
-				material.BaseColorFactor = pMaterial->GetAlbedoColor();
-				material.EmissiveFactor = pMaterial->GetEmissiveColor();
-				material.MetalnessFactor = pMaterial->GetMetalness();
-				material.RoughnessFactor = pMaterial->GetRoughness();
-				material.AOFactor = pMaterial->GetAmbientOcclusionIntensity();
-				material.HeightFactor = pMaterial->GetDisplacementIntensity();
-				material.EmissionIntensity = pMaterial->GetEmissiveIntensity();
+					return true;
+				});
 
-				material.TilingFactor = pMaterial->GetGlobalTilingFactor();
-				material.Offset = pMaterial->GetGlobalOffset();
-			}
 			CopyBufferData((uint32)materials.size(), sizeof(ShaderInterop::Material), "Materials", materials.data(), m_MaterialsBuffer);
 		}
 
 		//Meshes
 		{
 			std::vector<ShaderInterop::MeshData> meshDatas;
-			meshDatas.reserve(meshStorage.Assets.size());
+			meshDatas.reserve(AssetManager::GetNumAssets<Mesh>());
 
-			for (uint32 i = 0; i < meshStorage.Assets.size(); ++i)
-			{
-				const auto& pMesh = meshStorage.Assets[i];
+			AssetManager::ForEachAsset<Mesh>([&](Mesh& aMesh)
+				{
+					ShaderInterop::MeshData& meshData = meshDatas.emplace_back();
+					meshData.VertexBufferIndex = aMesh.GetVertexBuffer()->GetSRVIndex();
+					meshData.IndexBufferIndex = aMesh.GetIndexBuffer()->GetSRVIndex();
 
-				ShaderInterop::MeshData& meshData = meshDatas.emplace_back();
-				meshData.VertexBufferIndex = pMesh->GetVertexBuffer()->GetSRVIndex();
-				meshData.IndexBufferIndex = pMesh->GetIndexBuffer()->GetSRVIndex();
-			}
+					return true;
+				});
 
 			CopyBufferData((uint32)meshDatas.size(), sizeof(ShaderInterop::MeshData), "Meshes", meshDatas.data(), m_MeshesBuffer);
 		}
@@ -666,8 +660,8 @@ namespace Relentless
 					light.Position = tc.GetWorldLocation();
 					light.IsEnabled = slc.GetIntensity() > 0.0f;
 					light.Range = slc.GetAttenuationRadius() > 0.0f ? (1.0f / (slc.GetAttenuationRadius() * slc.GetAttenuationRadius())) : 0.0f;
-					light.SpotlightAngles.x = Math::Cos(slc.GetInnerConeAngleRadians() / 2.0f);
-					light.SpotlightAngles.y = Math::Cos(slc.GetOuterConeAngleRadians() / 2.0f);
+					light.SpotlightAngles.x = Math::Cos(slc.GetInnerConeAngleRadians() * 0.5f);
+					light.SpotlightAngles.y = Math::Cos(slc.GetOuterConeAngleRadians() * 0.5f);
 					light.Direction = tc.GetWorldForward();
 				});
 

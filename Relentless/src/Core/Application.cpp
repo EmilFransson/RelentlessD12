@@ -181,7 +181,7 @@ namespace Relentless
 		m_pWindow->OnKeyInput.Connect(this, &Application::OnKeyInput);
 		m_pWindow->OnResizeOrMove.Connect(this, &Application::OnWindowResizedOrMoved);
 
-		m_pSwapchain = new Swapchain(m_pGraphicsDevice, 3, m_pWindow->GetNativeWindow());
+		m_pSwapchain = RLS_NEW Swapchain(m_pGraphicsDevice, 3, m_pWindow->GetNativeWindow());
 
 		SystemPaths::Initialize();
 		AssetRegistry::RecursiveScanDirectoryForAssets(ENGINE_ASSET_DIRECTORY);

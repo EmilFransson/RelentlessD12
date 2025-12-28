@@ -108,7 +108,7 @@ namespace Relentless
 
 	bool TextureFactory::DoesSupportAsset(IAsset* aAsset) const noexcept
 	{
-		return dynamic_cast<Texture2D*>(aAsset) != nullptr;
+		return aAsset->GetStaticType() == Texture2D::StaticType();
 	}
 
 	std::vector<String> TextureFactory::GetSupportedFileExtensions() const noexcept
@@ -121,7 +121,7 @@ namespace Relentless
 		return std::vector<String>(m_SupportedFormats.begin(), m_SupportedFormats.end());
 	}
 
-	const FactoryImportResult& TextureFactory::ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext) noexcept
+	const FactoryResult& TextureFactory::ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext) noexcept
 	{
 		if (!File::Exists(aPath))
 		{
@@ -233,28 +233,10 @@ namespace Relentless
 		auto& metaData = image.GetMetadata();
 		const std::string fileName = FilepathUtils::ExtractFilename(m_SrcPath);
 
-		//const DirectX::Image* pImg = image.GetImages();
-		//std::vector<D3D12_SUBRESOURCE_DATA> initData;
-		//for (uint32_t i{ 0u }; i < image.GetImageCount(); ++i, ++pImg)
-		//{
-		//	D3D12_SUBRESOURCE_DATA subresourceData = {};
-		//	subresourceData.pData = pImg->pixels;
-		//	subresourceData.RowPitch = pImg->rowPitch;
-		//	subresourceData.SlicePitch = pImg->slicePitch;
-		//
-		//	initData.push_back(subresourceData);
-		//}
-
-		//m_pDevice->CreateTexture(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), fileName.c_str(), initData);
-
 		Ref<Texture2D> pNewTexture = new Texture2D(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), std::move(image));
 		pNewTexture->SetName(fileName);
 
-		const uint32 index = AssetManager::GetStorage<Texture2D>().Add(pNewTexture);
-		auto [handle, _] = AssetManager::InsertMetaData(pNewTexture->GetUUID(), index, AssetType::Texture2D);
-
-		handle->second.Type = AssetType::Texture2D;
-		m_ImportedAsset = handle->second;
+		m_ImportedAsset = AssetManager::RegisterAsset<Texture2D>(pNewTexture);
 		return true;
 	}
 }

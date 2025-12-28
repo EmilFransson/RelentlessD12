@@ -51,11 +51,8 @@ namespace Relentless
 		std::vector<Ref<ContentBrowserItem>> m_Items;
 		Ref<TileView<Ref<ContentBrowserItem>>> m_pAssetsTreeView = nullptr;
 
-		Ref<Texture> m_pMeshIconTexture = nullptr;
-		Ref<Texture> m_pFolderIconTexture = nullptr;
-
-		//AssetHandle m_MeshIconHandle = NULL_HANDLE;
-		//AssetHandle m_FolderIconHandle = NULL_HANDLE;
+		AssetHandle m_MeshIconHandle = NULL_HANDLE;
+		AssetHandle m_FolderIconHandle = NULL_HANDLE;
 
 		Ref<HorizontalBoxEx> m_pBox = nullptr;
 	};

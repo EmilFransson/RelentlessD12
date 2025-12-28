@@ -17,12 +17,14 @@
 
 //Utility:
 #include <src/Utility/FileDialogs.h>
+#include <src/Utility/FilepathUtils.h>
 #include <src/Utility/Common.h>
 #include <src/Utility/StringUtils.h>
 #include <src/Utility/TextFilterExpressionEvaluator.h>
 
-//File
-#include "src/File/FilePath.h"
+//Files & paths
+#include <src/File/FilePath.h>
+#include <src/Utility/SystemPaths.h>
 
 //Events:
 #include <src/ImGui/ImguiLayer.h>
@@ -103,6 +105,8 @@
 
 //Resources
 #include <src/Assets/AssetManager.h>
+#include <src/Graphics/Resources/Material.h>
+#include <src/Graphics/Resources/Texture2D.h>
 #include <src/Mesh/Mesh.h>
 
 //IO
@@ -126,3 +130,6 @@
 //Assets
 #include <src/Assets/Factory/ModelFactory.h>
 #include <src/Assets/Factory/TextureFactory.h>
+
+//Project:
+#include <src/Project/Project.h>

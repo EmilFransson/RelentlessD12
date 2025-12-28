@@ -151,7 +151,7 @@ namespace Relentless
 		return std::vector<String>(m_SupportedFormats.begin(), m_SupportedFormats.end());
 	}
 
-	const FactoryImportResult& ModelFactory::ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext /*= nullptr*/) noexcept
+	const FactoryResult& ModelFactory::ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext /*= nullptr*/) noexcept
 	{
 		if (!File::Exists(aPath))
 		{
@@ -191,35 +191,6 @@ namespace Relentless
 	{
 		return std::ranges::any_of(m_SupportedExtensions, [&](const String& aExtension) { return aExtension == aFileExtension; });
 	}
-
-	//void ModelFactory::Execute(const Path& filePath, GraphicsDevice* pDevice) noexcept
-	//{
-	//	if (!File::Exists(filePath))
-	//	{
-	//		Finalize(false);
-	//		return;
-	//	}
-	//
-	//	m_MainModelPath = filePath;
-	//	m_pDevice = pDevice;
-	//
-	//	if (!InitializeImporter())
-	//	{
-	//		Finalize(false);
-	//		return;
-	//	}
-	//
-	//	if (!ParseModel())
-	//	{
-	//		Finalize(false);
-	//		return;
-	//	}
-	//
-	//	ImportModel();
-	//	ResolveSceneNodeHierarchy();
-	//
-	//	Finalize(true);
-	//}
 
 	void ModelFactory::Finalize(bool succeeded) noexcept
 	{
@@ -285,15 +256,10 @@ namespace Relentless
 				}
 			}
 
-			const uint32 index = AssetManager::GetStorage<Material>().Add(pNewMaterial);
-			auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Material);
+			materialInfo.HandleToImportedMaterial = AssetManager::RegisterAsset<Material>(pNewMaterial);
 
-			materialInfo.HandleToImportedMaterial = handle->second;
-
-			FactoryImportResult importedAsset;
-
-			handle->second.Type = AssetType::Material;
-			importedAsset = handle->second;
+			FactoryResult importedAsset;
+			importedAsset = materialInfo.HandleToImportedMaterial;
 			
 			StoreImportedAsset(std::move(importedAsset));
 			IncreaseProgress();
@@ -330,8 +296,7 @@ namespace Relentless
 					{
 						importInfo.HandleToImportedTexture = assetHandle;
 
-						FactoryImportResult importedAsset;
-						assetHandle.Type = AssetType::Texture2D;
+						FactoryResult importedAsset;
 						importedAsset = assetHandle;
 						StoreImportedAsset(std::move(importedAsset));
 					}
@@ -425,26 +390,11 @@ namespace Relentless
 		auto& metaData = image.GetMetadata();
 		const std::string fileName = FilepathUtils::ExtractFilename(absolutePath);
 
-		//const DirectX::Image* pImg = image.GetImages();
-		//std::vector<D3D12_SUBRESOURCE_DATA> initData;
-		//for (uint32_t i{ 0u }; i < image.GetImageCount(); ++i, ++pImg)
-		//{
-		//	D3D12_SUBRESOURCE_DATA subresourceData = {};
-		//	subresourceData.pData = pImg->pixels;
-		//	subresourceData.RowPitch = pImg->rowPitch;
-		//	subresourceData.SlicePitch = pImg->slicePitch;
-		//
-		//	initData.push_back(subresourceData);
-		//}
-
 		Ref<Texture2D> pNewTexture = new Texture2D(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), std::move(image));  //m_pDevice->CreateTexture(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), fileName.c_str(), initData);
 		pNewTexture->SetName(fileName);
 		
-		const uint32 index = AssetManager::GetStorage<Texture2D>().Add(pNewTexture);
-		auto [handle, _] = AssetManager::InsertMetaData(pNewTexture->GetUUID(), index, AssetType::Texture2D);
-
 		pOutTexture = pNewTexture;
-		outAssetHandle = handle->second;
+		outAssetHandle = AssetManager::RegisterAsset<Texture2D>(pNewTexture);
 
 		return true;
 	}
@@ -469,9 +419,8 @@ namespace Relentless
 						pMesh->SetDefaultMaterial(m_UniqueMaterials[importInfo.pMesh->mMaterialIndex].HandleToImportedMaterial);
 
 						importInfo.HandleToImportedMesh = assetHandle;
-						assetHandle.Type = AssetType::Mesh;
 
-						FactoryImportResult importedAsset;
+						FactoryResult importedAsset;
 						importedAsset = assetHandle;
 
 						StoreImportedAsset(std::move(importedAsset));
@@ -566,13 +515,12 @@ namespace Relentless
 
 		Ref<Mesh> pNewMesh = new Mesh(pVertexBuffer, pIndexBuffer, sanitizedName);
 
-		const uint32_t sparseIndex = AssetManager::GetStorage<Mesh>().Add(pNewMesh);
-		const auto& [handle, _] = AssetManager::InsertMetaData(pNewMesh->GetUUID(), sparseIndex, AssetType::Mesh);
+		AssetHandle handle = AssetManager::RegisterAsset<Mesh>(pNewMesh);
 
-		RLS_CORE_INFO("Loaded mesh '{0}' with GUID: '{1}'.", pNewMesh->GetName(), ConvertUUIDToString(handle->second.Uuid));
+		RLS_CORE_INFO("Loaded mesh '{0}' with GUID: '{1}'.", pNewMesh->GetName(), ConvertUUIDToString(handle.Uuid));
 
 		pOutMesh = pNewMesh;
-		outHandle = handle->second;
+		outHandle = handle;
 
 		return true;
 	}
@@ -754,7 +702,7 @@ namespace Relentless
 		//OnProgressIncreased(m_Progress);
 	}
 
-	void ModelFactory::StoreImportedAsset(const FactoryImportResult& asset) noexcept
+	void ModelFactory::StoreImportedAsset(const FactoryResult& asset) noexcept
 	{
 		std::lock_guard guard(m_ImportAssetMutex);
 

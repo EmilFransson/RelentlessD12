@@ -3,20 +3,34 @@ namespace Relentless
 {
 	struct SystemPathsData
 	{
-		std::filesystem::path WorkingDirectory;
-		std::filesystem::path UserDocumentsDirectory;
-		std::filesystem::path EngineAssetsDirectory;
-		std::filesystem::path EditorAssetsDirectory;
+		Path WorkingDirectory;
+		Path UserDocumentsDirectory;
+		Path UserHomeDirectory;
+		Path EngineAssetsDirectory;
+		Path EditorAssetsDirectory;
 	};
 
 	static SystemPathsData s_SystemPathsData{};
 
+	static Path GetKnownFolder(REFKNOWNFOLDERID folderID)
+	{
+		PWSTR path = nullptr;
+		if (SUCCEEDED(::SHGetKnownFolderPath(folderID, 0, nullptr, &path)))
+		{
+			Path result(path);
+			::CoTaskMemFree(path);
+			return result;
+		}
+		return {};
+	}
+
 	void SystemPaths::Initialize() noexcept
 	{
-		const std::filesystem::path coreEnginePath = MAIN_ENGINE_DIRECTORY;
+		const Path coreEnginePath = MAIN_ENGINE_DIRECTORY;
 		s_SystemPathsData.WorkingDirectory = coreEnginePath.parent_path().parent_path();
 		s_SystemPathsData.EngineAssetsDirectory = s_SystemPathsData.WorkingDirectory / "Relentless\\Assets";
 		s_SystemPathsData.EditorAssetsDirectory = s_SystemPathsData.WorkingDirectory / "Relentless-Editor\\Assets";
+		s_SystemPathsData.UserHomeDirectory = GetKnownFolder(::FOLDERID_Desktop);
 
 		char documentsPath[MAX_PATH] = { 0 };
 		if (::SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, documentsPath) == S_OK)
@@ -31,22 +45,27 @@ namespace Relentless
 		}
 	}
 
-	std::filesystem::path SystemPaths::GetWorkingDirectory() noexcept
+	Path SystemPaths::GetWorkingDirectory() noexcept
 	{
 		return s_SystemPathsData.WorkingDirectory;
 	}
 
-	std::filesystem::path SystemPaths::GetUserDocumentsDirectory() noexcept
+	Path SystemPaths::GetUserDocumentsDirectory() noexcept
 	{
 		return s_SystemPathsData.UserDocumentsDirectory;
 	}
 
-	std::filesystem::path SystemPaths::GetEngineAssetsDirectory() noexcept
+	Path SystemPaths::GetUserHomeDirectory() noexcept
+	{
+		return s_SystemPathsData.UserHomeDirectory;
+	}
+
+	Path SystemPaths::GetEngineAssetsDirectory() noexcept
 	{
 		return s_SystemPathsData.EngineAssetsDirectory;
 	}
 
-	std::filesystem::path SystemPaths::GetEditorAssetsDirectory() noexcept
+	Path SystemPaths::GetEditorAssetsDirectory() noexcept
 	{
 		return s_SystemPathsData.EditorAssetsDirectory;
 	}

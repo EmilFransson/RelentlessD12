@@ -95,6 +95,7 @@ target_compile_definitions(${LibraryName} PUBLIC "$<$<CONFIG:DEBUG>:RLS_DEBUG>")
 target_compile_definitions(${LibraryName} PUBLIC "$<$<CONFIG:RELEASE>:RLS_RELEASE>")
 target_compile_definitions(${LibraryName} PUBLIC "$<$<CONFIG:RELWITHDEBINFO>:RLS_RELWITHDEBINFO>")
 target_compile_definitions(${LibraryName} PUBLIC SHADER_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/src/Graphics/Shaders/HLSL/")
+target_compile_definitions(${LibraryName} PUBLIC YAML_CPP_STATIC_DEFINE)
 
 string(REPLACE "/" "\\\\" WINDOWS_STYLE_PATH1 "${CMAKE_CURRENT_SOURCE_DIR}/Assets/")
 target_compile_definitions(${LibraryName} PUBLIC "ENGINE_ASSET_DIRECTORY=\"${WINDOWS_STYLE_PATH1}\"")

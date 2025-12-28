@@ -5,6 +5,7 @@ namespace Relentless
 	class FilepathUtils
 	{
 	public:
+		static bool CreateDirectoryTree(const Path& aPath) noexcept;
 		static NO_DISCARD String ExtractFilename(const Path& aFilepath) noexcept;
 		static NO_DISCARD String ExtractFilenameWithoutExtension(const Path& aFilepath) noexcept;
 		static NO_DISCARD String ExtractExtension(const Path& aFilepath) noexcept;

@@ -6,17 +6,17 @@ namespace Relentless
 
 	ContentBrowserPanel::ContentBrowserPanel() noexcept
 	{
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\directoryicon.rasset", m_DirectoryTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\directoryiconopen2.rasset", m_OpenDirectoryTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.rasset", m_SceneTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.rasset", m_MaterialTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MeshThumbnail.rasset", m_MeshTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\importicon.rasset", m_ImportIconTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\filtericon.rasset", m_FilterIconTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", m_DownArrowIconTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\undoicon.rasset", m_UndoArrowIconTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\plusicon.rasset", m_PlusIconTextureHandle), "Core engine icon missing.");
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\rightarrowicon.rasset", m_RightArrowIconTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\directoryicon.rasset", m_DirectoryTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\directoryiconopen2.rasset", m_OpenDirectoryTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\SceneThumbnail.rasset", m_SceneTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MaterialThumbnail.rasset", m_MaterialTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\MeshThumbnail.rasset", m_MeshTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\importicon.rasset", m_ImportIconTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\filtericon.rasset", m_FilterIconTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", m_DownArrowIconTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\undoicon.rasset", m_UndoArrowIconTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\plusicon.rasset", m_PlusIconTextureHandle), "Core engine icon missing.");
+		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\rightarrowicon.rasset", m_RightArrowIconTextureHandle), "Core engine icon missing.");
 
 		editorAssetDirectory = editorAssetDirectory.substr(0u, editorAssetDirectory.size() - 1);
 		m_SelectedHierarchyDirectories.push_back(editorAssetDirectory);
@@ -784,8 +784,8 @@ namespace Relentless
 				
 				if (!AssetManager::IsLoaded(entryPath))
 				{
-					if (AssetManager::GetAssetStatus(entryPath) == EAssetStatus::Failed)
-						continue;
+					//if (AssetManager::GetAssetStatus(entryPath) == EAssetStatus::Failed)
+					//	continue;
 
 					{
 						std::lock_guard<std::mutex> guard(m_AssetsCurrentlyBeingLoadedSetMutex);
@@ -795,12 +795,12 @@ namespace Relentless
 						m_AssetsCurrentlyBeingLoaded.insert(entryPath);
 					}
 
-					AssetManager::RequestAsyncLoadAsset(entryPath, [this, entryPath](AssetHandle assetHandle)
-						{
-							std::lock_guard<std::mutex> guard(m_AssetsCurrentlyBeingLoadedSetMutex);
-							RLS_ASSERT(assetHandle != NULL_HANDLE, "Handle is invalid.");
-							m_AssetsCurrentlyBeingLoaded.erase(entryPath);
-						});
+					//AssetManager::RequestAsyncLoadAsset(entryPath, [this, entryPath](AssetHandle assetHandle)
+					//	{
+					//		std::lock_guard<std::mutex> guard(m_AssetsCurrentlyBeingLoadedSetMutex);
+					//		RLS_ASSERT(assetHandle != NULL_HANDLE, "Handle is invalid.");
+					//		m_AssetsCurrentlyBeingLoaded.erase(entryPath);
+					//	});
 
 					continue;
 				}
@@ -1177,7 +1177,7 @@ namespace Relentless
 				std::filesystem::path fullPathToDelete = currentDirectory;
 				fullPathToDelete.append(materialFilename);
 
-				Serializer::Serialize<Material>(m_AssetToName, fullPathToSave.string(), true);
+				//Serializer::Serialize<Material>(m_AssetToName, fullPathToSave.string(), true);
 				std::filesystem::remove(fullPathToDelete.string());
 				memset(newName, 0, 64);
 
@@ -1311,8 +1311,8 @@ namespace Relentless
 	{
 		for (auto& directoryPath : directories)
 		{
-			if (!File::ExistsDir(directoryPath))
-				continue;
+			//if (!File::ExistsDir(directoryPath))
+			//	continue;
 
 			for (auto const& dir_entry : std::filesystem::directory_iterator{ directoryPath })
 			{

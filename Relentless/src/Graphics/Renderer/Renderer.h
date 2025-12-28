@@ -80,13 +80,10 @@ namespace Relentless
 		UniquePtr<AutoExposure> m_pAutoExposure = nullptr;
 
 		AssetHandle m_BRDFLutTextureHandle;
-
 		
 		Ref<Buffer> m_EntityIDReadbackBuffer = nullptr;
 		
 		Ref<PipelineState> m_pEntityIdPSO = nullptr;
 		std::queue<SyncPoint> m_EntityIDSyncs;
-
-		std::unordered_map<UUID, Ref<Texture>> m_TextureCache; //TODO: Centralize ffs.
 	};
 }

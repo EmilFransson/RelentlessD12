@@ -4,7 +4,7 @@ namespace Relentless
 {
 	struct ProjectConfig
 	{
-		String Name		= "Untitled";
+		String Name		= "UntitledRelentlessProject";
 		Path AssetPath	= "Assets";
 	};
 
@@ -22,7 +22,8 @@ namespace Relentless
 	private:
 		ProjectConfig m_Config;
 		Path m_ActiveProjectDirectory;
-
+		
 		inline static Ref<Project> s_ActiveProject = nullptr;
 	};
+	
 }

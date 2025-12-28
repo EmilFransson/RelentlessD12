@@ -44,14 +44,26 @@ namespace Relentless
 		if (!projectNode)
 			return nullptr;
 
+		if (!s_ActiveProject)
+			New({});
+
 		auto& config = s_ActiveProject->GetConfig();
 		config.Name = projectNode["Name"].as<String>();
 		config.AssetPath = projectNode["AssetDirectory"].as<String>();
+
 		s_ActiveProject->m_ActiveProjectDirectory = aPath.parent_path();
+
+		return s_ActiveProject;
 	}
 
 	bool Project::SaveActive(const Path& aPath) noexcept
 	{
+		Path directory = FilepathUtils::Combine(aPath, s_ActiveProject->GetName());
+		directory += "\\";
+
+		if (!FilepathUtils::CreateDirectoryTree(directory))
+			return false;
+
 		const ProjectConfig& config = s_ActiveProject->GetConfig();
 
 		YAML::Emitter out;
@@ -66,6 +78,10 @@ namespace Relentless
 			}
 			out << YAML::EndMap; //Root
 		}
+
+		const Path destination = FilepathUtils::Combine(directory, s_ActiveProject->GetName() + ".rproject");
+		std::ofstream fileOut(destination);
+		fileOut << out.c_str();
 
 		return true;
 	}

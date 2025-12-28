@@ -5,6 +5,47 @@ namespace Relentless
 	NO_DISCARD std::string ConvertWideStringToString(std::wstring const& wstr) noexcept;
 	NO_DISCARD std::wstring ConvertStringToWstring(const std::string& string) noexcept;
 
+	namespace TypeName
+	{
+		constexpr std::string_view StripClassStruct(std::string_view name) noexcept
+		{
+			if (name.starts_with("class "))
+				return name.substr(6);
+			if (name.starts_with("struct "))
+				return name.substr(7);
+			return name;
+		}
+
+		template<typename T>
+		constexpr std::string_view GetPrettyTypeName() noexcept
+		{
+#if defined(_MSC_VER)
+			// Example:
+			// "class std::basic_string_view<char,struct std::char_traits<char> > __cdecl
+			//  Relentless::TypeName::GetPrettyTypeName<class MyNamespace::Foo>(void) noexcept"
+			constexpr std::string_view sig = __FUNCSIG__;
+			constexpr std::string_view prefix = "GetPrettyTypeName<";
+			constexpr std::string_view suffix = ">(void) noexcept";
+
+			const auto start = sig.find(prefix) + prefix.size();
+			const auto end = sig.rfind(suffix);
+			return StripClassStruct(sig.substr(start, end - start));
+
+#elif defined(__clang__) || defined(__GNUC__)
+			// Example:
+			// "constexpr std::string_view Relentless::TypeName::GetPrettyTypeName() [T = MyNamespace::Foo]"
+			constexpr std::string_view sig = __PRETTY_FUNCTION__;
+			constexpr std::string_view prefix = "T = ";
+			const auto start = sig.find(prefix) + prefix.size();
+			const auto end = sig.find(']', start);
+			return sig.substr(start, end - start);
+
+#else
+			return "UnknownCompiler";
+#endif
+		}
+	}
+
 	struct ScopedSuspend
 	{
 		ScopedSuspend(bool& aSuspendFlag) noexcept

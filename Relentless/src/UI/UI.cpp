@@ -5,6 +5,8 @@
 #include "Module/AssetToolsModule.h"
 #include "Module/ModuleManager.h"
 
+#include "Utility/FilepathUtils.h"
+
 namespace Relentless
 {
 	namespace COLOR
@@ -21,33 +23,8 @@ namespace Relentless
 
 	void UI::Initialize() noexcept
 	{
-		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\searchicon.rasset", s_GlobalData.SearchIconTextureHandle), "Core engine icon missing.");
-		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\cancelicon.rasset", s_GlobalData.CancelIconTextureHandle), "Core engine icon missing.");
-		//RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\Icons\\arrowdownicon.rasset", s_GlobalData.ArrowDownIconTextureHandle), "Core engine icon missing.");
-
 		std::vector<AssetImportTask> importTasks;
 		importTasks.reserve(3);
-		
-		//auto&& CreateUIImportTask = [&importTasks](const Path& srcPath, AssetHandle& handleToSet)
-		//	{
-		//		Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
-		//		pTextureFactory->SetImportAsSRGB(true);
-		//		pTextureFactory->OnDone.Connect([&](const ImportedAsset& asset, bool success)
-		//			{
-		//				RLS_VERIFY(success, "[OutlinerPanel] Error importing UI texture asset.");
-		//				handleToSet = asset.Handle;
-		//			});
-		//
-		//		AssetImportTask& importTask = importTasks.emplace_back();
-		//		importTask.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, srcPath);
-		//		importTask.pFactory = pTextureFactory;
-		//	};
-		//
-		//CreateUIImportTask("Textures\\Icons\\searchicon.png", UI::SearchIconTextureHandle);
-		//CreateUIImportTask("Textures\\Icons\\cancelicon.png", UI::CancelIconTextureHandle);
-		//CreateUIImportTask("Textures\\Icons\\arrowdownicon.png", UI::ArrowDownIconTextureHandle);
-
-		//Importer::RequestAsyncLoad(importTasks).Wait();
 
 		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
 		

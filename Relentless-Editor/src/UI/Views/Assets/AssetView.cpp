@@ -23,6 +23,8 @@ namespace Relentless
 			->OnGenerateRow(this, &AssetView::OnGenerateRow)
 			->OnSelectionChanged(this, &AssetView::OnSelectionChanged);
 
+		return;
+
 		{
 			for (int i = 0; i < 30; ++i)
 			{
@@ -37,32 +39,6 @@ namespace Relentless
 			pItem->Type = AssetType::Undefined;
 			m_Items.push_back(pItem);
 		}
-
-		//std::vector<AssetImportTask> tasks;
-
-		//auto&& CreateTextureImportTask = [&tasks, this](const Path& relativePath, bool srgb, auto SetTextureFunc)
-		//	{
-		//		Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
-		//		pFactory->SetImportAsSRGB(srgb);
-		//
-		//		pFactory->OnDone.Connect(SetTextureFunc);
-		//
-		//		AssetImportTask& task = tasks.emplace_back();
-		//		task.FilePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, relativePath);
-		//		task.pFactory = pFactory;
-		//	};
-		//
-		//CreateTextureImportTask("Textures/cube_256x256.png", true, [this](const ImportedAsset& asset, bool success)
-		//	{
-		//		RLS_VERIFY(success, "[AssetView::AssetView] Asset import failed.");
-		//		m_MeshIconHandle = asset.Handle;
-		//	});
-		//
-		//CreateTextureImportTask("Textures/folder_256x256.png", true, [this](const ImportedAsset& asset, bool success)
-		//	{
-		//		RLS_VERIFY(success, "[AssetView::AssetView] Asset import failed.");
-		//		m_FolderIconHandle = asset.Handle;
-		//	});
 
 		std::vector<AssetImportTask> tasks;
 		{
@@ -85,15 +61,14 @@ namespace Relentless
 		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
 		std::vector<AssetImportResult> importResults = assetToolsModule.Import(tasks);
 
-		Ref<Texture2D> pMeshIconTexture2D = AssetManager::Get<Texture2D>(importResults[0].Handle);
-		Ref<Texture2D> pFolderIconTexture2D = AssetManager::Get<Texture2D>(importResults[1].Handle);
+		m_MeshIconHandle = importResults[0].Handle;
+		m_FolderIconHandle = importResults[1].Handle;
 
-		GraphicsDevice* pDevice = Application::Get().GetGraphicsDevice();
+		Ref<Texture2D> pMeshIconTexture2D = AssetManager::Get<Texture2D>(m_MeshIconHandle);
+		Ref<Texture2D> pFolderIconTexture2D = AssetManager::Get<Texture2D>(m_FolderIconHandle);
 
-		m_pMeshIconTexture = pDevice->CreateTexture(pMeshIconTexture2D->GetDesc(), pMeshIconTexture2D->GetName().c_str(), pMeshIconTexture2D->GetImage());
-		m_pFolderIconTexture = pDevice->CreateTexture(pFolderIconTexture2D->GetDesc(), pFolderIconTexture2D->GetName().c_str(), pFolderIconTexture2D->GetImage());
-
-		//Importer::RequestAsyncLoad(tasks).Wait();
+		pMeshIconTexture2D->CreateResource();
+		pFolderIconTexture2D->CreateResource();
 	}
 
 	float AssetView::CalcDesiredWidth() const noexcept
@@ -103,12 +78,12 @@ namespace Relentless
 
 	uint64 AssetView::GetFolderIconID() const noexcept
 	{
-		return m_pFolderIconTexture->GetSRV()->GetGPUHandle().ptr; //AssetManager::Get<Texture>(m_FolderIconHandle)->GetSRV()->GetGPUHandle().ptr;
+		return AssetManager::Get<Texture2D>(m_FolderIconHandle)->GetResource()->GetSRV()->GetGPUHandle().ptr;
 	}
 
 	uint64 AssetView::GetMeshIconID() const noexcept
 	{
-		return m_pMeshIconTexture->GetSRV()->GetGPUHandle().ptr; //AssetManager::Get<Texture>(m_MeshIconHandle)->GetSRV()->GetGPUHandle().ptr;
+		return AssetManager::Get<Texture2D>(m_MeshIconHandle)->GetResource()->GetSRV()->GetGPUHandle().ptr;
 	}
 
 	Ref<ITableRow> AssetView::OnGenerateRow(const Ref<ContentBrowserItem>& aItem) noexcept
@@ -142,7 +117,6 @@ namespace Relentless
 
 	void AssetView::OnRender() noexcept
 	{
-		//m_pAssetsTreeView->Render();
 		m_pBox->Render();
 	}
 

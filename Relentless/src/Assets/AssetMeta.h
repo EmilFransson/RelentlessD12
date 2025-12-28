@@ -1,12 +1,17 @@
 #pragma once
 #include "Utility/Rules.h"
 
+#include <StaticTypeInfo/type_index.h>
+
 namespace Relentless
 {
 	inline constexpr char ASSET_EXTENSION[] = ".rasset";
 	inline constexpr uint32_t NULL_INDEX = std::numeric_limits<uint32_t>::max();
 	inline constexpr UUID NULL_UUID = UUID{ 0 };
 	inline constexpr uint32_t RASSET_SIGNATURE = 'R' << 24 | 'A' << 16 | 'S' << 8 | 'S';
+
+	using namespace static_type_info;
+	using TypeIndex = static_type_info::TypeIndex;
 
 	enum class AssetType : uint8_t 
 	{
@@ -55,7 +60,7 @@ namespace Relentless
 
 	struct AssetHandle
 	{
-		AssetHandle(AssetType assetType = NULL_ASSET_TYPE, UUID uuid = NULL_UUID, uint32_t index = NULL_INDEX) noexcept;
+		AssetHandle(const TypeIndex& aTypeIndex = {}, const UUID& aUUID = NULL_UUID, uint32_t aSparseIndex = NULL_INDEX) noexcept;
 		~AssetHandle() noexcept;
 
 		AssetHandle(const AssetHandle& otherHandle) noexcept;
@@ -63,7 +68,7 @@ namespace Relentless
 
 		bool operator==(const AssetHandle& other) const noexcept
 		{
-			return Type == other.Type && Uuid == other.Uuid && Index == other.Index;
+			return Uuid == other.Uuid && Index == other.Index;
 		}
 
 		bool operator!=(const AssetHandle& other) const noexcept
@@ -73,20 +78,23 @@ namespace Relentless
 
 		[[nodiscard]] inline bool IsValid() const noexcept
 		{
-			return Type != NULL_ASSET_TYPE && Uuid != NULL_UUID && Index != NULL_INDEX;
+			return Uuid != NULL_UUID && Index != NULL_INDEX;
 		}
 
 		void Invalidate() noexcept
 		{
-			Type = AssetType::Undefined;
+			Type = {};
 			Uuid = NULL_UUID;
 			Index = NULL_INDEX;
 		}
 
-		AssetType Type;
+		TypeIndex Type;
 		UUID Uuid;
 		uint32_t Index;
+
+		static const AssetHandle INVALID;
 	};
 
-	inline const AssetHandle NULL_HANDLE = AssetHandle(NULL_ASSET_TYPE, NULL_UUID, NULL_INDEX);
+	inline const AssetHandle NULL_HANDLE = AssetHandle(TypeIndex{}, NULL_UUID, NULL_INDEX);
+	inline const AssetHandle AssetHandle::INVALID{TypeIndex{}, NULL_UUID, NULL_INDEX };
 }

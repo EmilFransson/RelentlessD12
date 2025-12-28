@@ -66,7 +66,6 @@ namespace Relentless
 		Renderer* pRenderer = nullptr;
 		Scene* pScene		= nullptr;
 		Ref<Buffer> ViewCB	= nullptr;
-		float Exposure		= 1.0f;
 	};
 
 	struct Batch

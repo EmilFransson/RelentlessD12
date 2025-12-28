@@ -10,7 +10,7 @@ namespace Relentless
 {
 	enum class EExtensionType : uint8_t { UNKNOWN = 0, TGA, JPG, JPEG, PNG, BMP, DDS, TIFF, HDR, EXR, FBX, OBJ, GLTF };
 
-	using FactoryImportResult = std::expected<AssetHandle, String>;
+	using FactoryResult = std::expected<AssetHandle, String>;
 
 	class IFactory : public RefCounted<IFactory>
 	{
@@ -20,20 +20,21 @@ namespace Relentless
 		virtual NO_DISCARD bool CanCreateNew() const noexcept = 0;
 		virtual NO_DISCARD bool CanImport(const Path& aPath) const noexcept = 0;
 		virtual NO_DISCARD Ref<IFactory> Clone() noexcept = 0;
-		virtual AssetHandle CreateNew(const String& aName, const Path& aPackagePath) noexcept { return NULL_HANDLE; }
+		virtual FactoryResult CreateNew(const String& aName, const Path& aPackagePath) noexcept { return NULL_HANDLE; }
 
 		virtual NO_DISCARD bool DoesSupportAsset(IAsset* aAsset) const noexcept = 0;
 
-		NO_DISCARD const std::vector<FactoryImportResult>& GetAdditionalImportedAssets() const noexcept { return m_AdditionalImportedAssets; }
+		NO_DISCARD const std::vector<FactoryResult>& GetAdditionalImportedAssets() const noexcept { return m_AdditionalImportedAssets; }
 		virtual NO_DISCARD String GetDefaultNewAssetName() const noexcept { return "NewAsset"; }
+		virtual NO_DISCARD String GetDisplayName() const noexcept { return "Unnamed"; }
 		virtual NO_DISCARD std::vector<String> GetSupportedFileExtensions() const noexcept { return {}; }
 		virtual NO_DISCARD std::vector<String> GetFormats() const noexcept { return {}; }
 
-		virtual const FactoryImportResult& ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept { return NULL_HANDLE; }
+		virtual const FactoryResult& ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept { return NULL_HANDLE; }
 
 		virtual NO_DISCARD bool SupportsFileExtension(const std::string_view aFileExtension) const noexcept { return false; }
 	protected:
-		std::vector<FactoryImportResult> m_AdditionalImportedAssets;
-		FactoryImportResult m_ImportedAsset;
+		std::vector<FactoryResult> m_AdditionalImportedAssets;
+		FactoryResult m_ImportedAsset;
 	};
 }

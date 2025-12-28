@@ -34,7 +34,7 @@ namespace Relentless
 		void ToggleEditorGrid() noexcept;
 		[[nodiscard]] GFSDK_SSAO_Parameters& GetHBAOPlusParameters() noexcept { return m_HBAOPlusParameters; }
 		void InitializeHBAOPlus() noexcept;
-		void OnImGuiRender(const ImVec2& viewportDimensions);
+		//void OnImGuiRender(const ImVec2& viewportDimensions);
 	private:
 		void PreZPass() noexcept;
 		void SkyboxPass() noexcept;

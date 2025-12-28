@@ -23,7 +23,7 @@ namespace Relentless
 		NO_DISCARD std::vector<String> GetSupportedFileExtensions() const noexcept override;
 		NO_DISCARD std::vector<String> GetFormats() const noexcept override;
 
-		const FactoryImportResult& ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept override;
+		const FactoryResult& ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept override;
 
 		void SetGraphicsDevice(GraphicsDevice* aGraphicsDevice) noexcept;
 		NO_DISCARD bool SupportsFileExtension(const std::string_view aFileExtension) const noexcept override;
@@ -34,7 +34,6 @@ namespace Relentless
 		std::array<String, 9> m_SupportedExensions { ".exr", ".tga", ".jpg", ".jpeg", ".png", ".bmp", ".dds", ".tif", ".hdr" };
 		std::array<String, 9> m_SupportedFormats{ "EXR", "TGA", "JPG", "JPEG", "PNG", "BMP", "DDS", "TIFF", "HDR" };
 
-		//ImportedAsset m_ImportedTextureAsset;
 		Path m_SrcPath;
 
 		GraphicsDevice* m_pDevice = nullptr;

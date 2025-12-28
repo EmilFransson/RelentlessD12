@@ -7,7 +7,7 @@
 
 namespace Relentless
 {
-	class Mesh : public IAsset
+	class Mesh : public AssetBase<Mesh>
 	{
 	public:
 		Mesh(Ref<Buffer> pVertexBuffer, Ref<Buffer> pIndexBuffer, const std::string& name = "Unnamed") noexcept;

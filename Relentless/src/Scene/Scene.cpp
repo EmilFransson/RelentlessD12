@@ -1,7 +1,8 @@
 #include "Scene.h"
 #include "../Assets/AssetManager.h"
-
 #include "ECS/Systems/DeferredEntityDeletionSystem.h"
+
+#include "Graphics/Resources/Material.h"
 
 namespace Relentless
 {

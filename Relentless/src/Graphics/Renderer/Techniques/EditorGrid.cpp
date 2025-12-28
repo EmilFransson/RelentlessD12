@@ -78,8 +78,8 @@ namespace Relentless
 		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ReadOnlyDepth;
 		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::None;
 
-		commandContext.InsertResourceBarrier(sceneTextures.pDepthTarget, sceneTextures.pDepthTarget->GetResourceState(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-		sceneTextures.pDepthTarget->SetResourceState(D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		commandContext.InsertResourceBarrier(sceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		commandContext.InsertResourceBarrier(sceneTextures.pDepthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 		commandContext.BeginRenderPass(info);
 
@@ -114,7 +114,9 @@ namespace Relentless
 		commandContext.BindRootCBV(BindingSlot::PerPass, (const void*)&params, sizeof(params));
 
 		commandContext.Draw(0, EDITOR_GRID_VERTEX_COUNT, 0, EDITOR_GRID_INSTANCE_COUNT);
-		
+
 		commandContext.EndRenderPass();
+
+		commandContext.InsertResourceBarrier(sceneTextures.pColorTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	}
 }

@@ -6,9 +6,10 @@ namespace Relentless
 	{
 	public:
 		static void Initialize() noexcept;
-		static [[nodiscard]] std::filesystem::path GetWorkingDirectory() noexcept;
-		static [[nodiscard]] std::filesystem::path GetUserDocumentsDirectory() noexcept;
-		static [[nodiscard]] std::filesystem::path GetEngineAssetsDirectory() noexcept;
-		static [[nodiscard]] std::filesystem::path GetEditorAssetsDirectory() noexcept;
+		static NO_DISCARD Path GetWorkingDirectory() noexcept;
+		static NO_DISCARD Path GetUserDocumentsDirectory() noexcept;
+		static NO_DISCARD Path GetUserHomeDirectory() noexcept;
+		static NO_DISCARD Path GetEngineAssetsDirectory() noexcept;
+		static NO_DISCARD Path GetEditorAssetsDirectory() noexcept;
 	};
 }

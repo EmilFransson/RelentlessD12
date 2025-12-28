@@ -117,9 +117,6 @@ using float4x4 = Matrix;
 		uint MeshesIndex;
 		uint MaterialsIndex;
 		uint LightsIndex;
-
-		float Exposure;
-		float3 Padding;
 	};
 
 	static const uint INVALID_DESCRIPTOR_INDEX = 0xFFFFFFFF;

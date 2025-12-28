@@ -51,7 +51,6 @@ namespace Relentless
 
 	private:
 		void SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept;
-		void LoadStarterMeshes() noexcept;
 
 		void CreateStartScene() noexcept;
 

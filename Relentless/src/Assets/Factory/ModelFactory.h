@@ -60,7 +60,7 @@ namespace Relentless
 		NO_DISCARD std::vector<String> GetSupportedFileExtensions() const noexcept override;
 		NO_DISCARD std::vector<String> GetFormats() const noexcept override;
 
-		virtual const FactoryImportResult& ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept override;
+		virtual const FactoryResult& ImportFromFile(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept override;
 
 		void SetGraphicsDevice(GraphicsDevice* aGraphicsDevice) noexcept;	
 		NO_DISCARD bool SupportsFileExtension(const std::string_view aFileExtension) const noexcept override;
@@ -80,7 +80,7 @@ namespace Relentless
 		void ParseMeshes() noexcept;
 		void ResolveSceneNodeHierarchy() noexcept;
 		void SetProgress(float progress) noexcept;
-		void StoreImportedAsset(const FactoryImportResult& asset) noexcept;
+		void StoreImportedAsset(const FactoryResult& asset) noexcept;
 	private:
 		//std::vector<ImportedAsset> m_ImportedAssets;
 		std::array<String, 4> m_SupportedExtensions = { ".fbx", ".gltf", ".glb", ".obj" };

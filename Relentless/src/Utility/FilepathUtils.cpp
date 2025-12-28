@@ -3,6 +3,28 @@
 
 namespace Relentless
 {
+	bool FilepathUtils::CreateDirectoryTree(const Path& aPath) noexcept
+	{
+		String pathAsString = aPath.string();
+		std::replace(pathAsString.begin(), pathAsString.end(), '\\', '/');
+		size_t slash = pathAsString.find('/', 0);
+		while (slash != String::npos)
+		{
+			if (slash > 1)
+			{
+				const String dirToCreate = pathAsString.substr(0, slash);
+				const BOOL success = ::CreateDirectoryA(dirToCreate.c_str(), nullptr);
+				const DWORD error = ::GetLastError();
+				if (success != TRUE && error == ERROR_PATH_NOT_FOUND)
+				{
+					return false;
+				}
+			}
+			slash = pathAsString.find('/', slash + 1);
+		}
+		return true;
+	}
+
 	String FilepathUtils::ExtractFilename(const Path& aFilepath) noexcept
 	{
 		if (aFilepath.has_filename())

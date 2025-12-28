@@ -21,8 +21,6 @@ namespace Relentless
 	{
 		InitializeHBAOPlus();
 
-		RLS_VERIFY(AssetManager::RequestLoadAsset(std::string(ENGINE_ASSET_DIRECTORY) + "Textures\\ibl_brdf_lut.rasset", m_BRDFLutTextureHandle), "[SceneRenderer]: Unable to load ibl-brdf look up texture.");
-
 		//Pre-Z Render pass:
 		{
 			//DepthAttachment depthAttachment;
@@ -1427,8 +1425,8 @@ namespace Relentless
 		m_HBAOPlusParameters.StepCount = GFSDK_SSAO_STEP_COUNT_8;
 	}
 
-	void SceneRenderer::OnImGuiRender(const ImVec2&)
-	{
+	//void SceneRenderer::OnImGuiRender(const ImVec2&)
+	//{
 		//auto UITextureHandle = MasterRenderer::GetFrameBuffer()->GetOutput(0)->GetSRVDescriptorHandle().GPUHandle;
 		
 // 		ImGui::Image
@@ -1436,5 +1434,5 @@ namespace Relentless
 // 			(ImTextureID)UITextureHandle.ptr,
 // 			ImVec2(viewportDimensions.x, viewportDimensions.y)
 // 		);
-	}
+	//}
 }

@@ -190,7 +190,7 @@ namespace Relentless
 		if (!File::ExistsDir(absolutePath))
 			return false;
 
-		return SerializerFuncs[assetHandle.Type](absolutePath.string(), assetHandle, isABlockingOperation);
+		return false;
 	}
 
 	template<>
@@ -729,8 +729,8 @@ namespace Relentless
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.AlbedoTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
 
-			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Albedo texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			//if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+			//	RLS_CORE_ERROR("[Serializer]: Albedo texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 				
 			//material->SetAlbedoTexture(textureHandle);
 		}
@@ -740,8 +740,8 @@ namespace Relentless
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.MetallicTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
 
-			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Metallic texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			//if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+			//	RLS_CORE_ERROR("[Serializer]: Metallic texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 			
 			//material->SetMetallicTexture(textureHandle);
 		}
@@ -751,8 +751,8 @@ namespace Relentless
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.RoughnessTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
 
-			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Roughness texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			//if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+			//	RLS_CORE_ERROR("[Serializer]: Roughness texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 			
 			//material->SetRoughnessTexture(textureHandle);
 		}
@@ -762,8 +762,8 @@ namespace Relentless
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.NormalMapUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
 
-			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Normal Map with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			//if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+			//	RLS_CORE_ERROR("[Serializer]: Normal Map with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 			
 			//material->SetNormalMap(textureHandle);
 		}
@@ -773,8 +773,8 @@ namespace Relentless
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.HeightMapUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
 
-			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Height map with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			//if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+			//	RLS_CORE_ERROR("[Serializer]: Height map with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 			
 			//material->SetHeightMap(textureHandle);
 		}
@@ -784,8 +784,8 @@ namespace Relentless
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.AmbientOcclusionTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
 
-			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: AO texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			//if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+			//	RLS_CORE_ERROR("[Serializer]: AO texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 			
 			//material->SetAmbientOcclusionTexture(textureHandle);
 		}
@@ -795,8 +795,8 @@ namespace Relentless
 			const std::filesystem::path filepath = AssetRegistry::GetFilepath(data.EmissionTextureUUID);
 			AssetHandle textureHandle = NULL_HANDLE;
 
-			if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
-				RLS_CORE_ERROR("[Serializer]: Emission texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
+			//if (!AssetManager::RequestLoadAsset(filepath, textureHandle))
+			//	RLS_CORE_ERROR("[Serializer]: Emission texture with path '{0}' for material '{1}' is missing or invalid.", filepath.string().c_str(), name.c_str());
 			
 			//material->SetEmissionTexture(textureHandle);
 		}

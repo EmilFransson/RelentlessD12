@@ -3,17 +3,15 @@
 
 namespace Relentless
 {
-	AssetHandle::AssetHandle(AssetType assetType, UUID uuid, uint32_t index) noexcept
-		: Type{assetType},
-		  Uuid{uuid},
-		  Index{index}
+	AssetHandle::AssetHandle(const TypeIndex& aTypeIndex, const UUID& aUUID, uint32_t aSparseIndex) noexcept
+		: Type{ aTypeIndex },
+		  Uuid{ aUUID },
+		  Index{ aSparseIndex }
 	{
-		//AssetManager::IncreaseReferenceCount(*this);
 	}
 
 	AssetHandle::~AssetHandle() noexcept
 	{
-		//AssetManager::DecreaseReferenceCount(*this);
 	}
 
 	AssetHandle::AssetHandle(const AssetHandle& otherHandle) noexcept
@@ -21,7 +19,6 @@ namespace Relentless
 		  Uuid{otherHandle.Uuid},
 		  Index{otherHandle.Index }
 	{
-		//AssetManager::IncreaseReferenceCount(*this);
 	}
 
 	AssetHandle& AssetHandle::operator=(const AssetHandle& otherHandle) noexcept
@@ -30,14 +27,10 @@ namespace Relentless
 		{
 			return *this;
 		}
-		
-		//AssetManager::DecreaseReferenceCount(*this);
 			
 		Type = otherHandle.Type;
 		Uuid = otherHandle.Uuid;
 		Index = otherHandle.Index;
-	
-		//AssetManager::IncreaseReferenceCount(*this);
 
 		return *this;
 	}

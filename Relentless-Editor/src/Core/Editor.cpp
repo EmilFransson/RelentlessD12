@@ -93,6 +93,8 @@ namespace Relentless
 
 	void Editor::OnCreate() noexcept
 	{
+		Project::Load(FilepathUtils::Combine(SystemPaths::GetUserHomeDirectory(), "UntitledRelentlessProject\\UntitledRelentlessProject.rproject"));
+
 		m_pSelection = std::make_unique<Selection>();
 		m_pSelection->OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
 
@@ -234,39 +236,10 @@ namespace Relentless
 		OnSceneChanged(m_pActiveScene.get());
 	}
 
-	void Editor::LoadStarterMeshes() noexcept
-	{
-		const std::array<std::string, 11> starterMeshes
-		{
-			"Cube.rasset",
-			"Capsule.rasset",
-			"Cone.rasset",
-			"Cylinder.rasset",
-			"Icosphere.rasset",
-			"Plane.rasset",
-			"Quad.rasset",
-			"Sphere.rasset",
-			"Torus.rasset",
-			"Triangle.rasset",
-			"UtahTeapot.rasset"
-		};
-
-		const std::string meshPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Models\\StarterContent\\");
-
-		MeshImportSettings importSettings = {};
-		importSettings.ImportMaterialsAndTextures = false;
-		for (auto& mesh : starterMeshes)
-		{
-			const std::string fullMeshPath(meshPath + std::string(mesh));
-			AssetHandle throwAway = NULL_HANDLE;
-			AssetManager::RequestLoadAsset(fullMeshPath, throwAway);
-		}
-	}
-
 	void Editor::CreateStartScene() noexcept
 	{
 		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
-
+		
 		{
 			entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
 			auto& dlc = entityManager.Add<DirectionalLightComponent>(dirEntity);
@@ -277,29 +250,29 @@ namespace Relentless
 			tc.SetWorldRotationEulerDegrees(Vector3(-90.0f, 0.0f, 0.0f));
 		}
 
-		Ref<Material> pWhiteMaterial = new Material();
+		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+
+		AssetHandle whiteMaterialHandle = assetToolsModule.CreateAsset<Material>("M_DefaultWhite", "Materials/");
+		Ref<Material> pWhiteMaterial = AssetManager::Get<Material>(whiteMaterialHandle);
 		pWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
 		pWhiteMaterial->SetAlbedoColor(Colors::White);
-		const uint32 index = AssetManager::GetStorage<Material>().Add(pWhiteMaterial);
-		auto [handle, _] = AssetManager::InsertMetaData(CreateUUID(), index, AssetType::Material);
 
-		Ref<Material> pNewWhiteMaterial = new Material();
-		pNewWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
-		pNewWhiteMaterial->SetAlbedoColor(Vector4(0.5f, 0.5f, 0.5f, 1.0f));
-		pNewWhiteMaterial->SetRoughness(1.0f);
-		const uint32 index2 = AssetManager::GetStorage<Material>().Add(pNewWhiteMaterial);
-		auto [handle2, __] = AssetManager::InsertMetaData(CreateUUID(), index2, AssetType::Material);
+		AssetHandle offWhiteMaterialHandle = assetToolsModule.CreateAsset<Material>("M_OffWhite", "Materials/");
+		Ref<Material> pOffWhiteMaterial = AssetManager::Get<Material>(offWhiteMaterialHandle);
+		pOffWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
+		pOffWhiteMaterial->SetAlbedoColor(Vector4(0.5f, 0.5f, 0.5f, 1.0f));
+		pOffWhiteMaterial->SetRoughness(1.0f);
 
 		entity ground = m_pActiveScene->CreateEntity("Ground");
 		auto& groundTC = entityManager.Get<TransformComponent>(ground);
 		groundTC.AddWorldOffset(Vector3(0.0f, -1.0f, 0.0f));
 		auto& mrcGround = entityManager.Add<MeshRendererComponent>(ground);
-		mrcGround.AssetHandle = handle2->second;
+		mrcGround.AssetHandle = offWhiteMaterialHandle;
 
 		entity sphere = m_pActiveScene->CreateEntity("Sphere");
 		m_pActiveScene->AttachEntity(sphere, ground);
 		auto& mrc = entityManager.Add<MeshRendererComponent>(sphere);
-		mrc.AssetHandle = handle->second;
+		mrc.AssetHandle = whiteMaterialHandle;
 
 		auto& tc = entityManager.Get<TransformComponent>(sphere);
 		tc.AddLocalOffset(Vector3::Up);
@@ -307,47 +280,12 @@ namespace Relentless
 		entity topGround = m_pActiveScene->CreateEntity("TopGround");
 		m_pActiveScene->AttachEntity(topGround, sphere);
 		auto& mrcTopGround = entityManager.Add<MeshRendererComponent>(topGround);
-		mrcTopGround.AssetHandle = handle->second;
+		mrcTopGround.AssetHandle = whiteMaterialHandle;
 
 		auto& tcTopGround = entityManager.Get<TransformComponent>(topGround);
 		tcTopGround.AddLocalOffset(Vector3::Up);
 
 		{
-			//std::vector<AssetImportTask> tasks;
-
-			//std::mutex entityManagerAccessMutex;
-			//auto&& CreateModelImportTask = [&tasks, this, &entityManagerAccessMutex](const Path& relativePath, Span<entity> entities)
-			//	{
-			//		Ref<ModelFactory> pFactory = RLS_NEW ModelFactory();
-			//		pFactory->OnDone.Connect([this, someEntities = entities.Copy(), &entityManagerAccessMutex](const std::vector<ImportedAsset>& assets, bool success)
-			//			{
-			//				RLS_VERIFY(success, "[Editor::OnCreate] Asset import failed.");
-			//
-			//				std::lock_guard guard(entityManagerAccessMutex);
-			//
-			//				for (auto aEntity : someEntities)
-			//				{
-			//					auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(aEntity);
-			//
-			//					for (auto& asset : assets)
-			//					{
-			//						if (asset.Type == AssetType::Mesh)
-			//						{
-			//							mfc.AssetHandle = asset.Handle;
-			//							break;
-			//						}
-			//					}
-			//				}
-			//			});
-			//
-			//		AssetImportTask& task = tasks.emplace_back();
-			//		task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), relativePath);
-			//		task.pFactory = pFactory;
-			//	};
-
-			//CreateModelImportTask("Assets/Models/StarterContent/Sphere.obj", sphere);
-			//CreateModelImportTask("Assets/Models/StarterContent/Cube.obj", { ground, topGround });
-
 			std::vector<AssetImportTask> tasks;
 			
 			{
@@ -368,7 +306,7 @@ namespace Relentless
 				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(sphere);
 				for (auto& result : importResults)
 				{
-					if (result.Handle.Type == AssetType::Mesh && result.FilePath.string() == tasks[0].FilePath)
+					if (result.Handle.Type == Mesh::StaticType() && result.FilePath.string() == tasks[0].FilePath)
 					{
 						mfc.AssetHandle = result.Handle;
 						break;
@@ -381,7 +319,7 @@ namespace Relentless
 				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(ground);
 				for (auto& result : importResults)
 				{
-					if (result.Handle.Type == AssetType::Mesh && result.FilePath.string() == tasks[1].FilePath)
+					if (result.Handle.Type == Mesh::StaticType() && result.FilePath.string() == tasks[1].FilePath)
 					{
 						mfc.AssetHandle = result.Handle;
 						break;
@@ -392,7 +330,7 @@ namespace Relentless
 				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(topGround);
 				for (auto& result : importResults)
 				{
-					if (result.Handle.Type == AssetType::Mesh && result.FilePath.string() == tasks[1].FilePath)
+					if (result.Handle.Type == Mesh::StaticType() && result.FilePath.string() == tasks[1].FilePath)
 					{
 						mfc.AssetHandle = result.Handle;
 						break;

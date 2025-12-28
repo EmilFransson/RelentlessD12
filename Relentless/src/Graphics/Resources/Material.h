@@ -22,7 +22,7 @@ namespace Relentless
 	};
 
 	class Texture2D;
-	class Material : public IAsset
+	class Material : public AssetBase<Material>
 	{
 	public:
 		NO_DISCARD const Vector4& GetAlbedoColor() const noexcept;

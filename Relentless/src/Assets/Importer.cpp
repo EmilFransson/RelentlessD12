@@ -5,6 +5,7 @@
 #include "Assets/Factory/TextureFactory.h"
 
 #include "Utility/Common.h"
+#include "Utility/FilepathUtils.h"
 #include "Graphics/Resources/Material.h"
 #include "ImportSettings.h"
 #include "Mesh/Mesh.h"
