@@ -1,8 +1,7 @@
 #include "Common.h"
-
 #include "Graphics/RHI/D3D.h"
-
 #include "StringUtils.h"
+
 namespace Relentless
 {
 	UUID ConvertStringToGUID(const std::string& guidString) noexcept
@@ -39,5 +38,14 @@ namespace Relentless
 #endif
 
 		return uuID;
+	}
+}
+
+namespace std
+{
+	size_t hash<UUID>::operator()(const UUID& gUid) const
+	{
+		const uint64_t* half = reinterpret_cast<const uint64_t*>(&gUid);
+		return half[0] ^ half[1];
 	}
 }

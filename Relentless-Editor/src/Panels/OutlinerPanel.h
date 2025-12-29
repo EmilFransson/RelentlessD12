@@ -1,15 +1,14 @@
 #pragma once
 #include <Relentless.h>
-#include "IEditorPanel.h"
 
 namespace Relentless
 {
 	class EntityOutlinerView;
 
-	class OutlinerPanel : public IEditorPanel
+	class OutlinerPanel : public PanelBase
 	{
 	public:
-		OutlinerPanel(std::weak_ptr<Editor> aEditor) noexcept;
+		OutlinerPanel() noexcept;
 		virtual ~OutlinerPanel() noexcept override = default;
 
 		const Ref<EntityOutlinerView>& GetEntityOutlinerView() const noexcept;

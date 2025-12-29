@@ -6,11 +6,9 @@ namespace Relentless
 {
 	#define RLS_SCOPED_SUSPEND() ScopedFlag _suspend{ m_SuspendNotifications }
 
-	EntityOutlinerView::EntityOutlinerView(std::weak_ptr<Editor> aEditor) noexcept
-		: m_pEditor{ aEditor }
+	EntityOutlinerView::EntityOutlinerView() noexcept
 	{
-		auto pEditor = m_pEditor.lock();
-		RLS_ASSERT(pEditor, "[EntityOutlinerView::EntityOutlinerView]: Editor ptr is invalid.");
+		Editor* pEditor = Editor::Get();
 
 		pEditor->OnPreSceneChanged.Connect(this, &EntityOutlinerView::OnPreSceneChanged);
 		pEditor->OnSceneChanged.Connect(this, &EntityOutlinerView::OnSceneChanged);
@@ -149,7 +147,7 @@ namespace Relentless
 
 	EntityOutlinerView::~EntityOutlinerView() noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		Editor* pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -205,7 +203,7 @@ namespace Relentless
 
 	Ref<OutlinerListItem> EntityOutlinerView::CreateEntityListItem(entity aEntity) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return nullptr;
 
@@ -241,7 +239,7 @@ namespace Relentless
 
 	void EntityOutlinerView::DeselectAllFolders() noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -267,7 +265,7 @@ namespace Relentless
 
 	void EntityOutlinerView::ExecuteMovePlan(const EntityOutlinerPolicies::MovePlan& aMovePlan, Scene& aScene, const OutlinerPayload& targetPayload) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -350,7 +348,7 @@ namespace Relentless
 
 	const String& EntityOutlinerView::GetItemName(const Ref<OutlinerListItem>& pItem) const noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return String();
 
@@ -369,7 +367,7 @@ namespace Relentless
 
 	const Ref<OutlinerListItem>& EntityOutlinerView::GetEntityItem(entity aEntity) const noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return nullptr;
 
@@ -407,7 +405,7 @@ namespace Relentless
 
 	void EntityOutlinerView::OnCreateNewFolderButtonClicked() noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -484,7 +482,7 @@ namespace Relentless
 
 	void EntityOutlinerView::OnDeleteSelection() noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -506,7 +504,7 @@ namespace Relentless
 
 	void EntityOutlinerView::OnDuplicateSelection() noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -605,7 +603,7 @@ namespace Relentless
 
 	bool EntityOutlinerView::OnDragEnter(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return false;
 
@@ -633,7 +631,7 @@ namespace Relentless
 
 	bool EntityOutlinerView::OnDrop(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return false;
 
@@ -659,7 +657,7 @@ namespace Relentless
 
 	std::vector<EntityFolder*> EntityOutlinerView::MergeFoldersByLabel(const std::vector<EntityFolder*>& someFolders) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return someFolders;
 
@@ -746,7 +744,7 @@ namespace Relentless
 
 	void EntityOutlinerView::OnEntityPreDestroyed(entity destroyedEntity) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -787,7 +785,7 @@ namespace Relentless
 
 	void EntityOutlinerView::OnEntityRemovedFromFolder(entity aEntity, const Folder& aFolder) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -808,7 +806,7 @@ namespace Relentless
 
 	void EntityOutlinerView::OnEntityAttachedToFolder(entity aEntity, const Folder& aFolder) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -831,7 +829,7 @@ namespace Relentless
 
 	void EntityOutlinerView::OnEntityVisibilityChanged(entity aEntity, bool aVisibilityState) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -957,7 +955,7 @@ namespace Relentless
 
 	void EntityOutlinerView::OnEntityFolderDeleted(EntityFolder* pFolder) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -1024,7 +1022,7 @@ namespace Relentless
 	{
 		RLS_SCOPED_SUSPEND();
 
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return nullptr;
 
@@ -1223,7 +1221,7 @@ namespace Relentless
 
 		pEditableTextBox->OnTextChanged([pListItem = selectedItems.front().Get(), pEditableTextBox, this](const char* pText)
 			{
-				auto pEditor = m_pEditor.lock();
+				auto pEditor = Editor::Get();
 				if (!pEditor)
 					return;
 
@@ -1391,7 +1389,7 @@ namespace Relentless
 
 	void EntityOutlinerView::OnSearchTextCommitted(const char* pText, ETextCommitType commitType) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -1428,7 +1426,7 @@ namespace Relentless
 		if (m_SuspendNotifications)
 			return;
 
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -1481,7 +1479,7 @@ namespace Relentless
 
 	void EntityOutlinerView::OnSelectionChangedExternally(entity aEntity, ESelectionState aSelectionState) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -1564,7 +1562,7 @@ namespace Relentless
 			Solution: When adding an entry, check if it or any of its descendants match the text filter, if so add it, else skip it.
 		*/
 
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -1761,7 +1759,7 @@ namespace Relentless
 
 	bool EntityOutlinerView::RenameFolder(EntityFolder* aFolder, const String& aName) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return false;
 
@@ -1778,7 +1776,7 @@ namespace Relentless
 
 	bool EntityOutlinerView::RenameEntity(entity aEntity, const String& aName) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return false;
 
@@ -1792,7 +1790,7 @@ namespace Relentless
 
 	void EntityOutlinerView::ToggleVisibilityForItem(const Ref<OutlinerListItem>& pAOutlinerListItem, bool aToVisible) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 
@@ -1828,7 +1826,7 @@ namespace Relentless
 
 	void EntityOutlinerView::UpdateEntityInfoBorder() noexcept
 	{
-		auto pEditor = m_pEditor.lock();
+		auto pEditor = Editor::Get();
 		if (!pEditor)
 			return;
 

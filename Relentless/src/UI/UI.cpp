@@ -1,8 +1,6 @@
 #include "UI.h"
-#include "Assets/Factory/TextureFactory.h"
 #include "Graphics/RHI/ResourceViews.h"
 
-#include "Module/AssetToolsModule.h"
 #include "Module/ModuleManager.h"
 
 #include "Utility/FilepathUtils.h"
@@ -23,37 +21,37 @@ namespace Relentless
 
 	void UI::Initialize() noexcept
 	{
-		std::vector<AssetImportTask> importTasks;
-		importTasks.reserve(3);
-
-		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		//std::vector<AssetImportTask> importTasks;
+		//importTasks.reserve(3);
+		//
+		//AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
 		
-		{
-			AssetImportTask& task = importTasks.emplace_back();
-			task.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\searchicon.png");
-			Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
-			pTextureFactory->SetImportAsSRGB(true);
-			task.pFactory = pTextureFactory;
-		}
-		{
-			AssetImportTask& task = importTasks.emplace_back();
-			task.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\cancelicon.png");
-			Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
-			pTextureFactory->SetImportAsSRGB(true);
-			task.pFactory = pTextureFactory;
-		}
-		{
-			AssetImportTask& task = importTasks.emplace_back();
-			task.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\arrowdownicon.png");
-			Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
-			pTextureFactory->SetImportAsSRGB(true);
-			task.pFactory = pTextureFactory;
-		}
+		//{
+		//	AssetImportTask& task = importTasks.emplace_back();
+		//	task.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\searchicon.png");
+		//	Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
+		//	pTextureFactory->SetImportAsSRGB(true);
+		//	task.pFactory = pTextureFactory;
+		//}
+		//{
+		//	AssetImportTask& task = importTasks.emplace_back();
+		//	task.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\cancelicon.png");
+		//	Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
+		//	pTextureFactory->SetImportAsSRGB(true);
+		//	task.pFactory = pTextureFactory;
+		//}
+		//{
+		//	AssetImportTask& task = importTasks.emplace_back();
+		//	task.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures\\Icons\\arrowdownicon.png");
+		//	Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
+		//	pTextureFactory->SetImportAsSRGB(true);
+		//	task.pFactory = pTextureFactory;
+		//}
 
-		const std::vector<AssetImportResult> importResults = assetToolsModule.Import(importTasks);
-		UI::SearchIconTextureHandle = importResults[0].Handle;
-		UI::CancelIconTextureHandle = importResults[1].Handle;
-		UI::ArrowDownIconTextureHandle = importResults[2].Handle;
+		//const std::vector<AssetImportResult> importResults = assetToolsModule.Import(importTasks);
+		//UI::SearchIconTextureHandle = importResults[0].Handle;
+		//UI::CancelIconTextureHandle = importResults[1].Handle;
+		//UI::ArrowDownIconTextureHandle = importResults[2].Handle;
 	}
 
 	std::string UI::Utility::ShortenStringToFitClipRect(const std::string& originalString, const ImVec2& topLeft, const ImVec2& bottomRight) noexcept

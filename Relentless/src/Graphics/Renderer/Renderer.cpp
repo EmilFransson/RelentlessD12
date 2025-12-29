@@ -1,7 +1,7 @@
 #include "Renderer.h"
 
 #include "Assets/AssetManager.h"
-#include "Assets/Factory/TextureFactory.h"
+//#include "Assets/Factory/TextureFactory.h"
 #include "Core/Time.h"
 #include "ECS/Component.h"
 #include "File/FilePath.h"
@@ -10,7 +10,8 @@
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/RingBufferAllocator.h"
-#include "Module/AssetToolsModule.h"
+#include "Mesh/Mesh.h"
+//#include "Module/AssetToolsModule.h"
 #include "Module/ModuleManager.h"
 #include "Scene/Scene.h"
 #include "Utility/FilepathUtils.h"
@@ -32,22 +33,24 @@ namespace Relentless
 
 		m_EntityIDReadbackBuffer = m_pDevice->CreateBuffer(BufferDesc::CreateReadback(sizeof(float)), "Entity ID Readback Buffer");
 
-		Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
-		pFactory->SetImportAsSRGB(true);
-		pFactory->SetGenerateMipmaps(false);
-
-		std::vector<AssetImportTask> tasks;
-		AssetImportTask& task = tasks.emplace_back();
-		task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
-		task.pFactory = pFactory;
-
-		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
-		m_BRDFLutTextureHandle = assetToolsModule.Import(tasks)[0].Handle;
+		//Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
+		//pFactory->SetImportAsSRGB(true);
+		//pFactory->SetGenerateMipmaps(false);
+		//
+		//std::vector<AssetImportTask> tasks;
+		//AssetImportTask& task = tasks.emplace_back();
+		//task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
+		//task.pFactory = pFactory;
+		//
+		//AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		//m_BRDFLutTextureHandle = assetToolsModule.Import(tasks)[0].Handle;
 	}
 
 	void Renderer::Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept
 	{
 		PROFILE_SCOPE("Renderer::Render");
+
+		m_BRDFLutTextureHandle = m_OnRequestBRDFLut();
 
 		if (!m_EntityIDSyncs.empty() && m_EntityIDSyncs.front().IsComplete())
 		{
@@ -174,13 +177,13 @@ namespace Relentless
 		}
 
 		//HBAO+
-		{
-			PROFILE_SCOPE("Renderer::Render::HBAO+");
-			
-			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			m_pHBAOPlus->Render(*pCommandContext, m_MainView, m_SceneTextures);
-			pCommandContext->Execute();
-		}
+		//{
+		//	PROFILE_SCOPE("Renderer::Render::HBAO+");
+		//	
+		//	CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+		//	m_pHBAOPlus->Render(*pCommandContext, m_MainView, m_SceneTextures);
+		//	pCommandContext->Execute();
+		//}
 
 		//Entity IDs
 		{

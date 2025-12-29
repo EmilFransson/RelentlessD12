@@ -1,16 +1,14 @@
 #pragma once
-
 #include <Relentless.h>
-#include "IEditorPanel.h"
 
 namespace Relentless
 {
 	class AssetView;
 
-	class ContentBrowserPanelEx : public IEditorPanel
+	class ContentBrowserPanelEx : public PanelBase
 	{
 	public:
-		ContentBrowserPanelEx(std::weak_ptr<Editor> aEditor) noexcept;
+		ContentBrowserPanelEx() noexcept;
 	private:
 		Ref<AssetView> m_pAssetsView = nullptr;
 	};

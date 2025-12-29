@@ -15,8 +15,6 @@ namespace Relentless
 		virtual void OnDetach() noexcept override final;
 		virtual void OnUpdate(const float deltaTime) noexcept override final;
 		virtual void OnRender() noexcept override final;
-
-		[[nodiscard]] const std::shared_ptr<Editor>& GetEditor() const noexcept;
 	private:
 		std::shared_ptr<Editor> m_pEditor = nullptr;
 	};

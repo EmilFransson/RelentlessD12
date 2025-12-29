@@ -5,10 +5,10 @@
 
 namespace Relentless
 {
-	DetailsPanel::DetailsPanel(std::weak_ptr<Editor> aEditor) noexcept
-		: IEditorPanel{ ICON_FA_LINES_LEANING " Details", ImGuiWindowFlags_NoScrollbar, aEditor}
+	DetailsPanel::DetailsPanel() noexcept
+		: PanelBase{ ICON_FA_LINES_LEANING " Details", ImGuiWindowFlags_NoScrollbar}
 	{
-		m_pEntityDetailsView = new EntityDetailsView(aEditor);
+		m_pEntityDetailsView = new EntityDetailsView();
 		SetRoot(m_pEntityDetailsView);
 	}
 

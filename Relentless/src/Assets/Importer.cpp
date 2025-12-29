@@ -1,13 +1,9 @@
 #include "Importer.h"
 #include "AssetManager.h"
 
-#include "Assets/Factory/ModelFactory.h"
-#include "Assets/Factory/TextureFactory.h"
-
 #include "Utility/Common.h"
 #include "Utility/FilepathUtils.h"
 #include "Graphics/Resources/Material.h"
-#include "ImportSettings.h"
 #include "Mesh/Mesh.h"
 #include "Mesh/Vertex.h"
 #include "../../../vendor/includes/DirectXTK/WICTextureLoader.h"
@@ -129,30 +125,30 @@ namespace Relentless
 	//		});
 	//}
 
-	Ref<IFactory> Importer::CreateDefaultFactory(ExtensionType extensionType) noexcept
-	{
-		switch (extensionType)
-		{
-		case ExtensionType::GLTF:
-		case ExtensionType::OBJ:
-			return RLS_NEW ModelFactory();
-		case ExtensionType::BMP:
-		case ExtensionType::DDS:
-		case ExtensionType::EXR:
-		case ExtensionType::HDR:
-		case ExtensionType::JPEG:
-		case ExtensionType::JPG:
-		case ExtensionType::PNG:
-		case ExtensionType::TGA:
-		case ExtensionType::TIFF:
-			return RLS_NEW TextureFactory();
-		default:
-		{
-			RLS_ASSERT(false, "Unreachable.");
-			return nullptr;
-		}
-		}
-	}
+	//Ref<IFactory> Importer::CreateDefaultFactory(ExtensionType extensionType) noexcept
+	//{
+	//	switch (extensionType)
+	//	{
+	//		//case ExtensionType::GLTF:
+	//		//case ExtensionType::OBJ:
+	//		//	return RLS_NEW ModelFactory();
+	//		//case ExtensionType::BMP:
+	//		//case ExtensionType::DDS:
+	//		//case ExtensionType::EXR:
+	//		//case ExtensionType::HDR:
+	//		//case ExtensionType::JPEG:
+	//		//case ExtensionType::JPG:
+	//		//case ExtensionType::PNG:
+	//		//case ExtensionType::TGA:
+	//		//case ExtensionType::TIFF:
+	//		//	return RLS_NEW TextureFactory();
+	//	default:
+	//	{
+	//		RLS_ASSERT(false, "Unreachable.");
+	//		return nullptr;
+	//	}
+	//	}
+	//}
 
 	//AssetImportBatch Importer::RequestAsyncLoad(Span<AssetImportTask> importTasks, Ref<ImporterFeedbackContext> pFeedbackContext /*= nullptr*/) noexcept
 	//{

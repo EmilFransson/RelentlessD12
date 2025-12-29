@@ -6,15 +6,11 @@
 
 namespace Relentless
 {
-	EntityDetailsView::EntityDetailsView(std::weak_ptr<Editor> aEditor) noexcept
-		: m_pEditor{ aEditor }
+	EntityDetailsView::EntityDetailsView() noexcept
 	{
-		auto pEditor = m_pEditor.lock();
-		RLS_ASSERT(pEditor, "[EntityDetailsView::EntityDetailsView]: Editor ptr is invalid.");
+		Editor::Get()->GetSelection()->OnSelectionChanged.Connect(this, &EntityDetailsView::OnSelectionChanged);
 
-		pEditor->GetSelection()->OnSelectionChanged.Connect(this, &EntityDetailsView::OnSelectionChanged);
-
-		m_pLayoutBuilder = MakeUnique<EntityDetailLayoutBuilder>(this, *pEditor->GetActiveScene());
+		m_pLayoutBuilder = MakeUnique<EntityDetailLayoutBuilder>(this, *Editor::Get()->GetActiveScene());
 
 		std::shared_ptr<HeaderRow> pHeaderRow = std::make_shared<HeaderRow>();
 		pHeaderRow->SetIsVisible(false);
@@ -86,11 +82,7 @@ namespace Relentless
 
 	EntityDetailsView::~EntityDetailsView() noexcept
 	{
-		auto pEditor = m_pEditor.lock();
-		if (!pEditor)
-			return;
-
-		if (const auto& pSelection = pEditor->GetSelection())
+		if (const auto& pSelection = Editor::Get()->GetSelection())
 			pSelection->OnSelectionChanged.Detach(this);
 	}
 
@@ -168,10 +160,7 @@ namespace Relentless
 
 	void EntityDetailsView::Rebuild() noexcept
 	{
-		auto pEditor = m_pEditor.lock();
-		RLS_ASSERT(pEditor, "[EntityDetailsView::Rebuild]: Editor is invalid.");
-
-		const UniquePtr<Selection>& pSelection = pEditor->GetSelection();
+		const UniquePtr<Selection>& pSelection = Editor::Get()->GetSelection();
 		RLS_ASSERT(pSelection, "[EntityDetailsView::Rebuild]: Selection context is invalid.");
 
 		m_InspectedEntities = pSelection->GetSelectedEntities();

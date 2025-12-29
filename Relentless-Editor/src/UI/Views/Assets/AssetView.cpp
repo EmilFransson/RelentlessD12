@@ -1,4 +1,6 @@
 #include "AssetView.h"
+#include "../../../Assets/Factory/TextureFactory.h"
+#include "../../../Module/AssetToolsModule.h"
 
 namespace Relentless
 {

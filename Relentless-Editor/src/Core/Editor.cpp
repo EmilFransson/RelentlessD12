@@ -1,10 +1,11 @@
 ﻿#include "Editor.h"
 #include "RelentlessEditorApp.h"
 
+#include "../Assets/Factory/TextureFactory.h"
 #include "../Panels/TestPanel.h"
 #include "../Panels/ContentBrowserPanelEx.h"
 #include "../UI/Views/Outliner/EntityOutlinerView.h"
-
+#include "../Module/AssetToolsModule.h"
 namespace Relentless
 {
 	Editor::~Editor() noexcept {}
@@ -107,19 +108,36 @@ namespace Relentless
 		SetActiveScene(std::make_shared<Scene>());
 		CreateStartScene();
 
-		m_pDetailsPanel = UIManager::Get().AddPanel(std::make_unique<DetailsPanel>(weak_from_this()));
+		m_pDetailsPanel = UIManager::Get().AddPanel(std::make_unique<DetailsPanel>());
 		m_pDetailsPanel->SetPadding(Vector2(2.0f, 0.0f));
 
-		m_pOutlinerPanel = UIManager::Get().AddPanel(std::make_unique<OutlinerPanel>(weak_from_this()));
+		m_pOutlinerPanel = UIManager::Get().AddPanel(std::make_unique<OutlinerPanel>());
 		m_pOutlinerPanel->SetPadding(Vector2(2.0f, 0.0f));
 
-		ContentBrowserPanelEx* pContentBrowserPanel = UIManager::Get().AddPanel(MakeUnique<ContentBrowserPanelEx>(weak_from_this()));
+		ContentBrowserPanelEx* pContentBrowserPanel = UIManager::Get().AddPanel(MakeUnique<ContentBrowserPanelEx>());
 		pContentBrowserPanel->SetPadding(Vector2(2.0f, 0.0f));
 
 		UIManager::Get().AddPanel(std::make_unique<TestPanel>("Test", ImGuiWindowFlags_None));
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
-		app.GetRenderer()->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
+		
+		{
+			Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
+			pFactory->SetImportAsSRGB(false);
+			pFactory->SetGenerateMipmaps(false);
+
+			std::vector<AssetImportTask> tasks;
+			AssetImportTask& task = tasks.emplace_back();
+			task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
+			task.pFactory = pFactory;
+
+			AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+			m_BRDFLutTextureHandle = assetToolsModule.Import(tasks)[0].Handle;
+		}
+
+		const auto& renderer = app.GetRenderer();
+		renderer->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
+		renderer->OnRequestBRDFLut(this, &Editor::OnRequestBRDFLut);
 	}
 
 	void Editor::OnDestroy() noexcept
@@ -291,7 +309,6 @@ namespace Relentless
 			{
 				AssetImportTask& task = tasks.emplace_back();
 				task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Sphere.obj");
-
 			}
 
 			{
@@ -312,10 +329,8 @@ namespace Relentless
 						break;
 					}
 				}
-
 			}
 			{
-
 				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(ground);
 				for (auto& result : importResults)
 				{
@@ -337,7 +352,6 @@ namespace Relentless
 					}
 				}
 			}
-
 		}
 
 		m_pEntityFoldersManager->AttachEntityToFolder(*m_pActiveScene, ground, Folder(FolderRoot::CreateFromScene(*m_pActiveScene), "StarterContent/Entities"));
@@ -491,6 +505,11 @@ namespace Relentless
 		}
 	}
 
+	AssetHandle Editor::OnRequestBRDFLut() noexcept
+	{
+		return m_BRDFLutTextureHandle;
+	}
+
 	void Editor::OnViewportHotkeyPressed([[maybe_unused]] ViewportPanel* pPanel, RLS_Key key) noexcept
 	{
 		if (!m_pActiveScene)
@@ -641,7 +660,7 @@ namespace Relentless
 	{
 		m_RenderViews.push_back(ViewportRenderView());
 		
-		ViewportPanel* pViewport = UIManager::Get().AddPanel(std::make_unique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, weak_from_this(), m_EditorViewports.size()));
+		ViewportPanel* pViewport = UIManager::Get().AddPanel(MakeUnique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, m_EditorViewports.size()));
 
 		pViewport->OnClickedOnViewport.Connect(this, &Editor::OnViewportClicked);
 		pViewport->OnHotkeyPressed.Connect(this, &Editor::OnViewportHotkeyPressed);

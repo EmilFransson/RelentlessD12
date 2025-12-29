@@ -1,7 +1,7 @@
 #include "Assets/AssetManager.h"
 #include "Core/Application.h"
 #include "File/File.h"
-#include "ImportSettings.h"
+//#include "ImportSettings.h"
 #include "Mesh/Mesh.h"
 #include "Mesh/Vertex.h"
 #include "Serializer.h"
@@ -153,8 +153,9 @@ namespace Relentless
 			return false;
 		}
 
-		const AssetType assetType = AssetRegistry::GetMetaData(absolutePath).AssetType;
-		return DeserializerFuncs[assetType](absolutePath.string(), outHandle);
+		//const AssetType assetType = AssetRegistry::GetMetaData(absolutePath).AssetType;
+		//return DeserializerFuncs[assetType](absolutePath.string(), outHandle);
+		return false;
 	}
 
 	std::pair<uint32_t, uint8_t> Serializer::DeserializeSignatureAndVersion(std::ifstream& ifstream) noexcept
@@ -870,23 +871,23 @@ namespace Relentless
 		RLS_ASSERT(outFileStream.is_open(), "[Serializer]: File stream is not open.");
 		RLS_ASSERT(assetHandle.IsValid(), "[Serializer]: Asset handle is invalid");
 
-		const AssetMetaData metaData = AssetRegistry::GetMetaData(assetHandle);
-
-		LatestRassetHeaderVersion rassetHeader; 
-		rassetHeader.AssetType = metaData.AssetType;
-		rassetHeader.UUID = metaData.Uuid;
-		strcpy_s(rassetHeader.Name, Rules::Limits::ASSET_NAME_LENGTH, metaData.Name.c_str());
-		strcpy_s(rassetHeader.SourcePath, Rules::Limits::ASSET_SOURCE_PATH_LENGTH, metaData.SourcePath.string().c_str());
-		rassetHeader.AssetFlags = metaData.AssetFlags;
-		rassetHeader.ModificationDateAndTime = metaData.ModificationDateAndTime;
-		
-		rassetHeader.TagsByteSize = 0u;
-		for (auto& tag : metaData.Tags)
-		{
-			rassetHeader.TagsByteSize += (tag.length() * sizeof(char)) + 1; // includes delimiter
-		}
-
-		outFileStream.write(reinterpret_cast<char*>(&rassetHeader), sizeof(LatestRassetHeaderVersion));
+		//const AssetMetaData metaData = AssetRegistry::GetMetaData(assetHandle);
+		//
+		//LatestRassetHeaderVersion rassetHeader; 
+		//rassetHeader.AssetType = metaData.AssetType;
+		//rassetHeader.UUID = metaData.Uuid;
+		//strcpy_s(rassetHeader.Name, Rules::Limits::ASSET_NAME_LENGTH, metaData.Name.c_str());
+		//strcpy_s(rassetHeader.SourcePath, Rules::Limits::ASSET_SOURCE_PATH_LENGTH, metaData.SourcePath.string().c_str());
+		//rassetHeader.AssetFlags = metaData.AssetFlags;
+		//rassetHeader.ModificationDateAndTime = metaData.ModificationDateAndTime;
+		//
+		//rassetHeader.TagsByteSize = 0u;
+		//for (auto& tag : metaData.Tags)
+		//{
+		//	rassetHeader.TagsByteSize += (tag.length() * sizeof(char)) + 1; // includes delimiter
+		//}
+		//
+		//outFileStream.write(reinterpret_cast<char*>(&rassetHeader), sizeof(LatestRassetHeaderVersion));
 	}
 
 
@@ -895,14 +896,14 @@ namespace Relentless
 		RLS_ASSERT(outFileStream.is_open(), "[Serializer]: File stream is not open.");
 		RLS_ASSERT(assetHandle.IsValid(), "[Serializer]: Asset handle is invalid");
 
-		const std::vector<std::string> assetTags = AssetRegistry::GetMetaData(assetHandle).Tags;
-
-		constexpr const char delimiter = ';';
-		for (auto& tag : assetTags)
-		{
-			outFileStream.write(tag.c_str(), tag.length() * sizeof(char));
-			outFileStream.write(&delimiter, 1);
-		}
+		//const std::vector<std::string> assetTags = AssetRegistry::GetMetaData(assetHandle).Tags;
+		//
+		//constexpr const char delimiter = ';';
+		//for (auto& tag : assetTags)
+		//{
+		//	outFileStream.write(tag.c_str(), tag.length() * sizeof(char));
+		//	outFileStream.write(&delimiter, 1);
+		//}
 	}
 
 	void Serializer::ScheduleCommandListAndWaitForCompletion(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList) noexcept

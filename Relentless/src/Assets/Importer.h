@@ -1,7 +1,6 @@
 #pragma once
 #include "ECS/ECSCommon.h"
 #include "Graphics/RHI/RHI.h"
-#include "ImportSettings.h"
 
 struct aiNode;
 struct aiScene;
@@ -33,33 +32,11 @@ namespace Relentless
 
 	//using AssetImportSettingsVariant = std::variant<TextureImportSettings, MeshImportSettings>;
 
-	struct ImporterFeedbackContext : public RefCounted<ImporterFeedbackContext>
-	{
-		Broadcaster<void(const std::string& status)> OnStatusChanged;
-		Broadcaster<void(float partialProgress)> OnProgressUpdated;
-	};
-
-	struct AssetImportBatch
-	{
-		std::vector<std::future<void>> Futures;
-
-		void Wait() noexcept
-		{
-			for (auto& future : Futures)
-				future.wait();
-		}
-
-		[[nodiscard]] bool IsComplete() const noexcept
-		{
-			for (auto& future : Futures)
-			{
-				if (future.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
-					return false;
-			}
-
-			return true;
-		}
-	};
+	//struct ImporterFeedbackContext : public RefCounted<ImporterFeedbackContext>
+	//{
+	//	Broadcaster<void(const std::string& status)> OnStatusChanged;
+	//	Broadcaster<void(float partialProgress)> OnProgressUpdated;
+	//};
 
 	//struct ImportRequest
 	//{
@@ -71,7 +48,7 @@ namespace Relentless
 	class Importer
 	{
 	public:
-		static Ref<IFactory> CreateDefaultFactory(ExtensionType extensionType) noexcept;
+		//static Ref<IFactory> CreateDefaultFactory(ExtensionType extensionType) noexcept;
 
 		//static AssetImportBatch RequestAsyncLoad(Span<AssetImportTask> importTasks, Ref<ImporterFeedbackContext> pFeedbackContext = nullptr) noexcept;
 

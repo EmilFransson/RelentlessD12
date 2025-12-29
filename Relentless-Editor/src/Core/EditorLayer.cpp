@@ -12,40 +12,34 @@ namespace Relentless
 		if (UIManager::Get().OnEvent(event))
 			return;
 
-		m_pEditor->OnEvent(event);
+		Editor::Get()->OnEvent(event);
 	}
 
 	void EditorLayer::OnImGuiRender() noexcept
 	{
 		UIManager::Get().OnRender();
-		m_pEditor->OnImGuiRender();
+		Editor::Get()->OnImGuiRender();
 	}
 
 	void EditorLayer::OnAttach() noexcept
 	{
-		m_pEditor = std::make_shared<Editor>();
-		m_pEditor->OnCreate();
+		//m_pEditor = std::make_shared<Editor>();
+		Editor::Get()->OnCreate();
 	}
 
 	void EditorLayer::OnDetach() noexcept
 	{
-		m_pEditor->OnDestroy();
+		Editor::Get()->OnDestroy();
 	}
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
 	{
 		UIManager::Get().OnUpdate();
-		m_pEditor->OnUpdate(deltaTime);
+		Editor::Get()->OnUpdate(deltaTime);
 	}
 
 	void EditorLayer::OnRender() noexcept
 	{
-		m_pEditor->OnRender();
+		Editor::Get()->OnRender();
 	}
-	
-	const std::shared_ptr<Editor>& EditorLayer::GetEditor() const noexcept
-	{
-		return m_pEditor;
-	}
-
 }

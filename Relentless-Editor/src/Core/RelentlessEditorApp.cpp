@@ -23,7 +23,7 @@ namespace Relentless
 		options.HBAOPlusEnabled = true;
 		options.SampleCount = 1u;
 
-		std::vector<ViewportRenderView>& renderViews = m_pEditorLayer->GetEditor()->GetRenderViews();
+		std::vector<ViewportRenderView>& renderViews = Editor::Get()->GetRenderViews();
 		for (int i = 0; i < renderViews.size(); ++i)
 		{
 			const uint32 width	= static_cast<uint32>(Math::Max(1.0f, Math::Min(renderViews[i].Viewport.GetWidth(), (float)WindowEx::GetDisplaySize().x)));
@@ -33,13 +33,8 @@ namespace Relentless
 				m_pColorTarget = m_pGraphicsDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource), std::format("Target: {}", i).c_str());
 
 			renderViews[i].pTarget = m_pColorTarget;
-			m_pRenderer->Render(m_pEditorLayer->GetEditor()->GetActiveScene(), &renderViews[i], options, renderViews[i].pTarget);
+			m_pRenderer->Render(Editor::Get()->GetActiveScene(), &renderViews[i], options, renderViews[i].pTarget);
 		}
-	}
-
-	const std::shared_ptr<Editor>& RelentlessEditor::GetEditor() const noexcept
-	{
-		return m_pEditorLayer->GetEditor();
 	}
 
 	const UniquePtr<Renderer>& RelentlessEditor::GetRenderer() const noexcept

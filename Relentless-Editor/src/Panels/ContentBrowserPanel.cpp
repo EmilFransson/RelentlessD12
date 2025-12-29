@@ -759,11 +759,11 @@ namespace Relentless
 
 				const std::string entry = dir_entry.path().filename().string();
 				const std::string entryPath = dir_entry.path().string();
-				const AssetType assetType = AssetRegistry::GetMetaData(entryPath).AssetType;
+				//const AssetType assetType/* = AssetRegistry::GetMetaData(entryPath).AssetType*/;
 				
 				//Type filter comparison:
-				if (!m_ActiveAssetTypeFilters.empty() && !m_ActiveAssetTypeFilters.contains(assetType))
-					continue;
+				//if (!m_ActiveAssetTypeFilters.empty() && !m_ActiveAssetTypeFilters.contains(assetType))
+				//	continue;
 
 				//String filter comparison:
 				const bool IsUsingFilter = !m_ContentFilter.empty();
@@ -1329,11 +1329,11 @@ namespace Relentless
 					if (!isAssetFile)
 						continue;
 
-					const AssetType assetType = AssetRegistry::GetMetaData(entryPath).AssetType;
-					const bool isFiltering = m_ActiveAssetTypeFilters.size() > 0;
-
-					if (isFiltering && !m_ActiveAssetTypeFilters.contains(assetType))
-						continue;
+					//const AssetType assetType = AssetRegistry::GetMetaData(entryPath).AssetType;
+					//const bool isFiltering = m_ActiveAssetTypeFilters.size() > 0;
+					//
+					//if (isFiltering && !m_ActiveAssetTypeFilters.contains(assetType))
+					//	continue;
 
 					m_SelectedEntries.push_back(entryPath.string());
 				}
@@ -1433,44 +1433,44 @@ namespace Relentless
 			if (FilepathUtils::IsDirectory(m_SelectedEntries[0]))
 				return;
 
-			const AssetType assetType = AssetRegistry::GetMetaData(m_SelectedEntries[0]).AssetType;
-			AssetHandle handle = AssetManager::GetHandleByPath(m_SelectedEntries[0]);
-			switch (assetType)
-			{
-			case AssetType::Material:
-			{
-				//Ref<Texture> pTexture = AssetManager::Get<Texture>(m_MaterialTextureHandle);
-				//if (ImGui::BeginDragDropSource())
-				//{
-				//	ImGui::SetDragDropPayload("MATERIAL_DRAG_DROP", &handle, sizeof(AssetHandle));
-				//	ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(64,64));
-				//	ImGui::EndDragDropSource();
-				//}
-				break;
-			}
-			case AssetType::Mesh:
-			{
-				//Ref<Texture> pTexture = AssetManager::Get<Texture>(m_MeshTextureHandle);
-				//if (ImGui::BeginDragDropSource())
-				//{
-				//	ImGui::SetDragDropPayload("MESH_DRAG_DROP", &handle, sizeof(AssetHandle));
-				//	ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(64, 64));
-				//	ImGui::EndDragDropSource();
-				//}
-				break;
-			}
-			//case AssetType::Texture:
+			//const AssetType assetType; //AssetRegistry::GetMetaData(m_SelectedEntries[0]).AssetType;
+			//AssetHandle handle = AssetManager::GetHandleByPath(m_SelectedEntries[0]);
+			//switch (assetType)
 			//{
-			//	Ref<Texture> pTexture = AssetManager::Get<Texture>(handle);
-			//	if (ImGui::BeginDragDropSource())
-			//	{
-			//		ImGui::SetDragDropPayload("TEXTURE2D_DRAG_DROP", &handle, sizeof(AssetHandle));
-			//		ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(64, 64));
-			//		ImGui::EndDragDropSource();
-			//	}
+			//case AssetType::Material:
+			//{
+			//	//Ref<Texture> pTexture = AssetManager::Get<Texture>(m_MaterialTextureHandle);
+			//	//if (ImGui::BeginDragDropSource())
+			//	//{
+			//	//	ImGui::SetDragDropPayload("MATERIAL_DRAG_DROP", &handle, sizeof(AssetHandle));
+			//	//	ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(64,64));
+			//	//	ImGui::EndDragDropSource();
+			//	//}
 			//	break;
 			//}
-			}
+			//case AssetType::Mesh:
+			//{
+			//	//Ref<Texture> pTexture = AssetManager::Get<Texture>(m_MeshTextureHandle);
+			//	//if (ImGui::BeginDragDropSource())
+			//	//{
+			//	//	ImGui::SetDragDropPayload("MESH_DRAG_DROP", &handle, sizeof(AssetHandle));
+			//	//	ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(64, 64));
+			//	//	ImGui::EndDragDropSource();
+			//	//}
+			//	break;
+			//}
+			////case AssetType::Texture:
+			////{
+			////	Ref<Texture> pTexture = AssetManager::Get<Texture>(handle);
+			////	if (ImGui::BeginDragDropSource())
+			////	{
+			////		ImGui::SetDragDropPayload("TEXTURE2D_DRAG_DROP", &handle, sizeof(AssetHandle));
+			////		ImGui::Image((ImTextureID)pTexture->GetSRV()->GetGPUHandle().ptr, ImVec2(64, 64));
+			////		ImGui::EndDragDropSource();
+			////	}
+			////	break;
+			////}
+			//}
 		}
 		else
 		{

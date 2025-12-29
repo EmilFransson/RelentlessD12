@@ -4,8 +4,8 @@
 
 namespace Relentless
 {
-	ContentBrowserPanelEx::ContentBrowserPanelEx(std::weak_ptr<Editor> aEditor) noexcept
-		: IEditorPanel("Content Browser", ImGuiWindowFlags_None, aEditor)
+	ContentBrowserPanelEx::ContentBrowserPanelEx() noexcept
+		: PanelBase("Content Browser", ImGuiWindowFlags_None)
 	{
 		m_pAssetsView = new AssetView();
 		SetRoot(m_pAssetsView);

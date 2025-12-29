@@ -13,7 +13,7 @@ namespace Relentless
 	class EntityOutlinerView : public IWidget<EntityOutlinerView>
 	{
 	public:
-		EntityOutlinerView(std::weak_ptr<Editor> aEditor) noexcept;
+		EntityOutlinerView() noexcept;
 		virtual ~EntityOutlinerView() noexcept override;
 
 		void DuplicateSelection() noexcept;
@@ -122,8 +122,6 @@ namespace Relentless
 
 		Ref<OutlinerListItem> m_pItemToScrollIntoView = nullptr;
 		Ref<OutlinerListItem> m_pFolderToRenameWhenScrolledIntoView = nullptr;
-
-		std::weak_ptr<Editor> m_pEditor;
 
 		bool m_SuspendNotifications = false;
 		bool m_SceneItemSelected = false;

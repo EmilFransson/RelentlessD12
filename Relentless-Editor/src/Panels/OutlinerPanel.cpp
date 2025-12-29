@@ -4,10 +4,10 @@
 
 namespace Relentless
 {
-	OutlinerPanel::OutlinerPanel(std::weak_ptr<Editor> aEditor) noexcept
-		: IEditorPanel{ICON_FA_LINES_LEANING " Outliner", ImGuiWindowFlags_NoScrollbar, aEditor}
+	OutlinerPanel::OutlinerPanel() noexcept
+		: PanelBase{ICON_FA_LINES_LEANING " Outliner", ImGuiWindowFlags_NoScrollbar}
 	{
-		m_pEntityOutlinerView = new EntityOutlinerView(m_pEditor);
+		m_pEntityOutlinerView = new EntityOutlinerView();
 		SetRoot(m_pEntityOutlinerView);
 	}
 
@@ -18,10 +18,6 @@ namespace Relentless
 
 	bool OutlinerPanel::OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept
 	{
-		auto pEditor = m_pEditor.lock();
-		if (!pEditor)
-			return false;
-
 		switch (aEvent.key)
 		{
 		case RLS_Key::Delete:
@@ -40,7 +36,7 @@ namespace Relentless
 			break;
 		}
 		case RLS_Key::H:
-			pEditor->SetVisibilityForSelectedEntities(Keyboard::IsKeyDown(RLS_Key::LCtrl));
+			Editor::Get()->SetVisibilityForSelectedEntities(Keyboard::IsKeyDown(RLS_Key::LCtrl));
 			return true;
 		}
 

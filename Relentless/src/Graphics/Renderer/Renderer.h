@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Assets/AssetMeta.h"
+#include "Callback/Callback.h"
 #include "Callback/Broadcaster.h"
 
 #include "Graphics/Renderer/Techniques/AutoExposure.h"
@@ -39,6 +40,12 @@ namespace Relentless
 		void Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept;
 		
 		Broadcaster<void(uint32 readbackResult)> OnEntityIDReadbackDone;
+
+		template<typename InstanceType>
+		void OnRequestBRDFLut(InstanceType* instance, AssetHandle(InstanceType::*method)()) noexcept
+		{
+			m_OnRequestBRDFLut = [instance, method]() { return (instance->*method)(); };
+		}
 		
 	private:
 		void GetViewUniforms(const RenderView& renderView, ShaderInterop::ViewUniforms& outViewUniform) noexcept;
@@ -85,5 +92,7 @@ namespace Relentless
 		
 		Ref<PipelineState> m_pEntityIdPSO = nullptr;
 		std::queue<SyncPoint> m_EntityIDSyncs;
+
+		Callback<AssetHandle()> m_OnRequestBRDFLut;
 	};
 }

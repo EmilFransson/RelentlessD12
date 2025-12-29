@@ -26,8 +26,8 @@ namespace Relentless
 		static [[nodiscard]] const std::filesystem::path& GetFilepath(const UUID& uuid) noexcept;
 		static [[nodiscard]] const UUID& GetUUID(const std::string& filepath) noexcept;
 		static void RecursiveScanDirectoryForAssets(const std::filesystem::path& startingDirectory) noexcept;
-		static [[nodiscard]] const AssetMetaData& GetMetaData(const std::filesystem::path& filepath) noexcept;
-		static [[nodiscard]] const AssetMetaData& GetMetaData(const AssetHandle& handle) noexcept;
+		//static [[nodiscard]] const AssetMetaData& GetMetaData(const std::filesystem::path& filepath) noexcept;
+		//static [[nodiscard]] const AssetMetaData& GetMetaData(const AssetHandle& handle) noexcept;
 		static void Map(const std::filesystem::path& path, const AssetMetaData& metaData, MapOperation operation) noexcept;
 
 	private:

@@ -4,18 +4,16 @@
 #include "../Controller/PerspectiveCameraController.h"
 #include "../Controller/TransformGizmoController.h"
 
-#include "IEditorPanel.h"
-
 namespace Relentless
 {
 	class Editor;
 
 	enum class EViewportState : uint8 { None = 0u, Default, NavigatingScene, TransformingGizmo };
 
-	class ViewportPanel : public IEditorPanel
+	class ViewportPanel : public PanelBase
 	{
 	public:
-		ViewportPanel(const char* pName, ImGuiWindowFlags flags, std::weak_ptr<Editor> aEditor, uint32 renderViewIndex) noexcept;
+		ViewportPanel(const char* pName, ImGuiWindowFlags flags, uint32 renderViewIndex) noexcept;
 		virtual ~ViewportPanel() noexcept override = default;
 
 		[[nodiscard]] std::shared_ptr<PerspectiveCamera> GetCamera() const noexcept;

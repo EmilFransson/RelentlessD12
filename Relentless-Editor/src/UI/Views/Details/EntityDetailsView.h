@@ -13,7 +13,7 @@ namespace Relentless
 	class EntityDetailsView : public IDetailsView
 	{
 	public:
-		explicit EntityDetailsView(std::weak_ptr<Editor> aEditor) noexcept;
+		explicit EntityDetailsView() noexcept;
 		virtual ~EntityDetailsView() noexcept override;
 
 		NO_DISCARD float CalcDesiredWidth() const noexcept override;
@@ -39,6 +39,5 @@ namespace Relentless
 		UniquePtr<EntityDetailLayoutBuilder> m_pLayoutBuilder = nullptr;
 		Ref<VerticalBoxEx> m_pMainBox = nullptr;
 		Ref<HorizontalBoxEx> m_pDetailsListBox = nullptr;
-		std::weak_ptr<Editor> m_pEditor;
 	};
 }

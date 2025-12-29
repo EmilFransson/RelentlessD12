@@ -16,12 +16,18 @@ namespace Relentless
 {
 	enum class ESceneState : uint8 { Edit = 0, Play, Simulate };
 
-	class Editor : public std::enable_shared_from_this<Editor>
+	class Editor : public ISystemManager
 	{
 	public:
 		Editor() noexcept = default;
 		virtual ~Editor() noexcept;
 
+		static Editor* Get() noexcept
+		{
+			static Editor editor;
+			return &editor;
+		}
+		
 		NO_DISCARD const Ref<EntityOutlinerView> GetEntityOutlinerView() const noexcept;
 
 		virtual void OnEvent(IEvent& event) noexcept;
@@ -64,6 +70,8 @@ namespace Relentless
 		void OnEntityAttached(entity child, entity parent) noexcept;
 		void OnEntityReadbackDone(uint32 entityID) noexcept;
 
+		NO_DISCARD AssetHandle OnRequestBRDFLut() noexcept;
+
 		void OnViewportHotkeyPressed(ViewportPanel* pPanel, RLS_Key key) noexcept;
 		void OnViewportClicked(ViewportPanel* pPanel, Vector2u relativeMouseCoords) noexcept;
 
@@ -98,6 +106,8 @@ namespace Relentless
 		AssetHandle m_PauseButtonTextureHandle = NULL_HANDLE;
 		AssetHandle m_SimulateButtonTextureHandle = NULL_HANDLE;
 		AssetHandle m_StepButtonTextureHandle = NULL_HANDLE;
+
+		AssetHandle m_BRDFLutTextureHandle = AssetHandle::INVALID;
 
 		ESceneState m_SceneState = ESceneState::Edit;
 

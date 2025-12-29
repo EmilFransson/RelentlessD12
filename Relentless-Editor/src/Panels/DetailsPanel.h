@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Relentless.h>
-#include "IEditorPanel.h"
 
 namespace Relentless
 {
@@ -10,10 +9,10 @@ namespace Relentless
 
 	class EntityDetailsView;
 
-	class DetailsPanel : public IEditorPanel
+	class DetailsPanel : public PanelBase
 	{
 	public:
-		DetailsPanel(std::weak_ptr<Editor> aEditor) noexcept;
+		DetailsPanel() noexcept;
 		virtual ~DetailsPanel() noexcept override = default;
 	private:
 		template<typename Widget>

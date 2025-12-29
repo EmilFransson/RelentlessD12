@@ -1,6 +1,7 @@
 #pragma once
 
 //Core:
+#include <src/Utility/Common.h>
 #include <src/Core/Application.h>
 #include <src/Core/Core.h>
 #include <src/Core/CoreTypes.h>
@@ -18,11 +19,11 @@
 //Utility:
 #include <src/Utility/FileDialogs.h>
 #include <src/Utility/FilepathUtils.h>
-#include <src/Utility/Common.h>
 #include <src/Utility/StringUtils.h>
 #include <src/Utility/TextFilterExpressionEvaluator.h>
 
 //Files & paths
+#include <src/File/File.h>
 #include <src/File/FilePath.h>
 #include <src/Utility/SystemPaths.h>
 
@@ -33,14 +34,7 @@
 #include <src/EventSystem/KeyboardEvents.h>
 #include <src/EventSystem/MouseEvents.h>
 
-//Factories:
-#include <src/Assets/Factory/IFactory.h>
-#include <src/Assets/Factory/MaterialFactory.h>
-#include <src/Assets/Factory/ModelFactory.h>
-#include <src/Assets/Factory/TextureFactory.h>
-
 //Modules:
-#include <src/Module/AssetToolsModule.h>
 #include <src/Module/IModule.h>
 #include <src/Module/ModuleManager.h>
 
@@ -127,9 +121,9 @@
 //Serialization
 #include <src/Scene/SceneSerializer.h>
 
-//Assets
-#include <src/Assets/Factory/ModelFactory.h>
-#include <src/Assets/Factory/TextureFactory.h>
+//Subsystem:
+#include <src/Subsystem/ISystemManager.h>
+#include <src/Subsystem/ISubsystem.h>
 
 //Project:
 #include <src/Project/Project.h>
