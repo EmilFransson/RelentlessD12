@@ -15,37 +15,6 @@ namespace Relentless
 		}
 	}
 
-	static EExtensionType GetExtensionTypeFromPath(const Path& fullPath) noexcept
-	{
-		const String extension = FilepathUtils::ExtractExtension(fullPath);
-		if (extension == ".jpg")
-			return EExtensionType::JPG;
-		else if (extension == ".jpeg")
-			return EExtensionType::JPEG;
-		else if (extension == ".png")
-			return EExtensionType::PNG;
-		else if (extension == ".tga")
-			return EExtensionType::TGA;
-		else if (extension == ".tif" || extension == ".tiff")
-			return EExtensionType::TIFF;
-		else if (extension == ".dds")
-			return EExtensionType::DDS;
-		else if (extension == ".bmp")
-			return EExtensionType::BMP;
-		else if (extension == ".hdr")
-			return EExtensionType::HDR;
-		else if (extension == ".exr")
-			return EExtensionType::EXR;
-		else if (extension == ".fbx")
-			return EExtensionType::FBX;
-		else if (extension == ".obj")
-			return EExtensionType::OBJ;
-		else if (extension == ".gltf")
-			return EExtensionType::GLTF;
-		else
-			return EExtensionType::UNKNOWN;
-	}
-
 	static DXGI_FORMAT GetCompressedDXGITextureFormat(ETextureCompressionType compressionType, bool srgb) noexcept
 	{
 		DXGI_FORMAT compressedFormat{};
@@ -147,16 +116,10 @@ namespace Relentless
 		DirectX::ScratchImage image;
 		HRESULT result = S_OK;
 
-		const EExtensionType extensionType = GetExtensionTypeFromPath(m_SrcPath);
-		switch (extensionType)
-		{
-		case EExtensionType::TGA:
+		const String extension = FilepathUtils::ExtractExtension(m_SrcPath);
+		if (extension == ".tga")
 			result = LoadFromTGAFile(m_SrcPath.c_str(), nullptr, image);
-			break;
-		case EExtensionType::JPG:
-		case EExtensionType::JPEG:
-		case EExtensionType::PNG:
-		case EExtensionType::TIFF:
+		else if (extension == ".jpg" || extension == ".jpeg" || extension == ".png" || extension == ".tif" || extension == ".tiff")
 		{
 			DirectX::WIC_FLAGS importFlags = DirectX::WIC_FLAGS::WIC_FLAGS_NONE;
 			if (m_IsSRGB)
@@ -165,24 +128,15 @@ namespace Relentless
 				importFlags |= DirectX::WIC_FLAGS::WIC_FLAGS_FORCE_RGB;
 
 			result = LoadFromWICFile(m_SrcPath.c_str(), importFlags, nullptr, image);
-			break;
 		}
-		case EExtensionType::HDR:
-		case EExtensionType::EXR:
-		{
+		else if (extension == ".hdr" || extension == ".exr")
 			result = LoadFromHDRFile(m_SrcPath.c_str(), nullptr, image);
-			break;
-		}
-		case EExtensionType::DDS:
-		{
+		else if (extension == ".dds")
 			result = LoadFromDDSFile(m_SrcPath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);
-			break;
-		}
-		default:
+		else
 		{
-			RLS_CORE_ERROR("[Importer]: Failed to import texture file with path '{0}'; file type is not supported.", m_SrcPath.string().c_str());
+			RLS_CORE_ERROR("[TextureFactory::ImportTexture]: Failed to import texture file with path '{0}'; file type is not supported.", m_SrcPath.string().c_str());
 			return false;
-		}
 		}
 
 		if (result != S_OK)

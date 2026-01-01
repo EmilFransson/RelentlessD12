@@ -4,12 +4,12 @@
 
 namespace Relentless
 {
-	void AssetRegistryModule::AssetCreated(const AssetMetaData& aAssetMetaData) noexcept
+	void AssetRegistryModule::AssetCreated(const AssetData& aAssetMetaData) noexcept
 	{
 		{
 			std::unique_lock<std::shared_mutex> lock(m_Mutex);
-			AssetMetaStorage& storage = m_AssetMetadataStorages[aAssetMetaData.Type];
-			storage.AssetMetaDatas[aAssetMetaData.Uuid] = aAssetMetaData;
+			AssetDataStorage& storage = m_AssetDataStorages[aAssetMetaData.Type];
+			storage.AssetDatas[aAssetMetaData.Uuid] = aAssetMetaData;
 		}
 
 		Application::Get().SubmitToMainThread([this, aAssetMetaData]()
@@ -18,12 +18,12 @@ namespace Relentless
 			});
 	}
 
-	void AssetRegistryModule::AssetRemoved(const AssetMetaData& aAssetMetaData) noexcept
+	void AssetRegistryModule::AssetRemoved(const AssetData& aAssetMetaData) noexcept
 	{
 		{
 			std::unique_lock<std::shared_mutex> lock(m_Mutex);
-			AssetMetaStorage& storage = m_AssetMetadataStorages[aAssetMetaData.Type];
-			storage.AssetMetaDatas.erase(aAssetMetaData.Uuid);
+			AssetDataStorage& storage = m_AssetDataStorages[aAssetMetaData.Type];
+			storage.AssetDatas.erase(aAssetMetaData.Uuid);
 		}
 
 		Application::Get().SubmitToMainThread([this, aAssetMetaData]()
@@ -32,98 +32,102 @@ namespace Relentless
 			});
 	}
 
-	AssetMetaData* AssetRegistryModule::FindAsset(const UUID& aUUID) noexcept
+	AssetData* AssetRegistryModule::FindAsset(const UUID& aUUID) noexcept
 	{
 		std::shared_lock<std::shared_mutex> lock(m_Mutex);
-		for (auto& [type, storage] : m_AssetMetadataStorages)
+		for (auto& [type, storage] : m_AssetDataStorages)
 		{
-			if (auto it = storage.AssetMetaDatas.find(aUUID); it != storage.AssetMetaDatas.end())
+			if (auto it = storage.AssetDatas.find(aUUID); it != storage.AssetDatas.end())
 				return &it->second;
 		}
+		
 		return nullptr;
 	}
 
-	const AssetMetaData* AssetRegistryModule::FindAsset(const UUID& aUUID) const noexcept
+	const AssetData* AssetRegistryModule::FindAsset(const UUID& aUUID) const noexcept
 	{
 		std::shared_lock<std::shared_mutex> lock(m_Mutex);
-		for (const auto& [type, storage] : m_AssetMetadataStorages)
+		for (const auto& [type, storage] : m_AssetDataStorages)
 		{
-			if (auto it = storage.AssetMetaDatas.find(aUUID); it != storage.AssetMetaDatas.end())
+			if (auto it = storage.AssetDatas.find(aUUID); it != storage.AssetDatas.end())
 				return &it->second;
 		}
+		
 		return nullptr;
 	}
 
-	AssetMetaData* AssetRegistryModule::FindAsset(const UUID& aUUID, const TypeIndex& aTypeIndex) noexcept
+	AssetData* AssetRegistryModule::FindAsset(const UUID& aUUID, const TypeIndex& aTypeIndex) noexcept
 	{
 		std::shared_lock<std::shared_mutex> lock(m_Mutex);
-		if (!m_AssetMetadataStorages.contains(aTypeIndex))
+		if (!m_AssetDataStorages.contains(aTypeIndex))
 			return nullptr;
 
-		AssetMetaStorage& storage = m_AssetMetadataStorages.at(aTypeIndex);
+		AssetDataStorage& storage = m_AssetDataStorages.at(aTypeIndex);
 
-		if (auto it = storage.AssetMetaDatas.find(aUUID); it != storage.AssetMetaDatas.end())
+		if (auto it = storage.AssetDatas.find(aUUID); it != storage.AssetDatas.end())
 			return &it->second;
 		
 		return nullptr;
 	}
 
-	const AssetMetaData* AssetRegistryModule::FindAsset(const UUID& aUUID, const TypeIndex& aTypeIndex) const noexcept
+	const AssetData* AssetRegistryModule::FindAsset(const UUID& aUUID, const TypeIndex& aTypeIndex) const noexcept
 	{
 		std::shared_lock<std::shared_mutex> lock(m_Mutex);
-		if (!m_AssetMetadataStorages.contains(aTypeIndex))
+		if (!m_AssetDataStorages.contains(aTypeIndex))
 			return nullptr;
 
-		const AssetMetaStorage& storage = m_AssetMetadataStorages.at(aTypeIndex);
+		const AssetDataStorage& storage = m_AssetDataStorages.at(aTypeIndex);
 
-		if (auto it = storage.AssetMetaDatas.find(aUUID); it != storage.AssetMetaDatas.end())
+		if (auto it = storage.AssetDatas.find(aUUID); it != storage.AssetDatas.end())
 			return &it->second;
 
 		return nullptr;
 	}
 
-	const AssetMetaData* AssetRegistryModule::FindAssetByPackagePath(const Path& aPath) const noexcept
+	const AssetData* AssetRegistryModule::FindAssetByPackagePath(const Path& aPath) const noexcept
 	{
 		std::shared_lock<std::shared_mutex> lock(m_Mutex);
-		for (const auto& [type, storage] : m_AssetMetadataStorages)
+		for (const auto& [type, storage] : m_AssetDataStorages)
 		{
-			for (const auto& [id, metaData] : storage.AssetMetaDatas)
+			for (const auto& [id, metaData] : storage.AssetDatas)
 			{
 				if (metaData.PackagePath == aPath)
 					return &metaData;
 			}
 		}
+		
 		return nullptr;
 	}
 
-	const AssetMetaData* AssetRegistryModule::FindAssetBySourcePath(const Path& aPath) const noexcept
+	const AssetData* AssetRegistryModule::FindAssetBySourcePath(const Path& aPath) const noexcept
 	{
 		std::shared_lock<std::shared_mutex> lock(m_Mutex);
-		for (const auto& [type, storage] : m_AssetMetadataStorages)
+		for (const auto& [type, storage] : m_AssetDataStorages)
 		{
-			for (const auto& [id, metaData] : storage.AssetMetaDatas)
+			for (const auto& [id, metaData] : storage.AssetDatas)
 			{
 				if (metaData.SourcePath == aPath)
 					return &metaData;
 			}
 		}
+		
 		return nullptr;
 	}
 
-	std::vector<const AssetMetaData*> AssetRegistryModule::GetAllAssetsOfType(const TypeIndex& aTypeIndex) const noexcept
+	std::vector<const AssetData*> AssetRegistryModule::GetAllAssetsOfType(const TypeIndex& aTypeIndex) const noexcept
 	{
-		std::vector<const AssetMetaData*> assetMetaDatas;
+		std::vector<const AssetData*> assetDatas;
 
 		std::shared_lock<std::shared_mutex> lock(m_Mutex);
-		if (m_AssetMetadataStorages.contains(aTypeIndex))
+		if (m_AssetDataStorages.contains(aTypeIndex))
 		{
-			const AssetMetaStorage& storage = m_AssetMetadataStorages.at(aTypeIndex);
-			assetMetaDatas.reserve(storage.AssetMetaDatas.size());
+			const AssetDataStorage& storage = m_AssetDataStorages.at(aTypeIndex);
+			assetDatas.reserve(storage.AssetDatas.size());
 
-			for (const auto& [uuid, meta] : storage.AssetMetaDatas)
-				assetMetaDatas.push_back(&meta);
+			for (const auto& [uuid, meta] : storage.AssetDatas)
+				assetDatas.push_back(&meta);
 		}
 
-		return assetMetaDatas;
+		return assetDatas;
 	}
 }

@@ -41,8 +41,14 @@ namespace Relentless
 
 		NO_DISCARD bool IsTwoSided() const noexcept;
 
+		static constexpr const UUID& PersistentType()
+		{
+			static constexpr UUID uid = UUID{ 0xb881963d, 0xe495, 0x4d1f, { 0xaf, 0x88, 0x8, 0x72, 0xf9, 0xb6, 0x1, 0x5 } };
+			return uid;
+		}
+
 		void RemoveTexture(ETextureType aTextureType) noexcept;
-		
+
 		void SetAlbedoColor(const Vector4& aColor) noexcept;
 		void SetAlbedoColor(const Color& aColor) noexcept;
 		void SetAmbientOcclusionIntensity(float aAmbientOcclusionIntensity) noexcept;

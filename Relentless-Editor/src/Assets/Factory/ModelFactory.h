@@ -64,7 +64,6 @@ namespace Relentless
 	protected:		
 		virtual const FactoryResult& ImportFromFileImpl(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept override;
 	private:
-		//virtual void Execute(const Path& filePath, GraphicsDevice* pDevice) noexcept override;
 		void Finalize(bool succeeded) noexcept;
 		void ImportMaterials() noexcept;
 		void ImportModel() noexcept;
@@ -81,7 +80,6 @@ namespace Relentless
 		void SetProgress(float progress) noexcept;
 		void StoreImportedAsset(const FactoryResult& asset) noexcept;
 	private:
-		//std::vector<ImportedAsset> m_ImportedAssets;
 		std::array<String, 4> m_SupportedExtensions = { ".fbx", ".gltf", ".glb", ".obj" };
 		std::array<String, 4> m_SupportedFormats = { "FBX", "GLTF", "GLB", "OBJ" };
 

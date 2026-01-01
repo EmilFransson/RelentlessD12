@@ -71,6 +71,16 @@ namespace Relentless
 		return aFilepath.has_extension();
 	}
 
+	bool FilepathUtils::SetFileHidden(const Path& aFilepath) noexcept
+	{
+		DWORD attributes = GetFileAttributes(aFilepath.string().c_str());
+		if (attributes == INVALID_FILE_ATTRIBUTES)
+			return false;
+
+		attributes |= FILE_ATTRIBUTE_HIDDEN;
+		return SetFileAttributes(aFilepath.string().c_str(), attributes);
+	}
+
 	void FilepathUtils::SetExtension(Path& aFilepath, const String& aExtension) noexcept
 	{
 		if (HasExtension(aFilepath))

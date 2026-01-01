@@ -19,6 +19,12 @@ namespace Relentless
 		NO_DISCARD Buffer* GetVertexBuffer() const noexcept;
 		NO_DISCARD Buffer* GetIndexBuffer() const noexcept;
 
+		static constexpr const UUID& PersistentType()
+		{
+			static constexpr UUID uid = UUID{ 0x599f0573, 0x4a11, 0x42a4, { 0x8c, 0x8d, 0x66, 0x26, 0xd5, 0x82, 0x28, 0x58 } };
+			return uid;
+		}
+
 		void SetDefaultMaterial(const AssetHandle& handle) noexcept;
 	private:
 		Matrix m_OffsetTransform{};

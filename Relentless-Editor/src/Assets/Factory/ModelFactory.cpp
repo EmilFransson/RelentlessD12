@@ -42,37 +42,6 @@ namespace Relentless
 		}
 	}
 
-	static EExtensionType GetExtensionTypeFromPath(const std::filesystem::path& fullPath) noexcept
-	{
-		const std::string extension = FilepathUtils::ExtractExtension(fullPath);
-		if (extension == ".jpg")
-			return EExtensionType::JPG;
-		else if (extension == ".jpeg")
-			return EExtensionType::JPEG;
-		else if (extension == ".png")
-			return EExtensionType::PNG;
-		else if (extension == ".tga")
-			return EExtensionType::TGA;
-		else if (extension == ".tif" || extension == ".tiff")
-			return EExtensionType::TIFF;
-		else if (extension == ".dds")
-			return EExtensionType::DDS;
-		else if (extension == ".bmp")
-			return EExtensionType::BMP;
-		else if (extension == ".hdr")
-			return EExtensionType::HDR;
-		else if (extension == ".exr")
-			return EExtensionType::EXR;
-		else if (extension == ".fbx")
-			return EExtensionType::FBX;
-		else if (extension == ".obj")
-			return EExtensionType::OBJ;
-		else if (extension == ".gltf")
-			return EExtensionType::GLTF;
-		else
-			return EExtensionType::UNKNOWN;
-	}
-
 	static void LogHR(HRESULT hr, const std::string& contextualString, const std::filesystem::path& srcFilepath) noexcept
 	{
 		if (hr != S_OK)
@@ -302,16 +271,10 @@ namespace Relentless
 		DirectX::ScratchImage image;
 		HRESULT result = S_OK;
 		
-		const EExtensionType extensionType = GetExtensionTypeFromPath(absolutePath);
-		switch (extensionType)
-		{
-		case EExtensionType::TGA:
+		const String extension = FilepathUtils::ExtractExtension(absolutePath);
+		if (extension == ".tga")
 			result = LoadFromTGAFile(absolutePath.c_str(), nullptr, image);
-			break;
-		case EExtensionType::JPG:
-		case EExtensionType::JPEG:
-		case EExtensionType::PNG:
-		case EExtensionType::TIFF:
+		else if (extension == ".jpg" || extension == ".jpeg" || extension == ".png" || extension == ".tiff" || extension == ".tif")
 		{
 			DirectX::WIC_FLAGS importFlags = DirectX::WIC_FLAGS::WIC_FLAGS_NONE;
 			if (srgb)
@@ -320,24 +283,15 @@ namespace Relentless
 				importFlags |= DirectX::WIC_FLAGS::WIC_FLAGS_FORCE_RGB;
 
 			result = LoadFromWICFile(absolutePath.c_str(), importFlags, nullptr, image);
-			break;
 		}
-		case EExtensionType::HDR:
-		case EExtensionType::EXR:
-		{
+		else if (extension == ".hdr" || extension == ".exr")
 			result = LoadFromHDRFile(absolutePath.c_str(), nullptr, image);
-			break;
-		}
-		case EExtensionType::DDS:
-		{
+		else if (extension == ".dds")
 			result = LoadFromDDSFile(absolutePath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);
-			break;
-		}
-		default:
+		else
 		{
-			RLS_CORE_ERROR("[Importer]: Failed to import texture file with path '{0}'; file type is not supported.", absolutePath.string().c_str());
+			RLS_CORE_ERROR("[ModelFactory::ImportTexture]: Failed to import texture file with path '{0}'; file type is not supported.", absolutePath.string().c_str());
 			return false;
-		}
 		}
 
 		if (result != S_OK)

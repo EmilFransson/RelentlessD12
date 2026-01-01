@@ -56,6 +56,7 @@ namespace Relentless
 		//	&& s_Data.UUIDToPathMap[uuid] == filepath 
 		//	&& s_Data.PathToAssetMetaMap.contains(filepath)
 		//	&& s_Data.PathToAssetMetaMap[filepath].Uuid == uuid;
+		return false;
 	}
 	
 	void AssetRegistry::RemoveUUIDToFilepathMap(const UUID& uuid, const std::string& filepath) noexcept

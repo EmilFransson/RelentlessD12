@@ -13,6 +13,7 @@ namespace Relentless
 		static NO_DISCARD String CombineDisplay(const Path& aBasePath, const Path& aPathToAppend) noexcept;
 		static void Normalize(Path& basePath) noexcept;
 		static NO_DISCARD bool HasExtension(const Path& aFilePath) noexcept;
+		static bool SetFileHidden(const Path& aFilepath) noexcept;
 		static void SetExtension(Path& aFilePath, const String& aExtension) noexcept;
 		static NO_DISCARD String SanitizeFileName(const String& aFileName) noexcept;
 		static NO_DISCARD bool IsDirectory(const Path& aFilepath) noexcept;

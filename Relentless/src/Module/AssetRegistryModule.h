@@ -7,7 +7,7 @@ namespace Relentless
 {
 	using TypeIndex = static_type_info::TypeIndex;
 
-	struct AssetMetaData
+	struct AssetData
 	{
 		String Name							= "\0";
 		UUID Uuid							= UUID{ 0 };
@@ -19,30 +19,30 @@ namespace Relentless
 		uint32 Flags						= 0u;
 	};
 
-	struct AssetMetaStorage
+	struct AssetDataStorage
 	{
-		std::unordered_map<UUID, AssetMetaData> AssetMetaDatas;
+		std::unordered_map<UUID, AssetData> AssetDatas;
 	};
 
 	class AssetRegistryModule : public IModule
 	{
 	public:
-		void AssetCreated(const AssetMetaData& aAssetMetaData) noexcept;
-		void AssetRemoved(const AssetMetaData& aAssetMetaData) noexcept;
+		void AssetCreated(const AssetData& aAssetData) noexcept;
+		void AssetRemoved(const AssetData& aAssetData) noexcept;
 
-		NO_DISCARD AssetMetaData* FindAsset(const UUID& aUUID) noexcept;
-		NO_DISCARD AssetMetaData* FindAsset(const UUID& aUUID, const TypeIndex& aTypeIndex) noexcept;
-		NO_DISCARD const AssetMetaData* FindAsset(const UUID& aUUID) const noexcept;
-		NO_DISCARD const AssetMetaData* FindAsset(const UUID& aUUID, const TypeIndex& aTypeIndex) const noexcept;
-		NO_DISCARD const AssetMetaData* FindAssetByPackagePath(const Path& aPath) const noexcept;
-		NO_DISCARD const AssetMetaData* FindAssetBySourcePath(const Path& aPath) const noexcept;
+		NO_DISCARD AssetData* FindAsset(const UUID& aUUID) noexcept;
+		NO_DISCARD AssetData* FindAsset(const UUID& aUUID, const TypeIndex& aTypeIndex) noexcept;
+		NO_DISCARD const AssetData* FindAsset(const UUID& aUUID) const noexcept;
+		NO_DISCARD const AssetData* FindAsset(const UUID& aUUID, const TypeIndex& aTypeIndex) const noexcept;
+		NO_DISCARD const AssetData* FindAssetByPackagePath(const Path& aPath) const noexcept;
+		NO_DISCARD const AssetData* FindAssetBySourcePath(const Path& aPath) const noexcept;
 
-		NO_DISCARD std::vector<const AssetMetaData*> GetAllAssetsOfType(const TypeIndex& aTypeIndex) const noexcept;
+		NO_DISCARD std::vector<const AssetData*> GetAllAssetsOfType(const TypeIndex& aTypeIndex) const noexcept;
 
-		Broadcaster<void(const AssetMetaData& aMetaData)> OnAssetAdded;
-		Broadcaster<void(const AssetMetaData& aMetaData)> OnAssetRemoved;
+		Broadcaster<void(const AssetData& aAssetData)> OnAssetAdded;
+		Broadcaster<void(const AssetData& aAssetData)> OnAssetRemoved;
 	private:
-		std::unordered_map<TypeIndex, AssetMetaStorage> m_AssetMetadataStorages;
+		std::unordered_map<TypeIndex, AssetDataStorage> m_AssetDataStorages;
 		mutable std::shared_mutex m_Mutex;
 	};
 }

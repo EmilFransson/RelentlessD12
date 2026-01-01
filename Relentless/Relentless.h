@@ -8,6 +8,7 @@
 #include <src/Core/Time.h>
 #include <src/Core/Any.h>
 #include <src/Core/IAsset.h>
+#include <src/Core/Ref.h>
 
 //Logging:
 #include <src/Core/Log.h>
@@ -35,6 +36,7 @@
 #include <src/EventSystem/MouseEvents.h>
 
 //Modules:
+#include <src/Module/AssetRegistryModule.h>
 #include <src/Module/IModule.h>
 #include <src/Module/ModuleManager.h>
 

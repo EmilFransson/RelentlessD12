@@ -17,6 +17,7 @@ namespace Relentless
 
 		void SetName(const String& aName) noexcept;
 
+		virtual const UUID& GetPersistentType() const noexcept = 0;
 		virtual const TypeIndex& GetStaticType() const noexcept = 0;
 	private:
 		String m_Name;
@@ -32,10 +33,21 @@ namespace Relentless
 			return StaticType();
 		}
 
+		virtual const UUID& GetPersistentType() const noexcept override final
+		{
+			return PersistentType();
+		}
+		
 		static constexpr const TypeIndex& StaticType()
 		{
 			static constexpr TypeIndex typeIndex = getTypeIndex<T>();
 			return typeIndex;
+		}
+
+		static constexpr const UUID& PersistentType()
+		{
+			static constexpr UUID uid = UUID{0};
+			return uid;
 		}
 	};
 }

@@ -5,7 +5,21 @@
 
 namespace Relentless
 {
-	enum class EExtensionType : uint8_t { UNKNOWN = 0, TGA, JPG, JPEG, PNG, BMP, DDS, TIFF, HDR, EXR, FBX, OBJ, GLTF };
+	inline static constexpr uint32 ASSET_FILE_MAGIC_NUMBER = 0x524C5354;
+
+	#pragma pack(push, 1)
+	struct AssetFileContent
+	{
+		uint32 Magic					= ASSET_FILE_MAGIC_NUMBER;
+		uint32 Version					= 1u;
+		uint32 Flags					= 0u;
+		uint64 BulkDataSize				= 0u;
+		uint64 ModificationDateAndTime	= 0u;
+		UUID PersistentID				= UUID{0};
+		UUID AssetUUID					= UUID{0};
+		char SourcePath[260]			= {'\0'};
+	};
+	#pragma pack(pop)
 
 	using FactoryResult = std::expected<AssetHandle, String>;
 
