@@ -1,6 +1,11 @@
 #pragma once
+
+#include "Core/DLLExport.h"
+
 #include "DeviceResource.h"
+
 #include "Fence.h"
+
 #include "ScratchAllocator.h"
 
 namespace Relentless
@@ -68,7 +73,7 @@ namespace Relentless
 			DepthStencilTarget.EndAccessFlags = endDepthTargetFlags;
 		}
 
-		static [[nodiscard]] RenderPassInfo DepthOnly(Texture* pTarget, DepthTargetAccessFlags beginAccessFlags, DepthTargetAccessFlags endAccessFlags) noexcept
+		NO_DISCARD static RenderPassInfo DepthOnly(Texture* pTarget, DepthTargetAccessFlags beginAccessFlags, DepthTargetAccessFlags endAccessFlags) noexcept
 		{
 			RenderPassInfo renderPassInfo;
 			renderPassInfo.DepthStencilTarget.pTarget = pTarget;
@@ -82,7 +87,7 @@ namespace Relentless
 		DepthTargetInfo DepthStencilTarget{};
 	};
 
-	class CommandContext : public DeviceObject
+	class RLS_API CommandContext : public DeviceObject
 	{
 	public:
 		CommandContext(GraphicsDevice* pParent, Ref<ID3D12CommandList> pCommandList, Ref<ScratchAllocationManager> pScratchAllocationManager, D3D12_COMMAND_LIST_TYPE type) noexcept;

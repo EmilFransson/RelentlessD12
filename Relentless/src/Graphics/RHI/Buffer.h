@@ -24,14 +24,14 @@ namespace Relentless
 		BufferFlag		Flags			= BufferFlag::None;
 		ResourceFormat	Format			= ResourceFormat::Unknown;
 
-		static [[nodiscard]] BufferDesc CreateIndexBuffer(uint32_t elements, ResourceFormat format, BufferFlag flags = BufferFlag::None) noexcept
+		NO_DISCARD static BufferDesc CreateIndexBuffer(uint32_t elements, ResourceFormat format, BufferFlag flags = BufferFlag::None) noexcept
 		{
 			RLS_ASSERT(format == ResourceFormat::R32_UINT || format == ResourceFormat::R16_UINT, "Index Buffer Format Is Invalid.");
 			const FormatInfo& formatInfo = RHI::GetFormatInfo(format);
 			return { .Size = elements * formatInfo.BytesPerBlock, .ElementSize = formatInfo.BytesPerBlock, .Flags = flags };
 		}
 
-		static [[nodiscard]] BufferDesc CreateVertexBuffer(uint32 elements, uint32 vertexSize, BufferFlag flags = BufferFlag::None) noexcept
+		NO_DISCARD static BufferDesc CreateVertexBuffer(uint32 elements, uint32 vertexSize, BufferFlag flags = BufferFlag::None) noexcept
 		{
 			return { .Size = elements * vertexSize, .ElementSize = vertexSize, .Flags = flags };
 		}
@@ -54,7 +54,7 @@ namespace Relentless
 			return { .Size = (uint64)elementCount * info.BytesPerBlock, .ElementSize = info.BytesPerBlock, .Flags = flags | BufferFlag::ShaderResource, .Format = format };
 		}
 
-		[[nodiscard]] uint32 NumElements() const noexcept
+		NO_DISCARD uint32 NumElements() const noexcept
 		{
 			return static_cast<uint32>(Size / ElementSize);
 		}
@@ -67,6 +67,7 @@ namespace Relentless
 		virtual ~Buffer() noexcept override;
 
 		NO_DISCARD const BufferDesc& GetDesc() const noexcept;
+		NO_DISCARD BufferDesc& GetDesc() noexcept;
 		NO_DISCARD void* GetMappedData() const noexcept;
 		NO_DISCARD uint64 GetSize() const noexcept;
 		NO_DISCARD uint64 GetNrOfElements() const noexcept;
@@ -83,10 +84,10 @@ namespace Relentless
 		void SetUAV(Ref<UnorderedAccessView> pUAV) noexcept;
 		void SetUAVNonVisible(Ref<UnorderedAccessView> pUAV) noexcept;
 	private:
-		const BufferDesc m_Desc;
+		BufferDesc m_Desc;
 		void* m_pMappedPtr = nullptr;
 		Ref<ShaderResourceView> m_pSRV = nullptr;
 		Ref<UnorderedAccessView> m_pUAV = nullptr;
-		Ref<UnorderedAccessView> m_pUAVNonVisible= nullptr;
+		Ref<UnorderedAccessView> m_pUAVNonVisible = nullptr;
 	};
 }

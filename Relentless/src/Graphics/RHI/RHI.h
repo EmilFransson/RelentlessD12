@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/DLLExport.h"
 
 namespace Relentless
 {
@@ -129,11 +130,11 @@ namespace Relentless
 
 	namespace RHI
 	{
-		[[nodiscard]] const FormatInfo& GetFormatInfo(ResourceFormat format) noexcept;
+		NO_DISCARD RLS_API const FormatInfo& GetFormatInfo(ResourceFormat format) noexcept;
 
-		[[nodiscard]] uint64 GetRowPitch(ResourceFormat format, uint32 width, uint32 mipIndex = 0) noexcept;
-		[[nodiscard]] uint64 GetSlicePitch(ResourceFormat format, uint32 width, uint32 height, uint32 mipIndex = 0) noexcept;
-		[[nodiscard]] uint64 GetTextureMipByteSize(ResourceFormat format, uint32 width, uint32 height, uint32 depth, uint32 mipIndex) noexcept;
-		[[nodiscard]] uint64 GetTextureByteSize(ResourceFormat format, uint32 width, uint32 height, uint32 depth = 1, uint32 numMips = 1) noexcept;
+		NO_DISCARD RLS_API uint64 GetRowPitch(ResourceFormat format, uint32 width, uint32 mipIndex = 0) noexcept;
+		NO_DISCARD RLS_API uint64 GetSlicePitch(ResourceFormat format, uint32 width, uint32 height, uint32 mipIndex = 0) noexcept;
+		NO_DISCARD RLS_API uint64 GetTextureMipByteSize(ResourceFormat format, uint32 width, uint32 height, uint32 depth, uint32 mipIndex) noexcept;
+		NO_DISCARD RLS_API uint64 GetTextureByteSize(ResourceFormat format, uint32 width, uint32 height, uint32 depth = 1, uint32 numMips = 1) noexcept;
 	}
 }

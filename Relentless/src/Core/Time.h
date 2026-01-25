@@ -1,9 +1,11 @@
 #pragma once
+#include "Core/DLLExport.h"
+
 namespace Relentless
 {
 	using TimeStamp = uint64;
 
-	class Time
+	class RLS_API Time
 	{
 	public:
 		Time() noexcept = default;
@@ -17,17 +19,30 @@ namespace Relentless
 			return std::chrono::duration_cast<std::chrono::seconds>(duration).count();
 		}
 
-		[[nodiscard]] static float GetDeltaTime() noexcept
+		NO_DISCARD static TimeStamp GetCurrentTimePoint() noexcept
+		{
+			return std::chrono::steady_clock::now().time_since_epoch().count();
+		}
+
+		NO_DISCARD static float GetElapsedMsSince(TimeStamp aStartTimePoint) noexcept
+		{
+			const TimeStamp now = GetCurrentTimePoint();
+			auto duration = std::chrono::nanoseconds(now - aStartTimePoint);
+			return std::chrono::duration<float, std::milli>(duration).count();
+		}
+
+		NO_DISCARD static float GetDeltaTime() noexcept
 		{
 			return std::chrono::duration<float>(m_CurrentTimePoint - m_PreviousTimePoint).count();
 		}
-		[[nodiscard]] static float GetElapsedTime() noexcept
+
+		NO_DISCARD static float GetElapsedTime() noexcept
 		{
 			return m_ElapsedApplicationTime;
 		}
 
-		[[nodiscard]] static uint32 GetFrameCount() noexcept;
-		[[nodiscard]] static uint32 GetFramesPerSecond() noexcept
+		NO_DISCARD static uint32 GetFrameCount() noexcept;
+		NO_DISCARD static uint32 GetFramesPerSecond() noexcept
 		{
 			return m_FramesPerSecond;
 		}

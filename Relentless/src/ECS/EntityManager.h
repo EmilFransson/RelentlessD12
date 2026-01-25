@@ -24,7 +24,7 @@ namespace Relentless
 	struct Pool : public SparseSetBase
 	{
 		Pool() noexcept = default;
-		virtual ~Pool() noexcept override final = default;
+		virtual ~Pool() noexcept override = default;
 
 		std::vector<ComponentType> Components;
 
@@ -117,27 +117,27 @@ namespace Relentless
 	private:
 		template<typename T>
 			requires std::is_same_v<entity, T>
-		inline [[nodiscard]] entity Get(const entity e) const noexcept
+		[[nodiscard]] inline entity Get(const entity e) const noexcept
 		{
 			return e;
 		}
 
 		template<typename T>
-			requires !std::is_same_v<entity, T>
-		inline [[nodiscard]] T& Get(const entity e) const noexcept
+			requires (!std::is_same_v<entity, T>)
+		[[nodiscard]] inline T& Get(const entity e) const noexcept
 		{
 			auto& pool = std::get<Pool<std::remove_reference_t<T>>&>(m_ComponentPools);
 			const uint32_t entityIdentifier = e >> 12;
 			return pool.Components[pool.SparseArray[entityIdentifier]];
 		}
 
-		inline [[nodiscard]] bool HasAllOf(const uint32_t entityIdentity) const noexcept
+		[[nodiscard]] inline bool HasAllOf(const uint32_t entityIdentity) const noexcept
 		{
 			return (Has<ComponentTypes>(entityIdentity, std::get<Pool<ComponentTypes>&>(m_ComponentPools)) && ...);
 		}
 
 		template<typename ComponentType>
-		inline [[nodiscard]] bool Has(const uint32_t entityIdentity, const Pool<ComponentType>& pool) const noexcept
+		[[nodiscard]] inline bool Has(const uint32_t entityIdentity, const Pool<ComponentType>& pool) const noexcept
 		{
 			return entityIdentity < pool.SparseArray.size() && pool.SparseArray[entityIdentity] != NULL_ENTITY;
 		}
@@ -375,7 +375,7 @@ namespace Relentless
 		template<typename ComponentType, typename... Args>
 			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
 		&& std::is_empty_v<ComponentType> && (sizeof...(Args) == 0)
-			void Add(const entity entityID, Args&&... args) noexcept
+			void Add(const entity entityID, Args&&... /*args*/) noexcept
 		{
 			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
 			RLS_ASSERT(!Has<ComponentType>(entityID), "Entity already has the component type.");
@@ -436,7 +436,7 @@ namespace Relentless
 		template<typename ComponentType, typename... Args>
 			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
 		&& std::is_empty_v<ComponentType> && (sizeof...(Args) == 0)
-			void AddOrReplace(const entity entityID, Args&&... args) noexcept
+			void AddOrReplace(const entity entityID, Args&&... /*args*/) noexcept
 		{
 			RLS_ASSERT(Exists(entityID), "Entity does not exist.");
 

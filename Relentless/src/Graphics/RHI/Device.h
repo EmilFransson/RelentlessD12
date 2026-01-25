@@ -1,12 +1,17 @@
 #pragma once
+#include "Core/DLLExport.h"
 #include "CommandQueue.h"
+
 #include "DescriptorManager.h"
 #include "DeviceResource.h"
+
 #include "Fence.h"
+
 #include "Graphics/Shaders/ShaderLibrary.h"
+
 #include "RHI.h"
 
-#include "../../vendor/includes/directxtex/DirectXTex.h"
+#include <directxtex/DirectXTex.h>
 
 namespace Relentless
 {
@@ -18,7 +23,7 @@ namespace Relentless
 		bool UseStablePowerState = false;
 	};
 
-	class GraphicsDevice : public DeviceObject
+	class RLS_API GraphicsDevice : public DeviceObject
 	{
 	public:
 		static constexpr uint8 NUM_BUFFERS = 2u;

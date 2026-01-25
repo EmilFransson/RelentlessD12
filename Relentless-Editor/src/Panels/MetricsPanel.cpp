@@ -1,4 +1,6 @@
 #include "MetricsPanel.h"
+#include "ImGui/ImGuiLayer.h"
+
 namespace Relentless
 {
 	void MetricsPanel::OnImGuiRender(const bool show) noexcept
@@ -32,7 +34,7 @@ namespace Relentless
 				{
 					ImGui::Text("%.3fms", metric.durationInMilliSeconds);
 					ImGui::SameLine();
-					ImGui::Text(metric.ContextName);
+					ImGui::Text("%s", metric.ContextName);
 				}
 				ImGui::EndTabItem();
 			}

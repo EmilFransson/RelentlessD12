@@ -6,9 +6,9 @@
 
 namespace Relentless
 {
-	Scene::Scene(const char* name) noexcept
-		:m_Name{ name }
-		,m_UUID{ CreateUUID() }
+	Scene::Scene(const char* aName) noexcept
+		:m_UUID{ CreateUUID() },
+		 m_Name{ aName }
 	{
 	}
 
@@ -48,21 +48,9 @@ namespace Relentless
 		};
 
 		DeferredEntityDeletionSystem::Execute(state);
-
-		//Collection<TransformComponent, MeshRendererComponent, MeshFilterComponent> instanceCollection = GetEntityManager().Collect<TransformComponent, MeshRendererComponent, MeshFilterComponent>();
-		//
-		//std::vector<ShaderInterop::InstanceData> instanceDatas;
-		//instanceDatas.reserve(instanceCollection.Size());
-		//
-		//int i = 0;
-		//instanceCollection.Do([&](entity e, TransformComponent& tc, MeshRendererComponent& mrc, MeshFilterComponent& mc) 
-		//	{
-		//		i++;
-		//	});
-		//RLS_CORE_INFO("i IS: {0}", i);
 	}
 
-	entity Scene::DuplicateEntity(entity entityToCopy, bool preserveHierarchy) noexcept
+	entity Scene::DuplicateEntity(entity entityToCopy, bool /*preserveHierarchy*/) noexcept
 	{
 		const String originalName = m_EntityManager.Get<NameComponent>(entityToCopy).Name;
 
@@ -104,7 +92,6 @@ namespace Relentless
 		CopyComponentIfExists<SpotLightComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<CameraComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<HiddenInGameComponent>(entityToCopy, newEntity);
-		CopyComponentIfExists<RotatorComponent>(entityToCopy, newEntity);
 
 		return newEntity;
 	}
@@ -135,13 +122,9 @@ namespace Relentless
 	{
 		auto lightEntity = CreateEntity(name);
 		if (aLightTypetype == ELightType::Directional)
-		{
 			m_EntityManager.Add<DirectionalLightComponent>(lightEntity);
-		}
 		else if (aLightTypetype == ELightType::Point)
-		{
 			m_EntityManager.Add<PointLightComponent>(lightEntity);
-		}
 		else
 		{
 			RLS_ASSERT(aLightTypetype == ELightType::Spot, "[Scene::CreateLight]: Invalid Light Type");
@@ -150,106 +133,6 @@ namespace Relentless
 		
 		return lightEntity;
 	}
-
-	entity Scene::CreateShape(const Shape shape) noexcept
-	{
-		const std::filesystem::path fullPath = GetFullShapePath(shape);
-		const std::string nameString = fullPath.stem().string();
-
-		const AssetHandle meshHandle = AssetManager::GetHandleByPath(fullPath);
-
-		entity newShape = CreateEntity(nameString.c_str());
-
-		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(newShape);
-		mfc.AssetHandle = meshHandle;
-
-		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(newShape);
-
-		mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
-
-		return newShape;
-	}
-
-	entity Scene::CreateExtra(const Extra extra) noexcept
-	{
-		std::filesystem::path fullPath = GetFullExtraPath(extra);
-		std::string nameString = fullPath.stem().string();
-
-		auto entity = CreateEntity(nameString.c_str());
-
-		AssetHandle meshHandle = AssetManager::GetHandleByPath(nameString);
-
-		auto& mfc = m_EntityManager.Add<MeshFilterComponent>(entity);
-		mfc.AssetHandle = meshHandle;
-
-		auto& mrc = m_EntityManager.Add<MeshRendererComponent>(entity);
-		mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
-
-		return entity;
-	}
-
-	std::string Scene::GetFullShapePath(const Shape shape) noexcept
-	{
-		if (shape == Shape::Triangle)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Triangle.rasset";
-		}
-		else if (shape == Shape::Cube)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Cube.rasset";
-		}
-		else if (shape == Shape::Cylinder)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Cylinder.rasset";
-		}
-		else if  (shape == Shape::Capsule)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Capsule.rasset";
-		}
-		else if (shape == Shape::Cone)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Cone.rasset";
-		}
-		else if (shape == Shape::Sphere)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Sphere.rasset";
-		}
-		else if (shape == Shape::IcoSphere)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Icosphere.rasset";
-		}
-		else if (shape == Shape::Torus)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Torus.rasset";
-		}
-		else if (shape == Shape::Quad)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Quad.rasset";
-		}
-		else if (shape == Shape::Plane)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Models\\StarterContent\\Plane.rasset";
-		}
-		else
-		{
-			RLS_ASSERT(false, "Unknown shape type.");
-			return {};
-		}
-	}
-
-	std::string Scene::GetFullExtraPath(const Extra extra) noexcept
-	{
-		if (extra == Extra::UtahTeapot)
-		{
-			return std::string(ENGINE_ASSET_DIRECTORY) + "Meshes\\UtahTeapot.gltf";
-		}
-		else
-		{
-			RLS_ASSERT(false, "Unknown extra type.");
-			return {};
-		}
-	}
-
 
 	void Scene::OnRuntimeStart() noexcept
 	{
@@ -289,8 +172,6 @@ namespace Relentless
 		Vector3 forward = Vector3::Zero - Vector3(0.0f, 0.0f, -5.0f);
 		forward.Normalize();
 		
-		const Vector3 lookAt = Vector3(0.0f, 0.0f, -5.0f) + forward;
-
 		cc.WorldToView = Math::CreateLookToMatrix(Vector3(0.0f, 0.0f, -5.0f), forward, Vector3::Up);
 		cc.ViewToClip = Math::CreatePerspectiveMatrix(cc.FieldOfViewDegrees, 16.0f / 9.0f, cc.ClippingPlaneNear, cc.ClippingPlaneFar);
 
@@ -542,6 +423,60 @@ namespace Relentless
  	{
  		m_IsDirty = true;
  	}
+
+	bool Scene::SerializeCore(IArchive& aArchive) noexcept
+	{
+		if (aArchive.IsSaving())
+		{
+			m_EntityManager.Collect<IDComponent>().Do([this, &aArchive](entity aEntity)
+				{
+					SerializeEntity(aArchive, aEntity);
+
+				});
+		}
+
+		return true;
+	}
+
+	bool Scene::SerializeEntity(IArchive& /*aArchive*/, entity /*aEntity*/) noexcept
+	{
+		//RLS_ASSERT(m_EntityManager.Exists(aEntity), "[Scene::SerializeEntity]: Entity is invalid.");
+		//
+		//auto&& ConditionallyProcess = [&]<typename ComponentType>() -> bool
+		//{
+		//	bool hasComponent = m_EntityManager.Has<ComponentType>(aEntity);
+		//	if (!aArchive.Process(hasComponent))
+		//		return false;
+		//
+		//	if constexpr (!std::is_empty_v<ComponentType>)
+		//	{
+		//		if (hasComponent)
+		//		{
+		//			ComponentType& component = m_EntityManager.Get<ComponentType>(aEntity);
+		//			if (!aArchive.Process(component))
+		//				return false;
+		//		}
+		//	}
+		//
+		//	return true;
+		//};
+		//
+		//return
+		//	ConditionallyProcess.template operator()<IDComponent>() &&
+		//	ConditionallyProcess.template operator()<NameComponent>() &&
+		//	ConditionallyProcess.template operator()<RootComponent>() &&
+		//	ConditionallyProcess.template operator()<TransformComponent>() &&
+		//	ConditionallyProcess.template operator()<MeshFilterComponent>() &&
+		//	ConditionallyProcess.template operator()<MeshRendererComponent>() &&
+		//	ConditionallyProcess.template operator()<DirectionalLightComponent>() &&
+		//	ConditionallyProcess.template operator()<PointLightComponent>() &&
+		//	ConditionallyProcess.template operator()<SpotLightComponent>() &&
+		//	ConditionallyProcess.template operator()<CameraComponent>() &&
+		//	ConditionallyProcess.template operator()<HiddenInGameComponent>() &&
+		//	ConditionallyProcess.template operator()<FolderComponent>();
+
+		return true;
+	}
 
 	template<typename ComponentType>
 	void CopyComponent(std::shared_ptr<Scene> srcScene, std::shared_ptr<Scene> dstScene, std::unordered_map<UUID, entity>& idToEntityMap) noexcept

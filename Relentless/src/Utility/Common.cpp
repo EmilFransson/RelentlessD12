@@ -4,7 +4,7 @@
 
 namespace Relentless
 {
-	UUID ConvertStringToGUID(const std::string& guidString) noexcept
+	UUID ConvertStringToGUID(const String& guidString) noexcept
 	{
 		const std::wstring GUIDAsWString = StringUtils::ConvertToWide(guidString);
 		GUID uuid{};
@@ -12,10 +12,10 @@ namespace Relentless
 		return uuid;
 	}
 
-	std::string ConvertUUIDToString(const UUID& uuid) noexcept
+	String ConvertUUIDToString(const UUID& uuid) noexcept
 	{
 		wchar_t wszUuid[39] = { 0 };
-		std::string strUuid = {};
+		String strUuid = {};
 
 		if (::StringFromGUID2(uuid, wszUuid, 39) > 0)
 		{

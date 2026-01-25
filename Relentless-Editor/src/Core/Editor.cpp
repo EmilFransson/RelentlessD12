@@ -1,14 +1,30 @@
 ﻿#include "Editor.h"
 #include "RelentlessEditorApp.h"
 
+#include "../Assets/Factory/MaterialFactory.h"
+#include "../Assets/Factory/MeshFactory.h"
+#include "../Assets/Factory/ModelFactory.h"
 #include "../Assets/Factory/TextureFactory.h"
-#include "../Panels/TestPanel.h"
-#include "../Panels/ContentBrowserPanelEx.h"
+#include "../Module/ContentBrowserModule.h"
+#include "../Module/UIModule.h"
 #include "../UI/Views/Outliner/EntityOutlinerView.h"
-#include "../Module/AssetToolsModule.h"
+
+#include "../Subsystem/SelectionSubsystem.h"
+#include "../Subsystem/EntityFoldersSubsystem.h"
+#include "../Subsystem/EditorSceneBridgeSubsystem.h"
+
 namespace Relentless
 {
 	Editor::~Editor() noexcept {}
+
+	//Lazy loads at fetch time:
+	void Editor::CreateSubsystems() noexcept
+	{
+		//Note: Load order should be preserved:
+		GetSubsystem<SelectionSubsystem>();
+		GetSubsystem<EntityFoldersSubsystem>();
+		GetSubsystem<EditorSceneBridgeSubsystem>();
+	}
 
 	const Ref<EntityOutlinerView> Editor::GetEntityOutlinerView() const noexcept
 	{
@@ -17,6 +33,15 @@ namespace Relentless
 
 	void Editor::OnEvent(IEvent& event) noexcept
 	{
+		{
+			std::lock_guard<std::mutex> lock(m_OnEventMutex);
+			for (const auto& [type, callBack] : m_EventCallbacks)
+			{
+				if (callBack(event))
+					return;
+			}
+		}
+
 		switch (event.GetEventType())
 		{
 		case EventType::KeyPressedEvent:
@@ -34,12 +59,15 @@ namespace Relentless
 
 					break;
 				}
-				break;
+				default:
+					break;
 				}
 			}
 			event.StopPropagation();
 			break;
 		}
+		default:
+			break;
 		}
 	}
 
@@ -48,10 +76,6 @@ namespace Relentless
 		PROFILE_FUNC;
 
 		UI_DrawMainMenuBar();
-
-		ImGui::Begin("Content Browser");
-
-		ImGui::End();
 
 		ImGui::Begin("Spawn");
 		
@@ -90,61 +114,27 @@ namespace Relentless
 
 		ProfilerManager::ClearData();
 		ImGui::End();
+
+		{
+			std::lock_guard<std::mutex> lock(m_OnUIRenderMutex);
+			for (const auto& [id, callBack] : m_UIRenderCallbacks)
+				callBack();
+		}
 	}
 
 	void Editor::OnCreate() noexcept
 	{
-		Project::Load(FilepathUtils::Combine(SystemPaths::GetUserHomeDirectory(), "UntitledRelentlessProject\\UntitledRelentlessProject.rproject"));
-
-		m_pSelection = std::make_unique<Selection>();
-		m_pSelection->OnSelectionChanged.Connect(this, &Editor::OnEntitySelectionChanged);
-
-		m_pEntityFoldersManager = std::make_unique<EntityFoldersManager>(this);
-		m_pEntityFoldersManager->OnEntityFolderMoved.Connect(this, &Editor::OnEntityFolderMoved);
-		m_pEntityFoldersManager->OnEntityFolderDelete.Connect(this, &Editor::OnEntityFolderDeleted);
-
-		SpawnViewport();
-
-		SetActiveScene(std::make_shared<Scene>());
+		LoadModules();
+		Project::Load("D:\\UntitledRelentlessProject\\UntitledRelentlessProject.rproject");
+		CreateSubsystems();
 		CreateStartScene();
-
-		m_pDetailsPanel = UIManager::Get().AddPanel(std::make_unique<DetailsPanel>());
-		m_pDetailsPanel->SetPadding(Vector2(2.0f, 0.0f));
-
-		m_pOutlinerPanel = UIManager::Get().AddPanel(std::make_unique<OutlinerPanel>());
-		m_pOutlinerPanel->SetPadding(Vector2(2.0f, 0.0f));
-
-		ContentBrowserPanelEx* pContentBrowserPanel = UIManager::Get().AddPanel(MakeUnique<ContentBrowserPanelEx>());
-		pContentBrowserPanel->SetPadding(Vector2(2.0f, 0.0f));
-
-		UIManager::Get().AddPanel(std::make_unique<TestPanel>("Test", ImGuiWindowFlags_None));
-
-		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
-		
-		{
-			Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
-			pFactory->SetImportAsSRGB(false);
-			pFactory->SetGenerateMipmaps(false);
-
-			std::vector<AssetImportTask> tasks;
-			AssetImportTask& task = tasks.emplace_back();
-			task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
-			task.pFactory = pFactory;
-
-			AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
-			m_BRDFLutTextureHandle = assetToolsModule.Import(tasks)[0].Handle;
-		}
-
-		const auto& renderer = app.GetRenderer();
-		renderer->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
-		renderer->OnRequestBRDFLut(this, &Editor::OnRequestBRDFLut);
+		LoadBrdfLut_Temp();
+		SpawnViewport();
 	}
 
 	void Editor::OnDestroy() noexcept
 	{
 		OnShutDown();
-
-		m_pSelection->OnSelectionChanged.Detach(this);
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 		if (auto& pRenderer = app.GetRenderer())
@@ -157,14 +147,18 @@ namespace Relentless
 
 		m_pActiveScene->OnUpdate(deltaTime);
 
-		for (int i = 0; i < m_EditorViewports.size(); ++i)
+		{
+			std::lock_guard<std::mutex> lock(m_OnUpdateMutex);
+			for (const auto& [id, callBack] : m_UpdateCallbacks)
+				callBack(deltaTime);
+		}
+
+		for (size_t i = 0; i < m_EditorViewports.size(); ++i)
 		{
 			ViewportPanel* pViewportPanel = m_EditorViewports[i];
 
 			const Vector2i& region = pViewportPanel->GetViewportSize();
 			m_RenderViews[i].Viewport = FloatRect(0.0f, 0.0f, Math::Max(1.0f, (float)region.x), Math::Max(1.0f, (float)region.y));
-
-			const bool cameraMovementEnabled = pViewportPanel->IsClientAreaHovered();
 
 			const ViewTransform& cameraViewTransform = pViewportPanel->GetCamera()->GetViewTransform();
 			ViewportRenderView& renderView = m_RenderViews[i];
@@ -199,9 +193,59 @@ namespace Relentless
 		//...
 	}
 
+	CallbackID Editor::RegisterEventCallback(Callback<bool(IEvent&)> aEventCallback) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_OnEventMutex);
+		static CallbackID nextCallbackID = 0;
+		CallbackID toReturn = nextCallbackID++;
+
+		m_EventCallbacks.emplace(toReturn, std::move(aEventCallback));
+
+		return toReturn;
+	}
+
+	CallbackID Editor::RegisterUpdateCallback(Callback<void(float)> aUpdateCallback) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_OnUpdateMutex);
+		static CallbackID nextCallbackID = 0;
+		CallbackID toReturn = nextCallbackID++;
+
+		m_UpdateCallbacks.emplace(toReturn, std::move(aUpdateCallback));
+
+		return toReturn;
+	}
+
+	CallbackID Editor::RegisterUIRenderCallback(Callback<void()> aUpdateCallback) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_OnUIRenderMutex);
+		static CallbackID nextCallbackID = 0;
+		CallbackID toReturn = nextCallbackID++;
+
+		m_UIRenderCallbacks.emplace(toReturn, std::move(aUpdateCallback));
+		return toReturn;
+	}
+
+	void Editor::UnregisterEventCallback(CallbackID aCallbackHandle) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_OnEventMutex);
+		m_UIRenderCallbacks.erase(aCallbackHandle);
+	}
+
+	void Editor::UnregisterUpdateCallback(CallbackID aCallbackHandle) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_OnUpdateMutex);
+		m_UpdateCallbacks.erase(aCallbackHandle);
+	}
+
+	void Editor::UnregisterUIRenderCallback(CallbackID aCallbackHandle) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_OnUIRenderMutex);
+		m_UIRenderCallbacks.erase(aCallbackHandle);
+	}
+
 	Scene* Editor::GetActiveScene() const noexcept
 	{
-		return m_pActiveScene.get();
+		return m_pActiveScene.Get();
 	}
 
 	EntityFolder* Editor::GetFolderContainingEntity(entity aEntity) const noexcept
@@ -209,17 +253,7 @@ namespace Relentless
 		if (!m_pActiveScene)
 			return nullptr;
 
-		return m_pActiveScene->GetEntityManager().Has<FolderComponent>(aEntity) ? m_pEntityFoldersManager->GetFolder(*m_pActiveScene, m_pActiveScene->GetEntityManager().Get<FolderComponent>(aEntity).Folder.GetPath()) : nullptr;
-	}
-
-	const UniquePtr<Selection>& Editor::GetSelection() noexcept
-	{
-		return m_pSelection;
-	}
-
-	const UniquePtr<EntityFoldersManager>& Editor::GetEntityFoldersManager() noexcept
-	{
-		return m_pEntityFoldersManager;
+		return m_pActiveScene->GetEntityManager().Has<FolderComponent>(aEntity) ? GetSubsystem<EntityFoldersSubsystem>()->GetFolder(*m_pActiveScene, m_pActiveScene->GetEntityManager().Get<FolderComponent>(aEntity).Folder.GetPath()) : nullptr;
 	}
 
 	ViewportRenderView& Editor::GetRenderView(uint32 renderViewIndex) noexcept
@@ -233,34 +267,30 @@ namespace Relentless
 		return m_RenderViews;
 	}
 
-	void Editor::SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept
+	void Editor::SetActiveScene(const Ref<Scene>& aScene) noexcept
 	{
-		m_pSelection->DeselectAllEntities();
-
 		if (m_pActiveScene)
-		{
-			OnPreSceneChanged(m_pActiveScene.get());
+			OnSceneChange(m_pActiveScene.Get());
 
-			m_pActiveScene->OnEntityPreDestroyed.Detach(this);
-			m_pActiveScene->OnEntityAttached.Detach(this);
-		}
-
-		m_pActiveScene = pScene;
+		m_pActiveScene = aScene;
 		m_pEditorScene = m_pActiveScene;
 
-		m_pActiveScene->OnEntityPreDestroyed.Connect(this, &Editor::OnEntityPreDestroyed);
-		m_pActiveScene->OnEntityAttached.Connect(this, &Editor::OnEntityAttached);
-
-		OnSceneChanged(m_pActiveScene.get());
+		OnSceneChanged(m_pActiveScene.Get());
 	}
 
 	void Editor::CreateStartScene() noexcept
 	{
+		SetActiveScene(new Scene());
+
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+
+		while (assetRegistry.IsLoadingAssets()){}
+
 		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
 		
 		{
-			entity dirEntity = m_pActiveScene->CreateEntity("Directional Light");
-			auto& dlc = entityManager.Add<DirectionalLightComponent>(dirEntity);
+			entity dirEntity = m_pActiveScene->CreateLight("Directional Light", ELightType::Directional);
+			auto& dlc = entityManager.Get<DirectionalLightComponent>(dirEntity);
 			dlc.SetColor(Math::MakeFromColorTemperature(5'900.0f));
 			dlc.SetIntensityLux(100'000.0f);
 
@@ -268,93 +298,19 @@ namespace Relentless
 			tc.SetWorldRotationEulerDegrees(Vector3(-90.0f, 0.0f, 0.0f));
 		}
 
-		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		AssetHandle offWhiteMaterialHandle = AssetManager::LoadAsset("Assets/Materials/M_OffWhite");
 
-		AssetHandle whiteMaterialHandle = assetToolsModule.CreateAsset<Material>("M_DefaultWhite", "Materials/");
-		Ref<Material> pWhiteMaterial = AssetManager::Get<Material>(whiteMaterialHandle);
-		pWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
-		pWhiteMaterial->SetAlbedoColor(Colors::White);
-
-		AssetHandle offWhiteMaterialHandle = assetToolsModule.CreateAsset<Material>("M_OffWhite", "Materials/");
 		Ref<Material> pOffWhiteMaterial = AssetManager::Get<Material>(offWhiteMaterialHandle);
 		pOffWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
 		pOffWhiteMaterial->SetAlbedoColor(Vector4(0.5f, 0.5f, 0.5f, 1.0f));
 		pOffWhiteMaterial->SetRoughness(1.0f);
 
-		entity ground = m_pActiveScene->CreateEntity("Ground");
-		auto& groundTC = entityManager.Get<TransformComponent>(ground);
-		groundTC.AddWorldOffset(Vector3(0.0f, -1.0f, 0.0f));
-		auto& mrcGround = entityManager.Add<MeshRendererComponent>(ground);
-		mrcGround.AssetHandle = offWhiteMaterialHandle;
+		entity cubeEntity = m_pActiveScene->CreateEntity("Cube");
+		EntityManager& mgr = m_pActiveScene->GetEntityManager();
 
-		entity sphere = m_pActiveScene->CreateEntity("Sphere");
-		m_pActiveScene->AttachEntity(sphere, ground);
-		auto& mrc = entityManager.Add<MeshRendererComponent>(sphere);
-		mrc.AssetHandle = whiteMaterialHandle;
-
-		auto& tc = entityManager.Get<TransformComponent>(sphere);
-		tc.AddLocalOffset(Vector3::Up);
-
-		entity topGround = m_pActiveScene->CreateEntity("TopGround");
-		m_pActiveScene->AttachEntity(topGround, sphere);
-		auto& mrcTopGround = entityManager.Add<MeshRendererComponent>(topGround);
-		mrcTopGround.AssetHandle = whiteMaterialHandle;
-
-		auto& tcTopGround = entityManager.Get<TransformComponent>(topGround);
-		tcTopGround.AddLocalOffset(Vector3::Up);
-
-		{
-			std::vector<AssetImportTask> tasks;
-			
-			{
-				AssetImportTask& task = tasks.emplace_back();
-				task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Sphere.obj");
-			}
-
-			{
-				AssetImportTask& task = tasks.emplace_back();
-				task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Models/StarterContent/Cube.obj");
-			}
-
-			AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
-			std::vector<AssetImportResult> importResults = assetToolsModule.Import(tasks);
-			
-			{
-				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(sphere);
-				for (auto& result : importResults)
-				{
-					if (result.Handle.Type == Mesh::StaticType() && result.FilePath.string() == tasks[0].FilePath)
-					{
-						mfc.AssetHandle = result.Handle;
-						break;
-					}
-				}
-			}
-			{
-				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(ground);
-				for (auto& result : importResults)
-				{
-					if (result.Handle.Type == Mesh::StaticType() && result.FilePath.string() == tasks[1].FilePath)
-					{
-						mfc.AssetHandle = result.Handle;
-						break;
-					}
-				}
-			}
-			{
-				auto& mfc = m_pActiveScene->GetEntityManager().Add<MeshFilterComponent>(topGround);
-				for (auto& result : importResults)
-				{
-					if (result.Handle.Type == Mesh::StaticType() && result.FilePath.string() == tasks[1].FilePath)
-					{
-						mfc.AssetHandle = result.Handle;
-						break;
-					}
-				}
-			}
-		}
-
-		m_pEntityFoldersManager->AttachEntityToFolder(*m_pActiveScene, ground, Folder(FolderRoot::CreateFromScene(*m_pActiveScene), "StarterContent/Entities"));
+		AssetHandle meshHandle = AssetManager::LoadAsset("Assets/Meshes/Cube");
+		mgr.Add<MeshFilterComponent>(cubeEntity).AssetHandle = meshHandle;
+		mgr.Add<MeshRendererComponent>(cubeEntity).AssetHandle = offWhiteMaterialHandle;
 	}
 
 	void Editor::UI_DrawMainMenuBar() noexcept
@@ -376,9 +332,6 @@ namespace Relentless
 
 		if (!open)
 			return;
-
-		const ImVec2 menuBarPos = ImGui::GetWindowPos();
-		const ImVec2 menuBarSize = ImGui::GetWindowSize();
 
 		if (ImGui::BeginMenu("File"))
 		{
@@ -406,87 +359,40 @@ namespace Relentless
 		ImGui::EndMainMenuBar();
 	}
 
-	void Editor::CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept
+	void Editor::LoadBrdfLut_Temp() noexcept
 	{
-		Ref<Mesh> pMesh = AssetManager::Get<Mesh>(meshHandle);
-		const entity newEntity = m_pActiveScene->CreateEntity(pMesh->GetName().c_str());
+		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 
-		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
-		MeshRendererComponent& mrc = entityManager.Add<MeshRendererComponent>(newEntity);
-		mrc.AssetHandle = AssetManager::GetDefaultMaterialHandle();
-		
-		MeshFilterComponent& mfc = entityManager.Add<MeshFilterComponent>(newEntity);
-		mfc.AssetHandle = meshHandle;
-		
-		Matrix transform = pMesh->GetOffsetTransform();
-		
-		auto& tc = entityManager.Get<TransformComponent>(newEntity);
+		Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
+		pFactory->SetImportAsSRGB(false);
+		pFactory->SetGenerateMipmaps(false);
 
-		Vector3 scale		= Vector3::One;
-		Quaternion rotation = Quaternion::Identity;
-		Vector3 location	= Vector3::Zero;
+		std::vector<AssetImportTask> tasks;
+		AssetImportTask& task = tasks.emplace_back();
+		task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
+		task.pFactory = pFactory;
+		task.DestinationPath = "Engine/Textures/";
 
-		if (!transform.Decompose(scale, rotation, location))
-			return;
+		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		m_BRDFLutTextureHandle = assetToolsModule.Import(tasks)[0].Handle;
 
-		tc.SetWorldScale(scale);
-		tc.SetWorldRotation(rotation);
-		tc.SetWorldScale(scale);
+		const auto& renderer = app.GetRenderer();
+		renderer->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
+		renderer->OnRequestBRDFLut(this, &Editor::OnRequestBRDFLut);
 	}
 
-	void Editor::OnEntityFolderDeleted(EntityFolder* apFolder) noexcept
+	void Editor::LoadModules() noexcept
 	{
-		if (!m_pActiveScene)
-			return;
+		//Note: Load order should be preserved:
+		AssetToolsModule& assetTools = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		assetTools.RegisterFactory<Material>(RLS_NEW MaterialFactory());
+		assetTools.RegisterFactory<Mesh>(RLS_NEW MeshFactory());
+		assetTools.RegisterFactory<Texture2D>(RLS_NEW TextureFactory());
+		assetTools.RegisterCompositeFactory<ModelFactory>(RLS_NEW ModelFactory());
 
-		m_pActiveScene->GetEntityManager().Collect<FolderComponent>().Do([&](entity aEntity, FolderComponent& fc)
-			{
-				if (fc.Folder.GetPath() == apFolder->GetPath())
-					m_pActiveScene->GetEntityManager().Remove<FolderComponent>(aEntity);
-			});
-	}
-
-	void Editor::OnEntityFolderMoved([[maybe_unused]] EntityFolder* pMovedFolder, [[maybe_unused]] EntityFolder* pMovedFolderParent, const String& aOldPath, const String& aNewPath) noexcept
-	{
-		//TODO: Possibly EntityFolders should know their root object which would link back to correct scene...
-
-		if (!m_pActiveScene)
-			return;
-
-		m_pActiveScene->GetEntityManager().Collect<FolderComponent>().Do([&](FolderComponent& fc)
-			{
-				const String& path = fc.Folder.GetPath();
-
-				if (path == aOldPath)
-					fc.Folder = Folder(fc.Folder.GetRoot(), aNewPath);
-				else if (path.size() > aOldPath.size() && path.compare(0, aOldPath.size(), aOldPath) == 0 && path[aOldPath.size()] == '/')
-				{
-					const String suffix = path.substr(aOldPath.size());
-					fc.Folder = Folder(fc.Folder.GetRoot(), aNewPath + suffix);
-				}
-			});
-	}
-
-	void Editor::OnEntitySelectionChanged(entity e, ESelectionState selectionState)
-	{
-		if (selectionState == ESelectionState::Selected)
-			m_pActiveScene->GetEntityManager().AddOrReplace<SelectedInEditorComponent>(e);
-		else
-			m_pActiveScene->GetEntityManager().Remove<SelectedInEditorComponent>(e);
-	}
-
-	void Editor::OnEntityPreDestroyed(entity aEntity) noexcept
-	{
-		if (m_pSelection->IsEntitySelected(aEntity))
-			m_pSelection->DeselectEntity(aEntity);
-	}
-
-	void Editor::OnEntityAttached(entity aChildEntity, [[maybe_unused]] entity aParentEntity) noexcept
-	{
-		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
-
-		if (entityManager.Has<FolderComponent>(aChildEntity))
-			entityManager.Remove<FolderComponent>(aChildEntity);
+		ModuleManager::LoadModuleChecked<UIModule>();
+		ModuleManager::LoadModuleChecked<ContentBrowserModule>();
+		ModuleManager::LoadModuleChecked<AssetRegistryModule>();
 	}
 
 	void Editor::OnEntityReadbackDone(uint32 entityID) noexcept
@@ -524,8 +430,10 @@ namespace Relentless
 			
 			m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
 				{
-					if (!m_pSelection->IsEntitySelected(e))
-						m_pSelection->SelectEntity(e);
+					SelectionSubsystem* pSelection = GetSubsystem<SelectionSubsystem>();
+
+					if (!pSelection->IsEntitySelected(e))
+						pSelection->SelectEntity(e);
 				});
 			break;
 		}
@@ -536,13 +444,16 @@ namespace Relentless
 		}
 		case RLS_Key::Delete:
 		{
-			const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
+			SelectionSubsystem* pSelection = GetSubsystem<SelectionSubsystem>();
+			const std::vector<entity>& selectedEntities = pSelection->GetSelectedEntities();
 			
 			for (int i = (int)selectedEntities.size() - 1; i >= 0; --i)
 				m_pActiveScene->DestroyEntity(selectedEntities[i]);
 
 			break;
 		}
+		default:
+			break;
 		}
 	}
 
@@ -552,21 +463,25 @@ namespace Relentless
 		const bool lShiftDown = Keyboard::IsKeyDown(RLS_Key::LShift);
 		const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
 
+		SelectionSubsystem* pSelection = GetSubsystem<SelectionSubsystem>();
+
 		if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
-			m_pSelection->DeselectAllEntities();
+			pSelection->DeselectAllEntities();
 
 		if (isHoveringEntity)
 		{
-			if (lCtrlDown && m_pSelection->IsEntitySelected(m_HoveredEntity))
-				m_pSelection->DeselectEntity(m_HoveredEntity);
+			if (lCtrlDown && pSelection->IsEntitySelected(m_HoveredEntity))
+				pSelection->DeselectEntity(m_HoveredEntity);
 			else
-				m_pSelection->SelectEntity(m_HoveredEntity);
+				pSelection->SelectEntity(m_HoveredEntity);
 		}
 	}
 
 	void Editor::OnViewportEntityDuplicationRequest() noexcept
 	{
-		const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
+		SelectionSubsystem* pSelection = GetSubsystem<SelectionSubsystem>();
+
+		const std::vector<entity>& selectedEntities = pSelection->GetSelectedEntities();
 		if (selectedEntities.empty())
 			return;
 
@@ -577,13 +492,13 @@ namespace Relentless
 		{
 			const entity duplicatedEntity = m_pActiveScene->DuplicateEntity(selectedEntity, false);
 			if (EntityFolder* pFolder = GetFolderContainingEntity(selectedEntity))
-				m_pEntityFoldersManager->AttachEntityToFolder(*m_pActiveScene, duplicatedEntity, Folder(FolderRoot::CreateFromScene(*m_pActiveScene), pFolder->GetPath()));
+				GetSubsystem<EntityFoldersSubsystem>()->AttachEntityToFolder(*m_pActiveScene, duplicatedEntity, Folder(FolderRoot::CreateFromScene(*m_pActiveScene), pFolder->GetPath()));
 
 			newEntities.push_back(duplicatedEntity);
 		}
 
-		m_pSelection->DeselectAllEntities();
-		m_pSelection->SelectEntities(newEntities);
+		pSelection->DeselectAllEntities();
+		pSelection->SelectEntities(newEntities);
 	}
 
 	void Editor::SetVisibilityForSelectedEntities(bool aVisibilityState) noexcept
@@ -602,14 +517,16 @@ namespace Relentless
 		}
 		else
 		{
-			const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
+			SelectionSubsystem* pSelection = GetSubsystem<SelectionSubsystem>();
+
+			const std::vector<entity>& selectedEntities = pSelection->GetSelectedEntities();
 
 			for (int i = (int)selectedEntities.size() - 1; i >= 0; --i)
 			{
 				const entity currentEntity = selectedEntities[i];
 
 				m_pActiveScene->SetEntityVisibleInGame(currentEntity, aVisibilityState);
-				m_pSelection->DeselectEntity(currentEntity);
+				pSelection->DeselectEntity(currentEntity);
 			}
 		}
 	}
@@ -618,10 +535,12 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
-		if (!m_pActiveScene || !m_pSelection)
+		if (!m_pActiveScene)
 			return {};
 
-		const std::vector<entity>& selectedEntities = m_pSelection->GetSelectedEntities();
+		const SelectionSubsystem* pSelection = GetSubsystem<SelectionSubsystem>();
+
+		const std::vector<entity>& selectedEntities = pSelection->GetSelectedEntities();
 
 		if (selectedEntities.empty())
 			return {};
@@ -660,11 +579,9 @@ namespace Relentless
 	{
 		m_RenderViews.push_back(ViewportRenderView());
 		
-		ViewportPanel* pViewport = UIManager::Get().AddPanel(MakeUnique<ViewportPanel>(std::format("Scene Viewport {}", m_EditorViewports.size() + 1).c_str(), ImGuiWindowFlags_None, m_EditorViewports.size()));
-
+		ViewportPanel* pViewport = ModuleManager::LoadModuleChecked<UIModule>().AddPanel<ViewportPanel>(m_EditorViewports.size());
 		pViewport->OnClickedOnViewport.Connect(this, &Editor::OnViewportClicked);
 		pViewport->OnHotkeyPressed.Connect(this, &Editor::OnViewportHotkeyPressed);
-		pViewport->SetPadding(Vector2(2.0f, 0.0f));
 		
 		m_EditorViewports.push_back(pViewport);
 	}

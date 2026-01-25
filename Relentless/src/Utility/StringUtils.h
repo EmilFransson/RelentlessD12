@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/DLLExport.h"
 
 namespace Relentless
 {
@@ -13,19 +14,31 @@ namespace Relentless
 		return h;
 	}
 
-	constexpr uint64 operator"" _h(const char* s, size_t n) noexcept 
+	constexpr uint64 operator""_h(const char* s, size_t n) noexcept 
 	{
 		return fnv1a_hash(s, n);
 	}
 
 	namespace StringUtils
 	{
-		NO_DISCARD String ConvertFromWide(const std::wstring& input) noexcept;
-		NO_DISCARD std::wstring ConvertToWide(const String& input) noexcept;
-		NO_DISCARD String ExtractTrailingDigits(const String& input) noexcept;
-		NO_DISCARD std::optional<int> ExtractTrailingNumber(const String& input) noexcept;
-		NO_DISCARD std::vector<String> Split(const String& input, char delimiter) noexcept;
-		NO_DISCARD String StripTrailingDigits(const std::string& input) noexcept;
-		NO_DISCARD String ToLower(const String& input) noexcept;
+		NO_DISCARD RLS_API String ConvertFromWide(const WideString& input) noexcept;
+		NO_DISCARD RLS_API WideString ConvertToWide(const String& input) noexcept;
+		
+		NO_DISCARD RLS_API String ExtractTrailingDigits(const String& input) noexcept;
+		NO_DISCARD RLS_API std::optional<int> ExtractTrailingNumber(const String& input) noexcept;
+
+		RLS_API void ReplaceCharacters(String& aInputString, char aToReplace, char aToReplaceWith) noexcept;
+
+		NO_DISCARD RLS_API std::vector<String> Split(const String& input, char delimiter) noexcept;
+		NO_DISCARD RLS_API String StripTrailingDigits(const std::string& input) noexcept;
+		
+		NO_DISCARD RLS_API String ToLower(const String& input) noexcept;
+
+		template<typename T>
+		requires std::is_integral_v<T>
+		NO_DISCARD __forceinline WideString ToWideString(T aValue) noexcept
+		{
+			return std::to_wstring(aValue);
+		}
 	}
 }

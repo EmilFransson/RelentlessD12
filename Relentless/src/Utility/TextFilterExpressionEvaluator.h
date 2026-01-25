@@ -1,10 +1,11 @@
 #pragma once
+#include "Core/DLLExport.h"
 
 namespace Relentless
 {
 	enum class ETextFilterTextComparisonMode : uint8 { Exact = 0, Partial, StartsWith, EndsWith };
 
-	class TextFilterExpressionEvaluator
+	class RLS_API TextFilterExpressionEvaluator
 	{
 	public:
 		TextFilterExpressionEvaluator() noexcept = default;

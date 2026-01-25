@@ -1,6 +1,5 @@
 #include "OutlinerPanel.h"
 #include "../Core/Editor.h"
-#include "../UI/Views/Outliner/EntityOutlinerView.h"
 
 namespace Relentless
 {
@@ -9,6 +8,8 @@ namespace Relentless
 	{
 		m_pEntityOutlinerView = new EntityOutlinerView();
 		SetRoot(m_pEntityOutlinerView);
+
+		SetPadding(Vector2(2.0f, 0.0f));
 	}
 
 	const Ref<EntityOutlinerView>& OutlinerPanel::GetEntityOutlinerView() const noexcept
@@ -38,6 +39,8 @@ namespace Relentless
 		case RLS_Key::H:
 			Editor::Get()->SetVisibilityForSelectedEntities(Keyboard::IsKeyDown(RLS_Key::LCtrl));
 			return true;
+		default:
+			return false;
 		}
 
 		return false;

@@ -1,16 +1,22 @@
 #pragma once
-
 #include "Assets/AssetMeta.h"
+
+#include "Core/DLLExport.h"
 #include "Core/IAsset.h"
+
 #include "Math/MathTypes.h"
+
 #include "Graphics/RHI/RHI.h"
 
 namespace Relentless
 {
-	class Mesh : public AssetBase<Mesh>
+	class RLS_API Mesh : public AssetBase<Mesh>
 	{
 	public:
+		Mesh() noexcept;
+		explicit Mesh(const UUID& aUUID) noexcept;
 		Mesh(Ref<Buffer> pVertexBuffer, Ref<Buffer> pIndexBuffer, const std::string& name = "Unnamed") noexcept;
+		virtual ~Mesh() noexcept override;
 		
 		void SetOffsetTransform(const Matrix& transform) noexcept;
 		NO_DISCARD const Matrix& GetOffsetTransform() const noexcept;
@@ -26,13 +32,15 @@ namespace Relentless
 		}
 
 		void SetDefaultMaterial(const AssetHandle& handle) noexcept;
+		bool SerializeCore(IArchive& aArchive) noexcept override;
+		bool SerializeBulk(IArchive& aArchive) noexcept override;
 	private:
 		Matrix m_OffsetTransform{};
 		Ref<Buffer> m_pVertexBuffer = nullptr;
 		Ref<Buffer> m_pIndexBuffer = nullptr;
 
-		BoundingBox Bounds;
+		BoundingBox m_Bounds;
 
-		AssetHandle m_DefaultMaterialHandle = NULL_HANDLE;
+		AssetHandle m_DefaultMaterialHandle = AssetHandle::INVALID;
 	};
 }

@@ -13,7 +13,7 @@ namespace Relentless
 		NO_DISCARD const Ref<IAssetDefinition>& GetDefinitionForAsset(const AssetData& aAssetData) const noexcept;
 		NO_DISCARD const Ref<IAssetDefinition>& GetDefinitionForAsset(const IAsset* aAsset) const noexcept;
 
-		virtual NO_DISCARD bool OnLoad(ISystemManager* aSystemManager) noexcept override;
+		NO_DISCARD virtual bool OnLoad(MAYBE_UNUSED ISystemManager* aSystemManager) noexcept override;
 		
 		void RegisterAssetDefinition(const Ref<IAssetDefinition>& aAssetDefinition) noexcept;
 		

@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/emilf/Desktop/RelentlessD12/build-clang21/cmake_install.cmake",
+		"C:/Users/emilf/Desktop/RelentlessD12/build-clang21/Relentless/cmake_install.cmake",
+		"C:/Users/emilf/Desktop/RelentlessD12/build-clang21/Relentless-Editor/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

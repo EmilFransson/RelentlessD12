@@ -1,6 +1,5 @@
 #pragma once 
 #include <Relentless.h>
-#include "../Assets/Factory/IFactory.h"
 
 namespace Relentless
 {

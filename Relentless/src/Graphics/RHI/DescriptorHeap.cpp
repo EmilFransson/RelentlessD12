@@ -22,7 +22,7 @@ namespace Relentless
 		descriptorHeapDescriptor.NodeMask = 1u;
 		VERIFY_HR_EX(GetParent()->GetDevice()->CreateDescriptorHeap(&descriptorHeapDescriptor, IID_PPV_ARGS(m_pDescriptorHeap.ReleaseAndGetAddressOf())), GetParent()->GetDevice());
 
-		m_FreeHandles = std::move(std::make_unique<uint32_t[]>(capacity));
+		m_FreeHandles = MakeUnique<uint32_t[]>(capacity);
 		for (uint32_t i{ 0u }; i < m_Capacity; ++i)
 			m_FreeHandles[i] = i;
 
@@ -150,6 +150,9 @@ namespace Relentless
 			debugName += "SAMPLER";
 			break;
 		}
+		default:
+			RLS_ASSERT(false, "Unsupported type.");
+			break;
 		}
 		debugName += " [Capacity: ";
 		debugName += std::to_string(m_Capacity);

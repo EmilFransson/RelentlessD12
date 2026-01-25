@@ -532,7 +532,7 @@ namespace Relentless
 
 		//Environment:
 		{
-			static DirectX::XMFLOAT3 bgColor = DirectX::XMFLOAT3(DirectX::Colors::LightSkyBlue);
+			//static DirectX::XMFLOAT3 bgColor = DirectX::XMFLOAT3(DirectX::Colors::LightSkyBlue);
 			//resourceManager.UploadConstantBufferData(m_EnvironmentCBHandle, &bgColor, sizeof(DirectX::XMFLOAT3), frameIndex);
 		}
 
@@ -762,7 +762,7 @@ namespace Relentless
 		InputData.DepthData.MetersToViewSpaceUnits = 1.0f;
 		InputData.NormalData.Enable = false;
 
-		GFSDK_SSAO_RenderMask RenderMask = GFSDK_SSAO_RENDER_AO;
+		//GFSDK_SSAO_RenderMask RenderMask = GFSDK_SSAO_RENDER_AO;
 
 		GFSDK_SSAO_RenderTargetView_D3D12 rtv{};
 		//const auto& output = m_Options.MSAASamples > 1 ? m_OpaqueGeometryRenderPass->GetOutput(0) : m_CombinedGeometryAndPickingPass->GetOutput(0);
@@ -973,9 +973,9 @@ namespace Relentless
 
 		//auto perDrawIndex = m_WireFrameRenderPass->GetInputSlot("perDrawData");
 
-		const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
+		//const uint32_t count = (uint32_t)sizeof(PerDrawData) / sizeof(uint32_t);
 
-		entityManager.Collect<SelectedInEditorComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity e, MeshFilterComponent& mfc)
+		entityManager.Collect<SelectedInEditorComponent, MeshFilterComponent, MeshRendererComponent>().Do([&](entity /*e*/, MeshFilterComponent& mfc)
 			{
 				if (mfc.AssetHandle.IsValid())
 				{
@@ -984,7 +984,7 @@ namespace Relentless
 					//const uint32_t vertexBufferSRVDescriptorHeapIndex = resourceManager.GetVertexBufferShaderResourceViewDescriptorIndex(mesh->m_VertexBufferHandle);
 					//const uint32_t indexBufferSRVDescriptorHeapIndex = resourceManager.GetIndexBufferShaderResourceViewDescriptorIndex(mesh->m_IndexBufferHandle);
 
-					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
+					//auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 					//const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
 					//m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
 					//m_PerDrawData.worldMatrixIndex = resourceManager.GetConstantBufferViewDescriptorIndex(entityManager.Get<TransformComponent>(e).ConstantBufferHandle, frameIndex);
@@ -1062,7 +1062,7 @@ namespace Relentless
 					m_PickingData.entityID = e;
 					//DXCall_STD(pCommandList->SetGraphicsRoot32BitConstants(identifierIndex, 1u, &m_PickingData, 0u));
 
-					auto& mrc = entityManager.Get<MeshRendererComponent>(e);
+					//auto& mrc = entityManager.Get<MeshRendererComponent>(e);
 					//const std::shared_ptr<Material> material = AssetManager::Get<Material>(mrc.AssetHandle);
 					
 					//m_PerDrawData.materialIndex = material->GetConstantBufferIndex();
@@ -1212,7 +1212,7 @@ namespace Relentless
 		//m_CombinedGeometryAndPickingPass->Upload("vpConstantBuffer", &m_VPData, pCommandList);
 		//m_CombinedGeometryAndPickingPass->Upload("perFrameData", &m_PerFrameOpaqueGeometryData, pCommandList);
 
-		EntityManager& entityManager = m_pScene->GetEntityManager();
+		//EntityManager& entityManager = m_pScene->GetEntityManager();
 
 		//auto perDrawIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("perDrawData");
 		//auto identifierIndex = m_CombinedGeometryAndPickingPass->GetInputSlot("Identifier");

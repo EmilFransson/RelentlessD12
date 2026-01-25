@@ -7,11 +7,11 @@ namespace Relentless
 	class Texture2DAssetDefinition : public IAssetDefinition
 	{
 	public:
-		virtual NO_DISCARD Color GetAssetColor() const noexcept override;
-		virtual NO_DISCARD String GetAssetDisplayName() const noexcept override;
-		virtual NO_DISCARD TypeIndex GetSupportedAssetType() const noexcept override;
+		NO_DISCARD virtual Color GetAssetColor() const noexcept override;
+		NO_DISCARD virtual String GetAssetDisplayName() const noexcept override;
+		NO_DISCARD virtual TypeIndex GetSupportedAssetType() const noexcept override;
 		
-		virtual NO_DISCARD bool SupportsAsset(IAsset* aAsset) const noexcept override;
-		virtual NO_DISCARD bool SupportsAsset(AssetData* aAssetData) const noexcept override;
+		NO_DISCARD virtual bool SupportsAsset(IAsset* aAsset) const noexcept override;
+		NO_DISCARD virtual bool SupportsAsset(AssetData* aAssetData) const noexcept override;
 	};
 }

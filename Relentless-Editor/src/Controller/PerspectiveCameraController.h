@@ -66,8 +66,6 @@ namespace Relentless
 		float m_Speed = 25.0f;
 		float m_SpeedMultiplier = 1.0f;
 		float m_OrbitDistance = 10.0f;
-		float m_OrbitYaw = 0.0f;
-		float m_OrbitPitch = 0.0f;
 		float m_HorizontalFoV = Math::DegToRad(60.0f);
 		float m_MinSpeedMultiplierLimit = 0.0f;
 		float m_MaxSpeedMultiplierLimit = 10.0f;

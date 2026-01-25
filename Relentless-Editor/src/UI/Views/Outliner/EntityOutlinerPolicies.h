@@ -1,12 +1,10 @@
 #pragma once
-
-#include <Relentless.h>
-#include "../../OutlinerTableRow.h"	
+#include "UI/OutlinerTableRow.h"	
 
 namespace Relentless
 {
 	class EntityFolder;
-	class EntityFoldersManager;
+	class EntityFoldersSubsystem;
 
 	enum class EMoveOperation			: uint8 { NoOp = 0u, AttachToTarget, DetachFromTarget, ReattachToParentOfTarget };
 	enum class EPostDuplicateOperation	: uint8 { NoOp = 0u, AttachToDuplicatedParentItem };
@@ -17,7 +15,7 @@ namespace Relentless
 		struct DuplicateContext
 		{
 			const Scene& Scene;
-			const EntityFoldersManager& FoldersManager;
+			const EntityFoldersSubsystem& FoldersSubsystem;
 			Span<const entity> Entities;
 			Span<EntityFolder* const> Folders;
 		};
@@ -25,7 +23,7 @@ namespace Relentless
 		struct MoveContext
 		{
 			const Scene& Scene;
-			const EntityFoldersManager& FoldersManager;
+			const EntityFoldersSubsystem& FoldersSubsystem;
 			const OutlinerPayload& TargetPayload;
 			Span<const entity> Entities;
 			Span<EntityFolder* const> Folders;
@@ -80,7 +78,7 @@ namespace Relentless
 
 		NO_DISCARD bool WouldCreateCycle(entity aTargetEntity, Span<const entity> someSourceEntities, const Scene& aScene) const noexcept;
 		NO_DISCARD bool WouldCreateCycle(const EntityFolder* pTargetFolder, Span<EntityFolder* const> someSourceFolders) const noexcept;
-		NO_DISCARD bool WouldCreateNameCollision(const EntityFoldersManager& aFoldersManager, const Scene& aScene, const EntityFolder* pTargetFolder, Span<EntityFolder* const> someSourceFolders, EntityFolder*& paOutRejectedFolder) const noexcept;
+		NO_DISCARD bool WouldCreateNameCollision(const EntityFoldersSubsystem& aFoldersSubsystem, const Scene& aScene, const EntityFolder* pTargetFolder, Span<EntityFolder* const> someSourceFolders, EntityFolder*& paOutRejectedFolder) const noexcept;
 	private:
 	};
 }

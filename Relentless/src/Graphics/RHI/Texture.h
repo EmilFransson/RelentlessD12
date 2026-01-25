@@ -1,8 +1,11 @@
 #pragma once
+
+#include "Core/CoreTypes.h"
+#include "Core/DLLExport.h"
+#include "Core/IAsset.h"
+
 #include "D3D.h"
 #include "DeviceResource.h"
-#include "Core/CoreTypes.h"
-#include "Core/IAsset.h"
 
 namespace Relentless
 {
@@ -75,6 +78,39 @@ namespace Relentless
 			Color Color;
 			DepthStencilData DepthStencil;
 		};
+
+		bool Serialize(IArchive& aArchive)
+		{
+			if (!aArchive.Process(BindingValue))
+				return false;
+
+			switch (BindingValue)
+			{
+			case ClearBindingValue::None:
+			{
+				if (aArchive.IsLoading())
+					DepthStencil = DepthStencilData{};
+				return true;
+			}
+
+			case ClearBindingValue::Color:
+			{
+				if (!aArchive.Process(Color))
+					return false;
+				
+				return true;
+			}
+
+			case ClearBindingValue::DepthStencil:
+			{
+				if (!aArchive.Process(DepthStencil.Depth))   return false;
+				if (!aArchive.Process(DepthStencil.Stencil)) return false;
+				return true;
+			}
+			}
+
+			return false;
+		}
 	};
 
 	struct TextureDesc
@@ -91,7 +127,7 @@ namespace Relentless
 
 		bool operator==(const TextureDesc&) const = default;
 
-		static [[nodiscard]] TextureDesc CreateCube(uint32 width, uint32 height, ResourceFormat format, uint32 mips = 1u, TextureFlag flags = TextureFlag::None, const ClearBinding& clearBinding = ClearBinding(Colors::Black), uint32 sampleCount = 1) noexcept
+		NO_DISCARD static TextureDesc CreateCube(uint32 width, uint32 height, ResourceFormat format, uint32 mips = 1u, TextureFlag flags = TextureFlag::None, const ClearBinding& clearBinding = ClearBinding(Colors::Black), uint32 sampleCount = 1) noexcept
 		{
 			RLS_ASSERT(width > 0u, "Width is invalid.");
 			RLS_ASSERT(height > 0u, "Height is invalid.");
@@ -109,7 +145,7 @@ namespace Relentless
 			return desc;
 		}
 
-		static [[nodiscard]] TextureDesc Create2D(uint32 width, uint32 height, ResourceFormat format, uint32 mips = 1u, TextureFlag flags = TextureFlag::None, const ClearBinding& clearBinding = ClearBinding(Colors::Black), uint32 sampleCount = 1) noexcept
+		NO_DISCARD static TextureDesc Create2D(uint32 width, uint32 height, ResourceFormat format, uint32 mips = 1u, TextureFlag flags = TextureFlag::None, const ClearBinding& clearBinding = ClearBinding(Colors::Black), uint32 sampleCount = 1) noexcept
 		{
 			RLS_ASSERT(width > 0u, "Width is invalid.");
 			RLS_ASSERT(height > 0u, "Height is invalid.");
@@ -139,34 +175,66 @@ namespace Relentless
 				&& Type == other.Type
 				&& EnumHasAllFlags(Flags, other.Flags);
 		}
+
+		bool Serialize(IArchive& aArchive)
+		{
+			uint32 width = Width;
+			uint32 height = Height;
+			uint32 depth = DepthOrArraySize;
+			uint32 mips = Mips;
+			uint32 samples = SampleCount;
+
+			if (!aArchive.Process(width))   return false;
+			if (!aArchive.Process(height))  return false;
+			if (!aArchive.Process(depth))   return false;
+			if (!aArchive.Process(mips))    return false;
+			if (!aArchive.Process(samples)) return false;
+
+			if (!aArchive.Process(Type))    return false;
+			if (!aArchive.Process(Flags))   return false;
+			if (!aArchive.Process(Format))  return false;
+			if (!aArchive.Process(ClearBindingValue)) return false;
+
+			if (aArchive.IsLoading())
+			{
+				Width = width;
+				Height = height;
+				DepthOrArraySize = depth;
+				Mips = mips;
+				SampleCount = samples;
+			}
+
+			return true;
+		}
 	};
 
-	class Texture : public DeviceResource
+	class RLS_API Texture : public DeviceResource
 	{
 	public:
 		Texture(GraphicsDevice* pParent, const TextureDesc& desc, ID3D12Resource2* pResource) noexcept;
+		virtual ~Texture() noexcept override;
 
-		[[nodiscard]] uint32 GetWidth() const noexcept;
-		[[nodiscard]] uint32 GetHeight() const noexcept;
-		[[nodiscard]] uint32 GetArraySize() const noexcept;
-		[[nodiscard]] uint32 GetMipLevels() const noexcept;
-		[[nodiscard]] uint32 GetSampleCount() const noexcept;
-		[[nodiscard]] TextureType GetType() const noexcept;
-		[[nodiscard]] ResourceFormat GetFormat() const noexcept;
-		[[nodiscard]] const ClearBinding& GetClearBinding() const noexcept;
-		[[nodiscard]] const TextureDesc& GetDesc() const noexcept;
+		NO_DISCARD uint32 GetWidth() const noexcept;
+		NO_DISCARD uint32 GetHeight() const noexcept;
+		NO_DISCARD uint32 GetArraySize() const noexcept;
+		NO_DISCARD uint32 GetMipLevels() const noexcept;
+		NO_DISCARD uint32 GetSampleCount() const noexcept;
+		NO_DISCARD TextureType GetType() const noexcept;
+		NO_DISCARD ResourceFormat GetFormat() const noexcept;
+		NO_DISCARD const ClearBinding& GetClearBinding() const noexcept;
+		NO_DISCARD const TextureDesc& GetDesc() const noexcept;
 
-		[[nodiscard]] DepthStencilView* GetDSV(uint32 subResourceIndex = 0) const noexcept;
-		[[nodiscard]] uint32 GetDSVIndex(uint32 subResourceIndex = 0) const noexcept;
+		NO_DISCARD DepthStencilView* GetDSV(uint32 subResourceIndex = 0) const noexcept;
+		NO_DISCARD uint32 GetDSVIndex(uint32 subResourceIndex = 0) const noexcept;
 
-		[[nodiscard]] ShaderResourceView* GetSRV() const noexcept;
-		[[nodiscard]] uint32 GetSRVIndex() const noexcept;
+		NO_DISCARD ShaderResourceView* GetSRV() const noexcept;
+		NO_DISCARD uint32 GetSRVIndex() const noexcept;
 
-		[[nodiscard]] UnorderedAccessView* GetUAV(uint32 subResourceIndex = 0) const noexcept;
-		[[nodiscard]] uint32 GetUAVIndex(uint32 subResourceIndex = 0) const noexcept;
+		NO_DISCARD UnorderedAccessView* GetUAV(uint32 subResourceIndex = 0) const noexcept;
+		NO_DISCARD uint32 GetUAVIndex(uint32 subResourceIndex = 0) const noexcept;
 
-		[[nodiscard]] RenderTargetView* GetRTV(uint32 subResourceIndex = 0) const noexcept;
-		[[nodiscard]] uint32 GetRTVIndex(uint32 subResourceIndex = 0) const noexcept;
+		NO_DISCARD RenderTargetView* GetRTV(uint32 subResourceIndex = 0) const noexcept;
+		NO_DISCARD uint32 GetRTVIndex(uint32 subResourceIndex = 0) const noexcept;
 
 		void SetDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex = 0u) noexcept;
 		void SetSRV(Ref<ShaderResourceView> pSRV) noexcept;

@@ -8,7 +8,7 @@ namespace Relentless
 	{
 	public:
 		EditorLayer(const std::string& layerName = "EditorLayer") noexcept;
-		virtual ~EditorLayer() noexcept override final = default;
+		virtual ~EditorLayer() noexcept override = default;
 		virtual void OnEvent(IEvent& event) noexcept override final;
 		virtual void OnImGuiRender() noexcept override final;
 		virtual void OnAttach() noexcept override final;

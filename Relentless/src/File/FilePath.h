@@ -7,12 +7,12 @@ namespace Relentless
 	public:
 		using path = std::filesystem::path;
 
-		static [[nodiscard]] std::filesystem::path GetEngineWorkingDirectory()
+		NO_DISCARD static std::filesystem::path GetEngineWorkingDirectory()
 		{
 			return std::filesystem::path(MAIN_ENGINE_DIRECTORY);
 		}
 
-		static [[nodiscard]] bool IsSubpath(const std::filesystem::path& childIn, const std::filesystem::path& parentIn)
+		NO_DISCARD static bool IsSubpath(const std::filesystem::path& childIn, const std::filesystem::path& parentIn)
 		{
 			std::filesystem::path child = childIn.lexically_normal();
 			std::filesystem::path parent = parentIn.lexically_normal();

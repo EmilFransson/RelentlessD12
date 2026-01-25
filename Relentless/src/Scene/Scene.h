@@ -1,18 +1,22 @@
 #pragma once
 #include "Callback/Callback.h"
 #include "Callback/Broadcaster.h"
+
+#include "Core/DLLExport.h"
+#include "Core/IAsset.h"
+
 #include "ECS/EntityManager.h"
+
 #include "Threading/ThreadSafeQueue.h"
+
 namespace Relentless
 {
-	enum class Shape : uint8 { Triangle = 0, Cube, Cylinder, Capsule, Cone, Sphere, IcoSphere, Torus, Quad, Plane };
-	enum class Extra : uint8 { UtahTeapot = 0u };
 	enum class ELightType : uint8 { Directional = 0, Point, Spot };
 
-	class Scene
+	class RLS_API Scene : public AssetBase<Scene>
 	{
 	public:
-		explicit Scene(const char* name = "Sample Scene") noexcept;
+		explicit Scene(const char* aName = "Sample Scene") noexcept;
 		virtual ~Scene() noexcept = default;
 
 		NO_DISCARD bool AnyEntityHasName(const char* pName) const noexcept;
@@ -26,10 +30,6 @@ namespace Relentless
 		entity CreateEntity(const char* tag) noexcept;
 		entity CreateEntityWithUUID(const char* tag, const UUID& guid) noexcept;
 		entity CreateLight(const char* aName, ELightType aLightType) noexcept;
-		entity CreateShape(const Shape shape) noexcept;
-		entity CreateExtra(const Extra extra) noexcept;
-		NO_DISCARD String GetFullShapePath(const Shape shape) noexcept;
-		NO_DISCARD String GetFullExtraPath(const Extra extra) noexcept;
 
 		void OnRuntimeStart() noexcept;
 		void OnRuntimeStop() noexcept;
@@ -61,7 +61,7 @@ namespace Relentless
 		void SetPaused(bool paused) noexcept { m_IsPaused = paused; }
 		NO_DISCARD bool IsPaused() const noexcept { return m_IsPaused; }
 
-		static NO_DISCARD std::shared_ptr<Scene> Copy(std::shared_ptr<Scene> pSrcScene) noexcept;
+		NO_DISCARD static std::shared_ptr<Scene> Copy(std::shared_ptr<Scene> pSrcScene) noexcept;
 
 		template<typename ComponentType>
 		void CopyComponentIfExists(entity srcEntity, entity dstEntity) noexcept;
@@ -70,17 +70,20 @@ namespace Relentless
 
 		void MarkDirty() noexcept;
 
+		NO_DISCARD bool SerializeCore(IArchive& aArchive) noexcept override;
+
 		//std::shared_ptr<TextureCube> m_pSkyBox = nullptr;
 		//std::shared_ptr<TextureCube> m_pIrradianceMap = nullptr;
 		//std::shared_ptr<TextureCube> m_pRadianceMap = nullptr;
 
 		Broadcaster<void(entity e)> OnEntityCreated;
-		Broadcaster<void(entity e)> OnEntityPreDestroyed;
+		Broadcaster<void(entity e)> OnEntityDestroy;
 		Broadcaster<void(entity e)> OnEntityDestroyed;
 		Broadcaster<void(entity child, entity parent)> OnEntityAttached;
 		Broadcaster<void(entity detachedEntity, entity formerParent)> OnEntityDetached;
 		Broadcaster<void(entity e, bool visibilityState)> OnEntityVisibilityChanged;
-
+	private:
+		bool SerializeEntity(IArchive& aArchive, entity aEntity) noexcept;
 	private:
 		friend class SceneSerializer;
 		friend struct DeferredEntityDeletionSystem;

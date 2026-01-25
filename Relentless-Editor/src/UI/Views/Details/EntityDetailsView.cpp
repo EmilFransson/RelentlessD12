@@ -1,16 +1,29 @@
 #include "EntityDetailsView.h"
-#include "../../../Core/Editor.h"
+
+#include "Core/Editor.h"
 
 #include "LayoutBuilders/EntityDetailLayoutBuilder.h"
+
+#include "Subsystem/SelectionSubsystem.h"
+
 #include "TableRows/EntityDetailCategoryRow.h"
+
+#include "UI/Views/TreeView.h"
+#include "UI/Widgets/Button.h"
+#include "UI/Widgets/HorizontalBox.h"
+#include "UI/Widgets/SearchBar.h"
+#include "UI/Widgets/VerticalBox.h"
 
 namespace Relentless
 {
 	EntityDetailsView::EntityDetailsView() noexcept
 	{
-		Editor::Get()->GetSelection()->OnSelectionChanged.Connect(this, &EntityDetailsView::OnSelectionChanged);
+		Editor* pEditor = Editor::Get();
 
-		m_pLayoutBuilder = MakeUnique<EntityDetailLayoutBuilder>(this, *Editor::Get()->GetActiveScene());
+		pEditor->GetSubsystem<SelectionSubsystem>()->OnSelectionChanged.Connect(this, &EntityDetailsView::OnSelectionChanged);
+
+		if (Scene* pScene = pEditor->GetActiveScene())
+			m_pLayoutBuilder = MakeUnique<EntityDetailLayoutBuilder>(this, *pScene);
 
 		std::shared_ptr<HeaderRow> pHeaderRow = std::make_shared<HeaderRow>();
 		pHeaderRow->SetIsVisible(false);
@@ -44,23 +57,23 @@ namespace Relentless
 			->OnRequestSource(this, &EntityDetailsView::OnRequestSource)
 			->OnGenerateRow(this, &EntityDetailsView::OnGenerateRow);
 
-		m_pMainBox = new VerticalBoxEx();
+		m_pMainBox = new VerticalBox();
 
-		Ref<VerticalBoxEx> pTopVerticalBox = new VerticalBoxEx();
-		Ref<VerticalBoxEx> pMiddleBox = new VerticalBoxEx(Vector2(0.0f, 0.0f), true);
+		Ref<VerticalBox> pTopVerticalBox = new VerticalBox();
+		Ref<VerticalBox> pMiddleBox = new VerticalBox(Vector2(0.0f, 0.0f), true);
 		pMiddleBox->SetSizePolicy(ESizePolicy::Stretch);
 
-		Ref<VerticalBoxEx> pBottomBox = new VerticalBoxEx();
+		Ref<VerticalBox> pBottomBox = new VerticalBox();
 		pBottomBox->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Bottom);
 
-		Ref<HorizontalBoxEx> pSearchbarBox = new HorizontalBoxEx();
+		Ref<HorizontalBox> pSearchbarBox = new HorizontalBox();
 		pSearchbarBox->SetSizePolicy(ESizePolicy::Stretch);
 		pSearchbarBox->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 5.0f));
 
 		pSearchbarBox->AddWidget(new SearchBar("Search..."))
 			->SetSizePolicy(ESizePolicy::Stretch);
 
-		m_pDetailsListBox = new HorizontalBoxEx(Vector2(0.0f, 0.0f), true);
+		m_pDetailsListBox = new HorizontalBox(Vector2(0.0f, 0.0f), true);
 		m_pDetailsListBox->SetSizePolicy(ESizePolicy::Stretch);
 		m_pDetailsListBox->AddWidget(m_pEntityDetailsTreeView);
 
@@ -69,7 +82,7 @@ namespace Relentless
 		m_pMainBox->AddWidget(pTopVerticalBox);
 		m_pMainBox->AddWidget(pMiddleBox);
 
-		Ref<HorizontalBoxEx> pAddComponentBox = new HorizontalBoxEx();
+		Ref<HorizontalBox> pAddComponentBox = new HorizontalBox();
 		pAddComponentBox->AddWidget(new Button("Add Component"))
 			->SetPadding(Vector2(3.0f, 5.0f))
 			->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 5.0f));
@@ -82,7 +95,7 @@ namespace Relentless
 
 	EntityDetailsView::~EntityDetailsView() noexcept
 	{
-		if (const auto& pSelection = Editor::Get()->GetSelection())
+		if (const auto& pSelection = Editor::Get()->GetSubsystem<SelectionSubsystem>())
 			pSelection->OnSelectionChanged.Detach(this);
 	}
 
@@ -115,7 +128,7 @@ namespace Relentless
 		return static_cast<uint32>(m_InspectedEntities.size());
 	}
 
-	void EntityDetailsView::OnExpandCollapseButtonClicked(Button* aButton, Ref<DetailNode> aItem) noexcept
+	void EntityDetailsView::OnExpandCollapseButtonClicked(MAYBE_UNUSED Button* aButton, Ref<DetailNode> aItem) noexcept
 	{
 		const bool isExpanded = m_pEntityDetailsTreeView->GetItemInfo(aItem).IsExpanded;
 		m_pEntityDetailsTreeView->SetItemExpandedState(aItem, !isExpanded);
@@ -160,7 +173,16 @@ namespace Relentless
 
 	void EntityDetailsView::Rebuild() noexcept
 	{
-		const UniquePtr<Selection>& pSelection = Editor::Get()->GetSelection();
+		if (!m_pLayoutBuilder)
+		{
+			Scene* pScene = Editor::Get()->GetActiveScene();
+			if (!pScene)
+				return;
+
+			m_pLayoutBuilder = MakeUnique<EntityDetailLayoutBuilder>(this, *pScene);
+		}
+
+		SelectionSubsystem* pSelection = Editor::Get()->GetSubsystem<SelectionSubsystem>();
 		RLS_ASSERT(pSelection, "[EntityDetailsView::Rebuild]: Selection context is invalid.");
 
 		m_InspectedEntities = pSelection->GetSelectedEntities();

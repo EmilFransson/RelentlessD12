@@ -1,26 +1,19 @@
 #pragma once
 #include <Relentless.h>
-#include "../Panels/DetailsPanel.h"
 #include "../Panels/OutlinerPanel.h"
-#include "../Panels/PropertiesPanel.h"
-#include "../Panels/ContentBrowserPanel.h"
-#include "../Panels/MetricsPanel.h" 
-#include "../Panels/SceneRendererPanel.h"
-#include "../Panels/InspectorPanel.h"
 #include "../Panels/ViewportPanel.h"
-
-#include "EntityFolders.h"
-#include "Selection.h"
 
 namespace Relentless
 {
 	enum class ESceneState : uint8 { Edit = 0, Play, Simulate };
 
+	class EntityFolder;
+
 	class Editor : public ISystemManager
 	{
 	public:
 		Editor() noexcept = default;
-		virtual ~Editor() noexcept;
+		virtual ~Editor() noexcept override;
 
 		static Editor* Get() noexcept
 		{
@@ -28,6 +21,8 @@ namespace Relentless
 			return &editor;
 		}
 		
+		void CreateSubsystems() noexcept;
+
 		NO_DISCARD const Ref<EntityOutlinerView> GetEntityOutlinerView() const noexcept;
 
 		virtual void OnEvent(IEvent& event) noexcept;
@@ -37,10 +32,16 @@ namespace Relentless
 		virtual void OnUpdate(const float deltaTime) noexcept;
 		virtual void OnRender() noexcept;
 
+		NO_DISCARD CallbackID RegisterEventCallback(Callback<bool(IEvent&)> aEventCallback) noexcept;
+		NO_DISCARD CallbackID RegisterUpdateCallback(Callback<void(float)> aUpdateCallback) noexcept;
+		NO_DISCARD CallbackID RegisterUIRenderCallback(Callback<void()> aUpdateCallback) noexcept;
+
+		void UnregisterEventCallback(CallbackID aCallbackHandle) noexcept;
+		void UnregisterUpdateCallback(CallbackID aCallbackHandle) noexcept;
+		void UnregisterUIRenderCallback(CallbackID aCallbackHandle) noexcept;
+
 		NO_DISCARD Scene* GetActiveScene() const noexcept;
 		NO_DISCARD EntityFolder* GetFolderContainingEntity(entity aEntity) const noexcept;
-		NO_DISCARD const UniquePtr<Selection>& GetSelection() noexcept;
-		NO_DISCARD const UniquePtr<EntityFoldersManager>& GetEntityFoldersManager() noexcept;
 		NO_DISCARD ViewportRenderView& GetRenderView(uint32 renderViewIndex) noexcept;
 		NO_DISCARD std::vector<ViewportRenderView>& GetRenderViews() noexcept;
 
@@ -52,22 +53,19 @@ namespace Relentless
 
 		inline static Broadcaster<void(entity aEntity)> OnEntityTransformed;
 		inline static Broadcaster<void()> OnShutDown;
-		Broadcaster<void(Scene*)> OnPreSceneChanged;
+		Broadcaster<void(Scene*)> OnSceneChange;
 		Broadcaster<void(Scene*)> OnSceneChanged;
 
 	private:
-		void SetActiveScene(const std::shared_ptr<Scene>& pScene) noexcept;
+		void SetActiveScene(const Ref<Scene>& aScene) noexcept;
 
 		void CreateStartScene() noexcept;
 
 		void UI_DrawMainMenuBar() noexcept;
 
-		void CreateEntityFromDroppedMesh(const AssetHandle& meshHandle) noexcept;
-		void OnEntityFolderDeleted(EntityFolder* apFolder) noexcept;
-		void OnEntityFolderMoved(EntityFolder* pMovedFolder, EntityFolder* pMovedFolderParent, const String& aOldPath, const String& aNewPath) noexcept;
-		void OnEntitySelectionChanged(entity e, ESelectionState selectionState);
-		void OnEntityPreDestroyed(entity e) noexcept;
-		void OnEntityAttached(entity child, entity parent) noexcept;
+		void LoadBrdfLut_Temp() noexcept;
+		void LoadModules() noexcept;
+
 		void OnEntityReadbackDone(uint32 entityID) noexcept;
 
 		NO_DISCARD AssetHandle OnRequestBRDFLut() noexcept;
@@ -79,14 +77,14 @@ namespace Relentless
 	private:
 		std::vector<ViewportRenderView> m_RenderViews;
 		std::vector<ViewportPanel*> m_EditorViewports;
+		std::unordered_map<CallbackID, Callback<void(float)>> m_UpdateCallbacks;
+		std::unordered_map<CallbackID, Callback<void()>> m_UIRenderCallbacks;
+		std::unordered_map<CallbackID, Callback<bool(IEvent&)>> m_EventCallbacks;
 
 		entity m_HoveredEntity = NULL_ENTITY;
 
-		UniquePtr<Selection> m_pSelection = nullptr;
-		UniquePtr<EntityFoldersManager> m_pEntityFoldersManager = nullptr;
-
-		std::shared_ptr<Scene> m_pActiveScene = nullptr;
-		std::shared_ptr<Scene> m_pEditorScene = nullptr;
+		Ref<Scene> m_pActiveScene = nullptr;
+		Ref<Scene> m_pEditorScene = nullptr;
 
 		std::shared_ptr<UtilityRenderer> m_pUtilityRenderer = nullptr;
 		
@@ -99,7 +97,6 @@ namespace Relentless
 		bool m_DisplayStatisticsPanel = true;
 
 		bool m_ImmersiveModeEnabled = false;
-		bool m_AllowMouseConfinement = true;
 
 		AssetHandle m_PlayButtonTextureHandle = NULL_HANDLE;
 		AssetHandle m_StopButtonTextureHandle = NULL_HANDLE;
@@ -109,15 +106,16 @@ namespace Relentless
 
 		AssetHandle m_BRDFLutTextureHandle = AssetHandle::INVALID;
 
-		ESceneState m_SceneState = ESceneState::Edit;
-
 		std::shared_ptr<TextureCube> m_SkyBox = nullptr;
 		
-		DetailsPanel* m_pDetailsPanel = nullptr;
 		OutlinerPanel* m_pOutlinerPanel = nullptr;
 		float m_MinLogLuminance = -4.0f;
 		float m_MinEV100 = -10.0f;
 		float m_MaxEV100 = 20.0f;
 		float m_ExposureCompensation = 1.0f;
+
+		std::mutex m_OnUpdateMutex;
+		std::mutex m_OnUIRenderMutex;
+		std::mutex m_OnEventMutex;
 	};
 }

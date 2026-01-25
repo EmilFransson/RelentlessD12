@@ -1,48 +1,114 @@
 #include "AssetManager.h"
+#include "Core/Application.h"
+#include "Module/AssetToolsModule.h"
+#include "Threading/ThreadPool.h"
 
 namespace Relentless
 {
+	AssetHandle AssetManager::FindAsset(const TypeIndex& aType, const UUID& aUUID) noexcept
+	{
+		if (auto it = Storages().find(aType); it != Storages().end())
+		{
+			const AssetHandle handle(aType, aUUID);
+			if (it->second->Exists(handle))
+				return handle;
+		}
+
+		return AssetHandle::INVALID;
+	}
+
 	void AssetManager::Shutdown() noexcept
 	{
-		for (const auto& [id, pStorage] : s_AssetStorages)
+		for (const auto& [id, pStorage] : Storages())
 			pStorage->DestroyAll();
 	}
 
-	bool AssetManager::IsLoaded(const String& aFilepath) noexcept
+	jg::dense_hash_map<TypeIndex, UniquePtr<AssetStorage>>& AssetManager::Storages() noexcept
 	{
-		std::lock_guard<std::mutex> guard(s_LoadedAssetsMapMutex);
-		bool result = s_LoadedAssets.contains(aFilepath);
-		return result;
+		static jg::dense_hash_map<TypeIndex, UniquePtr<AssetStorage>> s;
+		return s;
 	}
 
-	const AssetHandle& AssetManager::GetDefaultMaterialHandle() noexcept
+	AssetHandle AssetManager::LoadAsset(const String& aFilepath) noexcept
 	{
-		return s_DefaultMaterialHandle;
+		const String filePath = aFilepath + ".rasset";
+
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+
+		const AssetData* pAssetData = assetRegistry.FindAssetByPackagePath(filePath);
+		if (!pAssetData)
+			return AssetHandle::INVALID;
+
+		if (const AssetHandle handle = FindAsset(pAssetData->Type, pAssetData->Uuid); handle.IsValid())
+			return handle;
+
+		AssetToolsModule& assetTools = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		Ref<IFactory> pFactory = assetTools.GetSupportingFactory(pAssetData->Type);
+		if (!pFactory || !pFactory->CanCreateNew())
+			return AssetHandle::INVALID;
+
+		FactoryCreateResult result = pFactory->CreateNew(pAssetData->Name, pAssetData->Uuid);
+		if (!result)
+			return AssetHandle::INVALID;
+
+		Ref<IAsset> pNewAsset = result.value();
+
+		Path fullPath = FilepathUtils::Combine(Project::GetProjectDirectory(), filePath);
+
+		LoadArchive coreArchive(fullPath, EArchiveFormat::Binary);
+		if (!coreArchive.IsValid())
+			return AssetHandle::INVALID;
+
+		AssetFileContent content{};
+		if (!coreArchive.Process(content))
+			return AssetHandle::INVALID;
+
+		if (!pNewAsset->SerializeCore(coreArchive))
+			return AssetHandle::INVALID;
+
+		if (content.BulkDataSize > 0)
+		{
+			FilepathUtils::SetExtension(fullPath, ".rbulk");
+			LoadArchive bulkArchive(fullPath, EArchiveFormat::Binary);
+			if (!bulkArchive.IsValid())
+				return AssetHandle::INVALID;
+
+			if (!pNewAsset->SerializeBulk(bulkArchive))
+				return AssetHandle::INVALID;
+		}
+
+		return RegisterAsset(pNewAsset);
 	}
 
-	const AssetHandle& AssetManager::GetInvalidMaterialHandle() noexcept
+	void AssetManager::LoadAssetAsync(const String& aFilepath, AssetDoneLoadingCallback&& aCallback) noexcept
 	{
-		return s_InvalidMaterialHandle;
-	}
+		RLS_ASSERT(aCallback.IsSet(), "[AssetManager::LoadAssetAsync]: Callback is invalid.");
 
-	const AssetHandle& AssetManager::GetInvalidTextureHandle() noexcept
-	{
-		return s_InvalidTextureHandle;
-	}
-
-	void AssetManager::OnFileMoved(const AssetHandle& handle, const std::string& newFilepath) noexcept
-	{
-		std::lock_guard<std::mutex> guard(s_LoadedAssetsMapMutex);
-
-		auto it = std::find_if(s_LoadedAssets.begin(), s_LoadedAssets.end(),
-			[&handle](const std::pair<const std::string, UUID>& element) 
+		ThreadPool& threadPool = Application::Get().GetThreadPool();
+		threadPool.Submit([aFilepath, callback = std::move(aCallback)]() mutable 
 			{
-				return element.second == handle.Uuid;
+				AssetHandle handle = LoadAsset(aFilepath);
+				callback(handle);
 			});
+	}
 
-		RLS_ASSERT(it != s_LoadedAssets.end(), "Could not find asset entry.");
+	const UUID& AssetManager::RuntimeTypeToPersistentType(const TypeIndex& aTypeIndex) noexcept
+	{
+		if (Storages().contains(aTypeIndex))
+			return Storages()[aTypeIndex]->GetPersistentType();
 
-		s_LoadedAssets.erase(it);
-		s_LoadedAssets[newFilepath] = handle.Uuid;
+		static constexpr UUID nonexisting = NULL_UUID;
+		return nonexisting;
+	}
+
+	TypeIndex AssetManager::PersistentTypeToRuntimeType(const UUID& aPersistentType) noexcept
+	{
+		for (const auto& [id, pStorage] : Storages())
+		{
+			if (pStorage->GetPersistentType() == aPersistentType)
+				return pStorage->GetRuntimeType();
+		}
+
+		return INVALID_TYPE::StaticType();
 	}
 }

@@ -1,6 +1,15 @@
 #include "AssetView.h"
-#include "../../../Assets/Factory/TextureFactory.h"
-#include "../../../Module/AssetToolsModule.h"
+#include "Assets/Factory/TextureFactory.h"
+
+#include "Core/Editor.h"
+#include "Module/ContentBrowserModule.h"
+#include "Subsystem/AssetDefinitionRegistry.h"
+#include "Thumbnail/AssetThumbnailPool.h"
+
+#include "UI/Views/TileView.h"
+#include "UI/Widgets/Label.h"
+#include "UI/Widgets/HorizontalBox.h"
+#include "UI/Widgets/Thumbnail.h"
 
 namespace Relentless
 {
@@ -13,7 +22,7 @@ namespace Relentless
 		column.pLabel = new Label("First");
 		pHeaderRow->AddColumn(column);
 
-		m_pBox = new HorizontalBoxEx();
+		m_pBox = new HorizontalBox();
 
 		m_pAssetsTreeView = m_pBox->AddWidget(new TileView<Ref<ContentBrowserItem>>(pHeaderRow));
 		m_pAssetsTreeView->SetMargin(FloatRect(20.0f, 10.0f, 0.0f, 0.0f));
@@ -25,52 +34,59 @@ namespace Relentless
 			->OnGenerateRow(this, &AssetView::OnGenerateRow)
 			->OnSelectionChanged(this, &AssetView::OnSelectionChanged);
 
-		return;
+		//std::vector<AssetImportTask> tasks;
+		//{
+		//	AssetImportTask& task = tasks.emplace_back();
+		//	task.FilePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/cube_256x256.png");
+		//
+		//	Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
+		//	pFactory->SetImportAsSRGB(true);
+		//	task.pFactory = pFactory;
+		//}
+		//{
+		//	AssetImportTask& task = tasks.emplace_back();
+		//	task.FilePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/folder_256x256.png");
+		//
+		//	Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
+		//	pFactory->SetImportAsSRGB(true);
+		//	task.pFactory = pFactory;
+		//}
+		//
+		//AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		//std::vector<AssetImportResult> importResults = assetToolsModule.Import(tasks);
+		//
+		//m_MeshIconHandle = importResults[0].Handle;
+		//m_FolderIconHandle = importResults[1].Handle;
+		//
+		//Ref<Texture2D> pMeshIconTexture2D = AssetManager::Get<Texture2D>(m_MeshIconHandle);
+		//Ref<Texture2D> pFolderIconTexture2D = AssetManager::Get<Texture2D>(m_FolderIconHandle);
+		//
+		//pMeshIconTexture2D->CreateResource();
+		//pFolderIconTexture2D->CreateResource();
 
-		{
-			for (int i = 0; i < 30; ++i)
-			{
-				Ref<ContentBrowserItem> pItem = new ContentBrowserItem();
-				pItem->Type = AssetType::Mesh;
-				m_Items.push_back(pItem);
-			}
-		}
+		ContentBrowserModule& contentBrowser = ModuleManager::LoadModuleChecked<ContentBrowserModule>();
+		contentBrowser.GetAssetThumbnailPool()->OnThumbnailRegenerated.Connect(this, &AssetView::OnThumbnailRegenerated);
 		
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		if (assetRegistry.IsLoadingAssets())
+			InitializeFromAssetRegistry();
+		else
 		{
-			Ref<ContentBrowserItem> pItem = new ContentBrowserItem();
-			pItem->Type = AssetType::Undefined;
-			m_Items.push_back(pItem);
+			m_AssetRegistryFileScanDoneID = assetRegistry.OnFileScanDone.Connect([this]()
+				{
+					InitializeFromAssetRegistry();
+					ModuleManager::LoadModuleChecked<AssetRegistryModule>().OnFileScanDone.Detach(m_AssetRegistryFileScanDoneID);
+				});
 		}
+	}
 
-		std::vector<AssetImportTask> tasks;
-		{
-			AssetImportTask& task = tasks.emplace_back();
-			task.FilePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/cube_256x256.png");
+	AssetView::~AssetView() noexcept
+	{
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		assetRegistry.OnAssetAdded.Detach(this);
 
-			Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
-			pFactory->SetImportAsSRGB(true);
-			task.pFactory = pFactory;
-		}
-		{
-			AssetImportTask& task = tasks.emplace_back();
-			task.FilePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/folder_256x256.png");
-
-			Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
-			pFactory->SetImportAsSRGB(true);
-			task.pFactory = pFactory;
-		}
-
-		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
-		std::vector<AssetImportResult> importResults = assetToolsModule.Import(tasks);
-
-		m_MeshIconHandle = importResults[0].Handle;
-		m_FolderIconHandle = importResults[1].Handle;
-
-		Ref<Texture2D> pMeshIconTexture2D = AssetManager::Get<Texture2D>(m_MeshIconHandle);
-		Ref<Texture2D> pFolderIconTexture2D = AssetManager::Get<Texture2D>(m_FolderIconHandle);
-
-		pMeshIconTexture2D->CreateResource();
-		pFolderIconTexture2D->CreateResource();
+		ContentBrowserModule& contentBrowser = ModuleManager::LoadModuleChecked<ContentBrowserModule>();
+		contentBrowser.GetAssetThumbnailPool()->OnThumbnailRegenerated.Detach(this);
 	}
 
 	float AssetView::CalcDesiredWidth() const noexcept
@@ -78,36 +94,47 @@ namespace Relentless
 		return 0.0f;
 	}
 
-	uint64 AssetView::GetFolderIconID() const noexcept
+	void AssetView::InitializeFromAssetRegistry() noexcept
 	{
-		return AssetManager::Get<Texture2D>(m_FolderIconHandle)->GetResource()->GetSRV()->GetGPUHandle().ptr;
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+
+		assetRegistry.ForEachAssetWithPath("Assets/", [this](const AssetData& aData)
+			{
+				OnAssetAdded(aData);
+				return true;
+			}, 
+			true);
+
+		assetRegistry.OnAssetAdded.Connect(this, &AssetView::OnAssetAdded);
 	}
 
-	uint64 AssetView::GetMeshIconID() const noexcept
+	void AssetView::OnAssetAdded(const AssetData& aAssetData) noexcept
 	{
-		return AssetManager::Get<Texture2D>(m_MeshIconHandle)->GetResource()->GetSRV()->GetGPUHandle().ptr;
+		if (std::ranges::any_of(m_Items, [&aAssetData](const Ref<ContentBrowserItem>& aItem) {  return aItem->UID == aAssetData.Uuid; }))
+			return;
+
+		Ref<ContentBrowserItem> pItem = new ContentBrowserItem();
+		pItem->UID = aAssetData.Uuid;
+
+		m_Items.push_back(std::move(pItem));
 	}
 
 	Ref<ITableRow> AssetView::OnGenerateRow(const Ref<ContentBrowserItem>& aItem) noexcept
 	{
-		Ref<AssetRow> pRow = new AssetRow();
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		const AssetData* pAsset = assetRegistry.FindAsset(aItem->UID);
+		if (!pAsset)
+			return nullptr;
+
+		ContentBrowserModule& contentBrowser = ModuleManager::LoadModuleChecked<ContentBrowserModule>();
+		const UniquePtr<AssetThumbnailPool>& thumbnailPool = contentBrowser.GetAssetThumbnailPool();
+
+		Ref<Thumbnail> pThumbnail = thumbnailPool->GetAssetThumbnail(*pAsset);
+		pThumbnail->SetSize(Vector2(100.0f, 170.0f));
+
+		Ref<AssetRow> pRow = RLS_NEW AssetRow(pThumbnail);
 		pRow->OnMouseEnter(this, &AssetView::OnRowBeginHover);
 		pRow->OnMouseExit(this, &AssetView::OnRowEndHover);
-
-		Thumbnail* pThumbnail = pRow->GetThumbnail();
-		switch (aItem->Type)
-		{
-			case AssetType::Mesh:
-			{
-				pThumbnail->ID(this, &AssetView::GetMeshIconID);
-				break;
-			}
-			default:
-			{
-				pThumbnail->ID(this, &AssetView::GetFolderIconID);
-				break;
-			}
-		}
 
 		return pRow;
 	}
@@ -133,6 +160,13 @@ namespace Relentless
 			static_cast<AssetRow*>(aRow)->GetThumbnail()->SetBackgroundColor(hoverSelectedColor);
 		else 
 			static_cast<AssetRow*>(aRow)->GetThumbnail()->SetBackgroundColor(hoverColor);
+
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		const AssetData* pAsset = assetRegistry.FindAsset(m_pAssetsTreeView->GetItemFromWidget(aRow)->UID);
+
+		ContentBrowserModule& contentBrowser = ModuleManager::LoadModuleChecked<ContentBrowserModule>();
+		const UniquePtr<AssetThumbnailPool>& thumbnailPool = contentBrowser.GetAssetThumbnailPool();
+		thumbnailPool->RegenerateAssetThumbnail(*pAsset);
 	}
 
 	void AssetView::OnRowEndHover(ITableRow* aRow) noexcept
@@ -169,17 +203,36 @@ namespace Relentless
 		}
 	}
 
-	AssetRow::AssetRow() noexcept
+	void AssetView::OnThumbnailRegenerated(const AssetData& aAssetData, const Ref<Thumbnail>& aThumbnail) noexcept
+	{
+		//This will be improved instead of a linear search:
+		AssetDefinitionRegistry* pAssetDefinitionRegistry = Editor::Get()->GetSubsystem<AssetDefinitionRegistry>();
+
+		for (size_t i = 0; i < m_Items.size(); ++i)
+		{
+			if (m_Items[i]->UID == aAssetData.Uuid)
+			{
+				AssetRow* pAssetRow = static_cast<AssetRow*>(m_pAssetsTreeView->GetRowWidget(m_Items[i]).Get());
+
+				const Ref<IAssetDefinition>& pAssetDefinition = pAssetDefinitionRegistry->GetDefinitionForAsset(aAssetData);
+
+				pAssetRow->GetThumbnail()->SetResource(aThumbnail->GetResource());
+				aThumbnail->SetInfo(pAssetDefinition->GetThumbnailInfo(aAssetData));
+				break;
+			}
+		}
+	}
+
+	AssetRow::AssetRow(const Ref<Thumbnail>& aThumbnail) noexcept
 	{
 		m_CustomHoverLogic = true;
 		m_Tiled = true;
 
-		Ref<Thumbnail> pThumbnail = new Thumbnail(Vector2(100.0f, 170.0f));
-		pThumbnail->OnClicked(this, &AssetRow::OnThumbnailClicked);
-		pThumbnail->OnMouseEnter(this, &AssetRow::OnThumbnailBeginHover);
-		pThumbnail->OnMouseExit(this, &AssetRow::OnThumbnailEndHover);
+		aThumbnail->OnClicked(this, &AssetRow::OnThumbnailClicked);
+		aThumbnail->OnMouseEnter(this, &AssetRow::OnThumbnailBeginHover);
+		aThumbnail->OnMouseExit(this, &AssetRow::OnThumbnailEndHover);
 
-		m_Thumbnails.push_back(pThumbnail);
+		m_Thumbnails.push_back(aThumbnail);
 	}
 
 	Thumbnail* AssetRow::GetThumbnail() const noexcept
@@ -192,17 +245,25 @@ namespace Relentless
 		m_Thumbnails[aColumn]->Render();
 	}
 
-	void AssetRow::OnThumbnailBeginHover(Thumbnail* aThumbnail) noexcept
+	void AssetRow::SetThumbnail(const Ref<Thumbnail>& aThumbnail) noexcept
+	{
+		m_Thumbnails[0] = aThumbnail;
+		m_Thumbnails[0]->OnClicked(this, &AssetRow::OnThumbnailClicked);
+		m_Thumbnails[0]->OnMouseEnter(this, &AssetRow::OnThumbnailBeginHover);
+		m_Thumbnails[0]->OnMouseExit(this, &AssetRow::OnThumbnailEndHover);
+	}
+
+	void AssetRow::OnThumbnailBeginHover(MAYBE_UNUSED Thumbnail* aThumbnail) noexcept
 	{
 		m_OnMouseEnterCallback.ExecuteIfSet(this);
 	}
 
-	void AssetRow::OnThumbnailClicked(Thumbnail* aThumbnail, const PointerInfo& aPointerInfo) noexcept
+	void AssetRow::OnThumbnailClicked(MAYBE_UNUSED Thumbnail* aThumbnail, const PointerInfo& aPointerInfo) noexcept
 	{
 		m_OnClickedCallback.ExecuteIfSet(aPointerInfo);
 	}
 
-	void AssetRow::OnThumbnailEndHover(Thumbnail* aThumbnail) noexcept
+	void AssetRow::OnThumbnailEndHover(MAYBE_UNUSED Thumbnail* aThumbnail) noexcept
 	{
 		m_OnMouseExitCallback.ExecuteIfSet(this);
 	}

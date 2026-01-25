@@ -1,7 +1,8 @@
 #include "EntityDetailLayoutBuilder.h"
 
-#include "../Customizations/TransformComponentDetailCustomization.h"
-#include "../TableRows/EntityDetailCategoryRow.h"
+#include "UI/Views/Details/Customizations/DetailCustomizationMeta.h"
+#include "UI/Views/Details/TableRows/EntityDetailCategoryRow.h"
+#include "UI/Views/TreeView.h"
 
 namespace Relentless
 {
@@ -9,6 +10,11 @@ namespace Relentless
 		:IDetailLayoutBuilder(aDetailsView),
 		 m_Scene{ aScene }
 	{
+	}
+
+	std::vector<UniquePtr<IDetailCustomization>>& EntityDetailLayoutBuilder::GetCustomizations() noexcept
+	{
+		return m_Customizations;
 	}
 
 	Scene& EntityDetailLayoutBuilder::GetScene() const noexcept
@@ -27,10 +33,10 @@ namespace Relentless
 		if (pView->GetNumInspectedEntities() == 0u)
 			return nodesToReturn;
 
-		ConditionallyAddCustomization<TransformComponent>();
-		ConditionallyAddCustomization<DirectionalLightComponent>();
-		ConditionallyAddCustomization<PointLightComponent>();
-		ConditionallyAddCustomization<SpotLightComponent>();
+		ConditionallyAddCustomization<TransformComponent>(this);
+		ConditionallyAddCustomization<DirectionalLightComponent>(this);
+		ConditionallyAddCustomization<PointLightComponent>(this);
+		ConditionallyAddCustomization<SpotLightComponent>(this);
 
 		for (auto& [name, pBuilder] : m_Categories)
 		{

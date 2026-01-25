@@ -11,5 +11,4 @@ namespace Relentless
 	{
 		m_ShouldRefresh = true;
 	}
-
 }

@@ -3,36 +3,27 @@
 #include "Log.h"
 namespace Relentless
 {
-	std::string ConvertWstringToString(std::wstring const& wstr) noexcept
+	String ConvertWideStringToString(WideString const& aWideString) noexcept
 	{
-#pragma warning(push, 0)
-		std::size_t size = sizeof(wstr);
-		char* str = RLS_NEW char[size];
-		std::string temp;
+		if (aWideString.empty())
+			return {};
 
-		std::wcstombs(str, wstr.c_str(), size);
+		const int requiredSize = ::WideCharToMultiByte(CP_UTF8, 0, aWideString.data(), static_cast<int>(aWideString.size()), nullptr, 0, nullptr, nullptr);
 
-		temp = str;
-		delete[] str;
-#pragma warning(pop)
-		return temp;
+		String result(requiredSize, '\0');
+		::WideCharToMultiByte(CP_UTF8, 0, aWideString.data(), static_cast<int>(aWideString.size()), result.data(), requiredSize, nullptr, nullptr);
+
+		return result;
 	}
 
-	std::string ConvertWideStringToString(std::wstring const& wstr) noexcept
+	WideString ConvertStringToWideString(const String& aString) noexcept
 	{
-		int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
-		std::string s(size_needed, 0);
-		WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &s[0], size_needed, NULL, NULL);
-		return s;
-	}
-
-	std::wstring ConvertStringToWstring(const std::string& string) noexcept
-	{
-		int size = MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, string.c_str(), static_cast<int>(string.size()), nullptr, 0);
+		const int size = MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, aString.c_str(), static_cast<int>(aString.size()), nullptr, 0);
 		RLS_ASSERT(size > 0, "MultiByteToWideChar conversion did not succeed.");
-		std::wstring converted{};
+		
+		WideString converted{};
 		converted.resize(size);
-		MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, string.c_str(), static_cast<int>(string.size()), &(*converted.begin()), static_cast<int>(converted.size()));
+		MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, aString.c_str(), static_cast<int>(aString.size()), &(*converted.begin()), static_cast<int>(converted.size()));
 
 		return converted;
 	}

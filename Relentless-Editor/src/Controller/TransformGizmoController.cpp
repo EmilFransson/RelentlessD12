@@ -1,6 +1,6 @@
 #include "TransformGizmoController.h"
 
-#include "../Core/Editor.h"
+#include "Core/Editor.h"
 
 namespace Relentless
 {

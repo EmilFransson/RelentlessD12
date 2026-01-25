@@ -2,13 +2,18 @@
 
 #include "Views/Outliner/EntityOutlinerView.h"
 
+#include "Widgets/Button.h"
+#include "Widgets/EditableTextBox.h"
+#include "Widgets/Label.h"
+#include "Widgets/WidgetSwitcher.h"
+
 namespace Relentless
 {
 	OutlinerTableRow::OutlinerTableRow(const OutlinerTableRowCreateInfo& createInfo) noexcept
 		: m_pOwningTreeView{ createInfo.pTreeView }
 	{
 		{
-			Ref<HorizontalBoxEx> pColumn0Box = new HorizontalBoxEx();
+			Ref<HorizontalBox> pColumn0Box = new HorizontalBox();
 
 			pColumn0Box->AddWidget(new Button(createInfo.IsVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH))
 				->SetBackgroundColor(Colors::Transparent)
@@ -24,7 +29,7 @@ namespace Relentless
 		}
 		
 		{
-			Ref<HorizontalBoxEx> pColumn1Box = new HorizontalBoxEx();
+			Ref<HorizontalBox> pColumn1Box = new HorizontalBox();
 			pColumn1Box->SetMargin(FloatRect(0.0f, 0.0f, 0.0f, 0.0f));
 
 			Button* pButton = pColumn1Box->AddWidget(new Button(createInfo.IsExpanded ? ICON_FA_CHEVRON_DOWN : ICON_FA_CHEVRON_RIGHT, Vector2(25.0f, 30.0f)))
@@ -45,7 +50,7 @@ namespace Relentless
 
 			WidgetSwitcher* pSwitcher = pColumn1Box->AddWidget(new WidgetSwitcher());
 			
-			HorizontalBoxEx* pDisplayBox = pSwitcher->Add(new HorizontalBoxEx());
+			HorizontalBox* pDisplayBox = pSwitcher->Add(new HorizontalBox());
 			pDisplayBox->SetSpacing(8.0f);
 
 			Label* pDisplayNameLabel = pDisplayBox->AddWidget(new Label(createInfo.Name, ImGui::GetIO().Fonts->Fonts[2]));
@@ -60,7 +65,7 @@ namespace Relentless
 		}
 
 		{
-			Ref<HorizontalBoxEx> pColumn2Box = new HorizontalBoxEx();
+			Ref<HorizontalBox> pColumn2Box = new HorizontalBox();
 
 			pColumn2Box->AddWidget(new Label(createInfo.Type, ImGui::GetIO().Fonts->Fonts[2]))
 				->SetTooltipText(createInfo.Type)
@@ -107,7 +112,7 @@ namespace Relentless
 		}
 
 		//TODO: MOVE into parent -> ONCE, not EVERY ROW!
-		if (m_Hovered && !m_ColumnWidgets[0]->IsHovered() && !(static_cast<HorizontalBoxEx*>(m_ColumnWidgets[1].Get())->GetWidget<HorizontalBoxEx>(0)->IsHovered()) && column == 2)
+		if (m_Hovered && !m_ColumnWidgets[0]->IsHovered() && !(static_cast<HorizontalBox*>(m_ColumnWidgets[1].Get())->GetWidget<HorizontalBox>(0)->IsHovered()) && column == 2)
 		{
 			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
 				m_OnDoubleClickedCallback.ExecuteIfSet();
@@ -169,7 +174,7 @@ namespace Relentless
 	Label* OutlinerTableRow::GetNameLabel() const noexcept
 	{
 		WidgetSwitcher* pSwitcher = GetWidgetSwitcher();
-		HorizontalBoxEx* pDisplayBox = static_cast<HorizontalBoxEx*>(pSwitcher->GetWidget(0).Get());
+		HorizontalBox* pDisplayBox = static_cast<HorizontalBox*>(pSwitcher->GetWidget(0).Get());
 		return pDisplayBox->GetWidget<Label>(0);
 	}
 

@@ -1,8 +1,8 @@
 #include "TextureFactory.h"
 #include "../../Core/Editor.h"
 
-#include "../../../vendor/includes/DirectXTK/WICTextureLoader.h"
-#include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
+#include <DirectXTK/WICTextureLoader.h>
+#include <DirectXTK/ResourceUploadBatch.h>
 
 namespace Relentless
 {
@@ -17,7 +17,7 @@ namespace Relentless
 
 	static DXGI_FORMAT GetCompressedDXGITextureFormat(ETextureCompressionType compressionType, bool srgb) noexcept
 	{
-		DXGI_FORMAT compressedFormat{};
+		DXGI_FORMAT compressedFormat = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
 		switch (compressionType)
 		{
 		case ETextureCompressionType::BC5:
@@ -35,6 +35,8 @@ namespace Relentless
 			RLS_ASSERT(false, "Unreachable.")
 				return compressedFormat;
 		}
+
+		return compressedFormat;
 	}
 
 	void TextureFactory::SetCompressionType(ETextureCompressionType compressionType) noexcept
@@ -54,7 +56,7 @@ namespace Relentless
 
 	bool TextureFactory::CanCreateNew() const noexcept
 	{
-		return false;
+		return true;
 	}
 
 	bool TextureFactory::CanImport(const Path& aPath) const noexcept
@@ -66,6 +68,14 @@ namespace Relentless
 	Ref<IFactory> TextureFactory::Clone() noexcept
 	{
 		return new TextureFactory();
+	}
+
+	FactoryCreateResult TextureFactory::CreateNew(const String& aName, const UUID& aUUID ) noexcept
+	{
+		Ref<Texture2D> pNewTexture = new Texture2D(aUUID);
+		pNewTexture->SetName(aName);
+
+		return pNewTexture;
 	}
 
 	bool TextureFactory::DoesSupportAsset(IAsset* aAsset) const noexcept
@@ -83,7 +93,7 @@ namespace Relentless
 		return std::vector<String>(m_SupportedFormats.begin(), m_SupportedFormats.end());
 	}
 
-	const FactoryResult& TextureFactory::ImportFromFileImpl(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext) noexcept
+	FactoryResult TextureFactory::ImportFromFileImpl(const Path& aPath, MAYBE_UNUSED const Path& aPackagePath, MAYBE_UNUSED const String& aName, MAYBE_UNUSED Ref<FeedbackContext> aFeedbackContext) noexcept
 	{
 		if (!File::Exists(aPath))
 			return std::unexpected{"File does not exist."};
@@ -106,7 +116,7 @@ namespace Relentless
 		return std::ranges::any_of(m_SupportedExensions, [&aFileExtension](const String& aExtension) { return aExtension == aFileExtension; });
 	}
 
-	void TextureFactory::Finalize(bool success) noexcept
+	void TextureFactory::Finalize(bool /*success*/) noexcept
 	{
 		//OnDone(m_ImportedTextureAsset, success);
 	}
@@ -184,5 +194,10 @@ namespace Relentless
 		m_ImportedAsset = AssetManager::RegisterAsset<Texture2D>(pNewTexture);
 
 		return true;
+	}
+
+	bool TextureFactory::ShouldShowInNewMenu() const noexcept
+	{
+		return false;
 	}
 }

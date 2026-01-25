@@ -22,10 +22,11 @@ namespace Relentless
 
 			switch (m_CurrentState)
 			{
-			case ECameraControllerNavigationState::Fly:	OnFly(); break;
+			case ECameraControllerNavigationState::Fly:		OnFly(); break;
 			case ECameraControllerNavigationState::Orbit:	OnOrbit(); break;
 			case ECameraControllerNavigationState::Dolly:	OnDollyForward(); break;
-			case ECameraControllerNavigationState::Pan:	OnPan(); break;
+			case ECameraControllerNavigationState::Pan:		OnPan(); break;
+			default:										break;
 			}
 		}
 

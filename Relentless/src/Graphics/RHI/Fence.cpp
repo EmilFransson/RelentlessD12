@@ -10,8 +10,8 @@ namespace Relentless
 		: 
 		DeviceObject(pParent),
 		m_CurrentValue(fenceValue + 1),
-		m_LastSignaled(0),
-		m_LastCompleted(fenceValue)
+		m_LastCompleted(fenceValue),
+		m_LastSignaled(0)
 	{
 		VERIFY_HR_EX(pParent->GetDevice()->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_pFence.GetAddressOf())), pParent->GetDevice());
 		D3D::SetObjectName(m_pFence.Get(), pName);

@@ -24,7 +24,7 @@ namespace Relentless
 	{
 	public:
 		Outlines(GraphicsDevice* pDevice) noexcept;
-		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<Texture> pEntityIDTexture) noexcept;
+		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept;
 
 		[[nodiscard]] Ref<Texture> GetSelectedEntityIDOutput() const noexcept;
 		[[nodiscard]] Ref<Texture> GetBlurredOutput() const noexcept;

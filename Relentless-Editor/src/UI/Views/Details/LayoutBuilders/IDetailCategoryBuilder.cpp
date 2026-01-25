@@ -18,7 +18,7 @@ namespace Relentless
 
 	bool IDetailCategoryBuilder::ExistsProperty(const char* aPropertyName) const noexcept
 	{
-		return std::ranges::any_of(m_Nodes, [this, aPropertyName](const Ref<DetailNode>& aNode) { return aNode->GetName() == aPropertyName; });
+		return std::ranges::any_of(m_Nodes, [aPropertyName](const Ref<DetailNode>& aNode) { return aNode->GetName() == aPropertyName; });
 	}
 
 	const std::vector<Ref<DetailNode>>& IDetailCategoryBuilder::GetNodes() const noexcept

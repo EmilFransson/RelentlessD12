@@ -1,8 +1,13 @@
 #pragma once
 #include <Relentless.h>
 
-#include "../Controller/PerspectiveCameraController.h"
-#include "../Controller/TransformGizmoController.h"
+#include <Controller/PerspectiveCameraController.h>
+#include <Controller/TransformGizmoController.h>
+
+#include <UI/Widgets/Canvas.h>
+#include <UI/Widgets/HorizontalBox.h>
+#include <UI/Widgets/VerticalBox.h>
+#include <UI/Widgets/Panel.h>
 
 namespace Relentless
 {
@@ -13,16 +18,16 @@ namespace Relentless
 	class ViewportPanel : public PanelBase
 	{
 	public:
-		ViewportPanel(const char* pName, ImGuiWindowFlags flags, uint32 renderViewIndex) noexcept;
+		ViewportPanel(uint32 aRenderViewIndex) noexcept;
 		virtual ~ViewportPanel() noexcept override = default;
 
-		[[nodiscard]] std::shared_ptr<PerspectiveCamera> GetCamera() const noexcept;
-		[[nodiscard]] uint32 GetRenderViewIndex() const noexcept;
+		NO_DISCARD std::shared_ptr<PerspectiveCamera> GetCamera() const noexcept;
+		NO_DISCARD uint32 GetRenderViewIndex() const noexcept;
 
-		[[nodiscard]] const Vector2i& GetViewportSize() const noexcept;
-		[[nodiscard]] Vector2i GetClientHoverCoordinates() const noexcept;
-		[[nodiscard]] const Vector2u& GetClientScreenPosition() const noexcept;
-		[[nodiscard]] bool IsClientAreaHovered() const noexcept;
+		NO_DISCARD const Vector2i& GetViewportSize() const noexcept;
+		NO_DISCARD Vector2i GetClientHoverCoordinates() const noexcept;
+		NO_DISCARD const Vector2u& GetClientScreenPosition() const noexcept;
+		NO_DISCARD bool IsClientAreaHovered() const noexcept;
 
 		Broadcaster<void(ViewportPanel* pPanel, RLS_Key pressedKey)> OnHotkeyPressed;
 		Broadcaster<void(ViewportPanel* pPanel, Vector2u relativeMouseCoords)> OnClickedOnViewport;
@@ -37,44 +42,44 @@ namespace Relentless
 
 		virtual void Update() noexcept override;
 	private:
-		[[nodiscard]] bool CanHandleHotkeys() const noexcept;
-		[[nodiscard]] bool CanHandleMouseInputs() const noexcept;
+		NO_DISCARD bool CanHandleHotkeys() const noexcept;
+		NO_DISCARD bool CanHandleMouseInputs() const noexcept;
 		void ConfineAndHideMouseAtCursorPosition() noexcept;
 
 		void DetermineCameraAreaHoverState() noexcept;
 		void DrawCameraValidClientAreaRect() noexcept;
 
-		[[nodiscard]] bool HandleKeyPressed(RLS_Key key) noexcept;
+		NO_DISCARD bool HandleKeyPressed(RLS_Key key) noexcept;
 		void HandleTransformGizmoInteraction() noexcept;
 
-		[[nodiscard]] bool IsCameraValidClientAreaHovered() const noexcept;
+		NO_DISCARD bool IsCameraValidClientAreaHovered() const noexcept;
 
 		void OnCameraSpeedMultiplierChanged(float speed) noexcept;
-		[[nodiscard]] float OnCameraSpeedMultiplierRequested() const noexcept;
+		NO_DISCARD float OnCameraSpeedMultiplierRequested() const noexcept;
 
 		void OnCanvasHoverStateChanged(bool newState) noexcept;
 		void OnCanvasResize(const Vector2i& newSize) noexcept;
-		[[nodiscard]] Texture* OnCanvasTargetRequest() const noexcept;
+		NO_DISCARD Texture* OnCanvasTargetRequest() const noexcept;
 		void OnCanvasRenderEnd() noexcept;
 
-		[[nodiscard]] float OnCameraFarViewPlaneRequested() const noexcept;
-		[[nodiscard]] float OnCameraNearViewPlaneRequested() const noexcept;
+		NO_DISCARD float OnCameraFarViewPlaneRequested() const noexcept;
+		NO_DISCARD float OnCameraNearViewPlaneRequested() const noexcept;
 		void OnCameraFarViewPlaneChanged(float farPlane) noexcept;
 		void OnCameraNearViewPlaneChanged(float nearPlane) noexcept;
 
 		//Events:
-		[[nodiscard]] bool OnKeyPressedEvent(KeyPressedEvent& event) noexcept override;
+		NO_DISCARD bool OnKeyPressedEvent(KeyPressedEvent& event) noexcept override;
 		
-		[[nodiscard]] bool OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent& event) noexcept override;
-		[[nodiscard]] bool OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent& event) noexcept override;
+		NO_DISCARD bool OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent& event) noexcept override;
+		NO_DISCARD bool OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent& event) noexcept override;
 		
-		[[nodiscard]] bool OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent& event) noexcept override;
-		[[nodiscard]] bool OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent& event) noexcept override;
+		NO_DISCARD bool OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent& event) noexcept override;
+		NO_DISCARD bool OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent& event) noexcept override;
 
-		[[nodiscard]] bool OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent& event) noexcept override;
-		[[nodiscard]] bool OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent& event) noexcept override;
+		NO_DISCARD bool OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent& event) noexcept override;
+		NO_DISCARD bool OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent& event) noexcept override;
 
-		[[nodiscard]] bool OnMouseWheelScrolledEvent(MouseWheelScrolledEvent& event) noexcept;
+		NO_DISCARD bool OnMouseWheelScrolledEvent(MouseWheelScrolledEvent& event) noexcept override;
 
 		void OnBeginViewportHover() noexcept;
 		void OnEndViewportHover() noexcept;
@@ -88,20 +93,15 @@ namespace Relentless
 		void OnFocusLost(PanelBase* pSelf) noexcept;
 
 		void OnHorizontalFOVChanged(float value) noexcept;
-		[[nodiscard]] float OnHorizontalFOVRequested() const noexcept;
+		NO_DISCARD float OnHorizontalFOVRequested() const noexcept;
 
 		void OnSettingsButtonClicked();
 
 		void OnTransformGizmoInteractionStateChanged(ETransformGizmoInteractionState newState) noexcept;
 		void OnViewportResize(const Vector2i& newSize);
 
-		[[nodiscard]] float OnEV100Requested() const noexcept;
-		void OnEV100Changed(float ev100) noexcept;
-
 		void SetState(EViewportState newState) noexcept;
 	private:
-		String m_ToolbarID;
-
 		IntRect m_CameraValidScreenRect;
 
 		UniquePtr<TransformGizmoController> m_pTransformController = nullptr;
@@ -119,10 +119,9 @@ namespace Relentless
 
 		EViewportState m_CurrentState = EViewportState::None;
 
-		Ref<HorizontalBoxEx> m_pToolbarBox = nullptr;
-		HorizontalBoxEx* m_pCanvasHBox = nullptr;
+		Ref<HorizontalBox> m_pToolbarBox = nullptr;
+		HorizontalBox* m_pCanvasHBox = nullptr;
 		VerticalBox* m_pSettingsBox = nullptr;
-		HorizontalBoxEx* m_pCanvasAndSettingsBox = nullptr;
 		Canvas* m_pCanvas = nullptr;
 	};
 }

@@ -1,10 +1,11 @@
 #pragma once 
+#include "Core/DLLExport.h"
 
 namespace Relentless
 {
-	[[nodiscard]] UUID ConvertStringToGUID(const std::string& guidString) noexcept;
-	[[nodiscard]] std::string ConvertUUIDToString(const UUID& uuid) noexcept;
-	[[nodiscard]] UUID CreateUUID() noexcept;
+	NO_DISCARD RLS_API UUID ConvertStringToGUID(const String& guidString) noexcept;
+	NO_DISCARD RLS_API String ConvertUUIDToString(const UUID& uuid) noexcept;
+	NO_DISCARD RLS_API UUID CreateUUID() noexcept;
 
 	struct ScopedFlag 
 	{
@@ -17,7 +18,7 @@ namespace Relentless
 namespace std
 {
 	template<>
-	struct hash<UUID>
+	struct RLS_API hash<UUID>
 	{
 		size_t operator()(const UUID& id) const;
 	};

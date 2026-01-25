@@ -1,16 +1,16 @@
 #pragma once
 #include <Relentless.h>
-#include "IFactory.h"
+#include "FactoryBase.h"
 
-#include "../../../vendor/includes/Assimp/Importer.hpp"
-#include "../../../vendor/includes/Assimp/postprocess.h"
-#include "../../../vendor/includes/Assimp/scene.h"
+#include <Assimp/Importer.hpp>
+#include <Assimp/postprocess.h>
+#include <Assimp/scene.h>
 
 namespace Relentless
 {
 	class Texture2D;
 
-	class ModelFactory : public IFactory
+	class ModelFactory : public FactoryBase
 	{
 	public:
 		struct MeshImportInfo
@@ -62,7 +62,7 @@ namespace Relentless
 		void SetGraphicsDevice(GraphicsDevice* aGraphicsDevice) noexcept;	
 		NO_DISCARD bool SupportsFileExtension(const std::string_view aFileExtension) const noexcept override;
 	protected:		
-		virtual const FactoryResult& ImportFromFileImpl(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept override;
+		virtual FactoryResult ImportFromFileImpl(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext = nullptr) noexcept override;
 	private:
 		void Finalize(bool succeeded) noexcept;
 		void ImportMaterials() noexcept;
@@ -94,12 +94,12 @@ namespace Relentless
 		std::mutex m_ProgressionMutex;
 
 		Path m_MainModelPath;
+		Path m_PackagePath;
 
 		UniquePtr<Assimp::Importer> m_pImporter = nullptr;
 		const aiScene* m_pScene = nullptr;
 		GraphicsDevice* m_pDevice = nullptr;
 
-		float m_Progress = 0.0f;
 		float m_ProgressPerAsset = 1.0f;
 
 		ETextureCompressionType m_TextureCompressionType = ETextureCompressionType::Uncompressed;

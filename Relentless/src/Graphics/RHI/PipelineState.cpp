@@ -43,7 +43,7 @@ namespace Relentless
 			GetParent()->DeferReleaseObject(m_pPipelineState.Detach());
 
 		ShaderLibrary* pShaderLibrary = GetParent()->GetShaderLibrary();
-		for (int i = 0; i < m_Desc.m_ShaderInfo.size(); ++i)
+		for (size_t i = 0; i < m_Desc.m_ShaderInfo.size(); ++i)
 		{
 			const PipelineStateInitializer::ShaderDesc& shaderDesc = m_Desc.m_ShaderInfo[i];
 			if (shaderDesc.Name.empty())

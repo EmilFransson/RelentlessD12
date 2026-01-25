@@ -32,21 +32,9 @@ namespace Relentless
 		InitializePipelines();
 
 		m_EntityIDReadbackBuffer = m_pDevice->CreateBuffer(BufferDesc::CreateReadback(sizeof(float)), "Entity ID Readback Buffer");
-
-		//Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
-		//pFactory->SetImportAsSRGB(true);
-		//pFactory->SetGenerateMipmaps(false);
-		//
-		//std::vector<AssetImportTask> tasks;
-		//AssetImportTask& task = tasks.emplace_back();
-		//task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
-		//task.pFactory = pFactory;
-		//
-		//AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
-		//m_BRDFLutTextureHandle = assetToolsModule.Import(tasks)[0].Handle;
 	}
 
-	void Renderer::Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept
+	void Renderer::Render(Scene* pScene, ViewTransform* pViewTransform, MAYBE_UNUSED const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept
 	{
 		PROFILE_SCOPE("Renderer::Render");
 
@@ -291,7 +279,7 @@ namespace Relentless
 			PROFILE_SCOPE("Renderer::Render::Outlines");
 
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			m_pOutlines->Render(*pCommandContext, m_MainView, m_SceneTextures, m_pEntityIDTexture);
+			m_pOutlines->Render(*pCommandContext, m_MainView, m_SceneTextures);
 			pCommandContext->Execute();
 		}
 
@@ -472,58 +460,8 @@ namespace Relentless
 		std::vector<Batch> batches;
 
 		uint32 instanceID = 0u;
-
-		//Instances
-		{
-			Collection<TransformComponent, MeshRendererComponent, MeshFilterComponent> instanceCollection = m_pCurrentScene->GetEntityManager().Collect<TransformComponent, MeshRendererComponent, MeshFilterComponent>();
-
-			std::vector<ShaderInterop::InstanceData> instanceDatas;
-			instanceDatas.reserve(instanceCollection.Size());
-
-			instanceCollection.Do([&](entity e, TransformComponent& tc, MeshRendererComponent& mrc, MeshFilterComponent& mc)
-				{
-					if (m_pCurrentScene->GetEntityManager().Has<HiddenInGameComponent>(e))
-						return;
-
-					const Ref<Material> pMaterial = AssetManager::Get<Material>(mrc.AssetHandle);
-					const Ref<Mesh> pMesh = AssetManager::Get<Mesh>(mc.AssetHandle);
-
-					const uint32 materialIndex = AssetManager::GetPhysicalIndex<Material>(mrc.AssetHandle);
-					const uint32 meshIndex = AssetManager::GetPhysicalIndex<Mesh>(mc.AssetHandle);
-
-					auto&& GetBlendMode = [](EBlendMode renderMode) -> Batch::Blending
-						{
-							switch (renderMode)
-							{
-							case EBlendMode::Opaque:		return Batch::Blending::Opaque;
-							case EBlendMode::AlphaMask:		return Batch::Blending::AlphaMask;
-							case EBlendMode::AlphaBlend:	return Batch::Blending::AlphaBlend;
-							default:
-								RLS_ASSERT(false, "Unreachable.");
-								return Batch::Blending::Opaque;
-							}
-						};
-
-					ShaderInterop::InstanceData& instanceData = instanceDatas.emplace_back();
-					instanceData.ID = instanceID;
-					instanceData.LocalToWorld = tc.GetWorldMatrix();
-					instanceData.MaterialIndex = materialIndex;
-					instanceData.MeshDataIndex = meshIndex;
-
-					Batch& batch = batches.emplace_back();
-					batch.Location = tc.GetWorldLocation();
-					batch.InstanceID = instanceID;
-					batch.MaterialIndex = materialIndex;
-					batch.MeshIndex = meshIndex;
-					batch.pMesh = pMesh;
-					batch.BlendMode = GetBlendMode(pMaterial->GetBlendMode());
-					batch.EntityID = e;
-
-					instanceID++;
-				});
-
-			CopyBufferData((uint32)instanceDatas.size(), sizeof(ShaderInterop::InstanceData), "Instances", instanceDatas.data(), m_InstancesBuffer);
-		}
+		std::unordered_map<UUID, uint32> meshUIDToIndexMap;
+		std::unordered_map<UUID, uint32> materialUIDToIndexMap;
 		
 		//Materials
 		{
@@ -546,6 +484,8 @@ namespace Relentless
 
 			AssetManager::ForEachAsset<Material>([&](Material& aMaterial)
 				{
+					meshUIDToIndexMap[aMaterial.GetUUID()] = (uint32)materials.size();
+
 					ShaderInterop::Material& material = materials.emplace_back();
 					material.AlbedoIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Albedo, aMaterial);
 					material.NormalIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::NormalMap, aMaterial);
@@ -580,6 +520,8 @@ namespace Relentless
 
 			AssetManager::ForEachAsset<Mesh>([&](Mesh& aMesh)
 				{
+					meshUIDToIndexMap[aMesh.GetUUID()] = (uint32)meshDatas.size();
+
 					ShaderInterop::MeshData& meshData = meshDatas.emplace_back();
 					meshData.VertexBufferIndex = aMesh.GetVertexBuffer()->GetSRVIndex();
 					meshData.IndexBufferIndex = aMesh.GetIndexBuffer()->GetSRVIndex();
@@ -588,6 +530,58 @@ namespace Relentless
 				});
 
 			CopyBufferData((uint32)meshDatas.size(), sizeof(ShaderInterop::MeshData), "Meshes", meshDatas.data(), m_MeshesBuffer);
+		}
+
+		//Instances
+		{
+			Collection<TransformComponent, MeshRendererComponent, MeshFilterComponent> instanceCollection = m_pCurrentScene->GetEntityManager().Collect<TransformComponent, MeshRendererComponent, MeshFilterComponent>();
+
+			std::vector<ShaderInterop::InstanceData> instanceDatas;
+			instanceDatas.reserve(instanceCollection.Size());
+
+			instanceCollection.Do([&](entity e, TransformComponent& tc, MeshRendererComponent& mrc, MeshFilterComponent& mc)
+				{
+					if (m_pCurrentScene->GetEntityManager().Has<HiddenInGameComponent>(e))
+						return;
+
+					const Ref<Material> pMaterial = AssetManager::Get<Material>(mrc.AssetHandle);
+					const Ref<Mesh> pMesh = AssetManager::Get<Mesh>(mc.AssetHandle);
+
+					const uint32 materialIndex = materialUIDToIndexMap[pMaterial->GetUUID()]/*  AssetManager::GetPhysicalIndex<Material>(mrc.AssetHandle)*/;
+					const uint32 meshIndex = meshUIDToIndexMap[pMesh->GetUUID()]; /*AssetManager::GetPhysicalIndex<Mesh>(mc.AssetHandle)*/;
+
+					auto&& GetBlendMode = [](EBlendMode renderMode) -> Batch::Blending
+						{
+							switch (renderMode)
+							{
+							case EBlendMode::Opaque:		return Batch::Blending::Opaque;
+							case EBlendMode::AlphaMask:		return Batch::Blending::AlphaMask;
+							case EBlendMode::AlphaBlend:	return Batch::Blending::AlphaBlend;
+							default:
+								RLS_ASSERT(false, "Unreachable.");
+								return Batch::Blending::Opaque;
+							}
+						};
+
+					ShaderInterop::InstanceData& instanceData = instanceDatas.emplace_back();
+					instanceData.ID = instanceID;
+					instanceData.LocalToWorld = tc.GetWorldMatrix();
+					instanceData.MaterialIndex = materialIndex;
+					instanceData.MeshDataIndex = meshIndex;
+
+					Batch& batch = batches.emplace_back();
+					batch.Location = tc.GetWorldLocation();
+					batch.InstanceID = instanceID;
+					batch.MaterialIndex = materialIndex;
+					batch.MeshIndex = meshIndex;
+					batch.pMesh = pMesh;
+					batch.BlendMode = GetBlendMode(pMaterial->GetBlendMode());
+					batch.EntityID = e;
+
+					instanceID++;
+				});
+
+			CopyBufferData((uint32)instanceDatas.size(), sizeof(ShaderInterop::InstanceData), "Instances", instanceDatas.data(), m_InstancesBuffer);
 		}
 
 		//Lights

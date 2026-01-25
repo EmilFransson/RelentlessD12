@@ -3,6 +3,9 @@
 
 #include "IDetailCustomization.h"
 
+#include "UI/Views/Details/LayoutBuilders/EntityDetailLayoutBuilder.h"
+#include "UI/Widgets/Button.h"
+
 namespace Relentless
 {
 	class EntityDetailLayoutBuilder;

@@ -1,17 +1,20 @@
 #pragma once
+#include "Core/DLLExport.h"
 
 namespace Relentless
 {
 	struct ProjectConfig
 	{
-		String Name		= "UntitledRelentlessProject";
-		Path AssetPath	= "Assets";
+		String Name				= "UntitledRelentlessProject";
+		Path AssetPath			= "Assets";
+		Path ThumbnailCachePath = "Cache/Thumbnails/";
 	};
 
-	class Project : public RefCounted<Project>
+	class RLS_API Project : public RefCounted<Project>
 	{
 	public:
 		NO_DISCARD static Path GetAssetDirectory() noexcept;
+		NO_DISCARD static Path GetThumbnailCacheDirectory() noexcept;
 		NO_DISCARD ProjectConfig& GetConfig() noexcept;
 		NO_DISCARD static const String& GetName() noexcept;
 		NO_DISCARD static const Path& GetProjectDirectory() noexcept;

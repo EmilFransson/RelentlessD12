@@ -1,8 +1,8 @@
 #include "ModelFactory.h"
 
-#include "../../../vendor/includes/DirectXTK/WICTextureLoader.h"
-#include "../../../vendor/includes/DirectXTK/ResourceUploadBatch.h"
-#include "../../../vendor/includes/meshoptimizer/meshoptimizer.h"
+#include <DirectXTK/WICTextureLoader.h>
+#include <DirectXTK/ResourceUploadBatch.h>
+#include <meshoptimizer/meshoptimizer.h>
 
 namespace Relentless
 {
@@ -22,7 +22,7 @@ namespace Relentless
 
 	static DXGI_FORMAT GetCompressedDXGITextureFormat(ETextureCompressionType compressionType, bool srgb) noexcept
 	{
-		DXGI_FORMAT compressedFormat{};
+		DXGI_FORMAT compressedFormat = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
 		switch (compressionType)
 		{
 		case ETextureCompressionType::BC5:
@@ -40,6 +40,8 @@ namespace Relentless
 			RLS_ASSERT(false, "Unreachable.")
 			return compressedFormat;
 		}
+
+		return compressedFormat;
 	}
 
 	static void LogHR(HRESULT hr, const std::string& contextualString, const std::filesystem::path& srcFilepath) noexcept
@@ -94,9 +96,9 @@ namespace Relentless
 		return new ModelFactory();
 	}
 
-	bool ModelFactory::DoesSupportAsset(IAsset* aAsset) const noexcept
+	bool ModelFactory::DoesSupportAsset(MAYBE_UNUSED IAsset* aAsset) const noexcept
 	{
-		return dynamic_cast<Mesh*>(aAsset) != nullptr;
+		return false;
 	}
 
 	std::vector<String> ModelFactory::GetSupportedFileExtensions() const noexcept
@@ -109,7 +111,7 @@ namespace Relentless
 		return std::vector<String>(m_SupportedFormats.begin(), m_SupportedFormats.end());
 	}
 
-	const FactoryResult& ModelFactory::ImportFromFileImpl(const Path& aPath, const Path& aPackagePath, const String& aName, Ref<FeedbackContext> aFeedbackContext /*= nullptr*/) noexcept
+	FactoryResult ModelFactory::ImportFromFileImpl(const Path& aPath, const Path& aPackagePath, MAYBE_UNUSED const String& aName, MAYBE_UNUSED Ref<FeedbackContext> aFeedbackContext) noexcept
 	{
 		if (!File::Exists(aPath))
 		{
@@ -119,6 +121,7 @@ namespace Relentless
 
 		m_pDevice = Application::Get().GetGraphicsDevice();
 		m_MainModelPath = aPath;
+		m_PackagePath = aPackagePath;
 
 		if (!InitializeImporter())
 		{
@@ -150,7 +153,7 @@ namespace Relentless
 		return std::ranges::any_of(m_SupportedExtensions, [&](const String& aExtension) { return aExtension == aFileExtension; });
 	}
 
-	void ModelFactory::Finalize(bool succeeded) noexcept
+	void ModelFactory::Finalize(bool /*succeeded*/) noexcept
 	{
 		//SetProgress(1.0f);
 		//OnDone(m_ImportedAssets, succeeded);
@@ -448,9 +451,6 @@ namespace Relentless
 		//Optimization 4: optimize vertex buffer accesses:
 		meshopt_optimizeVertexFetch(optimizedVertices.data(), optimizedIndices.data(), nrOfIndices, optimizedVertices.data(), optimizedVertexCount, sizeof(SimpleVertex));
 
-		const uint32_t vertexBufferSizeInBytes = (uint32_t)optimizedVertices.size() * sizeof(SimpleVertex);
-		const uint32_t indexBufferSizeInBytes = (uint32_t)optimizedIndices.size() * sizeof(uint32_t);
-
 		const std::string sanitizedName = FilepathUtils::SanitizeFileName(pMesh->mName.C_Str());
 
 		Ref<Buffer> pVertexBuffer = m_pDevice->CreateBuffer(BufferDesc::CreateVertexBuffer((uint32_t)optimizedVertices.size(), sizeof(SimpleVertex), BufferFlag::ShaderResource), "Vertex Buffer", optimizedVertices.data());
@@ -637,7 +637,7 @@ namespace Relentless
 		}
 	}
 
-	void ModelFactory::SetProgress(float progress) noexcept
+	void ModelFactory::SetProgress(float /*progress*/) noexcept
 	{
 		//std::lock_guard guard(m_ProgressionMutex);
 		//

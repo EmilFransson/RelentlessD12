@@ -4,15 +4,15 @@ namespace Relentless
 {
 	namespace Math
 	{
-		Color Math::MakeFromColorTemperature(float Temp) noexcept
+		Color MakeFromColorTemperature(float aTemp) noexcept
 		{
 			constexpr float MAX_TEMPERATURE = 15000.0f;
 			constexpr float MIN_TEMPERATURE = 1000.0f;
-			Temp = Clamp(Temp, MIN_TEMPERATURE, MAX_TEMPERATURE);
+			aTemp = Clamp(aTemp, MIN_TEMPERATURE, MAX_TEMPERATURE);
 
 			//[Krystek85] Algorithm works in the CIE 1960 (UCS) space,
-			float u = (0.860117757f + 1.54118254e-4f * Temp + 1.28641212e-7f * Temp * Temp) / (1.0f + 8.42420235e-4f * Temp + 7.08145163e-7f * Temp * Temp);
-			float v = (0.317398726f + 4.22806245e-5f * Temp + 4.20481691e-8f * Temp * Temp) / (1.0f - 2.89741816e-5f * Temp + 1.61456053e-7f * Temp * Temp);
+			float u = (0.860117757f + 1.54118254e-4f * aTemp + 1.28641212e-7f * aTemp * aTemp) / (1.0f + 8.42420235e-4f * aTemp + 7.08145163e-7f * aTemp * aTemp);
+			float v = (0.317398726f + 4.22806245e-5f * aTemp + 4.20481691e-8f * aTemp * aTemp) / (1.0f - 2.89741816e-5f * aTemp + 1.61456053e-7f * aTemp * aTemp);
 
 			//UCS to xyY
 			float x = 3.0f * u / (2.0f * u - 8.0f * v + 4.0f);

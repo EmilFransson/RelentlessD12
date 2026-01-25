@@ -1,5 +1,5 @@
 #pragma once
-#include "../DetailNode.h"
+#include "UI/Views/Details/DetailNode.h"
 
 namespace Relentless
 {

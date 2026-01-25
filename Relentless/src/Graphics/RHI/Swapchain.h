@@ -1,11 +1,12 @@
 #pragma once
+#include "Core/DLLExport.h"
 #include "DeviceResource.h"
 
 namespace Relentless
 {
 	using WindowHandle = HWND;
 
-	class Swapchain : public DeviceObject
+	class RLS_API Swapchain : public DeviceObject
 	{
 	public:
 		Swapchain(GraphicsDevice* pParent, uint32 numFrames, WindowHandle windowHandle) noexcept;

@@ -1,5 +1,7 @@
 #pragma once
 #include "Assets/AssetMeta.h"
+
+#include "Core/DLLExport.h"
 #include "Core/IAsset.h"
 #include "Core/Ref.h"
 
@@ -19,12 +21,22 @@ namespace Relentless
 		AssetHandle TextureHandle	= NULL_HANDLE;
 		UVTransform UVTransform;
 		bool IsEnabled				= true;
+
+		bool Serialize(IArchive& aArchive)
+		{
+			return aArchive.Process(TextureHandle)
+				&& aArchive.Process(UVTransform)
+				&& aArchive.Process(IsEnabled);
+		}
 	};
 
 	class Texture2D;
-	class Material : public AssetBase<Material>
+	class RLS_API Material : public AssetBase<Material>
 	{
 	public:
+		Material(const UUID& aUUID) noexcept;
+		Material() noexcept = default;
+
 		NO_DISCARD const Vector4& GetAlbedoColor() const noexcept;
 		NO_DISCARD float GetAmbientOcclusionIntensity() const noexcept;
 		NO_DISCARD EBlendMode GetBlendMode() const noexcept;
@@ -49,6 +61,7 @@ namespace Relentless
 
 		void RemoveTexture(ETextureType aTextureType) noexcept;
 
+		virtual bool SerializeCore(IArchive& aArchive) noexcept override;
 		void SetAlbedoColor(const Vector4& aColor) noexcept;
 		void SetAlbedoColor(const Color& aColor) noexcept;
 		void SetAmbientOcclusionIntensity(float aAmbientOcclusionIntensity) noexcept;

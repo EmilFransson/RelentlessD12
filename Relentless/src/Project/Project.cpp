@@ -1,6 +1,8 @@
 #include "Project.h"
 #include "Utility/FilepathUtils.h"
 #include "yaml-cpp/yaml.h"
+#include "Module/AssetRegistryModule.h"
+#include "Module/ModuleManager.h"
 
 namespace Relentless
 {
@@ -8,6 +10,12 @@ namespace Relentless
 	{
 		RLS_ASSERT(s_ActiveProject, "[Project::GetAssetDirectory]: Project is invalid.");
 		return FilepathUtils::Combine(s_ActiveProject->m_ActiveProjectDirectory, s_ActiveProject->GetConfig().AssetPath);
+	}
+
+	Path Project::GetThumbnailCacheDirectory() noexcept
+	{
+		RLS_ASSERT(s_ActiveProject, "[Project::GetThumbnailCacheDirectory]: Project is invalid.");
+		return FilepathUtils::Combine(s_ActiveProject->m_ActiveProjectDirectory, s_ActiveProject->GetConfig().ThumbnailCachePath);
 	}
 
 	ProjectConfig& Project::GetConfig() noexcept
@@ -50,8 +58,15 @@ namespace Relentless
 		auto& config = s_ActiveProject->GetConfig();
 		config.Name = projectNode["Name"].as<String>();
 		config.AssetPath = projectNode["AssetDirectory"].as<String>();
+		config.ThumbnailCachePath = projectNode["ThumbnailCacheDirectory"].as<String>();
 
 		s_ActiveProject->m_ActiveProjectDirectory = aPath.parent_path();
+		
+		FilepathUtils::CreateDirectoryTree(GetAssetDirectory());
+		FilepathUtils::CreateDirectoryTree(GetThumbnailCacheDirectory());
+
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		assetRegistry.ScanForAssets(GetAssetDirectory());
 
 		return s_ActiveProject;
 	}
@@ -74,6 +89,7 @@ namespace Relentless
 				out << YAML::BeginMap; //Project
 				out << YAML::Key << "Name" << config.Name;
 				out << YAML::Key << "AssetDirectory" << config.AssetPath.string();
+				out << YAML::Key << "ThumbnailCacheDirectory" << config.ThumbnailCachePath.string();
 				out << YAML::EndMap; //Project
 			}
 			out << YAML::EndMap; //Root

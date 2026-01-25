@@ -2,7 +2,7 @@
 
 namespace Relentless
 {
-	class SceneState;
+	struct SceneState;
 
 	struct DeferredEntityDeletionSystem
 	{

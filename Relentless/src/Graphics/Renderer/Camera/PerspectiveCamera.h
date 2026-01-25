@@ -1,14 +1,16 @@
 #pragma once
 #include "Camera.h"
 
+#include "Core/DLLExport.h"
+
 namespace Relentless
 {
-	class PerspectiveCamera : public Camera
+	class RLS_API PerspectiveCamera : public Camera
 	{
 	public:
 		PerspectiveCamera() noexcept;
-		virtual ~PerspectiveCamera() noexcept override final = default;
+		virtual ~PerspectiveCamera() noexcept override = default;
 
-		[[nodiscard]] static std::shared_ptr<PerspectiveCamera> Create() noexcept;
+		NO_DISCARD static std::shared_ptr<PerspectiveCamera> Create() noexcept;
 	};
 }

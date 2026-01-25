@@ -5,7 +5,7 @@ namespace Relentless
 	template<typename T>
 	class Broadcaster;
 
-	using CallbackID = uint32_t;
+	using CallbackID = uint32;
 	
 	template<typename ReturnValue, typename... Args>
 	class Broadcaster<ReturnValue(Args...)>
@@ -21,7 +21,7 @@ namespace Relentless
 		}
 
 		template<typename Object>
-		void Connect(Object* pObject, ReturnValue(Object::* func)(Args...))
+		void Connect(Object* pObject, ReturnValue(Object::*func)(Args...))
 		{
 			RLS_ASSERT(pObject, "Object pointer is invalid.");
 			if (!pObject)
@@ -33,11 +33,10 @@ namespace Relentless
 
 		void Detach(CallbackID id) noexcept
 		{
-			auto it = m_Callbacks.find(id);
-			RLS_ASSERT(it != m_Callbacks.end(), "Callback ID is invalid.");
-
-			if (it != m_Callbacks.end())
-				m_Callbacks.erase(it);
+			if (m_IsBroadcasting)
+				m_PendingRemovals.push_back(id);
+			else
+				m_Callbacks.erase(id);
 		}
 
 		template<typename Object>
@@ -63,6 +62,9 @@ namespace Relentless
 		template<typename T = ReturnValue>
 		auto operator()(Args... args) -> typename std::enable_if<std::is_same<T, void>::value>::type
 		{
+			m_IsBroadcasting = true;
+			m_PendingRemovals.clear();
+
 			for (auto& [id, callback] : m_Callbacks)
 			{
 				callback(std::forward<Args>(args)...);
@@ -74,6 +76,13 @@ namespace Relentless
 					callback(std::forward<Args>(args)...);
 				}
 			}
+
+			m_IsBroadcasting = false;
+
+			for (CallbackID idToRemove : m_PendingRemovals)
+				m_Callbacks.erase(idToRemove);
+			
+			m_PendingRemovals.clear();
 		}
 
 		template<typename T = ReturnValue>
@@ -98,6 +107,9 @@ namespace Relentless
 	private:
 		std::unordered_map<CallbackID, CallbackType> m_Callbacks;
 		std::unordered_map<void*, std::vector<CallbackType>> m_ObjectCallbacks;
+		std::vector<CallbackID> m_PendingRemovals;
+
+		bool m_IsBroadcasting = false;
 		CallbackID m_NextID = 0u;
 	};
 }

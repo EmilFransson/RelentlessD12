@@ -4,23 +4,23 @@ namespace Relentless
 {
 	namespace StringUtils
 	{
-		std::string ConvertFromWide(const std::wstring& input) noexcept
+		String ConvertFromWide(const WideString& input) noexcept
 		{
 			const int size = ::WideCharToMultiByte(CP_ACP, 0, input.data(), static_cast<int>(input.size()), nullptr, 0, nullptr, nullptr);
 			RLS_ASSERT(size > 0, "WideCharToMultiByte conversion failed.");
 
-			std::string result(size, '\0');
+			String result(size, '\0');
 			::WideCharToMultiByte(CP_ACP, 0, input.data(), static_cast<int>(input.size()), result.data(), size, nullptr, nullptr);
 
 			return result;
 		}
 
-		std::wstring ConvertToWide(const String& input) noexcept
+		WideString ConvertToWide(const String& input) noexcept
 		{
 			const int size = ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, input.data(), static_cast<int>(input.size()), nullptr, 0);
 			RLS_ASSERT(size > 0, "MultiByteToWideChar conversion failed.");
 
-			std::wstring result(size, L'\0');
+			WideString result(size, L'\0');
 			::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, input.data(), static_cast<int>(input.size()), result.data(), size);
 
 			return result;
@@ -42,6 +42,11 @@ namespace Relentless
 				return std::nullopt;
 
 			return std::stoi(digits);
+		}
+
+		void ReplaceCharacters(String& aInputString, char aToReplace, char aToReplaceWith) noexcept
+		{
+			std::replace(aInputString.begin(), aInputString.end(), aToReplace, aToReplaceWith);
 		}
 
 		std::vector<String> Split(const String& input, char delimiter) noexcept

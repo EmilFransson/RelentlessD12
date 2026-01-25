@@ -1,19 +1,29 @@
 #include "Application.h"
 #include "Assets/AssetManager.h"
+
+#include "Callback/Callback.h"
+
 #include "EventSystem/LayerStack.h"
 #include "EventSystem/EventBus.h"
 #include "EventSystem/MouseEvents.h"
 #include "EventSystem/KeyboardEvents.h"
-#include "Graphics/RHI/CommandContext.h"
+
 #include "Input/Mouse.h"
 #include "Input/Keyboard.h"
-#include "Time.h"
-#include "UI/UI.h"
 
+#include "Graphics/RHI/RHI.h"
+#include "Graphics/Renderer/Renderer.h"
+#include "Graphics/RHI/CommandContext.h"
+#include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/ResourceViews.h"
+#include "Graphics/RHI/Swapchain.h"
+#include "Graphics/RHI/Window.h"
+//#include "ImGui/ImguiLayer.h"
+
+#include "Time.h"
+#include "Threading/ThreadPool.h"
 
 #include "Utility/SystemPaths.h"
-#include "Callback/Callback.h"
 
 namespace Relentless
 {
@@ -54,6 +64,8 @@ namespace Relentless
 				PublishEvent<MiddleMouseButtonReleasedEvent>(Mouse::GetCursorPosition());
 			break;
 		}
+		default:
+			break;
 		}
 	}
 
@@ -107,10 +119,7 @@ namespace Relentless
 		s_Instance = this;
 	}
 
-	Application::~Application() noexcept
-	{
-		RLS_CORE_INFO("");
-	}
+	Application::~Application() noexcept = default;
 
 	GraphicsDevice* Application::GetGraphicsDevice() const noexcept
 	{
@@ -184,12 +193,9 @@ namespace Relentless
 		m_pSwapchain = RLS_NEW Swapchain(m_pGraphicsDevice, 3, m_pWindow->GetNativeWindow());
 
 		SystemPaths::Initialize();
-		AssetRegistry::RecursiveScanDirectoryForAssets(ENGINE_ASSET_DIRECTORY);
-		AssetRegistry::RecursiveScanDirectoryForAssets(EDITOR_ASSET_DIRECTORY);
-		//AssetManager::Initialize();
 
-		m_pImGuiLayer = std::make_unique<ImguiLayer>(m_pGraphicsDevice);
-		PushOverlay(m_pImGuiLayer.get());
+		//m_pImGuiLayer = std::make_unique<ImguiLayer>(m_pGraphicsDevice);
+		//PushOverlay(m_pImGuiLayer.get());
 
 		Initialize();
 		m_IsRunning = true;
@@ -218,18 +224,21 @@ namespace Relentless
 
 		{
 			PROFILE_SCOPE("Application::Update_Internal::OnImGuiRender");
-
 			CommandContext* pContext = m_pGraphicsDevice->AllocateCommandContext();
 			pContext->InsertResourceBarrier(m_pSwapchain->GetBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			pContext->Execute();
-
+			
 			CommandContext* pCommandContext = m_pGraphicsDevice->AllocateCommandContext();
-			m_pImGuiLayer->BeginFrame(m_pSwapchain->GetBackBuffer(), pCommandContext);
+			UIRenderBegin(pCommandContext);
+
+			//m_pImGuiLayer->BeginFrame(m_pSwapchain->GetBackBuffer(), pCommandContext);
 			
 			for (auto& pLayer : LayerStack::Get())
 				pLayer->OnImGuiRender();
+
+			UIRenderEnd(pCommandContext);
 			
-			m_pImGuiLayer->EndFrame(m_pSwapchain->GetBackBuffer(), pCommandContext);
+			//m_pImGuiLayer->EndFrame(pCommandContext);
 			pCommandContext->Execute();
 		}
 

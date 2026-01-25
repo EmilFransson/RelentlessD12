@@ -1,5 +1,8 @@
 #pragma once
+
+#include "Core/DLLExport.h"
 #include "Callback/Broadcaster.h"
+
 #include "Math/MathTypes.h"
 
 namespace Relentless
@@ -15,10 +18,10 @@ namespace Relentless
 		Vector2u ScreenSpacePosition = Vector2u(0u, 0u);
 	};
 
-	class Mouse
+	class RLS_API Mouse
 	{
 	public:
-		static NO_DISCARD PointerInfo CreatePointerInfo() noexcept;
+		NO_DISCARD static PointerInfo CreatePointerInfo() noexcept;
 		static void OnMove(const Vector2u& newCoords) noexcept;
 		static void OnRawDelta(const Vector2i& deltaCoords) noexcept;
 		static void Update() noexcept;
@@ -28,14 +31,14 @@ namespace Relentless
 		static void FreeCursor() noexcept;
 		static void ShowCursor() noexcept;
 		static void HideCursor() noexcept;
-		static NO_DISCARD bool IsCursorConfined() noexcept;
-		static NO_DISCARD bool IsButtonDown(const RLS_Button button) noexcept;
-		static NO_DISCARD bool IsButtonPressed(const RLS_Button button) noexcept;
-		static NO_DISCARD bool IsButtonReleased(const RLS_Button button) noexcept;
-		static NO_DISCARD const Vector2u& GetCursorPosition() noexcept;
-		static NO_DISCARD Vector2u GetCursorScreenPosition() noexcept;
-		static NO_DISCARD const Vector2i& GetDeltaCoordinates() noexcept;
-		static NO_DISCARD RLS_Button KeyCodeToButton(uint32 keyCode) noexcept;
+		NO_DISCARD static bool IsCursorConfined() noexcept;
+		NO_DISCARD static bool IsButtonDown(const RLS_Button button) noexcept;
+		NO_DISCARD static bool IsButtonPressed(const RLS_Button button) noexcept;
+		NO_DISCARD static bool IsButtonReleased(const RLS_Button button) noexcept;
+		NO_DISCARD static const Vector2u& GetCursorPosition() noexcept;
+		NO_DISCARD static Vector2u GetCursorScreenPosition() noexcept;
+		NO_DISCARD static const Vector2i& GetDeltaCoordinates() noexcept;
+		NO_DISCARD static RLS_Button KeyCodeToButton(uint32 keyCode) noexcept;
 
 		inline static Broadcaster<void(const Vector2i& delta)> OnRawMove;
 	private:

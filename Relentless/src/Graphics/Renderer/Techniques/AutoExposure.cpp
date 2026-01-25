@@ -15,7 +15,7 @@ namespace Relentless
 		m_pAverageLuminancePSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "AverageLuminance", "cs_main");
 	}
 
-	void AutoExposure::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, float aMinLogLuminance, float aMinEV100, float aMaxEV100, float aExposureCompensation) noexcept
+	void AutoExposure::Render(CommandContext& commandContext, MAYBE_UNUSED const RenderView& renderView, SceneTextures& sceneTextures, float aMinLogLuminance, float aMinEV100, float aMaxEV100, float aExposureCompensation) noexcept
 	{
 		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
 

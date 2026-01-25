@@ -1,14 +1,19 @@
 ﻿#pragma once
-#include <Relentless.h>
 #include "EntityOutlinerPolicies.h"
 
-#include "../../../Core/EntityFolders.h"
-#include "../../OutlinerTableRow.h"
+#include "Subsystem/EntityFoldersSubsystem.h"
+
+#include "UI/OutlinerTableRow.h"
+#include "UI/Views/TreeView.h"
+#include "UI/Widgets/IWidget.h"
 
 namespace Relentless
 {
+	class Button;
 	class Editor;
 	enum class ESelectionState : uint8;
+	class HorizontalBox;
+	class VerticalBox;
 
 	class EntityOutlinerView : public IWidget<EntityOutlinerView>
 	{
@@ -103,7 +108,7 @@ namespace Relentless
 
 		void UpdateEntityInfoBorder() noexcept;
 	private:
-		friend class EntityFoldersManager;
+		friend class EntityFoldersSubsystem;
 
 		std::vector<Ref<OutlinerListItem>> m_ListItems;
 		Ref<TreeView<Ref<OutlinerListItem>>> m_pOutlinerTreeView = nullptr;
@@ -114,8 +119,8 @@ namespace Relentless
 		std::unordered_map<UUID, Ref<OutlinerListItem>> m_FolderToItemMap;
 		std::unordered_set<UUID> m_SelectedFolders;
 
-		Ref<VerticalBoxEx> m_pMainBox = nullptr;
-		Ref<HorizontalBoxEx> m_pOutlinerListBox = nullptr;
+		Ref<VerticalBox> m_pMainBox = nullptr;
+		Ref<HorizontalBox> m_pOutlinerListBox = nullptr;
 
 		UniquePtr<TextFilterExpressionEvaluator> m_pFilter = nullptr;
 		UniquePtr<EntityOutlinerPolicies> m_pPolicies = nullptr;

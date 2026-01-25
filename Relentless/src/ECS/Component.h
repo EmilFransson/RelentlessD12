@@ -1,15 +1,20 @@
 #pragma once
 #include "Assets/AssetMeta.h"
-#include "ECSCommon.h"
-#include "Math/MathTypes.h"
-#include "Utility/Common.h"
+
+#include "Core/DLLExport.h"
 #include "Core/Folder.h"
+
+#include "ECSCommon.h"
+
+#include "Math/MathTypes.h"
+
+#include "Utility/Common.h"
 
 namespace Relentless
 {
 	class Scene;
 
-	struct TransformComponent
+	struct RLS_API TransformComponent
 	{
 		void AddWorldOffset(const Vector3& aDeltaLocation) noexcept;
 		void AddWorldRotation(const Quaternion& aDeltaRotation) noexcept;
@@ -66,7 +71,7 @@ namespace Relentless
 			: Name{name}
 		{ }
 
-		std::string Name;
+		String Name;
 	};
 
 	struct MeshFilterComponent
@@ -100,10 +105,10 @@ namespace Relentless
 
 		}
 
-		UUID UuId;
+		UUID UuId = NULL_UUID;
 	};
 
-	struct LightBaseComponent
+	struct RLS_API LightBaseComponent
 	{
 	public:
 		NO_DISCARD const Color& GetColor() const noexcept;
@@ -225,20 +230,20 @@ namespace Relentless
 
 	private:
 		float AttenuationRadius = 10.0f;
-		float InnerConeAngle = 0.0f;
-		float OuterConeAngle = Math::DegToRad(44.0f);
+		float InnerConeAngle	= 0.0f;
+		float OuterConeAngle	= Math::DegToRad(44.0f);
 	};
 
 	struct CameraComponent
 	{
-		Matrix WorldToView = Matrix::Identity;
-		Matrix ViewToClip = Matrix::Identity;
-		float FieldOfViewDegrees = 60.0f;
-		float ClippingPlaneNear = 0.1f;
-		float ClippingPlaneFar = 1000.0f;
-		bool IsMainCamera = false;
+		Matrix WorldToView			= Matrix::Identity;
+		Matrix ViewToClip			= Matrix::Identity;
+		float FieldOfViewDegrees	= 60.0f;
+		float ClippingPlaneNear		= 0.1f;
+		float ClippingPlaneFar		= 1000.0f;
+		bool IsMainCamera			= false;
 	};
-
+	
 	struct RootComponent
 	{
 		//ID
@@ -264,11 +269,6 @@ namespace Relentless
 	};
 
 	struct HiddenInGameComponent
-	{
-		//ID
-	};
-
-	struct RotatorComponent
 	{
 		//ID
 	};

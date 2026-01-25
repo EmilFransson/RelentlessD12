@@ -8,9 +8,9 @@ namespace Relentless
 	{
 	public:
 		explicit KeyPressedEvent(RLS_Key key) noexcept : key{key}{}
-		virtual ~KeyPressedEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const { return EventType::KeyPressedEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const { return EventCategory::KeyboardEventCategory; }
+		virtual ~KeyPressedEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::KeyPressedEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::KeyboardEventCategory; }
 	public:
 		RLS_Key key;
 	};
@@ -19,9 +19,9 @@ namespace Relentless
 	{
 	public:
 		explicit KeyReleasedEvent(RLS_Key key) noexcept : key{ key } {}
-		virtual ~KeyReleasedEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const { return EventType::KeyReleasedEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const { return EventCategory::KeyboardEventCategory; }
+		virtual ~KeyReleasedEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::KeyReleasedEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::KeyboardEventCategory; }
 	public:
 		RLS_Key key;
 	};

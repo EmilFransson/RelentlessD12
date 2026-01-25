@@ -1,0 +1,103 @@
+#include "EditorSceneBridgeSubsystem.h"
+
+#include "../Core/Editor.h"
+#include "EntityFoldersSubsystem.h"
+#include "SelectionSubsystem.h"
+
+namespace Relentless
+{
+	bool EditorSceneBridgeSubsystem::ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept
+	{
+		return dynamic_cast<Editor*>(aSystemManager) != nullptr;
+	}
+
+	bool EditorSceneBridgeSubsystem::OnLoad(ISystemManager* aSystemManager) noexcept
+	{
+		Editor* pEditor = static_cast<Editor*>(aSystemManager);
+		pEditor->OnSceneChanged.Connect(this, &EditorSceneBridgeSubsystem::OnSceneChanged);
+		pEditor->GetSubsystem<SelectionSubsystem>()->OnSelectionChanged.Connect(this, &EditorSceneBridgeSubsystem::OnEntitySelectionChanged);
+
+		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
+		pFoldersSubsystem->OnEntityFolderMoved.Connect(this, &EditorSceneBridgeSubsystem::OnEntityFolderMoved);
+		pFoldersSubsystem->OnEntityFolderDelete.Connect(this, &EditorSceneBridgeSubsystem::OnEntityFolderDelete);
+
+		return true;
+	}
+
+	void EditorSceneBridgeSubsystem::OnEntityAttached(entity aChildEntity, MAYBE_UNUSED entity aParentEntity) noexcept
+	{
+		if (!m_pBridgedScene)
+			return;
+
+		EntityManager& entityManager = m_pBridgedScene->GetEntityManager();
+
+		if (entityManager.Has<FolderComponent>(aChildEntity))
+			entityManager.Remove<FolderComponent>(aChildEntity);
+	}
+
+	void EditorSceneBridgeSubsystem::OnEntityDestroy(entity aEntity) noexcept
+	{
+		SelectionSubsystem* pSelection = Editor::Get()->GetSubsystem<SelectionSubsystem>();
+
+		if (pSelection->IsEntitySelected(aEntity))
+			pSelection->DeselectEntity(aEntity);
+	}
+
+	void EditorSceneBridgeSubsystem::OnEntityFolderDelete(EntityFolder* aFolder) noexcept
+	{
+		if (!m_pBridgedScene)
+			return;
+
+		m_pBridgedScene->GetEntityManager().Collect<FolderComponent>().Do([&](entity aEntity, FolderComponent& fc)
+			{
+				if (fc.Folder.GetPath() == aFolder->GetPath())
+					m_pBridgedScene->GetEntityManager().Remove<FolderComponent>(aEntity);
+			});
+	}
+
+	void EditorSceneBridgeSubsystem::OnEntityFolderMoved(MAYBE_UNUSED EntityFolder* aMovedFolder, MAYBE_UNUSED EntityFolder* aMovedFolderParent, const String& aOldPath, const String& aNewPath) noexcept
+	{
+		if (!m_pBridgedScene)
+			return;
+
+		m_pBridgedScene->GetEntityManager().Collect<FolderComponent>().Do([&](FolderComponent& fc)
+			{
+				const String& path = fc.Folder.GetPath();
+
+				if (path == aOldPath)
+					fc.Folder = Folder(fc.Folder.GetRoot(), aNewPath);
+				else if (path.size() > aOldPath.size() && path.compare(0, aOldPath.size(), aOldPath) == 0 && path[aOldPath.size()] == '/')
+				{
+					const String suffix = path.substr(aOldPath.size());
+					fc.Folder = Folder(fc.Folder.GetRoot(), aNewPath + suffix);
+				}
+			});
+	}
+
+	void EditorSceneBridgeSubsystem::OnEntitySelectionChanged(entity aEntity, ESelectionState aSelectionState) noexcept
+	{
+		if (!m_pBridgedScene)
+			return;
+
+		if (aSelectionState == ESelectionState::Selected)
+			m_pBridgedScene->GetEntityManager().AddOrReplace<SelectedInEditorComponent>(aEntity);
+		else
+			m_pBridgedScene->GetEntityManager().Remove<SelectedInEditorComponent>(aEntity);
+	}
+
+	void EditorSceneBridgeSubsystem::OnSceneChanged(Scene* aNewScene) noexcept
+	{
+		if (m_pBridgedScene)
+		{
+			m_pBridgedScene->OnEntityDestroy.Detach(this);
+			m_pBridgedScene->OnEntityAttached.Detach(this);
+		}
+
+		m_pBridgedScene = aNewScene;
+		if (!m_pBridgedScene)
+			return;
+
+		m_pBridgedScene->OnEntityDestroy.Connect(this, &EditorSceneBridgeSubsystem::OnEntityDestroy);
+		m_pBridgedScene->OnEntityAttached.Connect(this, &EditorSceneBridgeSubsystem::OnEntityAttached);
+	}
+}

@@ -48,7 +48,7 @@ namespace Relentless
 		}
 	}
 
-	void Outlines::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<Texture> pEntityIDTexture) noexcept
+	void Outlines::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept
 	{
 		const uint32 width = sceneTextures.pColorTarget->GetWidth();
 		const uint32 height = sceneTextures.pColorTarget->GetHeight();

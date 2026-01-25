@@ -1,9 +1,11 @@
 ﻿#pragma once
-
-#include <Relentless.h>
-
-#include "../Core/EntityFolders.h"
 #include "DragDrop/OutlinerDragDropOperation.h"
+
+#include "Subsystem/EntityFoldersSubsystem.h"
+
+#include "Views/TreeView.h"
+
+#include "Widgets/ITableRow.h"
 
 namespace Relentless
 {
@@ -39,6 +41,11 @@ namespace Relentless
 		bool IsExpanded = false;
 		TreeView<Ref<OutlinerListItem>>* pTreeView = nullptr;
 	};
+
+	class Button;
+	class EditableTextBox;
+	class Label;
+	class WidgetSwitcher;
 
 	class OutlinerTableRow : public ITableRow
 	{

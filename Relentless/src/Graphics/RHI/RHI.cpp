@@ -83,7 +83,7 @@ namespace Relentless
 			return formatInfo;
 		}
 
-		const uint32 GetFormatByteSize(ResourceFormat format, uint32 width, uint32 height, uint32 depth) noexcept
+		uint32 GetFormatByteSize(ResourceFormat format, uint32 width, uint32 height, uint32 depth) noexcept
 		{
 			const FormatInfo& info = GetFormatInfo(format);
 			if (info.BlockSize > 0)

@@ -1,14 +1,18 @@
 #pragma once
-#include <Relentless.h>
 #include "Customizations/IDetailCustomization.h"
 #include "DetailNode.h"
 #include "IDetailsView.h"
 
 namespace Relentless
 {
+	class Button;
 	class Editor;
 	class EntityDetailLayoutBuilder;
 	enum class ESelectionState : uint8;
+	template<typename T>
+	class TreeView;
+	class HorizontalBox;
+	class VerticalBox;
 
 	class EntityDetailsView : public IDetailsView
 	{
@@ -23,7 +27,7 @@ namespace Relentless
 
 		void OnRender() noexcept override;
 	private:
-		void OnExpandCollapseButtonClicked(Button* aButton, Ref<DetailNode> aItem) noexcept;
+		void OnExpandCollapseButtonClicked(MAYBE_UNUSED Button* aButton, Ref<DetailNode> aItem) noexcept;
 		
 		NO_DISCARD Ref<ITableRow> OnGenerateRow(const Ref<DetailNode>& aItem) noexcept;
 		void OnGetChildren(const Ref<DetailNode>& aParent, std::vector<Ref<DetailNode>>& outChildren) noexcept;
@@ -36,8 +40,8 @@ namespace Relentless
 		std::vector<entity> m_InspectedEntities;
 
 		Ref<TreeView<Ref<DetailNode>>> m_pEntityDetailsTreeView = nullptr;
-		UniquePtr<EntityDetailLayoutBuilder> m_pLayoutBuilder = nullptr;
-		Ref<VerticalBoxEx> m_pMainBox = nullptr;
-		Ref<HorizontalBoxEx> m_pDetailsListBox = nullptr;
+		UniquePtr<EntityDetailLayoutBuilder> m_pLayoutBuilder;
+		Ref<VerticalBox> m_pMainBox = nullptr;
+		Ref<HorizontalBox> m_pDetailsListBox = nullptr;
 	};
 }

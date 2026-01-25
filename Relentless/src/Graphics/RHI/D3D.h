@@ -8,7 +8,7 @@ namespace Relentless
 
 	namespace D3D
 	{
-		inline [[nodiscard]] std::string CommandListTypeToString(D3D12_COMMAND_LIST_TYPE type) noexcept
+		NO_DISCARD inline std::string CommandListTypeToString(D3D12_COMMAND_LIST_TYPE type) noexcept
 		{
 			switch (type)
 			{
@@ -228,7 +228,7 @@ namespace Relentless
 			DXGI_FORMAT_B8G8R8A8_UNORM_SRGB
 		};
 
-		constexpr [[nodiscard]] ResourceFormat ConvertFormat(DXGI_FORMAT format) noexcept
+		NO_DISCARD constexpr ResourceFormat ConvertFormat(DXGI_FORMAT format) noexcept
 		{
 			switch (format)
 			{
@@ -306,7 +306,7 @@ namespace Relentless
 			}
 		}
 
-		constexpr [[nodiscard]] DXGI_FORMAT ConvertFormat(ResourceFormat format) noexcept
+		NO_DISCARD constexpr DXGI_FORMAT ConvertFormat(ResourceFormat format) noexcept
 		{
 			return gDXGIFormatMap[(uint32_t)format];
 		}

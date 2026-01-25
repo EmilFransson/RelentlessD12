@@ -1,4 +1,8 @@
 #pragma once
+#include <functional>
+#include <memory>
+#include <type_traits>
+#include <utility>
 
 namespace Relentless
 {
@@ -10,102 +14,60 @@ namespace Relentless
 	{
 	public:
 		Callback() noexcept = default;
-		
-		template<typename Func, typename = typename std::enable_if<
-			!std::is_same<typename std::decay<Func>::type, Callback>::value>::type>
+
+		template<typename Func, typename = std::enable_if_t<!std::is_same_v<std::decay_t<Func>, Callback>>>
 		Callback(Func&& func)
-			: m_CallbackFunc(std::make_shared<std::function<RetVal(Args...)>>(std::forward<Func>(func))) {
+			: m_CallbackFunc(std::make_shared<std::function<RetVal(Args...)>>(std::forward<Func>(func)))
+		{
 		}
 
-		template<typename Func, typename = typename std::enable_if<
-			!std::is_same<typename std::decay<Func>::type, Callback>::value>::type>
+		template<typename Func,
+			typename = std::enable_if_t<!std::is_same_v<std::decay_t<Func>, Callback>>>
 		Callback& operator=(Func&& func)
 		{
 			m_CallbackFunc = std::make_shared<std::function<RetVal(Args...)>>(std::forward<Func>(func));
-
 			return *this;
 		}
 
-		Callback(Callback&& other) noexcept
-			: m_CallbackFunc(std::move(other.m_CallbackFunc))
-		{
-			other.m_CallbackFunc = nullptr;
-		}
+		Callback(const Callback&) noexcept = default;
+		Callback(Callback&&) noexcept = default;
+		Callback& operator=(const Callback&) noexcept = default;
+		Callback& operator=(Callback&&) noexcept = default;
 
-		Callback& operator=(Callback&& other) noexcept 
+		RetVal operator()(Args... args) const
 		{
-			if (this != &other) 
+			if (!m_CallbackFunc)
 			{
-				m_CallbackFunc = std::move(other.m_CallbackFunc);
-				other.m_CallbackFunc = nullptr;
+				RLS_ASSERT(false, "[Callback]: No callback function set.");
+				if constexpr (!std::is_void_v<RetVal>) return {};
+				else return;
 			}
-			return *this;
-		}
 
-		Callback(Callback& other) noexcept
-			: m_CallbackFunc(other.m_CallbackFunc)
-		{
-
-		}
-
-		Callback& operator=(Callback& other) noexcept
-		{
-			if (this != &other)
-			{
-				m_CallbackFunc = other.m_CallbackFunc;
-			}
-			return *this;
-		}
-
-		template<typename R = RetVal>
-		typename std::enable_if<!std::is_void<R>::value, R>::type
-		operator()(Args... args) const
-		{
-			if (m_CallbackFunc)
-				return (*m_CallbackFunc)(std::forward<Args>(args)...);
-			else
-			{
-				RLS_ASSERT(false, "[Callback]: No callback function set.")
-				return {};
-			}
-		}
-
-		Callback& operator=(const Callback& other) 
-		{
-			if (this != &other) 
-			{
-				if (other.m_CallbackFunc) 
-					m_CallbackFunc = std::make_shared<std::function<RetVal(Args...)>>(*other.m_CallbackFunc);
-				else 
-					m_CallbackFunc.reset();
-			}
-			return *this;
-		}
-
-		template<typename R = RetVal>
-		typename std::enable_if<std::is_void<R>::value, R>::type
-		operator()(Args... args) const
-		{
-			if (m_CallbackFunc)
+			if constexpr (std::is_void_v<RetVal>)
 				(*m_CallbackFunc)(std::forward<Args>(args)...);
 			else
-			{
-				RLS_ASSERT(false, "[Callback]: No callback function set.")
-			}
+				return (*m_CallbackFunc)(std::forward<Args>(args)...);
 		}
 
-		[[nodiscard]] bool IsSet() const noexcept { return m_CallbackFunc != nullptr; }
-		void Clear() noexcept { m_CallbackFunc = nullptr; }
-		
-		template<typename R = RetVal>
-		typename std::enable_if<std::is_void<R>::value, void>::type
-		ExecuteIfSet(Args... args) const
+		template<typename InstanceType>
+		static Callback Bind(InstanceType* instance, RetVal(InstanceType::* method)(Args...))
+		{
+			return Callback([instance, method](Args... args) -> RetVal
+				{
+					return (instance->*method)(std::forward<Args>(args)...);
+				});
+		}
+
+		[[nodiscard]] bool IsSet() const noexcept { return (bool)m_CallbackFunc; }
+		void Clear() noexcept { m_CallbackFunc.reset(); }
+
+		void ExecuteIfSet(Args... args) const
 		{
 			if (m_CallbackFunc)
 				(*m_CallbackFunc)(std::forward<Args>(args)...);
 		}
 
 	private:
-		std::shared_ptr<std::function<RetVal(Args...)>> m_CallbackFunc = nullptr;
+		std::shared_ptr<std::function<RetVal(Args...)>> m_CallbackFunc;
 	};
 }

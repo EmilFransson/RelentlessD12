@@ -1,17 +1,20 @@
 #include "Window.h"
-#include "../../../vendor/includes/ImGUI/imgui.h"
-#include "../../../vendor/includes/ImGUI/backends/imgui_impl_win32.h"
-
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+//#include <ImGUI/imgui.h>
+//#include <ImGUI/backends/imgui_impl_win32.h>
+//
+//extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace Relentless
 {
+	void WindowEx::SetWndProcHook(WndProcHook aHook) noexcept
+	{
+		s_WndProcHook = aHook;
+	}
+
 	WindowEx::WindowEx(uint32 width, uint32 height) noexcept
 	{
 		RLS_ASSERT(width > 0u, "[Window::Window] Invalid Window Width.");
 		RLS_ASSERT(height > 0u, "[Window::Window] Invalid Window Height.");
-
-		ImGui_ImplWin32_EnableDpiAwareness();
 
 		WNDCLASSEX wc{};
 		wc.cbSize = sizeof(WNDCLASSEX);
@@ -147,8 +150,11 @@ namespace Relentless
 		}
 		}
 
-		if (::ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+		if (s_WndProcHook && s_WndProcHook(hWnd, msg, wParam, lParam))
 			return true;
+
+		//if (::ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+		//	return true;
 
 		switch (msg)
 		{
@@ -283,7 +289,7 @@ namespace Relentless
 		case WM_INPUT:
 		{
 			UINT size = 0u;
-			if (::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &size, sizeof(RAWINPUTHEADER)) == -1)
+			if (::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &size, sizeof(RAWINPUTHEADER)) == std::numeric_limits<UINT>::max())
 				break;
 
 			std::vector<char> rawBuffer;

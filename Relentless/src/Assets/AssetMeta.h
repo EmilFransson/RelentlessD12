@@ -1,49 +1,36 @@
 #pragma once
+#include "Core/DLLExport.h"
 #include "Utility/Rules.h"
 
-#include <StaticTypeInfo/type_index.h>
+#include <Core/StaticTypeInfo.h>
 
 namespace Relentless
 {
 	inline constexpr char ASSET_EXTENSION[] = ".rasset";
 	inline constexpr uint32_t NULL_INDEX = std::numeric_limits<uint32_t>::max();
-	inline constexpr UUID NULL_UUID = UUID{ 0 };
-	inline constexpr uint32_t RASSET_SIGNATURE = 'R' << 24 | 'A' << 16 | 'S' << 8 | 'S';
+	inline constexpr UUID NULL_UUID = UUID{0, 0, 0, {0}};
 
-	using namespace static_type_info;
-	using TypeIndex = static_type_info::TypeIndex;
+	inline static constexpr uint32 ASSET_FILE_MAGIC_NUMBER = 0x524C5354;
 
-	enum class AssetType : uint8_t 
+	#pragma pack(push, 1)
+	struct AssetFileContent
 	{
-		Undefined = 0u,
-		Material,
-		Texture2D,
-		Mesh,
-		Scene,
-		Count
+		uint32 Magic					= ASSET_FILE_MAGIC_NUMBER;
+		uint32 Version					= 1u;
+		uint32 Flags					= 0u;
+		uint64 BulkDataSize				= 0u;
+		uint64 ModificationDateAndTime	= 0u;
+		UUID PersistentID				= NULL_UUID;
+		UUID AssetUUID					= NULL_UUID;
+		char SourcePath[260]			= { '\0' };
 	};
+	#pragma pack(pop)
 
-	inline constexpr AssetType NULL_ASSET_TYPE = AssetType::Undefined;
-	
-#pragma pack(push, 1)
-	struct RassetHeader_1
+	class IArchive;
+
+	struct RLS_API AssetHandle
 	{
-		const uint32_t Signature = RASSET_SIGNATURE;
-		uint8_t Version{1u};
-		AssetType AssetType = AssetType::Undefined;
-		UUID UUID = NULL_UUID;
-		char Name[Rules::Limits::ASSET_NAME_LENGTH] = "\0";
-		char SourcePath[Rules::Limits::ASSET_SOURCE_PATH_LENGTH] = "\0";
-		uint64_t ModificationDateAndTime = 0u;
-		uint16_t TagsByteSize = 0u;
-	};
-#pragma pack(pop)
-
-	using LatestRassetHeaderVersion = RassetHeader_1;
-
-	struct AssetHandle
-	{
-		AssetHandle(const TypeIndex& aTypeIndex = {}, const UUID& aUUID = NULL_UUID, uint32_t aSparseIndex = NULL_INDEX) noexcept;
+		AssetHandle(const TypeIndex& aTypeIndex = {}, const UUID& aUUID = NULL_UUID) noexcept;
 		~AssetHandle() noexcept;
 
 		AssetHandle(const AssetHandle& otherHandle) noexcept;
@@ -51,7 +38,7 @@ namespace Relentless
 
 		bool operator==(const AssetHandle& other) const noexcept
 		{
-			return Uuid == other.Uuid && Index == other.Index;
+			return Uuid == other.Uuid;
 		}
 
 		bool operator!=(const AssetHandle& other) const noexcept
@@ -59,25 +46,28 @@ namespace Relentless
 			return !(*this == other);
 		}
 
-		[[nodiscard]] inline bool IsValid() const noexcept
+		NO_DISCARD inline bool IsValid() const noexcept
 		{
-			return Uuid != NULL_UUID && Index != NULL_INDEX;
+			return Uuid != NULL_UUID;
 		}
 
 		void Invalidate() noexcept
 		{
 			Type = {};
 			Uuid = NULL_UUID;
-			Index = NULL_INDEX;
 		}
 
-		TypeIndex Type;
-		UUID Uuid;
-		uint32_t Index;
+		bool Serialize(IArchive& archive);
+
+		TypeIndex Type = INVALID_TYPE::StaticType();
+		UUID Uuid = NULL_UUID;
 
 		static const AssetHandle INVALID;
+
+	private:
+		NO_DISCARD bool OnLoad(IArchive& archive) noexcept;
+		NO_DISCARD bool OnSave(IArchive& archive) noexcept;
 	};
 
-	inline const AssetHandle NULL_HANDLE = AssetHandle(TypeIndex{}, NULL_UUID, NULL_INDEX);
-	inline const AssetHandle AssetHandle::INVALID{TypeIndex{}, NULL_UUID, NULL_INDEX };
+	RLS_API extern const AssetHandle NULL_HANDLE;
 }

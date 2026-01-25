@@ -1,10 +1,13 @@
 #include "ViewportPanel.h"
-#include "../Core/Editor.h"
+#include <Core/Editor.h>
+
+#include <UI/Widgets/Button.h>
 
 namespace Relentless
 {
-	ViewportPanel::ViewportPanel(const char* pName, ImGuiWindowFlags flags, uint32 renderViewIndex) noexcept
-		: PanelBase(pName, flags), m_RenderViewIndex{renderViewIndex}
+	ViewportPanel::ViewportPanel(uint32 aRenderViewIndex) noexcept
+		:PanelBase(std::format("Scene Viewport {}", aRenderViewIndex + 1).c_str(), ImGuiWindowFlags_None),
+		 m_RenderViewIndex{aRenderViewIndex}
 	{
 		m_pCamera = PerspectiveCamera::Create();
 
@@ -26,14 +29,12 @@ namespace Relentless
 		OnGainedFocus.Connect(this, &ViewportPanel::OnFocusGained);
 		OnLostFocus.Connect(this, &ViewportPanel::OnFocusLost);
 
-		m_ToolbarID = std::format("{}_Toolbar_{}", pName, renderViewIndex + 1);
+		Ref<VerticalBox> pRoot = new VerticalBox();
 
-		Ref<VerticalBoxEx> pRoot = new VerticalBoxEx();
+		HorizontalBox* pTopBox = pRoot->AddWidget(new HorizontalBox());
 
-		HorizontalBoxEx* pTopBox = pRoot->AddWidget(new HorizontalBoxEx());
-
-		HorizontalBoxEx* pTopLeftBox = pTopBox->AddWidget(new HorizontalBoxEx());
-		HorizontalBoxEx* pTopRightBox = pTopBox->AddWidget(new HorizontalBoxEx());
+		HorizontalBox* pTopLeftBox = pTopBox->AddWidget(new HorizontalBox());
+		HorizontalBox* pTopRightBox = pTopBox->AddWidget(new HorizontalBox());
 
 		pTopLeftBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Left);
 		pTopLeftBox->AddWidget(new Button("Lefty", { 0.0f, 40.0f }));
@@ -41,7 +42,7 @@ namespace Relentless
 		pTopRightBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);
 		pTopRightBox->AddWidget(new Button("Test", {0.0f, 40.0f}));
 
-		m_pCanvasHBox = pRoot->AddWidget(new HorizontalBoxEx());
+		m_pCanvasHBox = pRoot->AddWidget(new HorizontalBox());
 		m_pCanvasHBox->SetSizePolicy(ESizePolicy::Stretch);
 
 		m_pCanvas = m_pCanvasHBox->AddWidget(new Canvas());
@@ -100,6 +101,7 @@ namespace Relentless
 		//}
 
 		SetRoot(pRoot);
+		SetPadding(Vector2(2.0f, 0.0f));
 	}
 
 	std::shared_ptr<PerspectiveCamera> ViewportPanel::GetCamera() const noexcept
@@ -389,10 +391,13 @@ namespace Relentless
 				}
 				break;
 			}
+			default:
+				break;
 			}
-
 			break;
 		}
+		default:
+			break;
 		}
 
 		return true;
@@ -420,6 +425,8 @@ namespace Relentless
 			SetState(EViewportState::Default);
 			break;
 		}
+		default:
+			break;
 		}
 
 		return true;
@@ -460,6 +467,8 @@ namespace Relentless
 		}
 		case EViewportState::NavigatingScene:
 			SetState(EViewportState::Default);
+			break;
+		default:
 			break;
 		}
 
@@ -616,18 +625,6 @@ namespace Relentless
 
 		m_ViewportSize = Vector2i((int32)width, (int32)height);
 		m_pCameraController->SetViewport(FloatRect(0.0f, 0.0f, width, height));
-	}
-
-	float ViewportPanel::OnEV100Requested() const noexcept
-	{
-		auto pEditor = Editor::Get();
-		return Math::Log2f(1.0f/*pEditor->GetRenderView(m_RenderViewIndex).Exposure*/);
-	}
-
-	void ViewportPanel::OnEV100Changed(float ev100) noexcept
-	{
-		auto pEditor = Editor::Get();
-		pEditor->GetRenderView(m_RenderViewIndex)./*Exposure*/MinLogLuminance = Math::Pow2f(ev100);
 	}
 
 	void ViewportPanel::OnCameraFarViewPlaneChanged(float farPlane) noexcept

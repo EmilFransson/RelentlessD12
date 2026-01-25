@@ -1,6 +1,8 @@
 #pragma once
 #include <Relentless.h>
 
+#include "../../UI/Meta/ThumbnailInfo.h"
+
 namespace Relentless
 {
 	class IAsset;
@@ -11,13 +13,18 @@ namespace Relentless
 		IAssetDefinition() noexcept = default;
 		virtual ~IAssetDefinition() noexcept = default;
 
-		virtual NO_DISCARD std::vector<String> GetAssetCategories() const noexcept { return {"Misc"}; }
-		virtual NO_DISCARD String GetAssetDisplayName() const noexcept { return "Asset"; }
-		virtual NO_DISCARD Color GetAssetColor() const noexcept { return Colors::White; }
-		virtual NO_DISCARD TypeIndex GetSupportedAssetType() const noexcept { return TypeIndex{}; }
-		virtual NO_DISCARD bool OpenAssets(const std::vector<Ref<IAsset>>& someAssets) noexcept { return false; };
-		virtual NO_DISCARD bool SupportsCreateNew() const noexcept { return false; }
-		virtual NO_DISCARD bool SupportsAsset(IAsset* aAsset) const noexcept { return false; }
-		virtual NO_DISCARD bool SupportsAsset(AssetData* aAssetData) const noexcept { return false; }
+		NO_DISCARD virtual std::vector<String> GetAssetCategories() const noexcept;
+		NO_DISCARD virtual String GetAssetDisplayName() const noexcept;
+		NO_DISCARD virtual Color GetAssetColor() const noexcept;
+		NO_DISCARD virtual TypeIndex GetSupportedAssetType() const noexcept;
+		NO_DISCARD virtual Ref<ThumbnailInfo> GetThumbnailInfo(const AssetData& aAssetData) const noexcept;
+
+		NO_DISCARD virtual bool OpenAssets(const std::vector<Ref<IAsset>>& someAssets) noexcept;
+		
+		virtual bool RequestGenerateThumbnail(const AssetData& aAssetData, const Callback<void(const Ref<Texture2D>&)>& aOnThumbnailGeneratedCallback) noexcept;
+		
+		NO_DISCARD virtual bool SupportsCreateNew() const noexcept;
+		NO_DISCARD virtual bool SupportsAsset(IAsset* aAsset) const noexcept;
+		NO_DISCARD virtual bool SupportsAsset(AssetData* aAssetData) const noexcept;
 	};
 }

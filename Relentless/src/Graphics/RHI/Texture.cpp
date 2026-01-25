@@ -11,6 +11,8 @@ namespace Relentless
 	{
 	}
 
+	Texture::~Texture() noexcept = default;
+
 	uint32 Texture::GetWidth() const noexcept
 	{
 		return m_Desc.Width;

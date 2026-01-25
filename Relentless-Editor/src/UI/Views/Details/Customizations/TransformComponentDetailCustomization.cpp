@@ -1,10 +1,13 @@
 ﻿#include "TransformComponentDetailCustomization.h"
 
-#include "../../../../Core/Selection.h"
-#include "../LayoutBuilders/EntityDetailLayoutBuilder.h"
-#include "../TableRows/EntityDetailRow.h"
+#include "Core/Editor.h"
 
-#include "../../../../Core/Editor.h"
+#include "UI/Widgets/Button.h"
+#include "UI/Views/Details/LayoutBuilders/EntityDetailLayoutBuilder.h"
+#include "UI/Views/Details/TableRows/EntityDetailRow.h"
+#include "UI/Widgets/FloatDrag.h"
+#include "UI/Widgets/FloatEntryBox.h"
+#include "UI/Widgets/ITableRow.h"
 
 namespace Relentless
 {
@@ -278,8 +281,6 @@ namespace Relentless
 	void TransformComponentDetailCustomization::OnLocationChanged(const Vector3& aNewLocation) noexcept
 	{
 		Scene& scene = m_pBuilder->GetScene();
-		EntityManager& entityManager = scene.GetEntityManager();
-
 		ScopedSuspend suspend(m_SuspendNotifications);
 
 		EditComponentData<TransformComponent>(scene, [&](entity aEntity, TransformComponent& aTC)
@@ -412,16 +413,16 @@ namespace Relentless
 		m_pRevertScaleButton->SetIsVisible(!IsScaleDefaultForInspected());
 	}
 
-	Ref<ITableRow> TransformComponentDetailCustomization::OnRequestLocationRow(const ItemInfo& aItemInfo) noexcept
+	Ref<ITableRow> TransformComponentDetailCustomization::OnRequestLocationRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept
 	{
 		const bool isMultiSelectionActive = GetInspectedEntities().size() > 1u;
 
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(110.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(110.0f, 32.0f), true);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
@@ -436,9 +437,9 @@ namespace Relentless
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pDragBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pDragBox = new HorizontalBox();
 			pDragBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pDragBox->SetSpacing(1.0f);
 
@@ -524,7 +525,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertLocationButton = pBox->AddWidget(AddRevertButtonWidget([this](const Vector3& aValue) { OnLocationChanged(aValue); }, DEFAULT_LOCATION_ROTATION_VALUE, !IsLocationDefaultForInspected()));
 
 			pRow->SetColumnWidget(2, pBox);
@@ -533,16 +534,16 @@ namespace Relentless
 		return pRow;
 	}
 
-	Ref<ITableRow> TransformComponentDetailCustomization::OnRequestRotationRow(const ItemInfo& aItemInfo) noexcept
+	Ref<ITableRow> TransformComponentDetailCustomization::OnRequestRotationRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept
 	{
 		const bool isMultiSelectionActive = GetInspectedEntities().size() > 1u;
 
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(110.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(110.0f, 32.0f), true);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
@@ -557,9 +558,9 @@ namespace Relentless
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pDragBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pDragBox = new HorizontalBox();
 			pDragBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pDragBox->SetSpacing(1.0f);
 
@@ -654,7 +655,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertRotationButton = pBox->AddWidget(AddRevertButtonWidget([this](const Vector3& aValue) { OnRotationChanged(aValue, false); }, DEFAULT_LOCATION_ROTATION_VALUE, !IsRotationDefaultForInspected()));
 			pRow->SetColumnWidget(2, pBox);
 		}
@@ -662,16 +663,16 @@ namespace Relentless
 		return pRow;
 	}
 
-	Ref<ITableRow> TransformComponentDetailCustomization::OnRequestScaleRow(const ItemInfo& aItemInfo) noexcept
+	Ref<ITableRow> TransformComponentDetailCustomization::OnRequestScaleRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept
 	{
 		const bool isMultiSelectionActive = GetInspectedEntities().size() > 1u;
 
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(140.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
@@ -696,9 +697,9 @@ namespace Relentless
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pDragBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pDragBox = new HorizontalBox();
 			pDragBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pDragBox->SetSpacing(1.0f);
 
@@ -798,7 +799,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertScaleButton = pBox->AddWidget(AddRevertButtonWidget([this](const Vector3& aValue)
 				{
 					const bool scaleLocked = m_ScaleLocked;

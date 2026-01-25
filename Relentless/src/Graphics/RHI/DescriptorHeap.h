@@ -56,7 +56,5 @@ namespace Relentless
 		uint32_t m_CurrentNrOfDescriptors = 0u;
 		std::unique_ptr<uint32_t[]> m_FreeHandles;
 		std::queue<FencedDescriptorHandle> m_FreeList;
-		uint32_t m_CreatedDescriptors{ 0u };
-		uint32_t m_FreedDescriptors{ 0u };
 	};
 }

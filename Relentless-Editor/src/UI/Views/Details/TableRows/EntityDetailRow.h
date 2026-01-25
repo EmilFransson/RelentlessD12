@@ -1,5 +1,5 @@
 #pragma once
-#include <Relentless.h>
+#include "UI/Widgets/ITableRow.h"
 
 namespace Relentless
 {
@@ -16,6 +16,5 @@ namespace Relentless
 		void OnRenderColumn(uint32 aColumn) noexcept override;
 	public:
 		NO_DISCARD Vector2 ReportSize() const noexcept override;
-
 	};
 }

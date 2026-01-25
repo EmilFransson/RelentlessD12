@@ -1,5 +1,10 @@
 #pragma once
 
+#if defined(_WIN32)
+    #  undef STATIC_TYPE_INFO_USE_MEMBER_POINTER
+    #  define STATIC_TYPE_INFO_USE_MEMBER_POINTER false
+#endif
+
 #ifndef STATIC_TYPE_INFO_USE_MEMBER_POINTER
 // enable the new implementation using member pointers on tested compilers
 // gcc currently fails as member pointers are not considered constexpr

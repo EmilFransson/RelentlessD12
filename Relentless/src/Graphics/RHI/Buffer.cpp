@@ -20,6 +20,11 @@ namespace Relentless
 		return m_Desc;
 	}
 
+	BufferDesc& Buffer::GetDesc() noexcept
+	{
+		return m_Desc;
+	}
+
 	void* Buffer::GetMappedData() const noexcept
 	{
 		RLS_ASSERT(m_pMappedPtr, "Buffer is not mapped.");

@@ -1,11 +1,15 @@
 #pragma once
 #include "EntityDetailCustomization.h"
 
+#include "UI/Widgets/ComboBox.h"
+
 namespace Relentless
 {
 	enum class ETransformSpace : uint8 { Relative = 0, Absolute };
 	enum class EVectorComponent : uint8 { X, Y, Z };
 
+	class Button;
+	class ITableRow;
 	class IDetailLayoutBuilder;
 	class EntityDetailLayoutBuilder;
 

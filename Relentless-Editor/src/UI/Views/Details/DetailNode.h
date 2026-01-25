@@ -1,8 +1,11 @@
 #pragma once
-#include <Relentless.h>
+#include "UI/Widgets/ITableRow.h"
 
 namespace Relentless
 {
+	class ITableRow;
+	struct ItemInfo;
+
 	class DetailNode : public RefCounted<DetailNode>
 	{
 	public:

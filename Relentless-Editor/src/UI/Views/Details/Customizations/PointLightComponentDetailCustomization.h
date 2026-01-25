@@ -17,7 +17,7 @@ namespace Relentless
 
 		void OnAttenuationRadiusChanged(float aRadius) noexcept;
 
-		NO_DISCARD Ref<ITableRow> OnRequestAttenuationRadiusRow(const ItemInfo& aItemInfo) noexcept;
+		NO_DISCARD Ref<ITableRow> OnRequestAttenuationRadiusRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept;
 	private:
 		Button* m_pRevertAttenuationRadiusButton = nullptr;
 	};

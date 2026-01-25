@@ -22,8 +22,10 @@ std::unique_ptr<T> MakeUnique(Args&&... args)
 	return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
-using Path = std::filesystem::path;
-using String = std::string;
+using Path			= std::filesystem::path;
+using String		= std::string;
+using StringView	= std::string_view;
+using WideString	= std::wstring;
 
 #define DECLARE_BITMASK_TYPE(Enum) \
 inline constexpr Enum& operator|=(Enum& Lhs, Enum Rhs) { return Lhs = (Enum)((__underlying_type(Enum))Lhs | (__underlying_type(Enum))Rhs); } \
@@ -47,5 +49,9 @@ constexpr inline bool EnumHasAnyFlags(Enum Flags, Enum Contains)
 	return (((__underlying_type(Enum))Flags) & (__underlying_type(Enum))Contains) != 0;
 }
 
-template<typename T> 
-struct Is_Pointer_Like : std::is_pointer<T> {};
+namespace Relentless
+{
+	template<typename T>
+	struct Is_Pointer_Like : std::is_pointer<T> {};
+}
+

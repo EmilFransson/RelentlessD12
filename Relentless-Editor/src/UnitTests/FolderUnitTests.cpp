@@ -1,7 +1,7 @@
 ﻿#include "FolderUnitTests.h"
-#include "../Core/EntityFolders.h"
-
 #include <Relentless.h>
+
+#include "../Subsystem/EntityFoldersSubsystem.h"
 
 namespace Relentless
 {
@@ -21,7 +21,7 @@ namespace Relentless
 		void Execute()
 		{
 			Scene scene("Folder Unit Test Scene");
-			EntityFoldersManager foldersManager(nullptr); //No need for editor support in unit tests
+			EntityFoldersSubsystem foldersSubsystem; //No need for editor support in unit tests
 
 			const FolderRoot root = FolderRoot::CreateFromScene(scene);
 
@@ -34,7 +34,7 @@ namespace Relentless
 					std::cout << "\n=== " << tag << " ===\n";
 
 					// Gather folders
-					auto& cont = foldersManager.GetFolderContainer(scene).Folders;
+					auto& cont = foldersSubsystem.GetFolderContainer(scene).Folders;
 					std::vector<EntityFolder*> nodes; nodes.reserve(cont.size());
 					for (auto& rf : cont) nodes.push_back(rf);
 
@@ -110,13 +110,13 @@ namespace Relentless
 			// Clean start (optional): ensure no pre-existing conflicting folders/entities
 			// You can clear your scene here if you have a helper.
 
-			foldersManager.CreateFolder(scene, "Root/A/B");
-			foldersManager.CreateFolder(scene, "Root/B/A/A");
+			foldersSubsystem.CreateFolder(scene, "Root/A/B");
+			foldersSubsystem.CreateFolder(scene, "Root/B/A/A");
 			entity e = scene.CreateEntity("X");
-			foldersManager.AttachEntityToFolder(scene, e, Folder(root, "Root/B/A/A"));
+			foldersSubsystem.AttachEntityToFolder(scene, e, Folder(root, "Root/B/A/A"));
 
 			dump("before delete Root/B");
-			foldersManager.DeleteFolder(scene, "Root/B");
+			foldersSubsystem.DeleteFolder(scene, "Root/B");
 			dump("after delete Root/B");
 
 			RLS_ASSERT(scene.GetEntityManager().Get<FolderComponent>(e).Folder.GetPath() == "Root/A/A", "Should be merged under Root/A/A");
@@ -125,14 +125,14 @@ namespace Relentless
 			// 1) Create chain and idempotency
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				EntityFolder* a = foldersManager.CreateFolder(scene, "A");
+				EntityFolder* a = foldersSubsystem.CreateFolder(scene, "A");
 				RLS_ASSERT(a && a->GetLabel() == "A", "Create A failed");
 
-				EntityFolder* ab = foldersManager.CreateFolder(scene, "A/B");
+				EntityFolder* ab = foldersSubsystem.CreateFolder(scene, "A/B");
 				RLS_ASSERT(ab && ab->GetLabel() == "B" && ab->GetParent() == a, "Create A/B failed");
 
 				// Idempotent create: returns the same object and keeps correct parent
-				EntityFolder* ab2 = foldersManager.CreateFolder(scene, "A/B");
+				EntityFolder* ab2 = foldersSubsystem.CreateFolder(scene, "A/B");
 				RLS_ASSERT(ab2 == ab, "Idempotent CreateFolder returned a different object");
 				RLS_ASSERT(ab2->GetParent() == a, "Idempotent CreateFolder changed parent incorrectly");
 			}
@@ -141,12 +141,12 @@ namespace Relentless
 			// 2) Default name uniqueness
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				String p = foldersManager.GetDefaultFolderName(scene, "A");
+				String p = foldersSubsystem.GetDefaultFolderName(scene, "A");
 				RLS_ASSERT(p == "A/New Folder", "Expected A/New Folder");
 
-				foldersManager.CreateFolder(scene, p); // create it
+				foldersSubsystem.CreateFolder(scene, p); // create it
 
-				String p2 = foldersManager.GetDefaultFolderName(scene, "A");
+				String p2 = foldersSubsystem.GetDefaultFolderName(scene, "A");
 				RLS_ASSERT(p2 == "A/New Folder2", "Expected A/New Folder2");
 			}
 
@@ -154,17 +154,17 @@ namespace Relentless
 			// 3) Boundary correctness: "Foo" vs "FooBar"
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				foldersManager.CreateFolder(scene, "Foo");
-				foldersManager.CreateFolder(scene, "FooBar"); // must not be affected by renaming Foo
+				foldersSubsystem.CreateFolder(scene, "Foo");
+				foldersSubsystem.CreateFolder(scene, "FooBar"); // must not be affected by renaming Foo
 
 				const entity eFoo = scene.CreateEntity("InFoo");
 				const entity eFooBar = scene.CreateEntity("InFooBar");
 
-				foldersManager.AttachEntityToFolder(scene, eFoo, Folder(root, "Foo"));
-				foldersManager.AttachEntityToFolder(scene, eFooBar, Folder(root, "FooBar"));
+				foldersSubsystem.AttachEntityToFolder(scene, eFoo, Folder(root, "Foo"));
+				foldersSubsystem.AttachEntityToFolder(scene, eFooBar, Folder(root, "FooBar"));
 
 				// Rename Foo -> Baz
-				bool ok = foldersManager.RenameFolder(scene, "Foo", "Baz");
+				bool ok = foldersSubsystem.RenameFolder(scene, "Foo", "Baz");
 				RLS_ASSERT(ok, "Rename Foo->Baz failed");
 
 				const auto& pFoo = scene.GetEntityManager().Get<FolderComponent>(eFoo).Folder.GetPath();
@@ -177,22 +177,22 @@ namespace Relentless
 			// 4) Deep subtree rename + entity remap
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				foldersManager.CreateFolder(scene, "StarterContent/Entities/Monsters");
-				foldersManager.CreateFolder(scene, "StarterContent/Entities/Monsters/Bosses");
-				foldersManager.CreateFolder(scene, "StarterContent/Props");
+				foldersSubsystem.CreateFolder(scene, "StarterContent/Entities/Monsters");
+				foldersSubsystem.CreateFolder(scene, "StarterContent/Entities/Monsters/Bosses");
+				foldersSubsystem.CreateFolder(scene, "StarterContent/Props");
 
 				const entity ground = scene.CreateEntity("Ground");
 				const entity troll = scene.CreateEntity("TrollBoss");
 				const entity crate = scene.CreateEntity("Crate");
 
-				foldersManager.AttachEntityToFolder(scene, ground, Folder(root, "StarterContent/Entities/Monsters"));
-				foldersManager.AttachEntityToFolder(scene, troll, Folder(root, "StarterContent/Entities/Monsters/Bosses"));
-				foldersManager.AttachEntityToFolder(scene, crate, Folder(root, "StarterContent/Props"));
+				foldersSubsystem.AttachEntityToFolder(scene, ground, Folder(root, "StarterContent/Entities/Monsters"));
+				foldersSubsystem.AttachEntityToFolder(scene, troll, Folder(root, "StarterContent/Entities/Monsters/Bosses"));
+				foldersSubsystem.AttachEntityToFolder(scene, crate, Folder(root, "StarterContent/Props"));
 
 				dump("before deep rename");
 
 				// Monsters -> Enemies
-				bool ok = foldersManager.RenameFolder(scene,
+				bool ok = foldersSubsystem.RenameFolder(scene,
 					"StarterContent/Entities/Monsters",
 					"StarterContent/Entities/Enemies");
 				RLS_ASSERT(ok, "Rename Monsters->Enemies failed");
@@ -212,10 +212,10 @@ namespace Relentless
 			// 5) Invalid rename: into own descendant
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				foldersManager.CreateFolder(scene, "X/Y");
-				foldersManager.CreateFolder(scene, "X/Y/Z");
+				foldersSubsystem.CreateFolder(scene, "X/Y");
+				foldersSubsystem.CreateFolder(scene, "X/Y/Z");
 
-				bool ok = foldersManager.RenameFolder(scene, "X/Y", "X/Y/Z"); // invalid
+				bool ok = foldersSubsystem.RenameFolder(scene, "X/Y", "X/Y/Z"); // invalid
 				RLS_ASSERT(!ok, "Should not allow rename into own descendant");
 			}
 
@@ -223,14 +223,14 @@ namespace Relentless
 			// 6) Rename to an existing path (should fail, no changes)
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				foldersManager.CreateFolder(scene, "Alpha");
-				foldersManager.CreateFolder(scene, "Beta");
+				foldersSubsystem.CreateFolder(scene, "Alpha");
+				foldersSubsystem.CreateFolder(scene, "Beta");
 
 				// Put an entity in Alpha to detect unintended changes
 				const entity a = scene.CreateEntity("A");
-				foldersManager.AttachEntityToFolder(scene, a, Folder(root, "Alpha"));
+				foldersSubsystem.AttachEntityToFolder(scene, a, Folder(root, "Alpha"));
 
-				bool ok = foldersManager.RenameFolder(scene, "Alpha", "Beta");
+				bool ok = foldersSubsystem.RenameFolder(scene, "Alpha", "Beta");
 				RLS_ASSERT(!ok, "Rename to existing folder should fail");
 
 				const auto& pathA = scene.GetEntityManager().Get<FolderComponent>(a).Folder.GetPath();
@@ -241,17 +241,17 @@ namespace Relentless
 			// 7) Delete middle parent: children re-parent and entities remap away from prefix
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				foldersManager.CreateFolder(scene, "SC/Entities/Enemies/Minions");
+				foldersSubsystem.CreateFolder(scene, "SC/Entities/Enemies/Minions");
 				const entity m1 = scene.CreateEntity("Minion1");
 				const entity m2 = scene.CreateEntity("Minion2");
 
-				foldersManager.AttachEntityToFolder(scene, m1, Folder(root, "SC/Entities/Enemies"));
-				foldersManager.AttachEntityToFolder(scene, m2, Folder(root, "SC/Entities/Enemies/Minions"));
+				foldersSubsystem.AttachEntityToFolder(scene, m1, Folder(root, "SC/Entities/Enemies"));
+				foldersSubsystem.AttachEntityToFolder(scene, m2, Folder(root, "SC/Entities/Enemies/Minions"));
 
 				dump("before delete SC/Entities");
 
 				// Delete middle parent "SC/Entities"
-				foldersManager.DeleteFolder(scene, "SC/Entities");
+				foldersSubsystem.DeleteFolder(scene, "SC/Entities");
 
 				dump("after delete SC/Entities");
 
@@ -267,21 +267,21 @@ namespace Relentless
 			// 8) ForEachEntityInFolders: selection + early break
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				foldersManager.CreateFolder(scene, "Pick/One");
-				foldersManager.CreateFolder(scene, "Pick/Two");
+				foldersSubsystem.CreateFolder(scene, "Pick/One");
+				foldersSubsystem.CreateFolder(scene, "Pick/Two");
 
 				const entity e1 = scene.CreateEntity("Pick1");
 				const entity e2 = scene.CreateEntity("Pick2");
 				const entity e3 = scene.CreateEntity("Pick3");
 
-				foldersManager.AttachEntityToFolder(scene, e1, Folder(root, "Pick/One"));
-				foldersManager.AttachEntityToFolder(scene, e2, Folder(root, "Pick/Two"));
-				foldersManager.AttachEntityToFolder(scene, e3, Folder(root, "Pick/Two"));
+				foldersSubsystem.AttachEntityToFolder(scene, e1, Folder(root, "Pick/One"));
+				foldersSubsystem.AttachEntityToFolder(scene, e2, Folder(root, "Pick/Two"));
+				foldersSubsystem.AttachEntityToFolder(scene, e3, Folder(root, "Pick/Two"));
 
 				std::unordered_set<String> paths = { "Pick/One", "Pick/Two" };
 
 				std::vector<entity> visited;
-				foldersManager.ForEachEntityInFolders(scene, paths,
+				foldersSubsystem.ForEachEntityInFolders(scene, paths,
 					[&](entity e)
 					{
 						visited.push_back(e);
@@ -296,24 +296,24 @@ namespace Relentless
 			// 9) Expanded state flag round-trip
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				foldersManager.CreateFolder(scene, "UI/Windows");
-				RLS_ASSERT(foldersManager.IsFolderExpanded(scene, "UI/Windows"), "Expected collapsed by default");
+				foldersSubsystem.CreateFolder(scene, "UI/Windows");
+				RLS_ASSERT(foldersSubsystem.IsFolderExpanded(scene, "UI/Windows"), "Expected collapsed by default");
 
-				if (Ref<EntityFolder> f = foldersManager.GetFolder(scene, "UI/Windows"))
+				if (Ref<EntityFolder> f = foldersSubsystem.GetFolder(scene, "UI/Windows"))
 					f->SetExpandedState(false);
 
-				RLS_ASSERT(!foldersManager.IsFolderExpanded(scene, "UI/Windows"), "Expanded state not persisted");
+				RLS_ASSERT(!foldersSubsystem.IsFolderExpanded(scene, "UI/Windows"), "Expanded state not persisted");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
 			// 10) Root-level rename (no parent)
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				foldersManager.CreateFolder(scene, "Top");
+				foldersSubsystem.CreateFolder(scene, "Top");
 				const entity t = scene.CreateEntity("TopGuy");
-				foldersManager.AttachEntityToFolder(scene, t, Folder(root, "Top"));
+				foldersSubsystem.AttachEntityToFolder(scene, t, Folder(root, "Top"));
 
-				bool ok = foldersManager.RenameFolder(scene, "Top", "TopRenamed");
+				bool ok = foldersSubsystem.RenameFolder(scene, "Top", "TopRenamed");
 				RLS_ASSERT(ok, "Root-level rename failed");
 
 				const auto& tp = scene.GetEntityManager().Get<FolderComponent>(t).Folder.GetPath();
@@ -324,11 +324,11 @@ namespace Relentless
 			// 11) Delete leaf, no crash, entity policy respected (no old prefix)
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
-				foldersManager.CreateFolder(scene, "Leaf");
+				foldersSubsystem.CreateFolder(scene, "Leaf");
 				const entity l = scene.CreateEntity("Leafy");
-				foldersManager.AttachEntityToFolder(scene, l, Folder(root, "Leaf"));
+				foldersSubsystem.AttachEntityToFolder(scene, l, Folder(root, "Leaf"));
 
-				foldersManager.DeleteFolder(scene, "Leaf");
+				foldersSubsystem.DeleteFolder(scene, "Leaf");
 				bool has = scene.GetEntityManager().Has<FolderComponent>(l);
 				RLS_ASSERT(!has, "Leaf entity still references deleted folder");
 			}

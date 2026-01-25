@@ -1,20 +1,23 @@
 #pragma once
+
+#include "Core/DLLExport.h"
+#include "CommandContext.h"
+
 #include "DeviceResource.h"
 #include "DescriptorHeap.h"
-#include "CommandContext.h"
 
 namespace Relentless
 {
-	class ResourceView : public DeviceObject
+	class RLS_API ResourceView : public DeviceObject
 	{
 	public:
 		ResourceView(GraphicsDevice* pParent, const DescriptorHandle& descriptorHandle) noexcept;
 		virtual ~ResourceView() noexcept override;
 
-		[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle() const noexcept;
-		[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle() const noexcept;
-		[[nodiscard]] const DescriptorHandle& GetDescriptorHandle() const noexcept;
-		[[nodiscard]] uint32_t GetDescriptorIndex() const noexcept;
+		NO_DISCARD D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle() const noexcept;
+		NO_DISCARD D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle() const noexcept;
+		NO_DISCARD const DescriptorHandle& GetDescriptorHandle() const noexcept;
+		NO_DISCARD uint32 GetDescriptorIndex() const noexcept;
 	private:
 		DescriptorHandle m_DescriptorHandle;
 	};
@@ -74,7 +77,7 @@ namespace Relentless
 			RLS_ASSERT(offsetFromStart <= std::numeric_limits<uint32>::max(), "Buffer offset ({0}) will be stored in a 32-bit uint and does not fit.", offsetFromStart);
 		}
 
-		[[nodiscard]] uint32 Stride() const noexcept
+		NO_DISCARD uint32 Stride() const noexcept
 		{
 			return RHI::GetFormatInfo(Format).BytesPerBlock;
 		}
@@ -87,7 +90,7 @@ namespace Relentless
 	struct TextureDSVDesc
 	{
 		TextureDSVDesc(DepthTargetAccessFlags flags, uint32 mipSlice = 0u, uint32 firstArraySlice = 0u, uint32 arraySize = 1u) noexcept
-			: Flags{ flags }, MipSlice{ mipSlice }, FirstArraySlice{ firstArraySlice }, ArraySize{ arraySize }
+			: MipSlice{ mipSlice }, FirstArraySlice{ firstArraySlice }, ArraySize{ arraySize }, Flags{ flags }
 		{}
 
 		uint32 MipSlice					= 0u;

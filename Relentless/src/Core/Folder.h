@@ -1,11 +1,13 @@
 #pragma once
 #include "Assets/AssetMeta.h"
 
+#include "Core/DLLExport.h"
+
 namespace Relentless
 {
 	class Scene;
 
-	struct FolderRoot
+	struct RLS_API FolderRoot
 	{
 		enum class Type { None, Scene };
 
@@ -20,7 +22,7 @@ namespace Relentless
 		static FolderRoot CreateFromScene(const Scene& scene) noexcept;
 	};
 
-	class Folder
+	class RLS_API Folder
 	{
 	public:
 		Folder(const FolderRoot& aFolderRoot, const String& aPath) noexcept;

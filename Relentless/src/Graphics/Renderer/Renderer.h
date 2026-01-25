@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Assets/AssetMeta.h"
+
+#include "Core/DLLExport.h"
+
 #include "Callback/Callback.h"
 #include "Callback/Broadcaster.h"
 
@@ -25,7 +28,7 @@ namespace Relentless
 {
 	class Scene;
 
-	class Renderer
+	class RLS_API Renderer
 	{
 	public:
 		Renderer(GraphicsDevice* pDevice) noexcept;
@@ -37,7 +40,7 @@ namespace Relentless
 		
 		NO_DISCARD Span<const Batch> GetBatches() const noexcept;
 		NO_DISCARD uint32 GetFrameIndex() const noexcept;
-		void Render(Scene* pScene, ViewTransform* pViewTransform, const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept;
+		void Render(Scene* pScene, ViewTransform* pViewTransform, MAYBE_UNUSED const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept;
 		
 		Broadcaster<void(uint32 readbackResult)> OnEntityIDReadbackDone;
 

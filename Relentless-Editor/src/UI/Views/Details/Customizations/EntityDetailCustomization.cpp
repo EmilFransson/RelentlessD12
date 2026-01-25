@@ -1,7 +1,5 @@
 #include "EntityDetailCustomization.h"
-
 #include "../EntityDetailsView.h"
-#include "../LayoutBuilders/EntityDetailLayoutBuilder.h"
 
 namespace Relentless
 {

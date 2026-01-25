@@ -13,6 +13,6 @@ namespace Relentless
 		virtual void OnLoad() {};
 		virtual void OnUnload() {};
 
-		virtual NO_DISCARD bool SupportsAutomaticShutdown() const { return true; }
+		NO_DISCARD virtual bool SupportsAutomaticShutdown() const { return true; }
 	};
 }

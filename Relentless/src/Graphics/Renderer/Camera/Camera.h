@@ -1,10 +1,13 @@
 #pragma once
-#include "Math/MathTypes.h"
+#include "Core/DLLExport.h"
+
 #include "Graphics/Renderer/RenderTypes.h"
+
+#include "Math/MathTypes.h"
 
 namespace Relentless
 {
-	class Camera
+	class RLS_API Camera
 	{
 	public:
 		Camera() noexcept = default;

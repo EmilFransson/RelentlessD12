@@ -6,10 +6,10 @@ namespace Relentless
 	{
 	public:
 		static void Initialize() noexcept;
-		static NO_DISCARD Path GetWorkingDirectory() noexcept;
-		static NO_DISCARD Path GetUserDocumentsDirectory() noexcept;
-		static NO_DISCARD Path GetUserHomeDirectory() noexcept;
-		static NO_DISCARD Path GetEngineAssetsDirectory() noexcept;
-		static NO_DISCARD Path GetEditorAssetsDirectory() noexcept;
+		NO_DISCARD static Path GetWorkingDirectory() noexcept;
+		NO_DISCARD static Path GetUserDocumentsDirectory() noexcept;
+		NO_DISCARD static Path GetUserHomeDirectory() noexcept;
+		NO_DISCARD static Path GetEngineAssetsDirectory() noexcept;
+		NO_DISCARD static Path GetEditorAssetsDirectory() noexcept;
 	};
 }

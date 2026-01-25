@@ -22,7 +22,8 @@ namespace Relentless
 		if (m_AssetDefinitions.contains(aAssetData.Type))
 			return m_AssetDefinitions.at(aAssetData.Type);
 
-		return nullptr;
+		static Ref<IAssetDefinition> nullDef = nullptr;
+		return nullDef;
 	}
 
 	const Ref<IAssetDefinition>& AssetDefinitionRegistry::GetDefinitionForAsset(const IAsset* aAsset) const noexcept
@@ -32,10 +33,11 @@ namespace Relentless
 		if (m_AssetDefinitions.contains(typeIndex))
 			return m_AssetDefinitions.at(typeIndex);
 
-		return nullptr;
+		static Ref<IAssetDefinition> nullDef = nullptr;
+		return nullDef;
 	}
 
-	bool AssetDefinitionRegistry::OnLoad(ISystemManager* aSystemManager) noexcept
+	bool AssetDefinitionRegistry::OnLoad(MAYBE_UNUSED ISystemManager* aSystemManager) noexcept
 	{
 		RegisterAssetDefinition(new MaterialAssetDefinition());
 		RegisterAssetDefinition(new MeshAssetDefinition());

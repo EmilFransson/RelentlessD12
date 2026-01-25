@@ -26,7 +26,7 @@ namespace Relentless
 			
 			//ConstantBuffer2& constantBuffer = m_pTextureCubeCreationVPCBs[i]->At(0);
 			void* pData = nullptr;
-			D3D12_RANGE readRange = D3D12_RANGE(0,0);
+			//D3D12_RANGE readRange = D3D12_RANGE(0,0);
 			//DXCall(constantBuffer.GetInterface()->Map(0u, &readRange, &pData));
 			RLS_ASSERT(pData, "[UtilityRenderer]: Pointer to buffer write target is invalid.");
 		
@@ -146,7 +146,7 @@ namespace Relentless
 		}
 	}
 
-	void UtilityRenderer::ConvertEquirectangularToCubeMap(const std::shared_ptr<Texture2D> pEquirectangularTexture, EquirectangularToCubeMapConversionCompleteCallback&&)
+	void UtilityRenderer::ConvertEquirectangularToCubeMap(const std::shared_ptr<Texture2D> /*pEquirectangularTexture*/, EquirectangularToCubeMapConversionCompleteCallback&&)
 	{
 		//TextureCubeSpecification textureCubeSpecification;
 		//textureCubeSpecification.Width = 512u;
@@ -250,7 +250,7 @@ namespace Relentless
 		////	});
 	}
 
-	void UtilityRenderer::CreateIrradianceMap(const std::shared_ptr<TextureCube> pEnvironmentTextureCube, CreateIrradianceMapCompleteCallback&&)
+	void UtilityRenderer::CreateIrradianceMap(const std::shared_ptr<TextureCube> /*pEnvironmentTextureCube*/, CreateIrradianceMapCompleteCallback&&)
 	{
 		//TextureCubeSpecification textureCubeSpecification;
 		//textureCubeSpecification.Width = 32u;
@@ -354,7 +354,7 @@ namespace Relentless
 		////	});
 	}
 
-	void UtilityRenderer::CreateRadianceMap(const std::shared_ptr<TextureCube> pEnvironmentTextureCube, CreateRadianceMapCompleteCallback&&)
+	void UtilityRenderer::CreateRadianceMap(const std::shared_ptr<TextureCube> /*pEnvironmentTextureCube*/, CreateRadianceMapCompleteCallback&&)
 	{
 		//TextureCubeSpecification textureCubeSpecification;
 		//textureCubeSpecification.Width = 128u;

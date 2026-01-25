@@ -9,21 +9,16 @@ namespace Relentless
 
 	void EditorLayer::OnEvent(IEvent& event) noexcept
 	{
-		if (UIManager::Get().OnEvent(event))
-			return;
-
 		Editor::Get()->OnEvent(event);
 	}
 
 	void EditorLayer::OnImGuiRender() noexcept
 	{
-		UIManager::Get().OnRender();
 		Editor::Get()->OnImGuiRender();
 	}
 
 	void EditorLayer::OnAttach() noexcept
 	{
-		//m_pEditor = std::make_shared<Editor>();
 		Editor::Get()->OnCreate();
 	}
 
@@ -34,7 +29,6 @@ namespace Relentless
 
 	void EditorLayer::OnUpdate(const float deltaTime) noexcept
 	{
-		UIManager::Get().OnUpdate();
 		Editor::Get()->OnUpdate(deltaTime);
 	}
 

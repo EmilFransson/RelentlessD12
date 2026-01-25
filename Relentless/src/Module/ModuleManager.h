@@ -1,9 +1,11 @@
 ﻿#pragma once
+#include "Core/DLLExport.h"
+
 #include "IModule.h"
 
 namespace Relentless
 {
-	class ModuleManager
+	class RLS_API ModuleManager
 	{
 	public:
 		enum class EModuleStatus : uint8 { Loading = 0, Loaded };
@@ -17,7 +19,7 @@ namespace Relentless
 		};
 
 		template<typename ModuleType>
-		static NO_DISCARD ModuleType& LoadModuleChecked() noexcept
+		static ModuleType& LoadModuleChecked() noexcept
 		{
 			const size_t moduleHash = typeid(ModuleType).hash_code();
 

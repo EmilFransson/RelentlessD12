@@ -1,5 +1,7 @@
 #include "DetailNode.h"
 
+#include "UI/Views/TreeView.h"
+
 namespace Relentless
 {
 	DetailNode::DetailNode(const char* aName) noexcept

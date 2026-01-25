@@ -1,7 +1,7 @@
 #include "SpotLightComponentDetailCustomization.h"
 
-#include "../LayoutBuilders/EntityDetailLayoutBuilder.h"
-#include "../TableRows/EntityDetailRow.h"
+#include "UI/Views/Details/LayoutBuilders/EntityDetailLayoutBuilder.h"
+#include "UI/Views/Details/TableRows/EntityDetailRow.h"
 
 namespace Relentless
 {
@@ -60,7 +60,7 @@ namespace Relentless
 		Scene& scene = m_pBuilder->GetScene();
 		EntityManager& entityManager = scene.GetEntityManager();
 
-		return std::ranges::all_of(GetInspectedEntities(), [this, &entityManager](entity aEntity)
+		return std::ranges::all_of(GetInspectedEntities(), [&entityManager](entity aEntity)
 			{
 				auto& slc = entityManager.Get<SpotLightComponent>(aEntity);
 				return Math::AreValuesClose(slc.GetAttenuationRadius(), DEFAULT_ATTENUATION_RADIUS);
@@ -72,7 +72,7 @@ namespace Relentless
 		Scene& scene = m_pBuilder->GetScene();
 		EntityManager& entityManager = scene.GetEntityManager();
 
-		return std::ranges::all_of(GetInspectedEntities(), [this, &entityManager](entity aEntity)
+		return std::ranges::all_of(GetInspectedEntities(), [&entityManager](entity aEntity)
 			{
 				auto& plc = entityManager.Get<SpotLightComponent>(aEntity);
 				return Math::AreValuesClose(plc.GetInnerConeAngleDegrees(), DEFAULT_INNER_CONE_ANGLES_DEGREES);
@@ -84,7 +84,7 @@ namespace Relentless
 		Scene& scene = m_pBuilder->GetScene();
 		EntityManager& entityManager = scene.GetEntityManager();
 
-		return std::ranges::all_of(GetInspectedEntities(), [this, &entityManager](entity aEntity)
+		return std::ranges::all_of(GetInspectedEntities(), [&entityManager](entity aEntity)
 			{
 				auto& plc = entityManager.Get<SpotLightComponent>(aEntity);
 				return Math::AreValuesClose(plc.GetOuterConeAngleDegrees(), DEFAULT_OUTER_CONE_ANGLES_DEGREES);
@@ -135,20 +135,20 @@ namespace Relentless
 		m_pRevertOuterConeAngleButton->SetIsVisible(!IsOuterConeAngleDefaultForInspected());
 	}
 
-	Ref<ITableRow> SpotLightComponentDetailCustomization::OnRequestAttenuationRadiusRow(const ItemInfo& aItemInfo) noexcept
+	Ref<ITableRow> SpotLightComponentDetailCustomization::OnRequestAttenuationRadiusRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept
 	{
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
 			pBox->AddWidget(new Label("Attenuation Radius"));
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(140.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
@@ -162,7 +162,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertAttenuationRadiusButton = pBox->AddWidget(AddRevertButtonWidget([this](float aValue) { OnAttenuationRadiusChanged(aValue); }, DEFAULT_ATTENUATION_RADIUS, !IsAttenuationRadiusDefaultForInspected()));
 			pRow->SetColumnWidget(2, pBox);
 		}
@@ -170,20 +170,20 @@ namespace Relentless
 		return pRow;
 	}
 
-	Ref<ITableRow> SpotLightComponentDetailCustomization::OnRequestInnerConeAngleRow(const ItemInfo& aItemInfo) noexcept
+	Ref<ITableRow> SpotLightComponentDetailCustomization::OnRequestInnerConeAngleRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept
 	{
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
 			pBox->AddWidget(new Label("Inner Cone Angle"));
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(140.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
@@ -197,7 +197,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertInnerConeAngleButton = pBox->AddWidget(AddRevertButtonWidget([this](float aValue) { OnInnerConeAngleChanged(aValue); }, DEFAULT_INNER_CONE_ANGLES_DEGREES, !IsInnerConeAngleDefaultForInspected()));
 			pRow->SetColumnWidget(2, pBox);
 		}
@@ -205,20 +205,20 @@ namespace Relentless
 		return pRow;
 	}
 
-	Ref<ITableRow> SpotLightComponentDetailCustomization::OnRequestOuterConeAngleRow(const ItemInfo& aItemInfo) noexcept
+	Ref<ITableRow> SpotLightComponentDetailCustomization::OnRequestOuterConeAngleRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept
 	{
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
 			pBox->AddWidget(new Label("Outer Cone Angle"));
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(140.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
@@ -232,7 +232,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertOuterConeAngleButton = pBox->AddWidget(AddRevertButtonWidget([this](float aValue) { OnOuterConeAngleChanged(aValue); }, DEFAULT_OUTER_CONE_ANGLES_DEGREES, !IsOuterConeAngleDefaultForInspected()));
 			pRow->SetColumnWidget(2, pBox);
 		}

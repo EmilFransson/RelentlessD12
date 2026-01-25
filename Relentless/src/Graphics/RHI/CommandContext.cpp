@@ -12,8 +12,8 @@ namespace Relentless
 	CommandContext::CommandContext(GraphicsDevice* pParent, Ref<ID3D12CommandList> pCommandList, Ref<ScratchAllocationManager> pScratchAllocationManager, D3D12_COMMAND_LIST_TYPE type) noexcept
 		: 
 		DeviceObject{pParent},
-		m_ScratchAllocator{pScratchAllocationManager},
-		m_Type{type}
+		m_Type{type},
+		m_ScratchAllocator{pScratchAllocationManager}
 	{
 		RLS_VERIFY(pCommandList.As(&m_pCommandList), "Unable to promote command list.");
 	}

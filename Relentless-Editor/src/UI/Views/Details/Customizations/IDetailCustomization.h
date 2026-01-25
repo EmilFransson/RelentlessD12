@@ -1,6 +1,4 @@
 #pragma once
-#include <Relentless.h>
-
 namespace Relentless
 {
 	class IDetailLayoutBuilder;

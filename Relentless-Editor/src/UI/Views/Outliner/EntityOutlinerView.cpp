@@ -1,6 +1,20 @@
 #include "EntityOutlinerView.h"
 
-#include "../../../Core/Editor.h"
+#include "Core/Editor.h"
+
+#include "Subsystem/SelectionSubsystem.h"
+#include "Subsystem/EntityFoldersSubsystem.h"
+
+#include "UI/Widgets/Border.h"
+#include "UI/Widgets/Button.h"
+#include "UI/Widgets/ContextMenu.h"
+#include "UI/Widgets/DragDropOperation.h"
+#include "UI/Widgets/EditableTextBox.h"
+#include "UI/Widgets/HorizontalBox.h"
+#include "UI/Widgets/Label.h"
+#include "UI/Widgets/SearchBar.h"
+#include "UI/Widgets/VerticalBox.h"
+#include "UI/Widgets/WidgetSwitcher.h"
 
 namespace Relentless
 {
@@ -10,19 +24,19 @@ namespace Relentless
 	{
 		Editor* pEditor = Editor::Get();
 
-		pEditor->OnPreSceneChanged.Connect(this, &EntityOutlinerView::OnPreSceneChanged);
+		pEditor->OnSceneChange.Connect(this, &EntityOutlinerView::OnPreSceneChanged);
 		pEditor->OnSceneChanged.Connect(this, &EntityOutlinerView::OnSceneChanged);
 
-		const UniquePtr<Selection>& pSelection = pEditor->GetSelection();
+		SelectionSubsystem* pSelection = pEditor->GetSubsystem<SelectionSubsystem>();
 		pSelection->OnSelectionChanged.Connect(this, &EntityOutlinerView::OnSelectionChangedExternally);
 
-		const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 		
-		pFoldersManager->OnEntityFolderCreated.Connect(this, &EntityOutlinerView::OnFolderCreated);
-		pFoldersManager->OnEntityFolderDelete.Connect(this, &EntityOutlinerView::OnEntityFolderDeleted);
-		pFoldersManager->OnEntityFolderMoved.Connect(this, &EntityOutlinerView::OnFolderMoved);
-		pFoldersManager->OnEntityAttachedToFolder.Connect(this, &EntityOutlinerView::OnEntityAttachedToFolder);
-		pFoldersManager->OnEntityRemovedFromFolder.Connect(this, &EntityOutlinerView::OnEntityRemovedFromFolder);
+		pFoldersSubsystem->OnEntityFolderCreated.Connect(this, &EntityOutlinerView::OnFolderCreated);
+		pFoldersSubsystem->OnEntityFolderDelete.Connect(this, &EntityOutlinerView::OnEntityFolderDeleted);
+		pFoldersSubsystem->OnEntityFolderMoved.Connect(this, &EntityOutlinerView::OnFolderMoved);
+		pFoldersSubsystem->OnEntityAttachedToFolder.Connect(this, &EntityOutlinerView::OnEntityAttachedToFolder);
+		pFoldersSubsystem->OnEntityRemovedFromFolder.Connect(this, &EntityOutlinerView::OnEntityRemovedFromFolder);
 
 		std::shared_ptr<HeaderRow> pHeaderRow = std::make_shared<HeaderRow>();
 		pHeaderRow->SetIsPinned(true);
@@ -76,16 +90,16 @@ namespace Relentless
 
 		m_pOutlinerTreeView->OnTreeRefreshed.Connect(this, &EntityOutlinerView::OnOutlinerTreeRefreshed);
 
-		m_pMainBox = new VerticalBoxEx();
+		m_pMainBox = new VerticalBox();
 		
-		Ref<VerticalBoxEx> pTopVerticalBox = new VerticalBoxEx();
-		Ref<VerticalBoxEx> pMiddleVerticalBox = new VerticalBoxEx({}, true);
+		Ref<VerticalBox> pTopVerticalBox = new VerticalBox();
+		Ref<VerticalBox> pMiddleVerticalBox = new VerticalBox({}, true);
 		pMiddleVerticalBox->SetSizePolicy(ESizePolicy::Stretch);
 
-		Ref<HorizontalBoxEx> pHorizontalBox = new HorizontalBoxEx();
-		Ref<HorizontalBoxEx> pLeftBox = new HorizontalBoxEx({}, true);
+		Ref<HorizontalBox> pHorizontalBox = new HorizontalBox();
+		Ref<HorizontalBox> pLeftBox = new HorizontalBox({}, true);
 		pLeftBox->SetSizePolicy(ESizePolicy::Stretch);
-		Ref<HorizontalBoxEx> pRightBox = new HorizontalBoxEx({}, true);
+		Ref<HorizontalBox> pRightBox = new HorizontalBox({}, true);
 
 		pHorizontalBox->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 5.0f));
 
@@ -110,7 +124,7 @@ namespace Relentless
 			->SetHoverColor(Colors::Gray)
 			->SetBorderColor(Colors::Transparent);
 
-		m_pOutlinerListBox = new HorizontalBoxEx(Vector2(0.0f, 0.0f), true);
+		m_pOutlinerListBox = new HorizontalBox(Vector2(0.0f, 0.0f), true);
 		m_pOutlinerListBox->SetSizePolicy(ESizePolicy::Stretch);
 		m_pOutlinerListBox->OnFocusChanged.Connect(this, &EntityOutlinerView::OnFocusChanged);
 		m_pOutlinerListBox->AddWidget(m_pOutlinerTreeView);
@@ -124,11 +138,11 @@ namespace Relentless
 		m_pMainBox->AddWidget(pTopVerticalBox);
 		m_pMainBox->AddWidget(pMiddleVerticalBox);
 
-		Ref<VerticalBoxEx> pBorderBox = new VerticalBoxEx();
+		Ref<VerticalBox> pBorderBox = new VerticalBox();
 		pBorderBox->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Bottom);
 
 		Border* pBorder = pBorderBox->AddWidget(new Border());
-		HorizontalBoxEx* pInBox = pBorder->SetContent(new HorizontalBoxEx({}, true));
+		HorizontalBox* pInBox = pBorder->SetContent(new HorizontalBox({}, true));
 		pInBox->SetEnableScrolling(false);
 		pInBox->SetSizePolicy(ESizePolicy::Stretch);
 
@@ -148,29 +162,27 @@ namespace Relentless
 	EntityOutlinerView::~EntityOutlinerView() noexcept
 	{
 		Editor* pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		pEditor->OnShutDown.Detach(this);
-		pEditor->OnPreSceneChanged.Detach(this);
+		pEditor->OnSceneChange.Detach(this);
 		pEditor->OnSceneChanged.Detach(this);
 
-		if (const UniquePtr<Selection>& pSelection = pEditor->GetSelection())
+		if (SelectionSubsystem* pSelection = pEditor->GetSubsystem<SelectionSubsystem>())
 			pSelection->OnSelectionChanged.Detach(this);
 
-		if (const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager())
+		if (EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>())
 		{
-			pFoldersManager->OnEntityFolderCreated.Detach(this);
-			pFoldersManager->OnEntityFolderDeleted.Detach(this);
-			pFoldersManager->OnEntityFolderMoved.Detach(this);
-			pFoldersManager->OnEntityAttachedToFolder.Detach(this);
-			pFoldersManager->OnEntityRemovedFromFolder.Detach(this);
+			pFoldersSubsystem->OnEntityFolderCreated.Detach(this);
+			pFoldersSubsystem->OnEntityFolderDeleted.Detach(this);
+			pFoldersSubsystem->OnEntityFolderMoved.Detach(this);
+			pFoldersSubsystem->OnEntityAttachedToFolder.Detach(this);
+			pFoldersSubsystem->OnEntityRemovedFromFolder.Detach(this);
 		}
 
 		if (Scene* pScene = pEditor->GetActiveScene())
 		{
 			pScene->OnEntityCreated.Detach(this);
-			pScene->OnEntityPreDestroyed.Detach(this);
+			pScene->OnEntityDestroy.Detach(this);
 			pScene->OnEntityDestroyed.Detach(this);
 			pScene->OnEntityAttached.Detach(this);
 			pScene->OnEntityDetached.Detach(this);
@@ -204,8 +216,6 @@ namespace Relentless
 	Ref<OutlinerListItem> EntityOutlinerView::CreateEntityListItem(entity aEntity) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return nullptr;
 
 		Ref<OutlinerListItem> pEntityItem = new OutlinerListItem();
 		pEntityItem->Payload = aEntity;
@@ -240,21 +250,19 @@ namespace Relentless
 	void EntityOutlinerView::DeselectAllFolders() noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		if (m_SelectedFolders.empty())
 			return;
 
 		std::vector<UUID> selectedFolderUUIDS(m_SelectedFolders.begin(), m_SelectedFolders.end());
 
-		const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 
-		pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(*pEditor->GetActiveScene()), [&](const EntityFolder& aFolder)
+		pFoldersSubsystem->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(*pEditor->GetActiveScene()), [&](const EntityFolder& aFolder)
 			{
 				if (std::ranges::any_of(selectedFolderUUIDS, [&aFolder](const UUID& aUUID) { return aFolder.GetUUID() == aUUID; }))
 				{
-					const Ref<OutlinerListItem>& pFolderItem = GetFolderItem(pFoldersManager->GetFolder(*pEditor->GetActiveScene(), aFolder.GetPath()));
+					const Ref<OutlinerListItem>& pFolderItem = GetFolderItem(pFoldersSubsystem->GetFolder(*pEditor->GetActiveScene(), aFolder.GetPath()));
 					OnSelectionChanged(pFolderItem, ESelectionType::Deselected);
 					m_pOutlinerTreeView->SetItemSelection(pFolderItem, ESelectionType::Deselected);
 				}
@@ -266,14 +274,11 @@ namespace Relentless
 	void EntityOutlinerView::ExecuteMovePlan(const EntityOutlinerPolicies::MovePlan& aMovePlan, Scene& aScene, const OutlinerPayload& targetPayload) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
-		const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 		
 		const bool targetIsEntity = std::holds_alternative<entity>(targetPayload);
 		const bool targetIsFolder = std::holds_alternative<EntityFolder*>(targetPayload);
-		const bool targetIsScene = std::holds_alternative<Scene*>(targetPayload);
 
 		for (const EntityOutlinerPolicies::ItemMoveResolution& itemResolution : aMovePlan.ResolvedItems)
 		{
@@ -291,30 +296,30 @@ namespace Relentless
 			{
 				if (resolvedIsEntity)
 				{
-					pFoldersManager->RemoveEntityFromCurrentFolder(aScene, resolvedEntity);
+					pFoldersSubsystem->RemoveEntityFromCurrentFolder(aScene, resolvedEntity);
 
 					if (targetIsEntity)
 						aScene.AttachEntity(resolvedEntity, std::get<entity>(targetPayload));
 					else if (targetIsFolder)
 					{
-						pFoldersManager->RemoveEntityFromCurrentFolder(aScene, resolvedEntity);
+						pFoldersSubsystem->RemoveEntityFromCurrentFolder(aScene, resolvedEntity);
 						aScene.DetachEntity(resolvedEntity);
 
 						const Folder folder = Folder(FolderRoot::CreateFromScene(aScene), std::get<EntityFolder*>(targetPayload)->GetPath());
-						pFoldersManager->AttachEntityToFolder(aScene, resolvedEntity, folder);
+						pFoldersSubsystem->AttachEntityToFolder(aScene, resolvedEntity, folder);
 					}
 					else
 					{
-						pFoldersManager->RemoveEntityFromCurrentFolder(aScene, resolvedEntity);
+						pFoldersSubsystem->RemoveEntityFromCurrentFolder(aScene, resolvedEntity);
 						aScene.DetachEntity(resolvedEntity);
 					}
 				}
 				else if (resolvedIsFolder)
 				{
 					if (targetIsFolder)
-						pFoldersManager->RenameFolder(aScene, resolvedFolder->GetPath(), FilepathUtils::CombineDisplay(std::get<EntityFolder*>(targetPayload)->GetPath(), resolvedFolder->GetLabel()));
+						pFoldersSubsystem->RenameFolder(aScene, resolvedFolder->GetPath(), FilepathUtils::CombineDisplay(std::get<EntityFolder*>(targetPayload)->GetPath(), resolvedFolder->GetLabel()));
 					else 
-						pFoldersManager->RenameFolder(aScene, resolvedFolder->GetPath(), resolvedFolder->GetLabel());
+						pFoldersSubsystem->RenameFolder(aScene, resolvedFolder->GetPath(), resolvedFolder->GetLabel());
 				}
 				break;
 			}
@@ -334,10 +339,10 @@ namespace Relentless
 					if (targetIsEntity)
 					{
 						aScene.DetachEntity(resolvedEntity);
-						pFoldersManager->RemoveEntityFromCurrentFolder(aScene, resolvedEntity);
+						pFoldersSubsystem->RemoveEntityFromCurrentFolder(aScene, resolvedEntity);
 
 						const Folder folder = aScene.GetEntityManager().Get<FolderComponent>(std::get<entity>(targetPayload)).Folder;
-						pFoldersManager->AttachEntityToFolder(aScene, resolvedEntity, folder);
+						pFoldersSubsystem->AttachEntityToFolder(aScene, resolvedEntity, folder);
 					}
 				}
 				break;
@@ -349,8 +354,6 @@ namespace Relentless
 	const String& EntityOutlinerView::GetItemName(const Ref<OutlinerListItem>& pItem) const noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return String();
 
 		if (pItem->IsEntity())
 			return pEditor->GetActiveScene()->GetEntityManager().Get<NameComponent>(pItem->AsEntity()).Name;
@@ -368,9 +371,6 @@ namespace Relentless
 	const Ref<OutlinerListItem>& EntityOutlinerView::GetEntityItem(entity aEntity) const noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return nullptr;
-
 		return m_EntityToItemMap.at(pEditor->GetActiveScene()->GetEntityManager().Get<IDComponent>(aEntity).UuId);
 	}
 
@@ -385,7 +385,7 @@ namespace Relentless
 		return m_ListItems.at(0);
 	}
 
-	Ref<ContextMenu> EntityOutlinerView::OnContextMenuOpening(const Ref<OutlinerListItem>& item) noexcept
+	Ref<ContextMenu> EntityOutlinerView::OnContextMenuOpening(MAYBE_UNUSED const Ref<OutlinerListItem>& item) noexcept
 	{
 		Ref<MenuBuilder> pBuilder = new MenuBuilder();
 
@@ -406,10 +406,8 @@ namespace Relentless
 	void EntityOutlinerView::OnCreateNewFolderButtonClicked() noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
-		const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 		Scene& scene = *pEditor->GetActiveScene();
 
 		std::vector<Ref<OutlinerListItem>> selectedItems;
@@ -430,17 +428,18 @@ namespace Relentless
 
 		if (folders.size() == 1)
 		{
-			const String newFolderName = pFoldersManager->GetDefaultFolderName(scene, folders.front()->GetPath());
-			pNewFolder = pFoldersManager->CreateFolder(scene, FilepathUtils::CombineDisplay(folders.front()->GetPath(), newFolderName));
+			const String newFolderName = pFoldersSubsystem->GetDefaultFolderName(scene, folders.front()->GetPath());
+			pNewFolder = pFoldersSubsystem->CreateFolder(scene, FilepathUtils::CombineDisplay(folders.front()->GetPath(), newFolderName));
 			if (!pNewFolder)
 				return;
 
 			EntityOutlinerPolicies::MoveContext context
 			{
 				.Scene = scene,
-				.FoldersManager = *pFoldersManager,
+				.FoldersSubsystem = *pFoldersSubsystem,
 				.TargetPayload = pNewFolder,
-				.Entities = entities
+				.Entities = entities,
+				.Folders = folders
 			};
 
 			const EntityOutlinerPolicies::MovePlan movePlan = m_pPolicies->ResolveMoveRequest(context);
@@ -450,7 +449,7 @@ namespace Relentless
 		{
 			std::vector<EntityFolder*> prunedFolders = MergeFoldersByLabel(folders);
 
-			pNewFolder = pFoldersManager->CreateFolderContainingSelection(scene);
+			pNewFolder = pFoldersSubsystem->CreateFolderContainingSelection(scene);
 			m_pOutlinerTreeView->SetItemSelection(GetFolderItem(pNewFolder), ESelectionType::Selected);
 			m_pFolderToRenameWhenScrolledIntoView = GetFolderItem(pNewFolder);
 
@@ -462,7 +461,7 @@ namespace Relentless
 				EntityOutlinerPolicies::MoveContext context
 				{
 					.Scene = scene,
-					.FoldersManager = *pFoldersManager,
+					.FoldersSubsystem = *pFoldersSubsystem,
 					.TargetPayload = pNewFolder,
 					.Entities = entities,
 					.Folders = prunedFolders
@@ -483,30 +482,26 @@ namespace Relentless
 	void EntityOutlinerView::OnDeleteSelection() noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		std::vector<Ref<OutlinerListItem>> selectedItems;
 		if (m_pOutlinerTreeView->GetSelectedItems(selectedItems) == 0)
 			return;
 
 		Scene& scene = *pEditor->GetActiveScene();
-		const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 
 		for (const Ref<OutlinerListItem>& pItem : selectedItems)
 		{
 			if (pItem->IsEntity())
 				scene.DestroyEntity(pItem->AsEntity());
 			else if (pItem->IsFolder())
-				pFoldersManager->DeleteFolder(scene, pItem->AsFolder()->GetPath());
+				pFoldersSubsystem->DeleteFolder(scene, pItem->AsFolder()->GetPath());
 		}
 	}
 
 	void EntityOutlinerView::OnDuplicateSelection() noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		//TODO: Consider deferring to Editor
 
@@ -515,7 +510,7 @@ namespace Relentless
 			return;
 
 		Scene* pScene = pEditor->GetActiveScene();
-		const UniquePtr<Selection>& pSelection = pEditor->GetSelection();
+		SelectionSubsystem* pSelection = pEditor->GetSubsystem<SelectionSubsystem>();
 
 		pSelection->DeselectAllEntities();
 
@@ -566,7 +561,7 @@ namespace Relentless
 
 	Ref<DragDropOperation> EntityOutlinerView::OnDragDetected(OutlinerTableRow* pRow) noexcept
 	{
-		Ref<OutlinerDragDropOperation> pEntityDragOp = new OutlinerDragDropOperation(pRow);
+		Ref<OutlinerDragDropOperation> pEntityDragOp = RLS_NEW OutlinerDragDropOperation(pRow);
 
 		std::vector<Ref<OutlinerListItem>> selectedItems;
 		m_pOutlinerTreeView->GetSelectedItems(selectedItems);
@@ -604,8 +599,6 @@ namespace Relentless
 	bool EntityOutlinerView::OnDragEnter(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return false;
 
 		if (dragDropOp.GetDraggedEntities().empty() && dragDropOp.GetDraggedFolders().empty())
 			return false;
@@ -616,7 +609,7 @@ namespace Relentless
 		EntityOutlinerPolicies::MoveContext context
 		{
 			.Scene = *pScene,
-			.FoldersManager = *pEditor->GetEntityFoldersManager(),
+			.FoldersSubsystem = *pEditor->GetSubsystem<EntityFoldersSubsystem>(),
 			.TargetPayload = pHoveredItem->Payload,
 			.Entities = dragDropOp.GetDraggedEntities(),
 			.Folders = dragDropOp.GetDraggedFolders()
@@ -632,18 +625,14 @@ namespace Relentless
 	bool EntityOutlinerView::OnDrop(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return false;
 
 		const Ref<OutlinerListItem>& pDropTargetItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
-		const std::vector<entity>& draggedEntities = dragDropOp.GetDraggedEntities();
 		Scene& scene = *pEditor->GetActiveScene();
-		const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
 
 		EntityOutlinerPolicies::MoveContext context
 		{
 			.Scene = scene,
-			.FoldersManager = *pEditor->GetEntityFoldersManager(),
+			.FoldersSubsystem = *pEditor->GetSubsystem<EntityFoldersSubsystem>(),
 			.TargetPayload = pDropTargetItem->Payload,
 			.Entities = dragDropOp.GetDraggedEntities(),
 			.Folders = dragDropOp.GetDraggedFolders()
@@ -658,8 +647,6 @@ namespace Relentless
 	std::vector<EntityFolder*> EntityOutlinerView::MergeFoldersByLabel(const std::vector<EntityFolder*>& someFolders) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return someFolders;
 
 		if (someFolders.empty() || someFolders.size() == 1)
 			return someFolders;
@@ -671,7 +658,7 @@ namespace Relentless
 		for (EntityFolder* pFolder : someFolders)
 			labelToFoldersMap[pFolder->GetLabel()].push_back(pFolder);
 
-		const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 		std::unordered_set<EntityFolder*> foldersToDelete;
 
 		for (auto& [Label, folders] : labelToFoldersMap)
@@ -689,9 +676,9 @@ namespace Relentless
 				std::unordered_set<String> folderPaths;
 				folderPaths.insert(pCurrrentFolder->GetPath());
 
-				EntityFoldersManager::ForEachEntityInFolders(scene, folderPaths, [&](entity aEntity)
+				EntityFoldersSubsystem::ForEachEntityInFolders(scene, folderPaths, [&](entity aEntity)
 					{
-						pFoldersManager->AttachEntityToFolder(scene, aEntity, targetRawFolder);
+						pFoldersSubsystem->AttachEntityToFolder(scene, aEntity, targetRawFolder);
 						return true;
 					});
 
@@ -707,7 +694,7 @@ namespace Relentless
 		}
 
 		for (EntityFolder* pFolder : foldersToDelete)
-			pEditor->GetEntityFoldersManager()->DeleteFolder(scene, pFolder->GetPath());
+			pEditor->GetSubsystem<EntityFoldersSubsystem>()->DeleteFolder(scene, pFolder->GetPath());
 
 		return foldersToReturn;
 	}
@@ -737,7 +724,7 @@ namespace Relentless
 		UpdateEntityInfoBorder();
 	}
 
-	void EntityOutlinerView::OnEntityDestroyed(entity aDestroyedEntity) noexcept
+	void EntityOutlinerView::OnEntityDestroyed(MAYBE_UNUSED entity aDestroyedEntity) noexcept
 	{
 		UpdateEntityInfoBorder();
 	}
@@ -745,8 +732,6 @@ namespace Relentless
 	void EntityOutlinerView::OnEntityPreDestroyed(entity destroyedEntity) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		const Ref<OutlinerListItem>& pDestroyedEntityItem = GetEntityItem(destroyedEntity);
 
@@ -786,12 +771,10 @@ namespace Relentless
 	void EntityOutlinerView::OnEntityRemovedFromFolder(entity aEntity, const Folder& aFolder) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		Scene& scene = *pEditor->GetActiveScene();
 
-		Ref<EntityFolder> pEntityFolder = pEditor->GetEntityFoldersManager()->GetFolder(scene, aFolder.GetPath());
+		Ref<EntityFolder> pEntityFolder = pEditor->GetSubsystem<EntityFoldersSubsystem>()->GetFolder(scene, aFolder.GetPath());
 		const Ref<OutlinerListItem>& pParentItem = GetFolderItem(pEntityFolder);
 
 		auto it = std::find_if(pParentItem->Children.begin(), pParentItem->Children.end(), [aEntity](const Ref<OutlinerListItem>& pChild) { return pChild->IsEntity() && pChild->AsEntity() == aEntity; });
@@ -807,14 +790,12 @@ namespace Relentless
 	void EntityOutlinerView::OnEntityAttachedToFolder(entity aEntity, const Folder& aFolder) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		//If it has been a child of an entity or folder it will at this point already have been detached. As such only checking root is required.
 
 		Scene& scene = *pEditor->GetActiveScene();
 
-		Ref<EntityFolder> pFolder = pEditor->GetEntityFoldersManager()->GetFolder(scene, aFolder.GetPath());
+		Ref<EntityFolder> pFolder = pEditor->GetSubsystem<EntityFoldersSubsystem>()->GetFolder(scene, aFolder.GetPath());
 
 		std::erase_if(GetRootSceneItem()->Children, [aEntity](const Ref<OutlinerListItem>& pItem) { return pItem->IsEntity() && pItem->AsEntity() == aEntity; });
 
@@ -830,8 +811,6 @@ namespace Relentless
 	void EntityOutlinerView::OnEntityVisibilityChanged(entity aEntity, bool aVisibilityState) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		Scene& scene = *pEditor->GetActiveScene();
 		EntityManager& entityManager = scene.GetEntityManager();
@@ -854,7 +833,7 @@ namespace Relentless
 			pSceneVisibilityButton->SetIsVisible(m_SceneItemSelected || pSceneVisibilityButton->IsHovered());
 		}
 
-		const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 		
 		if (EntityFolder* pFolder = pEditor->GetFolderContainingEntity(aEntity))
 		{
@@ -870,7 +849,7 @@ namespace Relentless
 				}
 
 				std::unordered_set<String> folderPaths;
-				pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aFolder)
+				pFoldersSubsystem->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aFolder)
 					{
 						if (aFolder.GetPath() == pFolder->GetPath() || FilePath::IsSubpath(aFolder.GetPath(), pFolder->GetPath()))
 							folderPaths.insert(aFolder.GetPath());
@@ -879,7 +858,7 @@ namespace Relentless
 					});
 
 				std::vector<entity> folderEntities;
-				EntityFoldersManager::ForEachEntityInFolders(scene, folderPaths, [&](entity aCurrentEntity)
+				EntityFoldersSubsystem::ForEachEntityInFolders(scene, folderPaths, [&](entity aCurrentEntity)
 					{
 						folderEntities.push_back(aCurrentEntity);
 						return true;
@@ -915,7 +894,7 @@ namespace Relentless
 		pVisibilityButton->SetIsVisible(isSelected || !aVisibilityState || pVisibilityButton->IsHovered());
 	}
 
-	void EntityOutlinerView::OnExpandCollapseButtonClicked(Button* pButton, Ref<OutlinerListItem> pItem) noexcept
+	void EntityOutlinerView::OnExpandCollapseButtonClicked(MAYBE_UNUSED Button* pButton, Ref<OutlinerListItem> pItem) noexcept
 	{
 		const bool isExpanded = m_pOutlinerTreeView->GetItemInfo(pItem).IsExpanded;
 		m_pOutlinerTreeView->SetItemExpandedState(pItem, !isExpanded);
@@ -933,7 +912,7 @@ namespace Relentless
 		m_pOutlinerTreeView->RequestTreeRefresh();
 	}
 
-	void EntityOutlinerView::OnFolderMoved(EntityFolder* pMovedFolder, EntityFolder* paOldParentFolder, const String& aOldPath, const String& aNewPath) noexcept
+	void EntityOutlinerView::OnFolderMoved(EntityFolder* pMovedFolder, EntityFolder* paOldParentFolder, MAYBE_UNUSED const String& aOldPath, MAYBE_UNUSED const String& aNewPath) noexcept
 	{
 		if (paOldParentFolder && m_FolderToItemMap.contains(paOldParentFolder->GetUUID()))
 			std::erase_if(GetFolderItem(paOldParentFolder)->Children, [pMovedFolder](const Ref<OutlinerListItem>& pItem) { return pItem->IsFolder() && pItem->AsFolder() == pMovedFolder; });
@@ -956,8 +935,6 @@ namespace Relentless
 	void EntityOutlinerView::OnEntityFolderDeleted(EntityFolder* pFolder) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		const Ref<OutlinerListItem>& pFolderItem = GetFolderItem(pFolder);
 		Scene& scene = *pEditor->GetActiveScene();
@@ -976,12 +953,12 @@ namespace Relentless
 		std::vector<Ref<OutlinerListItem>> children = pFolderItem->Children;
 		if (pAncestorFolder)
 		{
-			const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+			EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 
 			for (auto& pChildItem : children)
 			{
 				if (pChildItem->IsEntity())
-					pFoldersManager->AttachEntityToFolder(scene, pChildItem->AsEntity(), Folder(FolderRoot::CreateFromScene(*pEditor->GetActiveScene()), pAncestorFolder->GetPath()));
+					pFoldersSubsystem->AttachEntityToFolder(scene, pChildItem->AsEntity(), Folder(FolderRoot::CreateFromScene(*pEditor->GetActiveScene()), pAncestorFolder->GetPath()));
 			}
 		}
 		else
@@ -1006,7 +983,7 @@ namespace Relentless
 			return;
 
 		pScene->OnEntityCreated.Detach(this);
-		pScene->OnEntityPreDestroyed.Detach(this);
+		pScene->OnEntityDestroy.Detach(this);
 		pScene->OnEntityDestroyed.Detach(this);
 		pScene->OnEntityAttached.Detach(this);
 		pScene->OnEntityDetached.Detach(this);
@@ -1023,8 +1000,6 @@ namespace Relentless
 		RLS_SCOPED_SUSPEND();
 
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return nullptr;
 
 		Scene& scene = *pEditor->GetActiveScene();
 		const ItemInfo& info = m_pOutlinerTreeView->GetItemInfo(item);
@@ -1039,7 +1014,7 @@ namespace Relentless
 			createInfo.Icon = ICON_FA_CUBE;
 			createInfo.Name = scene.GetEntityManager().Get<NameComponent>(item->AsEntity()).Name;
 			createInfo.Type = "Entity";
-			createInfo.IsSelected = pEditor->GetSelection()->IsEntitySelected(item->AsEntity());
+			createInfo.IsSelected = pEditor->GetSubsystem<SelectionSubsystem>()->IsEntitySelected(item->AsEntity());
 			createInfo.IsVisible = scene.IsEntityVisible(item->AsEntity());
 		}
 		else if (item->IsFolder())
@@ -1051,13 +1026,13 @@ namespace Relentless
 			constexpr Color folderIconColor = Colors::Normalize(213.0f, 166.0f, 74.0f, 255.0f);
 			createInfo.IconColor = folderIconColor;
 
-			const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+			EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 
 			std::unordered_set<String> folderPaths;
 
 			const String rootPath = item->AsFolder()->GetPath();
 
-			pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aFolder)
+			pFoldersSubsystem->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aFolder)
 				{
 					if (aFolder.GetPath() == rootPath || FilePath::IsSubpath(aFolder.GetPath(), rootPath))
 						folderPaths.insert(aFolder.GetPath());
@@ -1067,7 +1042,7 @@ namespace Relentless
 
 			std::vector<entity> folderEntities;
 
-			EntityFoldersManager::ForEachEntityInFolders(scene, folderPaths, [&scene, &folderEntities](entity aEntity)
+			EntityFoldersSubsystem::ForEachEntityInFolders(scene, folderPaths, [&folderEntities](entity aEntity)
 				{
 					folderEntities.push_back(aEntity);
 					return true;
@@ -1233,7 +1208,7 @@ namespace Relentless
 				{
 					EntityFolder* pFolder = pListItem->AsFolder();
 					EntityFolder* pParentFolder = pFolder->GetParent();
-					const String suggestedLabel = pEditor->GetEntityFoldersManager()->GetFolderName(*pEditor->GetActiveScene(), pParentFolder ? pParentFolder->GetPath() : "", inputName);
+					const String suggestedLabel = pEditor->GetSubsystem<EntityFoldersSubsystem>()->GetFolderName(*pEditor->GetActiveScene(), pParentFolder ? pParentFolder->GetPath() : "", inputName);
 					targetColor = suggestedLabel != inputName && currentName != inputName ? Colors::Red : Colors::White;
 				}
 				
@@ -1361,7 +1336,7 @@ namespace Relentless
 			return;
 
 		pScene->OnEntityCreated.Connect(this, &EntityOutlinerView::OnEntityCreated);
-		pScene->OnEntityPreDestroyed.Connect(this, &EntityOutlinerView::OnEntityPreDestroyed);
+		pScene->OnEntityDestroy.Connect(this, &EntityOutlinerView::OnEntityPreDestroyed);
 		pScene->OnEntityDestroyed.Connect(this, &EntityOutlinerView::OnEntityDestroyed);
 		pScene->OnEntityAttached.Connect(this, &EntityOutlinerView::OnEntityAttached);
 		pScene->OnEntityDetached.Connect(this, &EntityOutlinerView::OnEntityDetached);
@@ -1390,8 +1365,6 @@ namespace Relentless
 	void EntityOutlinerView::OnSearchTextCommitted(const char* pText, ETextCommitType commitType) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		if (commitType != ETextCommitType::OnEnter)
 			return;
@@ -1400,8 +1373,6 @@ namespace Relentless
 			return;
 
 		m_pOutlinerTreeView->ClearSelection();
-
-		const bool containsEntityLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetEntityTypeAsString(), ETextFilterTextComparisonMode::Partial);
 
 		EntityManager& mgr = pEditor->GetActiveScene()->GetEntityManager();
 
@@ -1427,12 +1398,10 @@ namespace Relentless
 			return;
 
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		RLS_SCOPED_SUSPEND();
 
-		const UniquePtr<Selection>& pSelection = pEditor->GetSelection();
+		SelectionSubsystem* pSelection = pEditor->GetSubsystem<SelectionSubsystem>();
 
 		OutlinerTableRow* pOutlinerTableRow = nullptr;
 		Button* pVisibilityButton = nullptr;
@@ -1480,8 +1449,6 @@ namespace Relentless
 	void EntityOutlinerView::OnSelectionChangedExternally(entity aEntity, ESelectionState aSelectionState) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		UpdateEntityInfoBorder();
 
@@ -1573,8 +1540,8 @@ namespace Relentless
 		m_FolderToItemMap.clear();
 
 		Scene& scene = *pEditor->GetActiveScene();
-		const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
-		const UniquePtr<Selection>& pSelection = pEditor->GetSelection();
+		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
+		SelectionSubsystem* pSelection = pEditor->GetSubsystem<SelectionSubsystem>();
 
 		std::vector<entity> entitiesToAdd;
 		std::vector<String> foldersToAdd;
@@ -1583,7 +1550,7 @@ namespace Relentless
 		const bool containsFolderLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetFolderTypeAsString(), ETextFilterTextComparisonMode::Partial);
 		const bool containsSceneLabel = m_pFilter->TestTextFilter(OutlinerListItem::GetSceneTypeAsString(), ETextFilterTextComparisonMode::Partial);
 
-		pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aEntityFolder)
+		pFoldersSubsystem->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aEntityFolder)
 			{
 				if (m_pFilter->TestTextFilter(aEntityFolder.GetLabel(), ETextFilterTextComparisonMode::Partial) || containsFolderLabel)
 				{
@@ -1597,7 +1564,7 @@ namespace Relentless
 				std::unordered_set<String> descendantFolderPaths;
 
 				//Descendant folders:
-				pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aCandidateDescendantFolder)
+				pFoldersSubsystem->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aCandidateDescendantFolder)
 					{
 						if (aEntityFolder.GetUUID() == aCandidateDescendantFolder.GetUUID())
 							return true;
@@ -1623,7 +1590,7 @@ namespace Relentless
 				descendantFolderPaths.insert(aEntityFolder.GetPath());
 
 				//All entities for all those folders:
-				EntityFoldersManager::ForEachEntityInFolders(scene, descendantFolderPaths, [&](entity aCurrentEntity)
+				EntityFoldersSubsystem::ForEachEntityInFolders(scene, descendantFolderPaths, [&](entity aCurrentEntity)
 					{
 						if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(aCurrentEntity).Name, ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
 						{
@@ -1712,7 +1679,7 @@ namespace Relentless
 
 			for (const String& folderPath : foldersToAdd)
 			{
-				EntityFolder* pFolder = pFoldersManager->GetFolder(scene, folderPath);
+				EntityFolder* pFolder = pFoldersSubsystem->GetFolder(scene, folderPath);
 
 				Ref<OutlinerListItem> pFolderListItem = CreateEntityFolderListItem(pFolder);
 				if (m_SelectedFolders.contains(pFolder->GetUUID()))
@@ -1760,25 +1727,21 @@ namespace Relentless
 	bool EntityOutlinerView::RenameFolder(EntityFolder* aFolder, const String& aName) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return false;
 
 		EntityFolder* pParentFolder = aFolder->GetParent();
-		const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 		Scene& scene = *pEditor->GetActiveScene();
 
-		const String suggestedLabel = pFoldersManager->GetFolderName(scene, pParentFolder ? pParentFolder->GetPath() : "", aName);
+		const String suggestedLabel = pFoldersSubsystem->GetFolderName(scene, pParentFolder ? pParentFolder->GetPath() : "", aName);
 		if (suggestedLabel != aName || aFolder->GetLabel() == aName)
 			return false;
 
-		return pFoldersManager->RenameFolder(scene, aFolder->GetPath(), pParentFolder ? FilepathUtils::CombineDisplay(pParentFolder->GetPath(), aName) : aName);
+		return pFoldersSubsystem->RenameFolder(scene, aFolder->GetPath(), pParentFolder ? FilepathUtils::CombineDisplay(pParentFolder->GetPath(), aName) : aName);
 	}
 
 	bool EntityOutlinerView::RenameEntity(entity aEntity, const String& aName) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return false;
 
 		NameComponent& nameComponent = pEditor->GetActiveScene()->GetEntityManager().Get<NameComponent>(aEntity);
 		if (nameComponent.Name == aName)
@@ -1791,8 +1754,6 @@ namespace Relentless
 	void EntityOutlinerView::ToggleVisibilityForItem(const Ref<OutlinerListItem>& pAOutlinerListItem, bool aToVisible) noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
 		Scene& scene = *pEditor->GetActiveScene();
 
@@ -1800,13 +1761,13 @@ namespace Relentless
 			scene.SetEntityVisibleInGame(pAOutlinerListItem->AsEntity(), aToVisible);
 		else if (pAOutlinerListItem->IsFolder())
 		{
-			const UniquePtr<EntityFoldersManager>& pFoldersManager = pEditor->GetEntityFoldersManager();
+			EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 
 			const String rootPath = pAOutlinerListItem->AsFolder()->GetPath();
 
 			std::unordered_set<String> folderPaths;
 
-			pFoldersManager->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aFolder)
+			pFoldersSubsystem->ForEachFolderWithRootObject(FolderRoot::CreateFromScene(scene), [&](const EntityFolder& aFolder)
 				{
 					if (aFolder.GetPath().starts_with(rootPath))
 						folderPaths.insert(aFolder.GetPath());
@@ -1814,7 +1775,7 @@ namespace Relentless
 					return true;
 				});
 
-			EntityFoldersManager::ForEachEntityInFolders(scene, folderPaths, [&scene, aToVisible](entity aEntity)
+			EntityFoldersSubsystem::ForEachEntityInFolders(scene, folderPaths, [&scene, aToVisible](entity aEntity)
 				{
 					scene.SetEntityVisibleInGame(aEntity, aToVisible);
 					return true;
@@ -1827,10 +1788,8 @@ namespace Relentless
 	void EntityOutlinerView::UpdateEntityInfoBorder() noexcept
 	{
 		auto pEditor = Editor::Get();
-		if (!pEditor)
-			return;
 
-		const UniquePtr<Selection>& pSelection = pEditor->GetSelection();
+		SelectionSubsystem* pSelection = pEditor->GetSubsystem<SelectionSubsystem>();
 		if (!pSelection)
 			return;
 
@@ -1838,13 +1797,13 @@ namespace Relentless
 		if (!pScene)
 			return;
 
-		VerticalBoxEx* pContentWidget = m_pMainBox->GetWidget<VerticalBoxEx>(2);
+		VerticalBox* pContentWidget = m_pMainBox->GetWidget<VerticalBox>(2);
 		if (!pContentWidget)
 			return;
 
 		Border* pInfoBorder = pContentWidget->GetWidget<Border>(0);
 
-		Label* pLabel = static_cast<Label*>(static_cast<HorizontalBoxEx*>(pInfoBorder->GetContent().Get())->GetWidget<Label>(0));
+		Label* pLabel = static_cast<Label*>(static_cast<HorizontalBox*>(pInfoBorder->GetContent().Get())->GetWidget<Label>(0));
 		if (!pLabel)
 			return;
 

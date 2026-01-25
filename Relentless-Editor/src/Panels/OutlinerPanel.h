@@ -1,6 +1,9 @@
 #pragma once
 #include <Relentless.h>
 
+#include "../UI/Views/Outliner/EntityOutlinerView.h"
+#include "../UI/Widgets/Panel.h"
+
 namespace Relentless
 {
 	class EntityOutlinerView;
@@ -13,7 +16,7 @@ namespace Relentless
 
 		const Ref<EntityOutlinerView>& GetEntityOutlinerView() const noexcept;
 	private:
-		bool OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept;
+		bool OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept override;
 	private:
 		Ref<EntityOutlinerView> m_pEntityOutlinerView = nullptr;
 	};

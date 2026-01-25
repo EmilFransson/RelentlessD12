@@ -22,9 +22,9 @@ namespace Relentless
 		void OnInnerConeAngleChanged(float aAngleDegrees) noexcept;
 		void OnOuterConeAngleChanged(float aAngleDegrees) noexcept;
 
-		NO_DISCARD Ref<ITableRow> OnRequestAttenuationRadiusRow(const ItemInfo& aItemInfo) noexcept;
-		NO_DISCARD Ref<ITableRow> OnRequestInnerConeAngleRow(const ItemInfo& aItemInfo) noexcept;
-		NO_DISCARD Ref<ITableRow> OnRequestOuterConeAngleRow(const ItemInfo& aItemInfo) noexcept;
+		NO_DISCARD Ref<ITableRow> OnRequestAttenuationRadiusRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept;
+		NO_DISCARD Ref<ITableRow> OnRequestInnerConeAngleRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept;
+		NO_DISCARD Ref<ITableRow> OnRequestOuterConeAngleRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept;
 	private:
 		Button* m_pRevertAttenuationRadiusButton = nullptr;
 		Button* m_pRevertInnerConeAngleButton = nullptr;

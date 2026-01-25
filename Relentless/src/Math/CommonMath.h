@@ -5,12 +5,12 @@ namespace Relentless
 {
 	namespace Colors
 	{
-		inline static constexpr [[nodiscard]] Color Normalize(const Color& color) noexcept
+		NO_DISCARD inline static constexpr Color Normalize(const Color& color) noexcept
 		{
 			return Color(color.R() / 255.0f, color.G() / 255.0f, color.B() / 255.0f, color.A() / 255.0f);
 		}
 
-		inline static constexpr [[nodiscard]] Color Normalize(float r, float g, float b, float a) noexcept
+		NO_DISCARD inline static constexpr Color Normalize(float r, float g, float b, float a) noexcept
 		{
 			return Color(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
 		}
@@ -99,19 +99,19 @@ namespace Relentless
 		}
 
 
-		inline [[nodiscard]] static float RadToDeg(float radians) noexcept
+		NO_DISCARD inline static float RadToDeg(float radians) noexcept
 		{
 			constexpr float DEGREES_PER_RADIANS = 180.0f / PI;
 			return radians * DEGREES_PER_RADIANS;
 		}
 
-		inline [[nodiscard]] static Vector3 RadToDeg(const Vector3& radians) noexcept
+		NO_DISCARD inline static Vector3 RadToDeg(const Vector3& radians) noexcept
 		{
 			constexpr float DEGREES_PER_RADIANS = 180.0f / PI;
 			return Vector3(radians.x * DEGREES_PER_RADIANS, radians.y * DEGREES_PER_RADIANS, radians.z * DEGREES_PER_RADIANS);
 		}
 
-		inline [[nodiscard]] static float RadToDeg360(float radians) noexcept
+		NO_DISCARD inline static float RadToDeg360(float radians) noexcept
 		{
 			float degrees = RadToDeg(radians);
 			degrees = fmodf(degrees, 360.0f);
@@ -120,7 +120,7 @@ namespace Relentless
 			return degrees;
 		}
 
-		inline NO_DISCARD static Vector3 RadToDeg360(const Vector3& radians) noexcept
+		NO_DISCARD inline static Vector3 RadToDeg360(const Vector3& radians) noexcept
 		{
 			Vector3 degrees = RadToDeg(radians);
 
@@ -136,23 +136,23 @@ namespace Relentless
 			return degrees;
 		}
 
-		inline NO_DISCARD static int RandomRange(int min, int max) noexcept
+		NO_DISCARD inline static int RandomRange(int min, int max) noexcept
 		{
 			return min + rand() % (max - min + 1);
 		}
 
-		inline [[nodiscard]] constexpr static float DegToRad(float degrees) noexcept
+		NO_DISCARD inline constexpr static float DegToRad(float degrees) noexcept
 		{
 			constexpr float RADIANS_PER_DEGREE = PI / 180.0f;
 			return degrees * RADIANS_PER_DEGREE;
 		}
 
-		inline [[nodiscard]] static float Log2f(float value) noexcept
+		NO_DISCARD inline static float Log2f(float value) noexcept
 		{
 			return std::log2f(value);
 		}
 
-		inline [[nodiscard]] static float NormalizeDegrees(float degrees) noexcept
+		NO_DISCARD inline static float NormalizeDegrees(float degrees) noexcept
 		{
 			degrees = std::fmod(degrees, 360.0f);
 			if (degrees < 0.0f) 
@@ -162,14 +162,14 @@ namespace Relentless
 			return degrees;
 		}
 
-		inline [[nodiscard]] static float Pow2f(float exponent) noexcept
+		NO_DISCARD inline static float Pow2f(float exponent) noexcept
 		{
 			return std::powf(2, exponent);
 		}
 
 		// Create left-handed DX style perspective matrix
 		// FoV is vertical FoV in radians
-		inline [[nodiscard]] Matrix CreatePerspectiveMatrix(float FoV, float aspectRatio, float nearZ, float farZ) noexcept
+		NO_DISCARD inline Matrix CreatePerspectiveMatrix(float FoV, float aspectRatio, float nearZ, float farZ) noexcept
 		{
 			const float sinFov = sinf(FoV * 0.5f);
 			const float cosFov = cosf(FoV * 0.5f);
@@ -188,7 +188,7 @@ namespace Relentless
 			);
 		}
 
-		inline [[nodiscard]] Matrix CreateLookToMatrix(const Vector3& position, const Vector3& direction, const Vector3& up)
+		NO_DISCARD inline Matrix CreateLookToMatrix(const Vector3& position, const Vector3& direction, const Vector3& up)
 		{
 			Vector3 z;
 			direction.Normalize(z);
@@ -211,7 +211,7 @@ namespace Relentless
 		}
 
 		// Create left-handed DX style look-to quaternion
-		inline [[nodiscard]] Quaternion CreateLookToRotation(const Vector3& eye, const Vector3& target)
+		NO_DISCARD inline Quaternion CreateLookToRotation(const Vector3& eye, const Vector3& target)
 		{
 			Vector3 forward = target - eye;
 			forward.Normalize();
@@ -228,7 +228,7 @@ namespace Relentless
 			return rotation;
 		}
 
-		inline [[nodiscard]] BoundingFrustum CreateBoundingFrustum(const Matrix& projection, const Matrix& view) noexcept
+		NO_DISCARD inline BoundingFrustum CreateBoundingFrustum(const Matrix& projection, const Matrix& view) noexcept
 		{
 			BoundingFrustum frustum;
 			BoundingFrustum::CreateFromMatrix(frustum, projection);
@@ -238,102 +238,40 @@ namespace Relentless
 			return frustum;
 		}
 
-		inline NO_DISCARD float Cos(float aRadians) noexcept
+		NO_DISCARD inline float Cos(float aRadians) noexcept
 		{
 			return std::cos(aRadians);
 		}
 
-// 		inline NO_DISCARD float Luminance(const Vector3& rgb)
-// 		{
-// 			return rgb.Dot(Vector3(0.2126f, 0.7152f, 0.0722f));
-// 		}
-// 
-		//inline NO_DISCARD float ConeSolidAngle(float aHalfAngleRadians) noexcept
-		//{
-		//	// Ω = 2π(1 - cos(theta))
-		//	return 2.0f * Math::PI * (1.0f - Math::Cos(aHalfAngleRadians));
-		//}
-// 
-// 		inline constexpr NO_DISCARD float CandelaToRadiantIntensity(float candela) noexcept
-// 		{
-// 			return candela / Math::PhotopicEfficacy;
-// 		}
-// 
-// 		inline NO_DISCARD float CandelaToLumen_Spot(float aCandelaValue, float aOuterHalfAngleRadians) noexcept
-// 		{
-// 			return aCandelaValue * ConeSolidAngle(aOuterHalfAngleRadians);
-// 		}
-// 
-// 		inline NO_DISCARD float LumenToCandela_Spot(float aLumenValue, float aOuterHalfAngleRadians) noexcept
-// 		{
-// 			const float omega = ConeSolidAngle(aOuterHalfAngleRadians);
-// 			return (omega > 1e-6f) ? (aLumenValue / omega) : 0.0f;
-// 		}
-// 
-// 		inline constexpr NO_DISCARD float LumenToRadiantIntensity(float lumen, float solidAngleSr = 4.0f * Math::PI) noexcept
-// 		{
-// 			return (lumen / Math::PhotopicEfficacy) / solidAngleSr;
-// 		}
-// 
-// 		inline constexpr NO_DISCARD float LumenToCandela_Point(float aLumenValue) noexcept
-// 		{
-// 			return aLumenValue / (4.0f * Math::PI);
-// 		}
-// 
-// 		inline constexpr NO_DISCARD float CandelaToLumen_Point(float aCandelaValue) noexcept
-// 		{
-// 			return aCandelaValue * (4.0f * PI);
-// 		}
-// 
-// 		inline constexpr [[nodiscard]] float LuxToRadiantIrradiance(float lux) noexcept
-// 		{
-// 			return lux / Math::PhotopicEfficacy;
-// 		}
-// 
-// 		inline constexpr [[nodiscard]] float RadiantIrradianceToLux(float radiantIrradiance) noexcept
-// 		{
-// 			return radiantIrradiance * Math::PhotopicEfficacy;
-// 		}
-// 
-// 		inline constexpr NO_DISCARD float RadiantIntensityToCandela(float radiantIntensity) noexcept
-// 		{
-// 			return radiantIntensity * Math::PhotopicEfficacy;
-// 		}
-// 
-// 		inline constexpr [[nodiscard]] float RadiantIntensityToLumen(float radiantIntensity, float solidAngleSr = 4.0f * Math::PI) noexcept
-// 		{
-// 			return radiantIntensity * solidAngleSr * Math::PhotopicEfficacy;
-// 		}
-
 		namespace Photometry
 		{
-			inline NO_DISCARD float SolidAngle_Cone(float aOuterConeAngleRadians) noexcept
+			NO_DISCARD inline float SolidAngle_Cone(float aOuterConeAngleRadians) noexcept
 			{
 				const float c = Math::Cos(aOuterConeAngleRadians);
 				return 2.0f * Math::PI * (1.0f - c);
 			}
 
-			inline constexpr NO_DISCARD float CandelaToLumen_Point(float aCandelaValue) noexcept
+			NO_DISCARD inline constexpr float CandelaToLumen_Point(float aCandelaValue) noexcept
 			{
 				return aCandelaValue * (4.0f * Math::PI);
 			}
 
-			inline NO_DISCARD float CandelaToLumen_Spot(float aCandelaValue, float aOuterHalfAngleRadians) noexcept
+			NO_DISCARD inline float CandelaToLumen_Spot(float aCandelaValue, float aOuterHalfAngleRadians) noexcept
 			{
 				return aCandelaValue * SolidAngle_Cone(aOuterHalfAngleRadians);
 			}
 
-			inline NO_DISCARD float Luminance(const Vector3& rgb)
+			NO_DISCARD inline float Luminance(const Vector3& rgb)
 			{
 				return rgb.Dot(Vector3(0.2126f, 0.7152f, 0.0722f));
 			}
 
-			inline NO_DISCARD float LumenToCandela_Point(float aLumenValue) noexcept
+			NO_DISCARD inline float LumenToCandela_Point(float aLumenValue) noexcept
 			{
 				return aLumenValue / (4.0f * Math::PI);
 			}
 
-			inline NO_DISCARD float LumenToCandela_Spot(float aLumenValue, float aOuterConeAngleRadians) noexcept
+			NO_DISCARD inline float LumenToCandela_Spot(float aLumenValue, float aOuterConeAngleRadians) noexcept
 			{
 				const float omega = SolidAngle_Cone(aOuterConeAngleRadians);
 				const float safeOmega = Math::Max(omega, 1e-6f);
@@ -341,9 +279,9 @@ namespace Relentless
 			}
 		}
 
-		[[nodiscard]] Color MakeFromColorTemperature(float Temp) noexcept;
+		NO_DISCARD RLS_API Color MakeFromColorTemperature(float aTemp) noexcept;
 
-		inline [[nodiscard]] float SpotLightHalfAngleToSolidAngle(float halfAngleRadians) noexcept
+		NO_DISCARD inline float SpotLightHalfAngleToSolidAngle(float halfAngleRadians) noexcept
 		{
 			return 2.0f * Math::PI * (1.0f - std::cos(halfAngleRadians));
 		}

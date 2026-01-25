@@ -1,10 +1,14 @@
 #include "EntityDetailCategoryRow.h"
 
+#include "UI/Widgets/Button.h"
+#include "UI/Widgets/HorizontalBox.h"
+#include "UI/Widgets/Label.h"
+
 namespace Relentless
 {
 	EntityDetailCategoryRow::EntityDetailCategoryRow(std::string_view aName, bool aIsExpanded) noexcept
 	{
-		Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+		Ref<HorizontalBox> pBox = new HorizontalBox();
 		pBox->SetSpacing(1.0f);
 
 		pBox->AddWidget(new Button(aIsExpanded ? ICON_FA_CHEVRON_DOWN : ICON_FA_CHEVRON_RIGHT, Vector2(25.0f, 30.0f)))

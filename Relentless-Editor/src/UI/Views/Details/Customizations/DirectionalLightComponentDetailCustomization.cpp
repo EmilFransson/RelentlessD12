@@ -1,8 +1,5 @@
 #include "DirectionalLightComponentDetailCustomization.h"
-
-#include "../../../../Core/Selection.h"
-#include "../LayoutBuilders/EntityDetailLayoutBuilder.h"
-#include "../TableRows/EntityDetailRow.h"
+#include "UI/Views/Details/LayoutBuilders/EntityDetailLayoutBuilder.h"
 
 namespace Relentless
 {

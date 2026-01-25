@@ -1,13 +1,5 @@
 #pragma once
-#include "ImGui/ImguiLayer.h"
-#include "Threading/ThreadPool.h"
-#include "Callback/Broadcaster.h"
-#include "Graphics/RHI/Device.h"
-#include "Graphics/RHI/RHI.h"
-#include "Graphics/RHI/Swapchain.h"
-#include "Graphics/RHI/Window.h"
-#include "Graphics/Renderer/Renderer.h"
-
+#include "DLLExport.h"
 #include "EventSystem/EventPublisher.h"
 
 namespace Relentless
@@ -17,17 +9,23 @@ namespace Relentless
 		std::string Name;
 	};
 	
+	class CommandContext;
+	class GraphicsDevice;
+	//class ImguiLayer;
 	class Layer;
+	class Swapchain;
+	class ThreadPool;
+	class WindowEx;
 
-	class Application : public EventPublisher
+	class RLS_API Application : public EventPublisher
 	{
 	public:
-		[[nodiscard]] static Application& Get() noexcept;
+		NO_DISCARD static Application& Get() noexcept;
 		Application(const ApplicationSpecification& applicationSpecification) noexcept;
 		virtual ~Application() noexcept;
 
-		[[nodiscard]] GraphicsDevice* GetGraphicsDevice() const noexcept;
-		[[nodiscard]] const UniquePtr<WindowEx>& GetWindow() const noexcept;
+		NO_DISCARD GraphicsDevice* GetGraphicsDevice() const noexcept;
+		NO_DISCARD const UniquePtr<WindowEx>& GetWindow() const noexcept;
 
 		void InitializeShutdownProcedure();
 
@@ -38,10 +36,12 @@ namespace Relentless
 		//Should be protected?
 		virtual void Initialize() noexcept {}
 		virtual void Update() noexcept {}
+		virtual void UIRenderBegin(CommandContext*) noexcept {}
+		virtual void UIRenderEnd(CommandContext*) noexcept {}
 		virtual void ShutDown() noexcept {}
 		
-		void SubmitToMainThread(const std::function<void()>& func); //Determine usage?
-		[[nodiscard]] ThreadPool& GetThreadPool() noexcept;
+		void SubmitToMainThread(const std::function<void()>& func);
+		NO_DISCARD ThreadPool& GetThreadPool() noexcept;
 	private:
 		void Initialize_Internal() noexcept;
 		void Update_Internal() noexcept;
@@ -59,13 +59,13 @@ namespace Relentless
 	protected:
 		Ref<GraphicsDevice> m_pGraphicsDevice = nullptr;
 		Ref<Swapchain> m_pSwapchain = nullptr;
-		UniquePtr<WindowEx> m_pWindow = nullptr;
+		UniquePtr<WindowEx> m_pWindow;
 	private:
 		static Application* s_Instance;
 		UniquePtr<ThreadPool> m_ThreadPool;
 
 		ApplicationSpecification m_ApplicationSpecification;
-		UniquePtr<ImguiLayer> m_pImGuiLayer = nullptr;
+		//UniquePtr<ImguiLayer> m_pImGuiLayer;
 		bool m_IsRunning;
 
 		std::queue<std::function<void()>> m_MainThreadFunctionQueue;
@@ -73,5 +73,5 @@ namespace Relentless
 	};
 
 	//To be defined in client (runtime-project):
-	[[nodiscard]] const std::unique_ptr<Application> CreateApplication() noexcept;
+	NO_DISCARD UniquePtr<Application> CreateApplication() noexcept;
 }

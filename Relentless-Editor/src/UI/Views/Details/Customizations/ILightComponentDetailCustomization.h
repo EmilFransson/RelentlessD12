@@ -1,12 +1,20 @@
 #pragma once
 #include "EntityDetailCustomization.h"
 
-#include "../TableRows/EntityDetailRow.h"
+#include "UI/Views/Details/TableRows/EntityDetailRow.h"
+
+#include "UI/Widgets/Button.h"
+#include "UI/Widgets/CheckBox.h"
+#include "UI/Widgets/ColorPicker.h"
+#include "UI/Widgets/ComboBox.h"
+#include "UI/Widgets/FloatSlider.h"
+#include "UI/Widgets/HorizontalBox.h"
+#include "UI/Widgets/ITableRow.h"
+#include "UI/Widgets/Label.h"
 
 namespace Relentless
 {
 	class IDetailLayoutBuilder;
-	class EntityDetailLayoutBuilder;
 
 	enum class EIntensityUnit : uint8 { Candelas = 0u, Lumens, Lux };
 
@@ -68,7 +76,7 @@ namespace Relentless
 		Scene& scene = m_pBuilder->GetScene();
 		EntityManager& entityManager = scene.GetEntityManager();
 
-		return std::ranges::all_of(GetInspectedEntities(), [this, &entityManager](entity aEntity)
+		return std::ranges::all_of(GetInspectedEntities(), [&entityManager](entity aEntity)
 			{
 				return entityManager.Get<ComponentType>(aEntity).GetColor() == DEFAULT_LIGHT_COLOR;
 			});
@@ -80,7 +88,7 @@ namespace Relentless
 		Scene& scene = m_pBuilder->GetScene();
 		EntityManager& entityManager = scene.GetEntityManager();
 
-		return std::ranges::all_of(GetInspectedEntities(), [this, &entityManager](entity aEntity)
+		return std::ranges::all_of(GetInspectedEntities(), [&entityManager](entity aEntity)
 			{
 				ComponentType& component = entityManager.Get<ComponentType>(aEntity);
 
@@ -103,7 +111,7 @@ namespace Relentless
 		Scene& scene = m_pBuilder->GetScene();
 		EntityManager& entityManager = scene.GetEntityManager();
 
-		return std::ranges::all_of(GetInspectedEntities(), [this, &entityManager](entity aEntity)
+		return std::ranges::all_of(GetInspectedEntities(), [&entityManager](entity aEntity)
 			{
 				ComponentType& component = entityManager.Get<ComponentType>(aEntity);
 				return Math::AreValuesClose(component.GetTemperature(), DEFAULT_TEMPERATURE);
@@ -123,7 +131,7 @@ namespace Relentless
 		Scene& scene = m_pBuilder->GetScene();
 		EntityManager& entityManager = scene.GetEntityManager();
 
-		return std::ranges::all_of(GetInspectedEntities(), [this, &entityManager](entity aEntity)
+		return std::ranges::all_of(GetInspectedEntities(), [&entityManager](entity aEntity)
 			{
 				return entityManager.Get<ComponentType>(aEntity).IsUsingTemperature() == DEFAULT_USE_TEMPERATURE;
 			});
@@ -200,6 +208,8 @@ namespace Relentless
 						break;
 					case EIntensityUnit::Lumens:
 						component.SetIntensityLumen(aIntensity);
+						break;
+					default:
 						break;
 					}
 				}
@@ -309,20 +319,20 @@ namespace Relentless
 	}
 
 	template<typename ComponentType>
-	Ref<ITableRow> ILightComponentDetailCustomization<ComponentType>::OnRequestColorRow(const ItemInfo& aItemInfo) noexcept
+	Ref<ITableRow> ILightComponentDetailCustomization<ComponentType>::OnRequestColorRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept
 	{
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
 			pBox->AddWidget(new Label("Light Color"));
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(140.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
@@ -336,7 +346,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertColorButton = pBox->AddWidget(AddRevertButtonWidget([this](const Color& aColor) { OnColorChanged(aColor); }, DEFAULT_LIGHT_COLOR, !IsColorDefaultForInspected()));
 			pRow->SetColumnWidget(2, pBox);
 		}
@@ -350,15 +360,15 @@ namespace Relentless
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
 			pBox->AddWidget(new Label("Type"));
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(140.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
@@ -382,7 +392,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			pBox->AddWidget(new Button(ICON_FA_ARROW_ROTATE_LEFT, Vector2(32.0f, 32.0f)))
 				->SetBackgroundColor(Colors::Transparent)
 				->SetActiveColor(Colors::Transparent)
@@ -403,15 +413,15 @@ namespace Relentless
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
 			pBox->AddWidget(new Label("Intensity"));
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(140.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
@@ -452,7 +462,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertIntensityButton = pBox->AddWidget(AddRevertButtonWidget([this](float aValue) 
 				{ 
 					if constexpr (std::is_same_v<ComponentType, DirectionalLightComponent>)
@@ -478,20 +488,20 @@ namespace Relentless
 	}
 
 	template<typename ComponentType>
-	Ref<ITableRow> ILightComponentDetailCustomization<ComponentType>::OnRequestIntensityUnitsRow(const ItemInfo& aItemInfo) noexcept
+	Ref<ITableRow> ILightComponentDetailCustomization<ComponentType>::OnRequestIntensityUnitsRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept
 	{
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
 			pBox->AddWidget(new Label("Intensity Units"));
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(140.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
@@ -506,7 +516,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertIntensityUnitButton = pBox->AddWidget(AddRevertButtonWidget([this](const ComboBox::SelectionInfo& aSelectionInfo)
 				{
 					OnIntensityUnitChanged(aSelectionInfo);
@@ -519,20 +529,20 @@ namespace Relentless
 	}
 
 	template<typename ComponentType>
-	Ref<ITableRow> ILightComponentDetailCustomization<ComponentType>::OnRequestTemperatureRow(const ItemInfo& aItemInfo) noexcept
+	Ref<ITableRow> ILightComponentDetailCustomization<ComponentType>::OnRequestTemperatureRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept
 	{
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
 			pBox->AddWidget(new Label("Temperature"));
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
-			Ref<HorizontalBoxEx> pInnerBox = new HorizontalBoxEx(Vector2(140.0f, 32.0f), true);
+			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
@@ -548,7 +558,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertTemperatureButton = pBox->AddWidget(AddRevertButtonWidget([this](float aValue) { OnTemperatureChanged(aValue); }, DEFAULT_TEMPERATURE, !IsTemperatureDefaultForInspected()));
 			pRow->SetColumnWidget(2, pBox);
 		}
@@ -557,18 +567,18 @@ namespace Relentless
 	}
 
 	template<typename ComponentType>
-	Ref<ITableRow> ILightComponentDetailCustomization<ComponentType>::OnRequestUseTemperatureRow(const ItemInfo& aItemInfo) noexcept
+	Ref<ITableRow> ILightComponentDetailCustomization<ComponentType>::OnRequestUseTemperatureRow(MAYBE_UNUSED const ItemInfo& aItemInfo) noexcept
 	{
 		Ref<EntityDetailRow> pRow = new EntityDetailRow();
 
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
 			pBox->AddWidget(new Label("Use Temperature"));
 			pRow->SetColumnWidget(0, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 
 			pBox->AddWidget(new CheckBox())
 				->Value(this, &ILightComponentDetailCustomization::GetUseTemperature)
@@ -578,7 +588,7 @@ namespace Relentless
 			pRow->SetColumnWidget(1, pBox);
 		}
 		{
-			Ref<HorizontalBoxEx> pBox = new HorizontalBoxEx();
+			Ref<HorizontalBox> pBox = new HorizontalBox();
 			m_pRevertUseTemperatureButton = pBox->AddWidget(AddRevertButtonWidget([this](bool aValue) { OnUseTemperatureCheckStateChanged(aValue); }, DEFAULT_USE_TEMPERATURE, !IsUseTemperatureDefaultForInspected()));
 			pRow->SetColumnWidget(2, pBox);
 		}

@@ -23,7 +23,7 @@ namespace Relentless
 			for (entity child : children)
 				sceneState.Scene.DetachEntity(child);
 
-			sceneState.Scene.OnEntityPreDestroyed(toDestroy);
+			sceneState.Scene.OnEntityDestroy(toDestroy);
 			sceneState.EntityManager.DestroyEntity(toDestroy);
 			sceneState.Scene.OnEntityDestroyed(toDestroy);
 		}

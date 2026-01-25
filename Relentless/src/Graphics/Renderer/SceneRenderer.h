@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/DLLExport.h"
 #include "Scene/Scene.h"
 #include "../../../vendor/includes/HBAO+/GFSDK_SSAO.h"
 namespace Relentless
@@ -16,7 +17,7 @@ namespace Relentless
 		bool DisplayEditorGrid{ true };
 	};
 
-	class SceneRenderer
+	class RLS_API SceneRenderer
 	{
 	public:
 		explicit SceneRenderer(std::shared_ptr<Scene> pScene) noexcept;
@@ -54,13 +55,13 @@ namespace Relentless
 		struct VP
 		{
 			DirectX::XMFLOAT4X4 VPMatrix;
-		} m_VPData;
+		} /*m_VPData*/;
 
 		struct ViewProjectionMatrices
 		{
 			DirectX::XMFLOAT4X4 ViewMatrix;
 			DirectX::XMFLOAT4X4 ProjectionMatrix;
-		} m_VPMatrices;
+		} /*m_VPMatrices*/;
 
 		struct PerFrameOpaqueGeometryData
 		{
@@ -73,17 +74,17 @@ namespace Relentless
 			uint32_t brdfLutTextureIndex;
 			uint32_t irradianceMapIndex;
 			uint32_t radianceMapIndex;
-		} m_PerFrameOpaqueGeometryData;
+		} /*m_PerFrameOpaqueGeometryData*/;
 
 		struct PerFrameEditorData
 		{
 			uint32_t cameraDataIndex;
-		} m_PerFrameEditorData;
+		} /*m_PerFrameEditorData*/;
 
 		struct CompositeData
 		{
 			uint32_t PostProcessTextureIndex;
-		} m_CompositeData;
+		} /*m_CompositeData*/;
 
 		struct PickingData
 		{
@@ -96,18 +97,18 @@ namespace Relentless
 			uint32_t worldMatrixIndex;
 			uint32_t vertexBufferIndex;
 			uint32_t indexBufferIndex;
-		} m_PerDrawData;
+		} /*m_PerDrawData*/;
 
 		struct Environment
 		{
 			DirectX::XMFLOAT3 BackgroundColor;
-		} m_Environment;
+		} /*m_Environment*/;
 
 		struct SkyboxPassData
 		{
 			uint32_t ViewProjectionIndex;
 			uint32_t SkyboxTextureIndex;
-		} m_SkyboxPassData;
+		} /*m_SkyboxPassData*/;
 
 		struct EditorGridPassVSPerFrameData
 		{
@@ -115,13 +116,13 @@ namespace Relentless
 			uint32_t VPMatrixConstantBufferIndex;
 			uint32_t BatchDataTransformHorizontalCBIndex;
 			uint32_t BatchDataTransformVerticalCBIndex;
-		} m_EditorGridPassVSPerFrameData;
+		} /*m_EditorGridPassVSPerFrameData*/;
 
 		std::vector<entity> m_OpaqueRenderModeEntities;
 		std::vector<entity> m_CutOutRenderModeEntities;
 		std::vector<entity> m_TransparentRenderModeEntities;
 
-		void* m_pMappedReadBackBufferPointer = nullptr;
+		//void* m_pMappedReadBackBufferPointer = nullptr;
 
 		AssetHandle m_BRDFLutTextureHandle = NULL_HANDLE;
 		
@@ -139,13 +140,13 @@ namespace Relentless
 			} Color;
 			float padding2;
 		};
-		const int EDITOR_GRID_VERTEX_COUNT = 2;
+		//const int EDITOR_GRID_VERTEX_COUNT = 2;
 		const int EDITOR_GRID_INSTANCE_COUNT = 800;
 
 		TransformComponent m_EditorGridTransformComponent1;
 		TransformComponent m_EditorGridTransformComponent2;
 		
 		GFSDK_SSAO_Parameters m_HBAOPlusParameters;
-		GFSDK_SSAO_Context_D3D12* m_SSAOContext = nullptr;
+		//GFSDK_SSAO_Context_D3D12* m_SSAOContext = nullptr;
 	};
 }

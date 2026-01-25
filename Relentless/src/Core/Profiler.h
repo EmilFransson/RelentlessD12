@@ -1,4 +1,6 @@
 #pragma once
+#include "Core/DLLExport.h"
+
 namespace Relentless
 {
 	struct ProfilerMetrics
@@ -8,7 +10,7 @@ namespace Relentless
 	};
 
 	template<class LambdaFunction>
-	class Profiler
+	class RLS_API Profiler
 	{
 	public:
 		Profiler(const char* contextName, const LambdaFunction&& lambdaFunction) noexcept
@@ -32,7 +34,7 @@ namespace Relentless
 		std::chrono::time_point<std::chrono::steady_clock> m_StartTime;
 	};
 
-	struct ProfilerManager
+	struct RLS_API ProfilerManager
 	{
 		static std::vector<ProfilerMetrics> ProfilerMetrics;
 		static void ClearData() noexcept { ProfilerMetrics.clear(); }

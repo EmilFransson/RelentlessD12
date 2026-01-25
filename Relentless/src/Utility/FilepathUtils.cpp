@@ -83,10 +83,7 @@ namespace Relentless
 
 	void FilepathUtils::SetExtension(Path& aFilepath, const String& aExtension) noexcept
 	{
-		if (HasExtension(aFilepath))
-			aFilepath.replace_extension(aExtension);
-		else
-			aFilepath.append(aExtension);
+		aFilepath.replace_extension(aExtension);
 	}
 
 	String FilepathUtils::SanitizeFileName(const String& aFileName) noexcept

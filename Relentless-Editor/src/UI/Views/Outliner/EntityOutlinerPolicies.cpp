@@ -1,15 +1,15 @@
 #include "EntityOutlinerPolicies.h"
 
-#include "../../../Core/EntityFolders.h"
+#include "Subsystem/EntityFoldersSubsystem.h"
 
 namespace Relentless
 {
-	static NO_DISCARD std::string_view locGetEntityName(entity aEntity, const Scene& aScene)
+	NO_DISCARD static std::string_view locGetEntityName(entity aEntity, const Scene& aScene)
 	{
 		return aScene.GetEntityManager().Get<NameComponent>(aEntity).Name;
 	}
 
-	EntityOutlinerPolicies::DuplicatePlan EntityOutlinerPolicies::ResolveDuplicateRequest(const DuplicateContext& aContext) const noexcept
+	EntityOutlinerPolicies::DuplicatePlan EntityOutlinerPolicies::ResolveDuplicateRequest(MAYBE_UNUSED const DuplicateContext& aContext) const noexcept
 	{
 		return { };
 	}
@@ -68,7 +68,7 @@ namespace Relentless
 			return { std::format("{}. Parent cannot become the child of their descendant.", targetFolderLabel), false };
 		else if (FolderAlreadyContainsFolder(pTargetFolder, aContext.Folders, pOutRejectedFolder))
 			return { std::format("{} is already assigned to {}.", pOutRejectedFolder->GetLabel(), targetFolderLabel), false };
-		else if (WouldCreateNameCollision(aContext.FoldersManager, aContext.Scene, pTargetFolder, aContext.Folders, pOutRejectedFolder))
+		else if (WouldCreateNameCollision(aContext.FoldersSubsystem, aContext.Scene, pTargetFolder, aContext.Folders, pOutRejectedFolder))
 			return { std::format("{} already contains a folder child named '{}'.", pTargetFolder->GetLabel(), pOutRejectedFolder->GetLabel()), false };
 
 		return { std::format("Move into '{}'.", targetFolderLabel), true };
@@ -77,12 +77,11 @@ namespace Relentless
 	EntityOutlinerPolicies::ValidationResponse EntityOutlinerPolicies::ValidateMoveToScene(const MoveContext& aContext) const
 	{
 		Scene* pTargetScene = std::get<Scene*>(aContext.TargetPayload);
-		const String& targetSceneName = pTargetScene->GetName();
 
 		entity outRejectedEntity = NULL_ENTITY;
 		EntityFolder* pOutRejectedFolder = nullptr;
 
-		if (WouldCreateNameCollision(aContext.FoldersManager, aContext.Scene, nullptr, aContext.Folders, pOutRejectedFolder))
+		if (WouldCreateNameCollision(aContext.FoldersSubsystem, aContext.Scene, nullptr, aContext.Folders, pOutRejectedFolder))
 			return { std::format("Root already contains a folder named '{}'.", pOutRejectedFolder->GetLabel()), false };
 		else if (RootAlreadyContainsEntity(pTargetScene, aContext.Entities, outRejectedEntity))
 			return { std::format("{} is already assigned to root.", locGetEntityName(outRejectedEntity, *pTargetScene)), false };
@@ -340,13 +339,13 @@ namespace Relentless
 		return false;
 	}
 
-	bool EntityOutlinerPolicies::WouldCreateNameCollision(const EntityFoldersManager& aFoldersManager, const Scene& aScene, const EntityFolder* pTargetFolder, Span<EntityFolder* const> someSourceFolders, EntityFolder*& paOutRejectedFolder) const noexcept
+	bool EntityOutlinerPolicies::WouldCreateNameCollision(const EntityFoldersSubsystem& aFoldersSubsystem, const Scene& aScene, const EntityFolder* pTargetFolder, Span<EntityFolder* const> someSourceFolders, EntityFolder*& paOutRejectedFolder) const noexcept
 	{
 		const String targetFolderPath = pTargetFolder ? pTargetFolder->GetPath() : "";
 
 		for (EntityFolder* pSourceFolder : someSourceFolders)
 		{
-			if (aFoldersManager.GetFolderName(aScene, targetFolderPath, pSourceFolder->GetLabel()) != pSourceFolder->GetLabel())
+			if (aFoldersSubsystem.GetFolderName(aScene, targetFolderPath, pSourceFolder->GetLabel()) != pSourceFolder->GetLabel())
 			{
 				paOutRejectedFolder = pSourceFolder;
 				return true;

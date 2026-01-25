@@ -4,6 +4,11 @@
 
 namespace Relentless
 {
+	Material::Material(const UUID& aUUID) noexcept
+		: AssetBase<Material>(aUUID)
+	{
+	}
+
 	const Vector4& Material::GetAlbedoColor() const noexcept
 	{
 		return m_AlbedoColor;
@@ -72,6 +77,23 @@ namespace Relentless
 	void Material::RemoveTexture(ETextureType aTextureType) noexcept
 	{
 		m_Textures[(size_t)aTextureType].TextureHandle = NULL_HANDLE;
+	}
+
+	bool Material::SerializeCore(IArchive& aArchive) noexcept
+	{
+		return 
+		aArchive.Process(m_Textures) &&
+		aArchive.Process(m_AlbedoColor) &&
+		aArchive.Process(m_EmissiveColor) &&
+		aArchive.Process(m_GlobalUVTransform) &&
+		aArchive.Process(m_BlendMode) &&
+		aArchive.Process(m_Metallic) &&
+		aArchive.Process(m_EmissionIntensity) &&
+		aArchive.Process(m_Roughness) &&
+		aArchive.Process(m_DisplacementIntensity) &&
+		aArchive.Process(m_AmbientOcclusionIntensity) &&
+		aArchive.Process(m_IsTwoSided) &&
+		aArchive.IsValid();
 	}
 
 	void Material::SetAlbedoColor(const Vector4& aColor) noexcept

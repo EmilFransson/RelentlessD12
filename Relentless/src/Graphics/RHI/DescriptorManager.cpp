@@ -148,6 +148,11 @@ namespace Relentless
 		case DescriptorHandleType::UAV_NV:
 			m_pShaderBindablesDescriptorHeapNV->FreeDescriptor(descriptorHandle, syncPoint);
 			break;
+		default:
+		{
+			RLS_ASSERT(false, "Unreachable.");
+			break;
+		}
 		}
 	}
 }

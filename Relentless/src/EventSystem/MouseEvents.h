@@ -6,9 +6,9 @@ namespace Relentless
 	{
 	public:
 		explicit LeftMouseButtonPressedEvent(const Vector2u& coordinates) noexcept : coordinates{ coordinates } {}
-		virtual ~LeftMouseButtonPressedEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const { return EventType::LeftMouseButtonPressedEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const { return EventCategory::MouseEventCategory; }
+		virtual ~LeftMouseButtonPressedEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::LeftMouseButtonPressedEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::MouseEventCategory; }
 	public:
 		Vector2u coordinates;
 	};
@@ -17,9 +17,9 @@ namespace Relentless
 	{
 	public:
 		explicit LeftMouseButtonReleasedEvent(const Vector2u& coordinates) noexcept : coordinates{ coordinates } {}
-		virtual ~LeftMouseButtonReleasedEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const { return EventType::LeftMouseButtonReleasedEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const { return EventCategory::MouseEventCategory; }
+		virtual ~LeftMouseButtonReleasedEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::LeftMouseButtonReleasedEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::MouseEventCategory; }
 	public:
 		Vector2u coordinates;
 	};
@@ -28,9 +28,9 @@ namespace Relentless
 	{
 	public:
 		explicit RightMouseButtonPressedEvent(const Vector2u& coordinates) noexcept : coordinates{ coordinates } {}
-		virtual ~RightMouseButtonPressedEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const { return EventType::RightMouseButtonPressedEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const { return EventCategory::MouseEventCategory; }
+		virtual ~RightMouseButtonPressedEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::RightMouseButtonPressedEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::MouseEventCategory; }
 	public:
 		Vector2u coordinates;
 	};
@@ -39,9 +39,9 @@ namespace Relentless
 	{
 	public:
 		explicit RightMouseButtonReleasedEvent(const Vector2u& coordinates) noexcept : coordinates{ coordinates } {}
-		virtual ~RightMouseButtonReleasedEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const { return EventType::RightMouseButtonReleasedEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const { return EventCategory::MouseEventCategory; }
+		virtual ~RightMouseButtonReleasedEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::RightMouseButtonReleasedEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::MouseEventCategory; }
 	public:
 		Vector2u coordinates;
 	};
@@ -50,9 +50,9 @@ namespace Relentless
 	{
 	public:
 		explicit MiddleMouseButtonPressedEvent(const Vector2u& coordinates) noexcept : coordinates{ coordinates } {}
-		virtual ~MiddleMouseButtonPressedEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const { return EventType::MiddleMouseButtonPressedEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const { return EventCategory::MouseEventCategory; }
+		virtual ~MiddleMouseButtonPressedEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::MiddleMouseButtonPressedEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::MouseEventCategory; }
 	public:
 		Vector2u coordinates;
 	};
@@ -61,9 +61,9 @@ namespace Relentless
 	{
 	public:
 		explicit MiddleMouseButtonReleasedEvent(const Vector2u& coordinates) noexcept : coordinates{ coordinates } {}
-		virtual ~MiddleMouseButtonReleasedEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const { return EventType::MiddleMouseButtonReleasedEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const { return EventCategory::MouseEventCategory; }
+		virtual ~MiddleMouseButtonReleasedEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::MiddleMouseButtonReleasedEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::MouseEventCategory; }
 	public:
 		Vector2u coordinates;
 	};
@@ -72,9 +72,9 @@ namespace Relentless
 	{
 	public:
 		explicit MouseMovedEvent(const Vector2u& coordinates) noexcept : coordinates{ coordinates } {}
-		virtual ~MouseMovedEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const { return EventType::MouseMovedEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const { return EventCategory::MouseEventCategory; }
+		virtual ~MouseMovedEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::MouseMovedEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::MouseEventCategory; }
 	public:
 		Vector2u coordinates;
 	};
@@ -83,9 +83,9 @@ namespace Relentless
 	{
 	public:
 		RawMouseMoveEvent(Vector2i deltaCoordinates) noexcept : deltaCoordinates{ deltaCoordinates } {}
-		virtual ~RawMouseMoveEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const noexcept override final{ return EventType::RawMouseMoveEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const noexcept override final{ return EventCategory::MouseEventCategory; }
+		virtual ~RawMouseMoveEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::RawMouseMoveEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::MouseEventCategory; }
 	private:
 		Vector2i deltaCoordinates;
 	};
@@ -94,9 +94,9 @@ namespace Relentless
 	{
 	public:
 		MouseWheelScrolledEvent(float delta) noexcept : Delta{ delta } {}
-		virtual ~MouseWheelScrolledEvent() noexcept override final = default;
-		[[nodiscard]] virtual constexpr const EventType GetEventType() const noexcept override final { return EventType::MouseWheelScrolledEvent; }
-		[[nodiscard]] virtual constexpr const EventCategory GetEventCategory() const noexcept override final { return EventCategory::MouseEventCategory; }
+		virtual ~MouseWheelScrolledEvent() noexcept override = default;
+		NO_DISCARD virtual EventType GetEventType() const override { return EventType::MouseWheelScrolledEvent; }
+		NO_DISCARD virtual EventCategory GetEventCategory() const override final { return EventCategory::MouseEventCategory; }
 	public:
 		float Delta = 0.0f;
 	};

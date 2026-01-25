@@ -1,19 +1,35 @@
 #include "RelentlessEditorApp.h"
 #include "EntryPoint.h"
+#include "ImGui/ImGuiLayer.h"
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 615; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = "D3D12\\"; }
 namespace Relentless
 {
+	static LRESULT EditorWndProcHook(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+	{
+		return ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
+	}
+
 	RelentlessEditor::RelentlessEditor(const ApplicationSpecification& applicationSpecification) noexcept
 		: Application{applicationSpecification}
 	{
 	}
 
+	RelentlessEditor::~RelentlessEditor() noexcept = default;
+
 	void RelentlessEditor::Initialize() noexcept
 	{
-		m_pRenderer = std::make_unique<Renderer>(m_pGraphicsDevice);
-		m_pEditorLayer = std::make_unique<EditorLayer>();
+		m_pRenderer = MakeUnique<Renderer>(m_pGraphicsDevice);
+		
+		m_pImGuiLayer = MakeUnique<ImGuiLayer>(m_pGraphicsDevice);
+		PushOverlay(m_pImGuiLayer.get());
+
+		m_pEditorLayer = MakeUnique<EditorLayer>();
 		PushLayer(m_pEditorLayer.get());
+
+		WindowEx::SetWndProcHook(&EditorWndProcHook);
 	}
 
 	//At this point all layers have finished both Updating & Rendering
@@ -24,7 +40,7 @@ namespace Relentless
 		options.SampleCount = 1u;
 
 		std::vector<ViewportRenderView>& renderViews = Editor::Get()->GetRenderViews();
-		for (int i = 0; i < renderViews.size(); ++i)
+		for (size_t i = 0; i < renderViews.size(); ++i)
 		{
 			const uint32 width	= static_cast<uint32>(Math::Max(1.0f, Math::Min(renderViews[i].Viewport.GetWidth(), (float)WindowEx::GetDisplaySize().x)));
 			const uint32 height = static_cast<uint32>(Math::Max(1.0f, Math::Min(renderViews[i].Viewport.GetHeight(), (float)WindowEx::GetDisplaySize().y)));
@@ -37,16 +53,26 @@ namespace Relentless
 		}
 	}
 
+	void RelentlessEditor::UIRenderBegin(CommandContext* aCommandContext) noexcept
+	{
+		m_pImGuiLayer->BeginFrame(m_pSwapchain->GetBackBuffer(), aCommandContext);
+	}
+
+	void RelentlessEditor::UIRenderEnd(CommandContext* aCommandContext) noexcept
+	{
+		m_pImGuiLayer->EndFrame(aCommandContext);
+	}
+
 	const UniquePtr<Renderer>& RelentlessEditor::GetRenderer() const noexcept
 	{
 		return m_pRenderer;
 	}
 
-	const std::unique_ptr<Application> CreateApplication() noexcept
+	UniquePtr<Application> CreateApplication() noexcept
 	{
 		ApplicationSpecification applicationSpecification;
 		applicationSpecification.Name = std::string("Relentless-Editor") + std::string(APPLICATION_SUFFIX);
 
-		return std::unique_ptr<RelentlessEditor>(RLS_NEW RelentlessEditor(applicationSpecification));
+		return UniquePtr<RelentlessEditor>(RLS_NEW RelentlessEditor(applicationSpecification));
 	}
 }

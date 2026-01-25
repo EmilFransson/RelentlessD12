@@ -1,9 +1,8 @@
 #pragma once
 namespace Relentless
 {
-	NO_DISCARD std::string ConvertWstringToString(std::wstring const& wstr) noexcept;
-	NO_DISCARD std::string ConvertWideStringToString(std::wstring const& wstr) noexcept;
-	NO_DISCARD std::wstring ConvertStringToWstring(const std::string& string) noexcept;
+	NO_DISCARD String ConvertWideStringToString(WideString const& aWideString) noexcept;
+	NO_DISCARD WideString ConvertStringToWideString(const String& aString) noexcept;
 
 	namespace TypeName
 	{

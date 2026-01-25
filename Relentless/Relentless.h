@@ -5,13 +5,17 @@
 #include <src/Core/Application.h>
 #include <src/Core/Core.h>
 #include <src/Core/CoreTypes.h>
+#include <src/Core/EngineMain.h>
 #include <src/Core/Time.h>
 #include <src/Core/Any.h>
 #include <src/Core/IAsset.h>
-#include <src/Core/Ref.h>
-
-//Logging:
 #include <src/Core/Log.h>
+#include <src/Core/Ref.h>
+#include <src/Core/StaticTypeInfo.h>
+#include <src/Core/DLLExport.h>
+
+//Data structures:
+#include <src/DataStructure/DenseSet.h>
 
 //Callback:
 #include <src/Callback/Broadcaster.h>
@@ -23,13 +27,16 @@
 #include <src/Utility/StringUtils.h>
 #include <src/Utility/TextFilterExpressionEvaluator.h>
 
+//Factory:
+#include <src/Assets/Factory/FeedbackContext.h>
+#include <src/Assets/Factory/IFactory.h>
+
 //Files & paths
 #include <src/File/File.h>
 #include <src/File/FilePath.h>
 #include <src/Utility/SystemPaths.h>
 
 //Events:
-#include <src/ImGui/ImguiLayer.h>
 #include <src/EventSystem/Layer.h>
 #include <src/EventSystem/IEvent.h>
 #include <src/EventSystem/KeyboardEvents.h>
@@ -37,73 +44,32 @@
 
 //Modules:
 #include <src/Module/AssetRegistryModule.h>
+#include <src/Module/AssetToolsModule.h>
 #include <src/Module/IModule.h>
 #include <src/Module/ModuleManager.h>
 
-//UI:
-#include <src/UI/Border.h>
-#include <src/UI/Button.h>
-#include <src/UI/Canvas.h>
-#include <src/UI/ColorPicker.h>
-#include <src/UI/CheckBox.h>
-#include <src/UI/CollapsibleSection.h>
-#include <src/UI/ComboBox.h>
-#include <src/UI/ContextMenu.h>
-#include <src/UI/DragDropBehavior.h>
-#include <src/UI/DragDropOperation.h>
-#include <src/UI/EditableTextBox.h>
-#include <src/UI/FloatDrag.h>
-#include <src/UI/Float3Drag.h>
-#include <src/UI/FloatEntryBox.h>
-#include <src/UI/FloatSlider.h>
-#include <src/UI/HorizontalBox.h>
-#include <src/UI/HorizontalBoxEx.h>
-#include <src/UI/IntDrag.h>
-#include <src/UI/IntSlider.h>
-#include <src/UI/ITableRow.h>
-#include <src/UI/IWidget.h>
-#include <src/UI/Label.h>
-#include <src/UI/Panel.h>
-#include <src/UI/Separator.h>
-#include <src/UI/SearchBar.h>
-#include <src/UI/Table.h>
-#include <src/UI/Thumbnail.h>
-#include <src/UI/Tooltip.h>
-#include <src/UI/Tree/Tree.h>
-#include <src/UI/Tree/TreeItem.h>
-#include <src/UI/Tree/TreeStyle.h>
-#include <src/UI/Tree/TreeInteraction.h>
-#include <src/UI/Tree/TreeTypes.h>
-#include <src/UI/UI.h>
-#include <src/UI/UIManager.h>
-#include <src/UI/VerticalBox.h>
-#include <src/UI/VerticalBoxEx.h>
-#include <src/UI/WidgetSwitcher.h>
-
-#include <src/UI/Nodes/ITreeNode.h>
-#include <src/UI/Nodes/DetailCategoryNode.h>
-#include <src/UI/Nodes/DetailRowNode.h>
-#include <src/UI/Nodes/IDetailsTreeNode.h>
-
-#include <src/UI/Details/DetailPropertyRow.h>
-#include <src/UI/Details/DetailCategoryRow.h>
-#include <src/UI/List/ListView.h>
-#include <src/UI/List/TileView.h>
-#include <src/UI/List/TreeView.h>
-
 //Graphics:
+#include <src/Graphics/Renderer/Renderer.h>
+#include <src/Graphics/Renderer/RenderTypes.h>
 #include <src/Graphics/Renderer/SceneRenderer.h>
 #include <src/Graphics/Renderer/UtilityRenderer.h>
 #include <src/Graphics/RHI/Device.h>
 #include <src/Graphics/RHI/ResourceViews.h>
 #include <src/Graphics/RHI/CommandContext.h>
-#include <src/Graphics/Renderer/RenderTypes.h>
+#include <src/Graphics/RHI/Swapchain.h>
+#include <src/Graphics/RHI/Window.h>
+
+//Assets:
+#include <src/Assets/AssetManager.h>
+#include <src/Assets/ImportSettings.h>
 
 //Resources
-#include <src/Assets/AssetManager.h>
 #include <src/Graphics/Resources/Material.h>
 #include <src/Graphics/Resources/Texture2D.h>
 #include <src/Mesh/Mesh.h>
+
+//Threading:
+#include <src/Threading/ThreadPool.h>
 
 //IO
 #include <src/Input/Mouse.h>
@@ -116,12 +82,14 @@
 #include <src/Graphics/Renderer/Camera/PerspectiveCamera.h>
 
 //ECS
-#include <src/Scene/Scene.h>
+#include <src/ECS/Component.h>
 #include <src/ECS/EntityManager.h>
 #include <src/ECS/ECSCommon.h>
+#include <src/ECS/ISystem.h>
+#include <src/Scene/Scene.h>
 
 //Serialization
-#include <src/Scene/SceneSerializer.h>
+#include <src/Serialization/Archive.h>
 
 //Subsystem:
 #include <src/Subsystem/ISystemManager.h>

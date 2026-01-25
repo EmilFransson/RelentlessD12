@@ -43,6 +43,7 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <map>
 #include <memory>
 #include <mutex>
+#include <print>
 #include <ranges>
 #include <set>
 #include <shared_mutex>

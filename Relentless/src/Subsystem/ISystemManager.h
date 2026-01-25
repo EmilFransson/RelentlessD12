@@ -1,19 +1,20 @@
 #pragma once
 #include "ISubsystem.h"
-#include <StaticTypeInfo/type_index.h>
+#include "Core/StaticTypeInfo.h"
 
 namespace Relentless
 {
-	using namespace static_type_info;
-	using TypeIndex = static_type_info::TypeIndex;
-
 	class ISystemManager
 	{
 	public:
-		virtual ~ISystemManager() noexcept = default;
+		virtual ~ISystemManager() noexcept
+		{
+			for (const auto&[type, pSystem] : m_Subsystems)
+				pSystem->OnUnload(this);
+		}
 
 		template<typename SystemType>
-		NO_DISCARD SystemType* GetSubsystem() noexcept
+		SystemType* GetSubsystem() noexcept
 		{
 			static_assert(std::is_base_of_v<ISubsystem, SystemType>, "SystemType must derive from ISubsystem to be used as a subsystem.");
 
@@ -33,6 +34,17 @@ namespace Relentless
 			SystemType* ptr = pNewSystem.get();
 			m_Subsystems[id] = std::move(pNewSystem);
 			return ptr;
+		}
+
+		template<typename SystemType>
+		const SystemType* GetSubsystem() const noexcept
+		{
+			static constexpr TypeIndex id = getTypeIndex<SystemType>();
+			auto it = m_Subsystems.find(id);
+			if (it != m_Subsystems.end())
+				return static_cast<const SystemType*>(it->second.get());
+
+			return nullptr;
 		}
 
 	private:
