@@ -2,11 +2,6 @@
 
 namespace Relentless
 {
-	float WidgetSwitcher::CalcDesiredWidth() const noexcept
-	{
-		return m_ActiveIndex == -1 ? 0.0f : m_Widgets[m_ActiveIndex]->CalcDesiredWidth();
-	}
-
 	Ref<IBaseWidget> WidgetSwitcher::GetActiveWidget() const noexcept
 	{
 		if (m_ActiveIndex != -1)

@@ -1,6 +1,6 @@
 #include "FileDialogs.h"
 #include "Core/Application.h"
-#include "Graphics/RHI/Window.h"
+#include "Core/Window.h"
 
 namespace Relentless
 {

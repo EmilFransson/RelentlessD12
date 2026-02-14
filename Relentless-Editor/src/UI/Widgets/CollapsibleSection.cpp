@@ -5,8 +5,8 @@ namespace Relentless
 	CollapsibleSection::CollapsibleSection(std::string_view text) noexcept
 		: m_Text{text}
 	{
-		SetFlags(ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_OpenOnArrow);
-		SetSizePolicy(ESizePolicy::Stretch);
+		SetFlags(ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_OpenOnArrow);
+		SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		
 		const ImVec4& frameColor = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
 		SetActiveColor(Color(frameColor.x, frameColor.y, frameColor.z, frameColor.w));
@@ -14,11 +14,6 @@ namespace Relentless
 		SetFont(ImGui::GetIO().Fonts->Fonts[2]);
 
 		SetPadding(Vector2(5.0f, 6.0f));
-	}
-
-	float CollapsibleSection::CalcDesiredWidth() const noexcept
-	{
-		return 0.0f;
 	}
 
 	bool CollapsibleSection::HasWidget(Ref<IWidget> pWidget) const noexcept

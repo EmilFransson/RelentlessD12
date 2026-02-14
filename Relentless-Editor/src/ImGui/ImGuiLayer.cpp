@@ -11,6 +11,8 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
+		ImGuiIO& io = ImGui::GetIO();
+		
 		ImGui_ImplDX12_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
@@ -66,7 +68,6 @@ namespace Relentless
 			ImGui::PopStyleVar(2);
 
 		// Submit the DockSpace
-		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
 
 		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
@@ -105,9 +106,14 @@ namespace Relentless
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGuiIO& io = ImGui::GetIO();
+		ImGuiStyle& style = ImGui::GetStyle();
 		io.ConfigFlags |= ImGuiConfigFlags_::ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_::ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_::ImGuiConfigFlags_ViewportsEnable;
+		io.ConfigWindowsMoveFromTitleBarOnly = true;
+		style.AntiAliasedLines = true;
+		style.AntiAliasedFill = true;
+		style.WindowBorderHoverPadding = 1.0f;
 
 		ImGui::StyleColorsDark();
 
@@ -137,26 +143,20 @@ namespace Relentless
 			,
 			22.0f, &iconConfig22, iconRanges);
 
-		io.FontDefault = font22; // ✅ Set the merged font as default
+		io.FontDefault = font22;
 
-		// === Load 26pt font set ===
 		ImFontConfig config26;
 		config26.PixelSnapH = true;
 
 		fullFontPath = openSansFontPath + "OpenSans-Regular.ttf";
-		io.Fonts->AddFontFromFileTTF(fullFontPath.c_str()
-			,
-			26.0f, &config26);
+		io.Fonts->AddFontFromFileTTF(fullFontPath.c_str(), 26.0f, &config26);
 
 		ImFontConfig iconConfig26;
 		iconConfig26.MergeMode = true;
 		iconConfig26.PixelSnapH = true;
 
-		io.Fonts->AddFontFromFileTTF(
-			(fontAwesomePath + "fa-solid-900.ttf").c_str(),
-			20.0f, &iconConfig26, iconRanges);
+		io.Fonts->AddFontFromFileTTF((fontAwesomePath + "fa-solid-900.ttf").c_str(), 20.0f, &iconConfig26, iconRanges);
 
-		ImGuiStyle& style = ImGui::GetStyle();
 		if (io.ConfigFlags & ImGuiConfigFlags_::ImGuiConfigFlags_ViewportsEnable)
 		{
 			style.WindowRounding = 0.0f;
@@ -211,22 +211,29 @@ namespace Relentless
 		constexpr float scaleFactor = 1.0f;  // Adjust this scale factor as needed
 		style.ScaleAllSizes(scaleFactor);
 
-		ImGui_ImplWin32_Init(::GetActiveWindow());
-
-		DescriptorHeap* pDescriptorHeap = m_pDevice->GetGlobalShaderBindableHeap();
-		m_DescriptorHandle = m_pDevice->RegisterGlobalDescriptor(DescriptorHandleType::SRV);
-
-		ImGui_ImplDX12_Init
-		(
-			m_pDevice->GetDevice(),
-			GraphicsDevice::NUM_BUFFERS,
-			DXGI_FORMAT_R10G10B10A2_UNORM,
-			pDescriptorHeap->GetDescriptorHeapInterface(),
-			m_DescriptorHandle.CPUHandle,
-			m_DescriptorHandle.GPUHandle
-		);
-
+		RLS_VERIFY(ImGui_ImplWin32_Init(Application::Get().GetWindow()->GetNativeWindow()), "[ImGuiLayer::OnAttach]: Failed to initialize ImGui win32 backend.");
 		ImGui_ImplWin32_EnableDpiAwareness();
+
+		m_Allocator.Initialize(m_pDevice);
+
+		ImGui_ImplDX12_InitInfo info = {};
+		info.Device = m_pDevice->GetDevice();
+		info.CommandQueue = m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue();
+		info.NumFramesInFlight = GraphicsDevice::NUM_BUFFERS;
+		info.RTVFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
+		info.DSVFormat = DXGI_FORMAT_UNKNOWN;
+		info.UserData = &m_Allocator;
+		info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* init, D3D12_CPU_DESCRIPTOR_HANDLE* outCpu, D3D12_GPU_DESCRIPTOR_HANDLE* outGpu)
+			{
+				static_cast<ImGuiSRVAllocator*>(init->UserData)->Allocate(outCpu, outGpu);
+			};
+		info.SrvDescriptorFreeFn =
+			[](ImGui_ImplDX12_InitInfo* aInitInfo, D3D12_CPU_DESCRIPTOR_HANDLE aCPU, D3D12_GPU_DESCRIPTOR_HANDLE aGPU)
+			{
+				static_cast<ImGuiSRVAllocator*>(aInitInfo->UserData)->Free(aCPU, aGPU);
+			};
+
+		RLS_VERIFY(ImGui_ImplDX12_Init(&info));
 	}
 
 	void ImGuiLayer::OnDetach()

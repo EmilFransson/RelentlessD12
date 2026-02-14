@@ -16,7 +16,6 @@ namespace Relentless
 		NO_DISCARD Vector2 ReportSize() const noexcept override;
 
 	protected:
-		NO_DISCARD float CalcDesiredWidth() const noexcept override;
 		const Color& GetBackgroundColor() const noexcept override;
 		uint32 GetNumColumns() noexcept override;
 		bool IsDragDropEligible() noexcept override;

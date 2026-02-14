@@ -111,8 +111,6 @@ namespace Relentless
 		ListView(std::shared_ptr<HeaderRow> pHeaderRow, const TableViewStyle& style = TableViewStyle()) noexcept;
 		virtual ~ListView() noexcept override = default;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override { return 0.0f; }
-
 		void ClearHightlightedItems() noexcept;
 		void ClearItemsSource() noexcept;
 		void ClearSelection() noexcept;

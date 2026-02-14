@@ -32,7 +32,7 @@ namespace Relentless
 		for (uint32 col = 0u; col < GetNumColumns(); ++col)
 		{
 			const Column& column = GetColumn(col);
-			ImGui::TableSetupColumn(column.pLabel->GetText().c_str(), column.Flags, column.Weight, ColumnIDs[col]);
+			ImGui::TableSetupColumn(column.pLabel ? column.pLabel->GetText().c_str() : "", column.Flags, column.Weight, ColumnIDs[col]);
 		}
 
 		if (!m_IsVisible)

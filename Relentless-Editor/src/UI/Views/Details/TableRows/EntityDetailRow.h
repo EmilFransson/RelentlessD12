@@ -6,8 +6,6 @@ namespace Relentless
 	class EntityDetailRow : public ITableRow
 	{
 	protected:
-		NO_DISCARD float CalcDesiredWidth() const noexcept override;
-
 		const Color& GetBackgroundColor() const noexcept override;
 		uint32 GetNumColumns() noexcept override;
 

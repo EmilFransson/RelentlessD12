@@ -7,11 +7,6 @@ namespace Relentless
 	{
 	}
 
-	float Separator::CalcDesiredWidth() const noexcept
-	{
-		return 0.0f;
-	}
-
 	void Separator::OnRender() noexcept
 	{
 		ImGui::AlignTextToFramePadding();

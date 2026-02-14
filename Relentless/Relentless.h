@@ -1,18 +1,18 @@
 #pragma once
 
 //Core:
-#include <src/Utility/Common.h>
+#include <src/Core/Any.h>
 #include <src/Core/Application.h>
+#include <src/Utility/Common.h>
 #include <src/Core/Core.h>
 #include <src/Core/CoreTypes.h>
+#include <src/Core/DLLExport.h>
 #include <src/Core/EngineMain.h>
-#include <src/Core/Time.h>
-#include <src/Core/Any.h>
-#include <src/Core/IAsset.h>
 #include <src/Core/Log.h>
 #include <src/Core/Ref.h>
 #include <src/Core/StaticTypeInfo.h>
-#include <src/Core/DLLExport.h>
+#include <src/Core/Time.h>
+#include <src/Core/Window.h>
 
 //Data structures:
 #include <src/DataStructure/DenseSet.h>
@@ -57,16 +57,16 @@
 #include <src/Graphics/RHI/ResourceViews.h>
 #include <src/Graphics/RHI/CommandContext.h>
 #include <src/Graphics/RHI/Swapchain.h>
-#include <src/Graphics/RHI/Window.h>
 
 //Assets:
 #include <src/Assets/AssetManager.h>
+#include <src/Assets/IAsset.h>
 #include <src/Assets/ImportSettings.h>
 
-//Resources
-#include <src/Graphics/Resources/Material.h>
-#include <src/Graphics/Resources/Texture2D.h>
-#include <src/Mesh/Mesh.h>
+//Core Asset types
+#include <src/Assets/CoreTypes/Material.h>
+#include <src/Assets/CoreTypes/Texture2D.h>
+#include <src/Assets/CoreTypes/Mesh.h>
 
 //Threading:
 #include <src/Threading/ThreadPool.h>

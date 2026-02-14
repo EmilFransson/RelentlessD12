@@ -1,7 +1,8 @@
 #include "EntityDetailLayoutBuilder.h"
 
-#include "UI/Views/Details/Customizations/DetailCustomizationMeta.h"
+#include "UI/Views/Details/Customizations/EntityDetailCustomizationMeta.h"
 #include "UI/Views/Details/TableRows/EntityDetailCategoryRow.h"
+#include "UI/Views/Details/TableRows/DetailCategoryRow.h"
 #include "UI/Views/TreeView.h"
 
 namespace Relentless

@@ -30,8 +30,6 @@ namespace Relentless
 			return pWidget.Get();
 		}
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		NO_DISCARD bool HasWidget(Ref<IWidget> pWidget) const noexcept;
 
 		virtual CollapsibleSection* SetActiveColor(const Color& color) noexcept override;

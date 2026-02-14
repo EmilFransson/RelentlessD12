@@ -34,11 +34,6 @@ namespace Relentless
 		return m_ColumnWidgets[0]->ReportSize();
 	}
 
-	float EntityDetailCategoryRow::CalcDesiredWidth() const noexcept
-	{
-		return 0.0f;
-	}
-
 	const Color& EntityDetailCategoryRow::GetBackgroundColor() const noexcept
 	{
 		static constexpr Color bgColor = Colors::Normalize(47.0f, 47.07, 47.0f, 255.0f);

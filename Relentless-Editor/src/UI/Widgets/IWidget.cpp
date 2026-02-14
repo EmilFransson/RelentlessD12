@@ -12,6 +12,21 @@ namespace Relentless
 		return m_AssignedSize;
 	}
 
+	float IBaseWidget::GetFixedWidth() const noexcept
+	{
+		return m_FixedSize.x;
+	}
+
+	float IBaseWidget::GetFixedHeight() const noexcept
+	{
+		return m_FixedSize.y;
+	}
+
+	const Vector2& IBaseWidget::GetFixedSize() const noexcept
+	{
+		return m_FixedSize;
+	}
+
 	const FloatRect& IBaseWidget::GetMargin() const noexcept
 	{
 		return m_Margin;
@@ -22,14 +37,19 @@ namespace Relentless
 		return m_HorizontalAlignmentPolicy;
 	}
 
+	ESizePolicy IBaseWidget::GetHorizontalSizePolicy() const noexcept
+	{
+		return m_SizePolicy;
+	}
+
 	const FloatRect& IBaseWidget::GetPadding() const noexcept
 	{
 		return m_Padding;
 	}
 
-	ESizePolicy IBaseWidget::GetSizePolicy() const noexcept
+	ESizePolicy IBaseWidget::GetVerticalSizePolicy() const noexcept
 	{
-		return m_SizePolicy;
+		return m_VerticalSizePolicy;
 	}
 
 	EVerticalAlignmentPolicy IBaseWidget::GetVerticalAlignmentPolicy() const noexcept
@@ -52,9 +72,16 @@ namespace Relentless
 		return m_IsVisible;
 	}
 
-	void IBaseWidget::SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy aAlignmentPolicy) noexcept
+	IBaseWidget* IBaseWidget::SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy aAlignmentPolicy) noexcept
 	{
 		m_HorizontalAlignmentPolicy = aAlignmentPolicy;
+		return this;
+	}
+
+	IBaseWidget* IBaseWidget::SetHorizontalSizePolicy(ESizePolicy aSizePolicy) noexcept
+	{
+		m_SizePolicy = aSizePolicy;
+		return this;
 	}
 
 	void IBaseWidget::SetIsEnabled(bool aIsEnabledState) noexcept
@@ -80,14 +107,21 @@ namespace Relentless
 		m_Margin = aMargin;
 	}
 
-	void IBaseWidget::SetSizePolicy(ESizePolicy aSizePolicy) noexcept
+	void IBaseWidget::SetSize(const Vector2& aSize) noexcept
 	{
-		m_SizePolicy = aSizePolicy;
+		m_FixedSize = aSize;
 	}
 
-	void IBaseWidget::SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy aAlignmentPolicy) noexcept
+	IBaseWidget* IBaseWidget::SetVerticalSizePolicy(ESizePolicy aSizePolicy) noexcept
+	{
+		m_VerticalSizePolicy = aSizePolicy;
+		return this;
+	}
+
+	IBaseWidget* IBaseWidget::SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy aAlignmentPolicy) noexcept
 	{
 		m_VerticalAlignmentPolicy = aAlignmentPolicy;
+		return this;
 	}
 
 	void WidgetStyle::Apply() noexcept

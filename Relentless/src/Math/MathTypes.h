@@ -172,6 +172,11 @@ struct TRect
 	T Right;
 	T Bottom;
 
+	NO_DISCARD bool Contains(const TVector2<T>& aPosition) const noexcept 
+	{
+		return aPosition.x >= Left && aPosition.x < Right && aPosition.y >= Top && aPosition.y < Bottom;
+	}
+
 	T GetWidth() const { return Right - Left; }
 	T GetHeight() const { return Bottom - Top; }
 	T GetAspect() const
@@ -187,6 +192,12 @@ struct TRect
 	TRect Scale(const float scaleX, const float scaleY) const
 	{
 		return TRect(Left * scaleX, Top * scaleY, Right * scaleX, Bottom * scaleY);
+	}
+
+	NO_DISCARD inline static TRect Zero() noexcept
+	{  
+		static TRect zero((T)0, (T)0, (T)0, (T)0);
+		return zero;
 	}
 
 	bool operator==(const TRect& other) const

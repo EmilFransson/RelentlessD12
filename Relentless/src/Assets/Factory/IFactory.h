@@ -1,10 +1,9 @@
 #pragma once
-
 #include "Assets/AssetMeta.h"
+#include "Assets/IAsset.h"
 #include "Assets/ImportSettings.h"
 
 #include "Core/DLLExport.h"
-#include "Core/IAsset.h"
 
 #include "FeedbackContext.h"
 

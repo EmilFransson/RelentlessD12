@@ -1,6 +1,7 @@
 #pragma once
 #include <Relentless.h>
 #include "HorizontalBox.h"
+#include "IWidgetContainer.h"
 
 namespace Relentless
 {
@@ -50,17 +51,21 @@ namespace Relentless
 		NO_DISCARD virtual bool OnDragLeave(const Ref<DragDropOperation>& aDragDropOperation) noexcept;
 		NO_DISCARD virtual bool OnDrop(const Ref<DragDropOperation>& aDragDropOperation) noexcept;
 
-		virtual void OnRender() noexcept override final;
+		virtual void OnRender() noexcept override;
 		virtual void OnRenderColumn(uint32 column) noexcept = 0;
 
-		void SetColumnWidget(uint8 aColumnIndex, const Ref<HorizontalBox>& aWidget) noexcept;
+		NO_DISCARD Vector2 ReportSize() const noexcept override;
 
+		void SetColumnWidget(uint8 aColumnIndex, const Ref<HorizontalBox>& aWidget) noexcept;
+		void SetIndentation(uint32 aIndentation) noexcept;
 	protected:
 		std::vector<Ref<HorizontalBox>> m_ColumnWidgets;
 
 		Callback<void(const PointerInfo& pointerInfo)> m_OnClickedCallback;
 		Callback<void()> m_OnDoubleClickedCallback;
 		
+		uint32 m_IndentationLevel = 0;
+
 		bool m_CustomHoverLogic = false;
 		bool m_Hovered = false;
 		bool m_Tiled = false;

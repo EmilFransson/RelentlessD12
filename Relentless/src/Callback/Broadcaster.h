@@ -6,6 +6,7 @@ namespace Relentless
 	class Broadcaster;
 
 	using CallbackID = uint32;
+	inline constexpr CallbackID INVALID_CALLBACK_ID = std::numeric_limits<CallbackID>::max();
 	
 	template<typename ReturnValue, typename... Args>
 	class Broadcaster<ReturnValue(Args...)>
@@ -57,6 +58,11 @@ namespace Relentless
 		{
 			m_Callbacks.clear();
 			m_ObjectCallbacks.clear();
+		}
+
+		NO_DISCARD bool IsConnected(CallbackID aID) const noexcept
+		{
+			return m_Callbacks.contains(aID);
 		}
 
 		template<typename T = ReturnValue>

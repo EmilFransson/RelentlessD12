@@ -118,4 +118,22 @@ namespace Relentless
 		m_ColumnWidgets[aColumnIndex] = aWidget;
 	}
 
+	void ITableRow::SetIndentation(uint32 aIndentation) noexcept
+	{
+		m_IndentationLevel = aIndentation;
+	}
+
+	Vector2 ITableRow::ReportSize() const noexcept
+	{
+		Vector2 size = Vector2::Zero;
+
+		for (const auto& pWidget : m_ColumnWidgets)
+		{
+			size.x += pWidget ? pWidget->ReportSize().x : 0.0f;
+			size.y = Math::Max(size.y, pWidget ? pWidget->ReportSize().y : 0.0f);
+		}
+
+		return size;
+	}
+
 }

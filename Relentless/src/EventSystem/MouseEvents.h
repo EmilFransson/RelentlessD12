@@ -84,8 +84,10 @@ namespace Relentless
 	public:
 		RawMouseMoveEvent(Vector2i deltaCoordinates) noexcept : deltaCoordinates{ deltaCoordinates } {}
 		virtual ~RawMouseMoveEvent() noexcept override = default;
+		
 		NO_DISCARD virtual EventType GetEventType() const override { return EventType::RawMouseMoveEvent; }
 		NO_DISCARD virtual EventCategory GetEventCategory() const override { return EventCategory::MouseEventCategory; }
+		NO_DISCARD const Vector2i& GetDeltaCoordinates() const noexcept { return deltaCoordinates;}
 	private:
 		Vector2i deltaCoordinates;
 	};

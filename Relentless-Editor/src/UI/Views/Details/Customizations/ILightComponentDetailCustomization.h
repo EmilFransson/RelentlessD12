@@ -334,13 +334,13 @@ namespace Relentless
 
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 
-			pInnerBox->AddWidget(new ColorPicker(Vector2(180.0f, 30.0f)))
+			pInnerBox->AddWidget(new ColorPicker())
 				->Value(this, &ILightComponentDetailCustomization::GetColor)
 				->OnValueChanged(this, &ILightComponentDetailCustomization::OnColorChanged)
-				->SetSizePolicy(ESizePolicy::Stretch);
+				->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pBox->AddWidget(pInnerBox);
 			pRow->SetColumnWidget(1, pBox);
@@ -370,7 +370,7 @@ namespace Relentless
 
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 
 			int index = -1;
@@ -386,7 +386,7 @@ namespace Relentless
 				->AddSelectables({ "Directional", "Point", "Spot" })
 				->SetSelectedItem(index)
 				->OnSelectionChanged(this, &ILightComponentDetailCustomization::OnTypeChanged)
-				->SetSizePolicy(ESizePolicy::Stretch);
+				->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pBox->AddWidget(pInnerBox);
 			pRow->SetColumnWidget(1, pBox);
@@ -423,7 +423,7 @@ namespace Relentless
 
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 
 			const char* format = "?";
@@ -456,7 +456,7 @@ namespace Relentless
 				->Value(this, &ILightComponentDetailCustomization::GetIntensity)
 				->OnValueChanged(this, &ILightComponentDetailCustomization::OnIntensityChanged);
 
-			m_pIntensitySlider->SetSizePolicy(ESizePolicy::Stretch);
+			m_pIntensitySlider->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pBox->AddWidget(pInnerBox);
 			pRow->SetColumnWidget(1, pBox);
@@ -504,13 +504,13 @@ namespace Relentless
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 
 			m_pIntensityUnitComboBox = pInnerBox->AddWidget(new ComboBox())
 				->AddSelectables({ "Candelas", "Lumens" })
 				->OnSelectionChanged(this, &ILightComponentDetailCustomization::OnIntensityUnitChanged);
 
-			m_pIntensityUnitComboBox->SetSizePolicy(ESizePolicy::Stretch);
+			m_pIntensityUnitComboBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pBox->AddWidget(pInnerBox);
 			pRow->SetColumnWidget(1, pBox);
@@ -545,14 +545,14 @@ namespace Relentless
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 
 			m_pTemperatureSlider = pInnerBox->AddWidget(new FloatSlider(1'700.0f, 12'000.0f, "%.3f K"))
 				->Value(this, &ILightComponentDetailCustomization::GetTemperature)
 				->OnValueChanged(this, &ILightComponentDetailCustomization::OnTemperatureChanged);
 
 			m_pTemperatureSlider->SetIsEnabled(IsTemperatureEnabled());
-			m_pTemperatureSlider->SetSizePolicy(ESizePolicy::Stretch);
+			m_pTemperatureSlider->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pBox->AddWidget(pInnerBox);
 			pRow->SetColumnWidget(1, pBox);

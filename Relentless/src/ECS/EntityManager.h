@@ -605,6 +605,15 @@ namespace Relentless
 		}
 
 		/**
+		 * @brief Returns a const reference to the vector containing all alive entities
+		 * @return A const reference to the vector containing all entities.
+		 */
+		[[nodiscard]] const std::vector<entity>& GetAllEntities() const noexcept
+		{
+			return m_Entities;
+		}
+
+		/**
 		 * @brief Completely resets the EntityManager and all associated data.
 		 */
 		void Reset() noexcept

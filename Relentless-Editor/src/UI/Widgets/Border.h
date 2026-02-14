@@ -8,8 +8,6 @@ namespace Relentless
 	public:
 		Border() noexcept = default;
 		
-		virtual float CalcDesiredWidth() const noexcept override;
-
 		NO_DISCARD Ref<IBaseWidget> GetContent() const noexcept;
 
 		virtual void OnRender() noexcept override;

@@ -167,6 +167,12 @@ namespace Relentless
 			return std::powf(2, exponent);
 		}
 
+		template<typename T>
+		NO_DISCARD inline static T Sqrt(T aValue) noexcept
+		{
+			return static_cast<T>(std::sqrt(static_cast<double>(aValue)));
+		}
+
 		// Create left-handed DX style perspective matrix
 		// FoV is vertical FoV in radians
 		NO_DISCARD inline Matrix CreatePerspectiveMatrix(float FoV, float aspectRatio, float nearZ, float farZ) noexcept

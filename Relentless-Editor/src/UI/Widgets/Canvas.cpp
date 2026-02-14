@@ -2,7 +2,7 @@
 
 namespace Relentless
 {
-	IntRect Canvas::GetScreenRect() const noexcept
+	const IntRect& Canvas::GetScreenRect() const noexcept
 	{
 		return m_ScreenRect;
 	}
@@ -12,16 +12,17 @@ namespace Relentless
 		return { (float)m_Size.x, (float)m_Size.y };
 	}
 
-	float Canvas::CalcDesiredWidth() const noexcept
+	bool Canvas::RequiresAssignedSize() const noexcept
 	{
-		return m_Size.x;
+		return true;
 	}
 
 	void Canvas::OnRender() noexcept
 	{
 		PROFILE_FUNC;
 
-		Vector2i size = Vector2i(static_cast<int32>(ImGui::GetContentRegionAvail().x), static_cast<int32>(ImGui::GetContentRegionAvail().y));
+		Vector2 sizeFloat = GetAssignedSize();
+		Vector2i size = Vector2i(sizeFloat.x, sizeFloat.y); //GetAssignedSize(); //Vector2i(static_cast<int32>(ImGui::GetContentRegionAvail().x), static_cast<int32>(ImGui::GetContentRegionAvail().y));
 
 		if (size.x > 0 && size.y > 0)
 		{

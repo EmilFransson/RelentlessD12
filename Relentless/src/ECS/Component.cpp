@@ -67,7 +67,7 @@ namespace Relentless
 		Quaternion rotation		= Quaternion::Identity;
 		Vector3    translation	= Vector3::Zero;
 
-		const bool ok = world.Decompose(scale, rotation, translation);
+		RLS_DEBUG_ONLY(const bool ok =) world.Decompose(scale, rotation, translation);
 		RLS_ASSERT(ok, "[TransformComponent::GetWorldRotation]: Failed to decompose world matrix.");
 		return rotation;
 	}
@@ -90,7 +90,7 @@ namespace Relentless
 		Quaternion rotation		= Quaternion::Identity;
 		Vector3    translation	= Vector3::Zero;
 
-		bool ok = world.Decompose(scale, rotation, translation);
+		RLS_DEBUG_ONLY(bool ok =) world.Decompose(scale, rotation, translation);
 		RLS_ASSERT(ok, "[TransformComponent::GetWorldScale]: Failed to decompose world matrix.");
 
 		return scale;

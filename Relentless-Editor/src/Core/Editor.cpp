@@ -1,17 +1,20 @@
 ﻿#include "Editor.h"
 #include "RelentlessEditorApp.h"
 
-#include "../Assets/Factory/MaterialFactory.h"
-#include "../Assets/Factory/MeshFactory.h"
-#include "../Assets/Factory/ModelFactory.h"
-#include "../Assets/Factory/TextureFactory.h"
-#include "../Module/ContentBrowserModule.h"
-#include "../Module/UIModule.h"
-#include "../UI/Views/Outliner/EntityOutlinerView.h"
+#include <Assets/Factory/MaterialFactory.h>
+#include <Assets/Factory/MeshFactory.h>
+#include <Assets/Factory/ModelFactory.h>
+#include <Assets/Factory/TextureFactory.h>
+#include <Module/ContentBrowserModule.h>
+#include <Module/DetailsModule.h>
+#include <Module/UIModule.h>
+#include <UI/Views/Outliner/EntityOutlinerView.h>
 
-#include "../Subsystem/SelectionSubsystem.h"
-#include "../Subsystem/EntityFoldersSubsystem.h"
-#include "../Subsystem/EditorSceneBridgeSubsystem.h"
+#include <Subsystem/SelectionSubsystem.h>
+#include <Subsystem/EntityFoldersSubsystem.h>
+#include <Subsystem/EditorSceneBridgeSubsystem.h>
+#include <Subsystem/EditorRendererBridgeSubsystem.h>
+#include <Subsystem/EditorViewportSubsystem.h>
 
 namespace Relentless
 {
@@ -24,10 +27,13 @@ namespace Relentless
 		GetSubsystem<SelectionSubsystem>();
 		GetSubsystem<EntityFoldersSubsystem>();
 		GetSubsystem<EditorSceneBridgeSubsystem>();
+		GetSubsystem<EditorRendererBridgeSubsystem>();
+		GetSubsystem<EditorViewportSubsystem>();
 	}
 
 	const Ref<EntityOutlinerView> Editor::GetEntityOutlinerView() const noexcept
 	{
+		RLS_ASSERT(false, "TODO!");
 		return m_pOutlinerPanel->GetEntityOutlinerView();
 	}
 
@@ -80,12 +86,12 @@ namespace Relentless
 		ImGui::Begin("Spawn");
 		
 		if (ImGui::Button("Spawn viewport"))
-			SpawnViewport();
+			GetSubsystem<EditorViewportSubsystem>()->CreateViewportPanel();
 
-		ImGui::DragFloat("Min Log Luminance", &m_MinLogLuminance, 0.1f, -100.0f, 100.0f);
-		ImGui::DragFloat("Min EV100", &m_MinEV100, 0.1f, -10.0f, 20.0f);
-		ImGui::DragFloat("Max EV100", &m_MaxEV100, 0.1f, -10.0f, 20.0f);
-		ImGui::DragFloat("Exposure Compensation", &m_ExposureCompensation, 0.1f, -15.0f, 15.0f);
+		//ImGui::DragFloat("Min Log Luminance", &m_MinLogLuminance, 0.1f, -100.0f, 100.0f);
+		//ImGui::DragFloat("Min EV100", &m_MinEV100, 0.1f, -10.0f, 20.0f);
+		//ImGui::DragFloat("Max EV100", &m_MaxEV100, 0.1f, -10.0f, 20.0f);
+		//ImGui::DragFloat("Exposure Compensation", &m_ExposureCompensation, 0.1f, -15.0f, 15.0f);
 
 		static int counter = 0;
 		if (ImGui::Button("Spawn Entity"))
@@ -128,64 +134,19 @@ namespace Relentless
 		Project::Load("D:\\UntitledRelentlessProject\\UntitledRelentlessProject.rproject");
 		CreateSubsystems();
 		CreateStartScene();
-		LoadBrdfLut_Temp();
-		SpawnViewport();
 	}
 
 	void Editor::OnDestroy() noexcept
 	{
 		OnShutDown();
-
-		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
-		if (auto& pRenderer = app.GetRenderer())
-			pRenderer->OnEntityIDReadbackDone.Detach(this);
 	}
 
-	void Editor::OnUpdate(const float deltaTime) noexcept
+	void Editor::OnUpdate(float aDeltaTime) noexcept
 	{
 		PROFILE_SCOPE("Editor::OnUpdate");
 
-		m_pActiveScene->OnUpdate(deltaTime);
-
-		{
-			std::lock_guard<std::mutex> lock(m_OnUpdateMutex);
-			for (const auto& [id, callBack] : m_UpdateCallbacks)
-				callBack(deltaTime);
-		}
-
-		for (size_t i = 0; i < m_EditorViewports.size(); ++i)
-		{
-			ViewportPanel* pViewportPanel = m_EditorViewports[i];
-
-			const Vector2i& region = pViewportPanel->GetViewportSize();
-			m_RenderViews[i].Viewport = FloatRect(0.0f, 0.0f, Math::Max(1.0f, (float)region.x), Math::Max(1.0f, (float)region.y));
-
-			const ViewTransform& cameraViewTransform = pViewportPanel->GetCamera()->GetViewTransform();
-			ViewportRenderView& renderView = m_RenderViews[i];
-			
-			renderView.Location					= cameraViewTransform.Location;
-			renderView.Viewport					= cameraViewTransform.Viewport;
-			renderView.IsPerspective			= true;
-			renderView.PerspectiveFrustum		= cameraViewTransform.PerspectiveFrustum;
-			renderView.OrthographicFrustum		= cameraViewTransform.OrthographicFrustum;
-
-			renderView.WorldToView				= cameraViewTransform.WorldToView;
-			renderView.WorldToClip				= cameraViewTransform.WorldToClip;
-			renderView.ViewToWorld				= cameraViewTransform.ViewToWorld;
-			renderView.ViewToClip				= cameraViewTransform.ViewToClip;
-			renderView.ClipToView				= cameraViewTransform.ClipToView;
-
-			renderView.FoV						= cameraViewTransform.FoV;
-			renderView.NearPlane				= cameraViewTransform.NearPlane;
-			renderView.FarPlane					= cameraViewTransform.FarPlane;
-
-			renderView.MouseHoverCoordinates	= pViewportPanel->IsClientAreaHovered() ? pViewportPanel->GetClientHoverCoordinates() : Vector2i(-1, -1);
-
-			renderView.MinLogLuminance			= m_MinLogLuminance;
-			renderView.MinEV100					= m_MinEV100;
-			renderView.MaxEV100					= m_MaxEV100;
-			renderView.ExposureCompensation		= m_ExposureCompensation;
-		}
+		m_pActiveScene->OnUpdate(aDeltaTime);
+		UpdateSubsystems(aDeltaTime);
 	}
 
 	void Editor::OnRender() noexcept
@@ -204,15 +165,31 @@ namespace Relentless
 		return toReturn;
 	}
 
-	CallbackID Editor::RegisterUpdateCallback(Callback<void(float)> aUpdateCallback) noexcept
+	CallbackID Editor::RegisterUpdateCallback(Callback<void(float)> aUpdateCallback, float aUpdateRate) noexcept
 	{
-		std::lock_guard<std::mutex> lock(m_OnUpdateMutex);
-		static CallbackID nextCallbackID = 0;
-		CallbackID toReturn = nextCallbackID++;
+		UpdateCallbackContext context
+		{
+			.Callback = std::move(aUpdateCallback),
+			.UpdateRate = aUpdateRate,
+			.AccumulatedTime = 0.0f,
+			.Alive = true
+		};
 
-		m_UpdateCallbacks.emplace(toReturn, std::move(aUpdateCallback));
+		CallbackID index = 0u;
+		if (!m_UpdateCallbacksFreeList.empty())
+		{
+			index = m_UpdateCallbacksFreeList.front();
+			m_UpdateCallbacksFreeList.pop();
+		}
+		else
+			index = static_cast<CallbackID>(m_UpdateCallbacks.size());
 
-		return toReturn;
+		if (index == m_UpdateCallbacks.size())
+			m_UpdateCallbacks.push_back(std::move(context));
+		else
+			m_UpdateCallbacks[index] = std::move(context);
+
+		return index;
 	}
 
 	CallbackID Editor::RegisterUIRenderCallback(Callback<void()> aUpdateCallback) noexcept
@@ -228,13 +205,14 @@ namespace Relentless
 	void Editor::UnregisterEventCallback(CallbackID aCallbackHandle) noexcept
 	{
 		std::lock_guard<std::mutex> lock(m_OnEventMutex);
-		m_UIRenderCallbacks.erase(aCallbackHandle);
+		m_EventCallbacks.erase(aCallbackHandle);
 	}
 
 	void Editor::UnregisterUpdateCallback(CallbackID aCallbackHandle) noexcept
 	{
-		std::lock_guard<std::mutex> lock(m_OnUpdateMutex);
-		m_UpdateCallbacks.erase(aCallbackHandle);
+		RLS_ASSERT(aCallbackHandle < static_cast<CallbackID>(m_UpdateCallbacks.size()), "[Editor::UnregisterUpdateCallback]: Callback handle is invalid.");
+		m_UpdateCallbacks[aCallbackHandle].Alive = false;
+		m_UpdateCallbacksFreeList.push(aCallbackHandle);
 	}
 
 	void Editor::UnregisterUIRenderCallback(CallbackID aCallbackHandle) noexcept
@@ -254,17 +232,6 @@ namespace Relentless
 			return nullptr;
 
 		return m_pActiveScene->GetEntityManager().Has<FolderComponent>(aEntity) ? GetSubsystem<EntityFoldersSubsystem>()->GetFolder(*m_pActiveScene, m_pActiveScene->GetEntityManager().Get<FolderComponent>(aEntity).Folder.GetPath()) : nullptr;
-	}
-
-	ViewportRenderView& Editor::GetRenderView(uint32 renderViewIndex) noexcept
-	{
-		RLS_ASSERT(m_RenderViews.size() > renderViewIndex, "[Editor::GetRenderView] Index Out Of Bounds Error.");
-		return m_RenderViews[renderViewIndex];
-	}
-
-	std::vector<ViewportRenderView>& Editor::GetRenderViews() noexcept
-	{
-		return m_RenderViews;
 	}
 
 	void Editor::SetActiveScene(const Ref<Scene>& aScene) noexcept
@@ -359,28 +326,6 @@ namespace Relentless
 		ImGui::EndMainMenuBar();
 	}
 
-	void Editor::LoadBrdfLut_Temp() noexcept
-	{
-		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
-
-		Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
-		pFactory->SetImportAsSRGB(false);
-		pFactory->SetGenerateMipmaps(false);
-
-		std::vector<AssetImportTask> tasks;
-		AssetImportTask& task = tasks.emplace_back();
-		task.FilePath = FilepathUtils::Combine(FilePath::GetEngineWorkingDirectory(), "Assets/Textures/brdf_ibl_lut.dds");
-		task.pFactory = pFactory;
-		task.DestinationPath = "Engine/Textures/";
-
-		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
-		m_BRDFLutTextureHandle = assetToolsModule.Import(tasks)[0].Handle;
-
-		const auto& renderer = app.GetRenderer();
-		renderer->OnEntityIDReadbackDone.Connect(this, &Editor::OnEntityReadbackDone);
-		renderer->OnRequestBRDFLut(this, &Editor::OnRequestBRDFLut);
-	}
-
 	void Editor::LoadModules() noexcept
 	{
 		//Note: Load order should be preserved:
@@ -390,91 +335,10 @@ namespace Relentless
 		assetTools.RegisterFactory<Texture2D>(RLS_NEW TextureFactory());
 		assetTools.RegisterCompositeFactory<ModelFactory>(RLS_NEW ModelFactory());
 
+		ModuleManager::LoadModuleChecked<DetailsModule>();
 		ModuleManager::LoadModuleChecked<UIModule>();
 		ModuleManager::LoadModuleChecked<ContentBrowserModule>();
 		ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-	}
-
-	void Editor::OnEntityReadbackDone(uint32 entityID) noexcept
-	{
-		/*
-		 An id of 0 is considered a sentinel value for the read back results.
-		 This means all actual entity ids are shifted up by one and should be downshifted again (if entityID != 0)
-		*/
-
-		if (entityID == 0u)
-			m_HoveredEntity = NULL_ENTITY;
-		else
-		{
-			const uint32 actualEntityID = entityID - 1;
-			m_HoveredEntity = m_pActiveScene->GetEntityManager().GetEntityFromIdentity(actualEntityID);
-		}
-	}
-
-	AssetHandle Editor::OnRequestBRDFLut() noexcept
-	{
-		return m_BRDFLutTextureHandle;
-	}
-
-	void Editor::OnViewportHotkeyPressed([[maybe_unused]] ViewportPanel* pPanel, RLS_Key key) noexcept
-	{
-		if (!m_pActiveScene)
-			return;
-
-		switch (key)
-		{
-		case RLS_Key::A:
-		{
-			if (!Keyboard::IsKeyDown(RLS_Key::LCtrl))
-				return;
-			
-			m_pActiveScene->GetEntityManager().Collect<IDComponent>().Do([this](entity e)
-				{
-					SelectionSubsystem* pSelection = GetSubsystem<SelectionSubsystem>();
-
-					if (!pSelection->IsEntitySelected(e))
-						pSelection->SelectEntity(e);
-				});
-			break;
-		}
-		case RLS_Key::H:
-		{
-			SetVisibilityForSelectedEntities(Keyboard::IsKeyDown(RLS_Key::LCtrl));
-			break;
-		}
-		case RLS_Key::Delete:
-		{
-			SelectionSubsystem* pSelection = GetSubsystem<SelectionSubsystem>();
-			const std::vector<entity>& selectedEntities = pSelection->GetSelectedEntities();
-			
-			for (int i = (int)selectedEntities.size() - 1; i >= 0; --i)
-				m_pActiveScene->DestroyEntity(selectedEntities[i]);
-
-			break;
-		}
-		default:
-			break;
-		}
-	}
-
-	void Editor::OnViewportClicked([[maybe_unused]] ViewportPanel* pPanel, [[maybe_unused]] Vector2u relativeMouseCoords) noexcept
-	{
-		const bool lCtrlDown = Keyboard::IsKeyDown(RLS_Key::LCtrl);
-		const bool lShiftDown = Keyboard::IsKeyDown(RLS_Key::LShift);
-		const bool isHoveringEntity = m_HoveredEntity != NULL_ENTITY;
-
-		SelectionSubsystem* pSelection = GetSubsystem<SelectionSubsystem>();
-
-		if (!isHoveringEntity || (!lCtrlDown && !lShiftDown))
-			pSelection->DeselectAllEntities();
-
-		if (isHoveringEntity)
-		{
-			if (lCtrlDown && pSelection->IsEntitySelected(m_HoveredEntity))
-				pSelection->DeselectEntity(m_HoveredEntity);
-			else
-				pSelection->SelectEntity(m_HoveredEntity);
-		}
 	}
 
 	void Editor::OnViewportEntityDuplicationRequest() noexcept
@@ -499,36 +363,6 @@ namespace Relentless
 
 		pSelection->DeselectAllEntities();
 		pSelection->SelectEntities(newEntities);
-	}
-
-	void Editor::SetVisibilityForSelectedEntities(bool aVisibilityState) noexcept
-	{
-		if (aVisibilityState)
-		{
-			m_pActiveScene->GetEntityManager().Collect<HiddenInGameComponent, RootComponent>().Do([this, aVisibilityState](entity e)
-				{
-					m_pActiveScene->SetEntityVisibleInGame(e, aVisibilityState);
-				});
-
-			m_pActiveScene->GetEntityManager().Collect<HiddenInGameComponent>().Do([this, aVisibilityState](entity e)
-				{
-					m_pActiveScene->SetEntityVisibleInGame(e, aVisibilityState);
-				});
-		}
-		else
-		{
-			SelectionSubsystem* pSelection = GetSubsystem<SelectionSubsystem>();
-
-			const std::vector<entity>& selectedEntities = pSelection->GetSelectedEntities();
-
-			for (int i = (int)selectedEntities.size() - 1; i >= 0; --i)
-			{
-				const entity currentEntity = selectedEntities[i];
-
-				m_pActiveScene->SetEntityVisibleInGame(currentEntity, aVisibilityState);
-				pSelection->DeselectEntity(currentEntity);
-			}
-		}
 	}
 
 	std::vector<entity> Editor::GetTransformSelection() const noexcept
@@ -575,15 +409,26 @@ namespace Relentless
 		return participatingEntities;
 	}
 
-	void Editor::SpawnViewport() noexcept
+	void Editor::UpdateSubsystems(float aDeltaTime) noexcept
 	{
-		m_RenderViews.push_back(ViewportRenderView());
-		
-		ViewportPanel* pViewport = ModuleManager::LoadModuleChecked<UIModule>().AddPanel<ViewportPanel>(m_EditorViewports.size());
-		pViewport->OnClickedOnViewport.Connect(this, &Editor::OnViewportClicked);
-		pViewport->OnHotkeyPressed.Connect(this, &Editor::OnViewportHotkeyPressed);
-		
-		m_EditorViewports.push_back(pViewport);
-	}
+		for (UpdateCallbackContext& callbackContext : m_UpdateCallbacks)
+		{
+			if (!callbackContext.Alive)
+				continue;
 
+			if (callbackContext.UpdateRate <= 0.0f)
+			{
+				callbackContext.Callback(aDeltaTime);
+				continue;
+			}
+
+			callbackContext.AccumulatedTime += aDeltaTime;
+
+			if (callbackContext.AccumulatedTime >= callbackContext.UpdateRate)
+			{
+				callbackContext.Callback(callbackContext.AccumulatedTime);
+				callbackContext.AccumulatedTime = 0.0f;
+			}
+		}
+	}
 }

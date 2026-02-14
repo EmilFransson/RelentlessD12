@@ -20,18 +20,16 @@ namespace Relentless
 		explicit EntityDetailsView() noexcept;
 		virtual ~EntityDetailsView() noexcept override;
 
-		NO_DISCARD float CalcDesiredWidth() const noexcept override;
-
 		NO_DISCARD const std::vector<entity>& GetInspectedEntities() const noexcept;
 		NO_DISCARD uint32 GetNumInspectedEntities() const noexcept;
 
 		void OnRender() noexcept override;
 	private:
-		void OnExpandCollapseButtonClicked(MAYBE_UNUSED Button* aButton, Ref<DetailNode> aItem) noexcept;
+		void OnExpandCollapseButtonClicked(MAYBE_UNUSED Button* aButton, Ref<DetailNode> aItem) noexcept override;
 		
-		NO_DISCARD Ref<ITableRow> OnGenerateRow(const Ref<DetailNode>& aItem) noexcept;
-		void OnGetChildren(const Ref<DetailNode>& aParent, std::vector<Ref<DetailNode>>& outChildren) noexcept;
-		NO_DISCARD const std::vector<Ref<DetailNode>>* OnRequestSource() noexcept;
+		NO_DISCARD Ref<ITableRow> OnGenerateRow(const Ref<DetailNode>& aItem) noexcept override;
+		void OnGetChildren(const Ref<DetailNode>& aParent, std::vector<Ref<DetailNode>>& outChildren) noexcept override;
+		NO_DISCARD const std::vector<Ref<DetailNode>>* OnRequestSource() noexcept override;
 		void OnSelectionChanged(MAYBE_UNUSED entity aEntity, MAYBE_UNUSED ESelectionState aSelectionState) noexcept;
 
 		void Rebuild() noexcept;

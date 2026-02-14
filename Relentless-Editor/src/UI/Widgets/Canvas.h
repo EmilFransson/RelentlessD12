@@ -12,7 +12,7 @@ namespace Relentless
 		Canvas() noexcept = default;
 		virtual ~Canvas() noexcept override = default;
 
-		NO_DISCARD IntRect GetScreenRect() const noexcept;
+		NO_DISCARD const IntRect& GetScreenRect() const noexcept;
 
 		template<typename InstanceType>
 		Canvas* OnResize(InstanceType* instance, void(InstanceType::* method)(const Vector2i&)) noexcept
@@ -36,9 +36,7 @@ namespace Relentless
 		}
 
 		NO_DISCARD virtual Vector2 ReportSize() const noexcept override;
-
-	protected:
-		NO_DISCARD float CalcDesiredWidth() const noexcept override;
+		NO_DISCARD virtual bool RequiresAssignedSize() const noexcept override;
 	private:
 		virtual void OnRender() noexcept override;
 		void Resize(const Vector2i& newSize) noexcept;

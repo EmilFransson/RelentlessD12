@@ -11,8 +11,6 @@ namespace Relentless
 		DetailPropertyRow() noexcept;
 		virtual ~DetailPropertyRow() noexcept override = default;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override { return 0.0f; };
-
 		virtual void OnRender() noexcept override;
 
 		template<typename WidgetType>

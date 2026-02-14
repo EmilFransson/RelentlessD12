@@ -10,7 +10,7 @@ namespace Relentless
 
 	Vector2 HorizontalBox::ReportSize() const noexcept
 	{
-		if (GetSizePolicy() == ESizePolicy::Fixed)
+		if (GetHorizontalSizePolicy() == ESizePolicy::Fixed)
 			return m_Size;
 
 		float totalWidth = 0.0f;
@@ -57,8 +57,10 @@ namespace Relentless
 		ImGui::SetCursorPos({ basePosition.x + padding.Left, basePosition.y + padding.Top });
 
 		ImGuiWindowFlags boxFlags = 0;
-		if (!IsScrollingEnabled()) 
-			boxFlags |= ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+		if (!IsScrollBarsVisible())
+			boxFlags |= ImGuiWindowFlags_NoScrollbar;
+		if (!IsMouseScrollingEnabled())
+			boxFlags |= ImGuiWindowFlags_NoScrollWithMouse;
 
 		if (m_IsChildRegion)
 		{
@@ -95,7 +97,7 @@ namespace Relentless
 				pWidget,
 				pWidget->ReportSize(),
 				pWidget->GetMargin(),
-				(pWidget->GetSizePolicy() == ESizePolicy::Stretch)
+				(pWidget->GetHorizontalSizePolicy() == ESizePolicy::Stretch)
 			};
 
 			if (measuredChild.Stretch)
@@ -171,10 +173,13 @@ namespace Relentless
 			const float contentWidth = pVisibleChild.Stretch ? Math::Max(0.0f, stretchSlice - (pVisibleChild.Margin.Left + pVisibleChild.Margin.Right)) : pVisibleChild.Size.x;
 
 			// Vertical centering inside row if needed (row height is rowMaxH)
-			const float totalHeight = pVisibleChild.Size.y + pVisibleChild.Margin.Top + pVisibleChild.Margin.Bottom;
-			const float addY = Math::Max(0.0f, (rowMaxHeight - totalHeight) * 0.5f);
-			if (addY > 0.0f)
-				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + addY);
+			if (GetVerticalAlignmentPolicy() == EVerticalAlignmentPolicy::Center)
+			{
+				const float totalHeight = pVisibleChild.Size.y + pVisibleChild.Margin.Top + pVisibleChild.Margin.Bottom;
+				const float addY = Math::Max(0.0f, (rowMaxHeight - totalHeight) * 0.5f);
+				if (addY > 0.0f)
+					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + addY);
+			}
 
 			// Give typical ImGui widgets the width hint
 			ImGui::SetNextItemWidth(contentWidth);
@@ -184,6 +189,11 @@ namespace Relentless
 			if (pVisibleChild.pWidget->IsContainer())
 			{
 				const float childHeight = Math::Max(0.0f, rowMaxHeight - (pVisibleChild.Margin.Top + pVisibleChild.Margin.Bottom)); // or cm.d.y if fixed
+				pVisibleChild.pWidget->AssignSize(Vector2(contentWidth, childHeight));
+			}
+			if (pVisibleChild.pWidget->RequiresAssignedSize())
+			{
+				const float childHeight = rowMaxHeight > 0.0f ? Math::Max(0.0f, rowMaxHeight - (pVisibleChild.Margin.Top + pVisibleChild.Margin.Bottom)) : ImGui::GetContentRegionAvail().y;
 				pVisibleChild.pWidget->AssignSize(Vector2(contentWidth, childHeight));
 			}
 			
@@ -206,7 +216,7 @@ namespace Relentless
 		ImGui::EndGroup();
 
 		// If HBox itself is stretch on X, consume remaining width (so parent flow continues correctly)
-		if (GetSizePolicy() == ESizePolicy::Stretch && !HasAssignedSize())
+		if (GetHorizontalSizePolicy() == ESizePolicy::Stretch && !HasAssignedSize())
 		{
 			const float toConsume = ImGui::GetContentRegionAvail().x;
 			if (toConsume > 0.0f)

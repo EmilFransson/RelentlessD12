@@ -9,12 +9,9 @@ namespace Relentless
 	public:
 		FloatDrag(float speed = 1.0f, float min = -FLT_MAX, float max = FLT_MAX, const char* pFormat = "", int flags = 0) noexcept;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		template<typename T>
 		FloatDrag* Value(T&& callback) noexcept;
 
-		virtual void OnPreRender() noexcept override;
 		virtual void OnRender() noexcept override;
 
 		template<typename T>
@@ -23,10 +20,8 @@ namespace Relentless
 		NO_DISCARD Vector2 ReportSize() const noexcept override;
 
 		void SetDrawColorIndicator(bool state) noexcept;
-		
 		void SetHandleColor(const Color& color) noexcept;
 		void SetHandleSize(float size) noexcept;
-		
 		FloatDrag* SetIndicatorColor(const Color& color) noexcept;
 
 		Broadcaster<void(bool state)> OnActiveChanged;

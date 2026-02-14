@@ -9,8 +9,6 @@ namespace Relentless
 	public:
 		FloatSlider(float min, float max, const char* pFormat = "", int flags = 0) noexcept;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		NO_DISCARD Vector2 ReportSize() const noexcept override;
 
 		void SetFormat(const char* pFormat) noexcept;
@@ -50,7 +48,6 @@ namespace Relentless
 
 		Broadcaster<void(bool state)> OnActiveChanged;
 	protected:
-		virtual void OnPreRender() noexcept override;
 		virtual void OnRender() noexcept override;
 	private:
 		void SetActive(bool state) noexcept;

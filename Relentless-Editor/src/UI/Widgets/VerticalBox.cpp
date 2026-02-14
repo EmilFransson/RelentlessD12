@@ -9,7 +9,7 @@ namespace Relentless
 
 	Vector2 VerticalBox::ReportSize() const noexcept
 	{
-		if (GetSizePolicy() == ESizePolicy::Fixed)
+		if (GetHorizontalSizePolicy() == ESizePolicy::Fixed)
 			return m_Size;
 
 		float totalHeight = 0.0f;
@@ -56,8 +56,10 @@ namespace Relentless
 		ImGui::SetCursorPos({ basePosition.x + padding.Left, basePosition.y + padding.Top });
 
 		ImGuiWindowFlags boxFlags = 0;
-		if (!IsScrollingEnabled())
-			boxFlags |= ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+		if (!IsScrollBarsVisible())
+			boxFlags |= ImGuiWindowFlags_NoScrollbar;
+		if (!IsMouseScrollingEnabled())
+			boxFlags |= ImGuiWindowFlags_NoScrollWithMouse;
 
 		if (m_IsChildRegion)
 		{
@@ -95,7 +97,7 @@ namespace Relentless
 				pWidget,
 				pWidget->ReportSize(),
 				pWidget->GetMargin(),
-				(pWidget->GetSizePolicy() == ESizePolicy::Stretch),
+				(pWidget->GetHorizontalSizePolicy() == ESizePolicy::Stretch),
 			};
 
 			// primary axis (Y)
@@ -192,7 +194,8 @@ namespace Relentless
 			}
 
 			// Hints for typical ImGui inputs/sliders
-			ImGui::SetNextItemWidth(contentWidth);
+			if (!visibleChild.pWidget->IsContainer())
+				ImGui::SetNextItemWidth(contentWidth);
 
 			// Container child? Give it the box it should use (still cursor-driven, no AssignedRect object)
 			if (visibleChild.pWidget->IsContainer())
@@ -219,7 +222,7 @@ namespace Relentless
 		ImGui::EndGroup();
 
 		// If VBox itself stretches vertically, consume remaining height so parent flow continues
-		if (GetSizePolicy() == ESizePolicy::Stretch && !HasAssignedSize())
+		if (GetHorizontalSizePolicy() == ESizePolicy::Stretch && !HasAssignedSize())
 		{
 			const float toConsume = ImGui::GetContentRegionAvail().y;
 			if (toConsume > 0.0f) 

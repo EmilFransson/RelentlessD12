@@ -44,7 +44,7 @@ namespace Relentless
 		return compressedFormat;
 	}
 
-	static void LogHR(HRESULT hr, const std::string& contextualString, const std::filesystem::path& srcFilepath) noexcept
+	static void LogHR(HRESULT hr, MAYBE_UNUSED const std::string& contextualString, MAYBE_UNUSED const std::filesystem::path& srcFilepath) noexcept
 	{
 		if (hr != S_OK)
 		{

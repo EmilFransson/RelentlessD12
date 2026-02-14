@@ -15,8 +15,6 @@ namespace Relentless
 		Thumbnail(const Vector2& aSize, const Ref<ThumbnailInfo>& aInfo) noexcept;
 		virtual ~Thumbnail() noexcept override = default;
 
-		NO_DISCARD float CalcDesiredWidth() const noexcept override;
-		
 		NO_DISCARD const Ref<Texture>& GetResource() const noexcept;
 
 		template<typename InstanceType>

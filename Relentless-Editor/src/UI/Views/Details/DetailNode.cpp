@@ -9,6 +9,12 @@ namespace Relentless
 	{
 	}
 
+	DetailNode::DetailNode(const char* aName, Ref<IPropertyHandleBase> aPropertyHandle) noexcept
+		: m_Name{ aName },
+		  m_pPropertyHandle{ aPropertyHandle }
+	{
+	}
+
 	const std::vector<Ref<DetailNode>>& DetailNode::GetChildren() const noexcept
 	{
 		return m_Children;
@@ -17,6 +23,11 @@ namespace Relentless
 	const String& DetailNode::GetName() const noexcept
 	{
 		return m_Name;
+	}
+
+	Ref<IPropertyHandleBase> DetailNode::GetPropertyHandle() const noexcept
+	{
+		return m_pPropertyHandle;
 	}
 
 	Ref<ITableRow> DetailNode::RequestRowWidget(const ItemInfo& aItemInfo) noexcept

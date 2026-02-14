@@ -119,22 +119,22 @@ namespace Relentless
 			foldersSubsystem.DeleteFolder(scene, "Root/B");
 			dump("after delete Root/B");
 
-			RLS_ASSERT(scene.GetEntityManager().Get<FolderComponent>(e).Folder.GetPath() == "Root/A/A", "Should be merged under Root/A/A");
+			RLS_VERIFY(scene.GetEntityManager().Get<FolderComponent>(e).Folder.GetPath() == "Root/A/A", "Should be merged under Root/A/A");
 
 			// ─────────────────────────────────────────────────────────────────────────────
 			// 1) Create chain and idempotency
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
 				EntityFolder* a = foldersSubsystem.CreateFolder(scene, "A");
-				RLS_ASSERT(a && a->GetLabel() == "A", "Create A failed");
+				RLS_VERIFY(a && a->GetLabel() == "A", "Create A failed");
 
 				EntityFolder* ab = foldersSubsystem.CreateFolder(scene, "A/B");
-				RLS_ASSERT(ab && ab->GetLabel() == "B" && ab->GetParent() == a, "Create A/B failed");
+				RLS_VERIFY(ab && ab->GetLabel() == "B" && ab->GetParent() == a, "Create A/B failed");
 
 				// Idempotent create: returns the same object and keeps correct parent
 				EntityFolder* ab2 = foldersSubsystem.CreateFolder(scene, "A/B");
-				RLS_ASSERT(ab2 == ab, "Idempotent CreateFolder returned a different object");
-				RLS_ASSERT(ab2->GetParent() == a, "Idempotent CreateFolder changed parent incorrectly");
+				RLS_VERIFY(ab2 == ab, "Idempotent CreateFolder returned a different object");
+				RLS_VERIFY(ab2->GetParent() == a, "Idempotent CreateFolder changed parent incorrectly");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
@@ -142,12 +142,12 @@ namespace Relentless
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
 				String p = foldersSubsystem.GetDefaultFolderName(scene, "A");
-				RLS_ASSERT(p == "A/New Folder", "Expected A/New Folder");
+				RLS_VERIFY(p == "A/New Folder", "Expected A/New Folder");
 
 				foldersSubsystem.CreateFolder(scene, p); // create it
 
 				String p2 = foldersSubsystem.GetDefaultFolderName(scene, "A");
-				RLS_ASSERT(p2 == "A/New Folder2", "Expected A/New Folder2");
+				RLS_VERIFY(p2 == "A/New Folder2", "Expected A/New Folder2");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
@@ -165,12 +165,12 @@ namespace Relentless
 
 				// Rename Foo -> Baz
 				bool ok = foldersSubsystem.RenameFolder(scene, "Foo", "Baz");
-				RLS_ASSERT(ok, "Rename Foo->Baz failed");
+				RLS_VERIFY(ok, "Rename Foo->Baz failed");
 
 				const auto& pFoo = scene.GetEntityManager().Get<FolderComponent>(eFoo).Folder.GetPath();
 				const auto& pFooB = scene.GetEntityManager().Get<FolderComponent>(eFooBar).Folder.GetPath();
-				RLS_ASSERT(pFoo == "Baz", "Entity in Foo not remapped to Baz");
-				RLS_ASSERT(pFooB == "FooBar", "Entity in FooBar should not be affected");
+				RLS_VERIFY(pFoo == "Baz", "Entity in Foo not remapped to Baz");
+				RLS_VERIFY(pFooB == "FooBar", "Entity in FooBar should not be affected");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ namespace Relentless
 				bool ok = foldersSubsystem.RenameFolder(scene,
 					"StarterContent/Entities/Monsters",
 					"StarterContent/Entities/Enemies");
-				RLS_ASSERT(ok, "Rename Monsters->Enemies failed");
+				RLS_VERIFY(ok, "Rename Monsters->Enemies failed");
 
 				dump("after deep rename");
 
@@ -203,9 +203,9 @@ namespace Relentless
 				const auto& trollPath = scene.GetEntityManager().Get<FolderComponent>(troll).Folder.GetPath();
 				const auto& cratePath = scene.GetEntityManager().Get<FolderComponent>(crate).Folder.GetPath();
 
-				RLS_ASSERT(groundPath == "StarterContent/Entities/Enemies", "Remap failed for ground");
-				RLS_ASSERT(trollPath == "StarterContent/Entities/Enemies/Bosses", "Remap failed for troll");
-				RLS_ASSERT(cratePath == "StarterContent/Props", "Unrelated entity changed unexpectedly");
+				RLS_VERIFY(groundPath == "StarterContent/Entities/Enemies", "Remap failed for ground");
+				RLS_VERIFY(trollPath == "StarterContent/Entities/Enemies/Bosses", "Remap failed for troll");
+				RLS_VERIFY(cratePath == "StarterContent/Props", "Unrelated entity changed unexpectedly");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
@@ -216,7 +216,7 @@ namespace Relentless
 				foldersSubsystem.CreateFolder(scene, "X/Y/Z");
 
 				bool ok = foldersSubsystem.RenameFolder(scene, "X/Y", "X/Y/Z"); // invalid
-				RLS_ASSERT(!ok, "Should not allow rename into own descendant");
+				RLS_VERIFY(!ok, "Should not allow rename into own descendant");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
@@ -231,10 +231,10 @@ namespace Relentless
 				foldersSubsystem.AttachEntityToFolder(scene, a, Folder(root, "Alpha"));
 
 				bool ok = foldersSubsystem.RenameFolder(scene, "Alpha", "Beta");
-				RLS_ASSERT(!ok, "Rename to existing folder should fail");
+				RLS_VERIFY(!ok, "Rename to existing folder should fail");
 
 				const auto& pathA = scene.GetEntityManager().Get<FolderComponent>(a).Folder.GetPath();
-				RLS_ASSERT(pathA == "Alpha", "Entity path changed despite failed rename");
+				RLS_VERIFY(pathA == "Alpha", "Entity path changed despite failed rename");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
@@ -259,8 +259,8 @@ namespace Relentless
 				const auto& mp2 = scene.GetEntityManager().Get<FolderComponent>(m2).Folder.GetPath();
 
 				// Policy-agnostic check: old prefix must be gone
-				RLS_ASSERT(!StartsWith(mp1, "SC/Entities/"), "m1 still has deleted prefix");
-				RLS_ASSERT(!StartsWith(mp2, "SC/Entities/"), "m2 still has deleted prefix");
+				RLS_VERIFY(!StartsWith(mp1, "SC/Entities/"), "m1 still has deleted prefix");
+				RLS_VERIFY(!StartsWith(mp2, "SC/Entities/"), "m2 still has deleted prefix");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
@@ -289,7 +289,7 @@ namespace Relentless
 						return visited.size() < 2;
 					});
 
-				RLS_ASSERT(visited.size() == 2, "Early-break in ForEachEntityInFolders failed");
+				RLS_VERIFY(visited.size() == 2, "Early-break in ForEachEntityInFolders failed");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
@@ -297,12 +297,12 @@ namespace Relentless
 			// ─────────────────────────────────────────────────────────────────────────────
 			{
 				foldersSubsystem.CreateFolder(scene, "UI/Windows");
-				RLS_ASSERT(foldersSubsystem.IsFolderExpanded(scene, "UI/Windows"), "Expected collapsed by default");
+				RLS_VERIFY(foldersSubsystem.IsFolderExpanded(scene, "UI/Windows"), "Expected collapsed by default");
 
 				if (Ref<EntityFolder> f = foldersSubsystem.GetFolder(scene, "UI/Windows"))
 					f->SetExpandedState(false);
 
-				RLS_ASSERT(!foldersSubsystem.IsFolderExpanded(scene, "UI/Windows"), "Expanded state not persisted");
+				RLS_VERIFY(!foldersSubsystem.IsFolderExpanded(scene, "UI/Windows"), "Expanded state not persisted");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
@@ -314,10 +314,10 @@ namespace Relentless
 				foldersSubsystem.AttachEntityToFolder(scene, t, Folder(root, "Top"));
 
 				bool ok = foldersSubsystem.RenameFolder(scene, "Top", "TopRenamed");
-				RLS_ASSERT(ok, "Root-level rename failed");
+				RLS_VERIFY(ok, "Root-level rename failed");
 
 				const auto& tp = scene.GetEntityManager().Get<FolderComponent>(t).Folder.GetPath();
-				RLS_ASSERT(tp == "TopRenamed", "Root-level entity not remapped");
+				RLS_VERIFY(tp == "TopRenamed", "Root-level entity not remapped");
 			}
 
 			// ─────────────────────────────────────────────────────────────────────────────
@@ -330,7 +330,7 @@ namespace Relentless
 
 				foldersSubsystem.DeleteFolder(scene, "Leaf");
 				bool has = scene.GetEntityManager().Has<FolderComponent>(l);
-				RLS_ASSERT(!has, "Leaf entity still references deleted folder");
+				RLS_VERIFY(!has, "Leaf entity still references deleted folder");
 			}
 
 			std::cout << "\nAll folder tests passed ✅\n";

@@ -16,6 +16,34 @@ namespace Relentless
 		{
 			out[0] = out[1] = out[2] = value;
 		}
+
+		static ImGuizmo::OPERATION ToImGuizmoOperation(ETransformGizmoType aType) noexcept
+		{
+			switch (aType)
+			{
+			case ETransformGizmoType::Translate:
+				return ImGuizmo::OPERATION::TRANSLATE;
+			case ETransformGizmoType::Rotate:
+				return ImGuizmo::OPERATION::ROTATE;
+			case ETransformGizmoType::Scale:
+				return ImGuizmo::OPERATION::SCALE;
+			default:
+				return ImGuizmo::OPERATION::UNIVERSAL;
+			}
+		}
+
+		static ImGuizmo::MODE ToImGuizmoMode(ETransformGizmoMode aMode) noexcept
+		{
+			switch (aMode)
+			{
+			case ETransformGizmoMode::Local: 
+				return ImGuizmo::LOCAL;
+			case ETransformGizmoMode::World: 
+				return ImGuizmo::WORLD;
+			default: 
+				return ImGuizmo::LOCAL;
+			}
+		}
 	}
 
 	void TransformGizmoController::Execute(const TransformGizmoControllerContext& context) noexcept
@@ -38,6 +66,11 @@ namespace Relentless
 	ETransformGizmoType TransformGizmoController::GetActiveTransformType() const noexcept
 	{
 		return m_CurrentType;
+	}
+
+	bool TransformGizmoController::IsInteracting() const noexcept
+	{
+		return GetActiveTransformType() != ETransformGizmoType::None && (ImGuizmo::IsOver() || ImGuizmo::IsUsing());
 	}
 
 	void TransformGizmoController::SetActiveType(ETransformGizmoType type) noexcept
@@ -83,13 +116,16 @@ namespace Relentless
 	void TransformGizmoController::PreConfigureImGuizmo(const TransformGizmoControllerContext& context)
 	{
 		ImGuizmo::SetOrthographic(!context.IsPerspective);
-		ImGuizmo::SetDrawlist();
+		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
 		ImGuizmo::SetRect(context.Rect.Left, context.Rect.Top, context.Rect.GetWidth(), context.Rect.GetHeight());
 	}
 
 	void TransformGizmoController::Manipulate(const TransformGizmoControllerContext& context) noexcept
 	{
 		if (context.Entities.empty())
+			return;
+
+		if (m_CurrentType == ETransformGizmoType::None)
 			return;
 
 		Scene* pScene = context.pScene;
@@ -114,7 +150,7 @@ namespace Relentless
 		const Matrix pivotOriginal = pivot; // keep a copy explicitly
 
 		// ImGuizmo mode: LOCAL/WORLD only affects orientation, not what matrix we pass
-		const ImGuizmo::MODE mode = (m_CurrentType == ETransformGizmoType::Scale) ? ImGuizmo::LOCAL : (ImGuizmo::MODE)m_CurrentMode;
+		const ImGuizmo::MODE mode = (m_CurrentType == ETransformGizmoType::Scale) ? ImGuizmo::LOCAL : TransformGizmoController_private::ToImGuizmoMode(m_CurrentMode);
 
 		// Snap setup
 		float snapValues[3];
@@ -136,7 +172,7 @@ namespace Relentless
 		const bool manipulated = ImGuizmo::Manipulate(
 			*context.WorldToView.m,
 			*context.ViewToClip.m,
-			(ImGuizmo::OPERATION)m_CurrentType,
+			TransformGizmoController_private::ToImGuizmoOperation(m_CurrentType),
 			mode,
 			pivot.m[0],       // IN: original pivot world, OUT: new pivot world
 			nullptr,

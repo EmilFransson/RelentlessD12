@@ -21,29 +21,8 @@ namespace Relentless
 		SetHandleColor(Color(0.35f, 0.35f, 0.35f, 255.0f));
 
 		SetFrameRounding(6.0f);
-		SetPadding(Vector2(6.0f, 5.0f));
 		SetBorderSize(2.0f);
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
-	}
-
-	float FloatEntryBox::CalcDesiredWidth() const noexcept
-	{
-		if (GetSizePolicy() == ESizePolicy::Stretch)
-			return 0.0f;
-
-		const float grabSize = ImGui::GetStyle().GrabMinSize;
-		const float padding = ImGui::GetStyle().FramePadding.x * 2.0f;
-
-		const float valueTextWidth = ImGui::CalcTextSize(m_Format.c_str()).x + padding;
-		const float indicatorWidth = m_DrawColorIndicator ? 5.0f + 6.0f : 0.0f; // rect + spacing
-
-		return valueTextWidth + grabSize + indicatorWidth + 6.0f; // extra spacing
-	}
-
-	void FloatEntryBox::OnPreRender() noexcept
-	{
-		if (!Math::AreValuesClose(m_WidthConstraint, -1.0f))
-			ImGui::SetNextItemWidth(m_WidthConstraint);
 	}
 
 	void FloatEntryBox::OnRender() noexcept
@@ -57,13 +36,11 @@ namespace Relentless
 
 		auto cursorPosPreDraw = ImGui::GetCursorScreenPos();
 
-		float value = m_ValueCallback();
+		float value = m_ValueCallback.IsSet() ? m_ValueCallback() : 0.0f;
 		ImGui::InputFloat("##InputFloat", &value, m_Step, m_Step, m_Format.c_str(), GetFlags());
 
-		auto cursorPosPostDraw = ImGui::GetCursorScreenPos();
-
 		if (ImGui::IsItemDeactivated())
-			m_OnChanged(value);
+			m_OnChanged.ExecuteIfSet(value);
 
 		m_IsHovered = ImGui::IsItemHovered();
 		const bool isActive = ImGui::IsItemActive();
@@ -77,38 +54,44 @@ namespace Relentless
 
 		if (m_DrawColorIndicator)
 		{
-			const ImVec2 indicatorStartLocation = ImVec2(cursorPosPreDraw.x + 3.0f, cursorPosPreDraw.y + 6.0f);
+			const ImVec2 indicatorStartLocation = ImVec2(cursorPosPreDraw.x + 2.0f, cursorPosPreDraw.y + 6.0f);
 			ImGui::SetCursorScreenPos(indicatorStartLocation);
 
 			const ImVec2 min = indicatorStartLocation;
 			const ImVec2 max = ImVec2(min.x + 2.0f, min.y + size.y - 11.0f);
 			ImGui::GetWindowDrawList()->AddRectFilled(min, max, ImGui::GetColorU32(ImVec4(m_IndicatorColor.R(), m_IndicatorColor.G(), m_IndicatorColor.B(), m_IndicatorColor.A())), 3.0f);
-
-			ImGui::SetCursorScreenPos(cursorPosPostDraw);
 		}
 	}
 
 	Vector2 FloatEntryBox::ReportSize() const noexcept
 	{
-		ImFont* pFont = m_Style.GetFont();
+		Vector2 size = Vector2::Zero;
+		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();
+		const ESizePolicy verticalSizePolicy = GetVerticalSizePolicy();
+		const bool fixedWidth = horizontalSizePolicy == ESizePolicy::Fixed;
+		const bool fixedHeight = verticalSizePolicy == ESizePolicy::Fixed;
+
+		if (fixedWidth)
+			size.x = GetFixedWidth();
+		if (fixedHeight)
+			size.y = GetFixedHeight();
+
+		ImFont* pFont = GetStyle().GetFont();
 		if (pFont)
 			ImGui::PushFont(pFont);
 
 		const Vector2 padding = GetPadding() * 2.0f;
 		const float frameHeight = ImGui::GetFontSize() + padding.y;
 
-		char valueBuffer[64];
-		const float value = m_ValueCallback.IsSet() ? m_ValueCallback() : 0.0f;
-		ImFormatString(valueBuffer, sizeof(valueBuffer), m_Format.c_str(), value);
-
-		const float rawWidth = ImGui::CalcTextSize(valueBuffer).x;
-		float width = rawWidth + padding.x;
-		width = Math::Max(width, 100.0f);
+		if (!fixedWidth)
+			size.x = 200.0f;
+		if (!fixedHeight)
+			size.y = frameHeight;
 
 		if (pFont)
 			ImGui::PopFont();
 
-		return { width, frameHeight };
+		return size;
 	}
 
 	void FloatEntryBox::SetDrawColorIndicator(bool state) noexcept

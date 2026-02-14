@@ -21,7 +21,8 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ]
+      "inheritEnvironments": [ "clang_cl_x64" ],
+      "cmakeToolchain": "C:/Users/emilf/Desktop/RelentlessD12/cmake/toolchains/llvm21-clangcl.cmake"
     },
     {
       "name": "x64-ReleaseWithDebInfo",
@@ -32,7 +33,8 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ]
+      "inheritEnvironments": [ "clang_cl_x64" ],
+      "cmakeToolchain": "C:/Users/emilf/Desktop/RelentlessD12/cmake/toolchains/llvm21-clangcl.cmake"
     }
   ]
 }

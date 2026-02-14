@@ -4,7 +4,7 @@
 namespace Relentless
 {
 	template<typename DerivedType>
-	class IWidgetContainer : public IWidget<DerivedType>
+	class IWidgetContainer : public IWidget<IWidgetContainer<DerivedType>>
 	{
 	public:
 		IWidgetContainer(const Vector2 aSize = Vector2::Zero, bool aIsChildRegion = false) noexcept;
@@ -23,15 +23,17 @@ namespace Relentless
 
 		NO_DISCARD bool HasWidget(Ref<IBaseWidget> aWidget) const noexcept;
 
-		NO_DISCARD bool IsChildRegion() const noexcept;
 		NO_DISCARD bool IsContainer() const noexcept override;
-		NO_DISCARD bool IsScrollingEnabled() const noexcept;
+		NO_DISCARD bool IsHorizontalScrollBarEnabled() const noexcept;
+		NO_DISCARD bool IsMouseScrollingEnabled() const noexcept;
+		NO_DISCARD bool IsScrollBarsVisible() const noexcept;
 
 		void RemoveWidget(IBaseWidget* aWidget) noexcept;
 
-		void SetEnableScrolling(bool aEnable) noexcept;
-		void SetIsChildRegion(bool aIsChild) noexcept;
-		DerivedType* SetSize(const Vector2& aSize) noexcept;
+		DerivedType* SetHorizontalScrollBarEnabled(bool aEnabled) noexcept;
+		DerivedType* SetMouseScrollingEnabled(bool aEnabled) noexcept;
+		DerivedType* SetScrollBarsVisible(bool aVisible) noexcept;
+
 		virtual DerivedType* SetSpacing(float aSpacing) noexcept = 0;
 
 		Broadcaster<void(bool)> OnFocusChanged;
@@ -42,7 +44,9 @@ namespace Relentless
 		Vector2 m_Size = Vector2::Zero;
 		Vector2 m_Spacing = Vector2::Zero;
 		bool m_IsChildRegion = false;
-		bool m_ScrollEnabled = true;
+		bool m_HorizontalScrollBarEnabled = false;
+		bool m_ScrollBarsVisible = false;
+		bool m_MouseScrollingEnabled = true;
 		bool m_IsFocused = false;
 	};
 
@@ -91,21 +95,27 @@ namespace Relentless
 	}
 
 	template<typename DerivedType>
-	bool IWidgetContainer<DerivedType>::IsChildRegion() const noexcept
-	{
-		return m_IsChildRegion;
-	}
-
-	template<typename DerivedType>
 	bool IWidgetContainer<DerivedType>::IsContainer() const noexcept
 	{
 		return true;
 	}
 
 	template<typename DerivedType>
-	bool IWidgetContainer<DerivedType>::IsScrollingEnabled() const noexcept
+	bool IWidgetContainer<DerivedType>::IsHorizontalScrollBarEnabled() const noexcept
 	{
-		return m_ScrollEnabled;
+		return m_HorizontalScrollBarEnabled;
+	}
+
+	template<typename DerivedType>
+	bool IWidgetContainer<DerivedType>::IsMouseScrollingEnabled() const noexcept
+	{
+		return m_MouseScrollingEnabled;
+	}
+
+	template<typename DerivedType>
+	bool IWidgetContainer<DerivedType>::IsScrollBarsVisible() const noexcept
+	{
+		return m_ScrollBarsVisible;
 	}
 
 	template<typename DerivedType>
@@ -115,15 +125,23 @@ namespace Relentless
 	}
 
 	template<typename DerivedType>
-	void IWidgetContainer<DerivedType>::SetEnableScrolling(bool aEnable) noexcept
+	DerivedType* IWidgetContainer<DerivedType>::SetHorizontalScrollBarEnabled(bool aEnabled) noexcept
 	{
-		m_ScrollEnabled = aEnable;
+		m_HorizontalScrollBarEnabled = aEnabled;
+		return static_cast<DerivedType*>(this);
 	}
 
 	template<typename DerivedType>
-	DerivedType* IWidgetContainer<DerivedType>::SetSize(const Vector2& aSize) noexcept
+	DerivedType* IWidgetContainer<DerivedType>::SetMouseScrollingEnabled(bool aEnabled) noexcept
 	{
-		m_Size = aSize;
+		m_MouseScrollingEnabled = aEnabled;
+		return static_cast<DerivedType*>(this);
+	}
+
+	template<typename DerivedType>
+	DerivedType* IWidgetContainer<DerivedType>::SetScrollBarsVisible(bool aVisible) noexcept
+	{
+		m_ScrollBarsVisible = aVisible;
 		return static_cast<DerivedType*>(this);
 	}
 }

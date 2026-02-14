@@ -28,8 +28,6 @@ namespace Relentless
 		template<typename T>
 		T* Add(T* pWidget, uint32 column, uint32 row) noexcept;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		NO_DISCARD bool HasWidget(Ref<IBaseWidget> pWidget) const noexcept;
 
 		void SetCellPadding(const Vector2& padding) noexcept;

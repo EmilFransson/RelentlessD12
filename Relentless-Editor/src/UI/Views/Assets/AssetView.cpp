@@ -89,11 +89,6 @@ namespace Relentless
 		contentBrowser.GetAssetThumbnailPool()->OnThumbnailRegenerated.Detach(this);
 	}
 
-	float AssetView::CalcDesiredWidth() const noexcept
-	{
-		return 0.0f;
-	}
-
 	void AssetView::InitializeFromAssetRegistry() noexcept
 	{
 		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();

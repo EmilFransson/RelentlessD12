@@ -9,11 +9,6 @@ namespace Relentless
 	{
 	}
 
-	float Thumbnail::CalcDesiredWidth() const noexcept
-	{
-		return 0.0f;
-	}
-
 	const Ref<Texture>& Thumbnail::GetResource() const noexcept
 	{
 		return m_pResource;
@@ -33,7 +28,7 @@ namespace Relentless
 		aArchive.Process(meta.miscFlags);
 		aArchive.Process(meta.miscFlags2);
 
-		uint64_t pixelByteSize = 0;
+		uint64 pixelByteSize = 0;
 		aArchive.Process(pixelByteSize);
 
 		if (pixelByteSize == 0)
@@ -44,7 +39,7 @@ namespace Relentless
 		if (FAILED(scratchImage.Initialize(meta)))
 			return false;
 
-		uint8_t* pixels = scratchImage.GetPixels();
+		uint8* pixels = scratchImage.GetPixels();
 		if (!pixels)
 			return false;
 
@@ -96,7 +91,7 @@ namespace Relentless
 
 		const ImVec2 cursorPos = ImGui::GetCursorScreenPos();
 		ImGui::Dummy(ImVec2(m_Size.x, m_Size.y));
-		ImGui::SetItemAllowOverlap();
+		ImGui::SetNextItemAllowOverlap();
 
 		ImGui::SetCursorScreenPos(cursorPos);
 
@@ -132,7 +127,7 @@ namespace Relentless
 		const uint64 imageID = m_pResource->GetSRV()->GetGPUHandle().ptr;
 
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
-		ImGui::ImageButton((ImTextureID)imageID, ImVec2(imageWidth, imageHeight), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), -1, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(m_pThumbnailInfo->TintColor.R(), m_pThumbnailInfo->TintColor.G(), m_pThumbnailInfo->TintColor.B(), m_pThumbnailInfo->TintColor.A()));
+		ImGui::ImageButton("##Thumbnail", (ImTextureID)imageID, ImVec2(imageWidth, imageHeight), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(m_pThumbnailInfo->TintColor.R(), m_pThumbnailInfo->TintColor.G(), m_pThumbnailInfo->TintColor.B(), m_pThumbnailInfo->TintColor.A()));
 		ImGui::PopStyleVar();
 
 		ImGui::SetCursorScreenPos(ImVec2(thumbnailImageMinPoint.x, thumbnailImageMaxPoint.y + 5.0f));

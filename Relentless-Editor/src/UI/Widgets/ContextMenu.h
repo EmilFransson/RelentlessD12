@@ -178,8 +178,6 @@ namespace Relentless
 			m_Entries.push_back(pEntry);
 		}
 
-		float CalcDesiredWidth() const noexcept override { return 0.0f; }
-
 		void OnRender() noexcept override
 		{
 			if (!m_IsOpen)
@@ -237,7 +235,7 @@ namespace Relentless
 		MenuBuilder* AddMenuEntry(const String& label, const String& tooltip, const String& icon, InstanceType* instance, void(InstanceType::* method)(), bool enabled = true) noexcept
 		{
 			Ref<HorizontalBox> pBox = new HorizontalBox();
-			pBox->SetSizePolicy(ESizePolicy::Stretch);
+			pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			if (!icon.empty())
 			{

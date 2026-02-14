@@ -2,9 +2,9 @@
 
 namespace Relentless
 {
-	Button::Button(std::string_view text, const Vector2& size) noexcept
-		:m_Text{text}
-		,m_Size{size}
+	Button::Button(std::string_view aText, const Vector2& aSize) noexcept
+		:m_Text{ aText }
+		,m_Size{ aSize }
 	{
 		SetBackgroundColor(Colors::Normalize(56.0f, 56.0f, 56.0f, 255.0f));
 		SetBorderColor(Colors::Normalize(20.0f, 20.0f, 20.0f, 255.0f));
@@ -14,11 +14,6 @@ namespace Relentless
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
-	float Button::CalcDesiredWidth() const noexcept
-	{
-		return ImGui::CalcTextSize(m_Text.c_str()).x + (ImGui::GetStyle().FramePadding.x * 2.0f);
-	}
-
 	const String& Button::GetText() const noexcept
 	{
 		return m_Text;
@@ -26,6 +21,20 @@ namespace Relentless
 
 	Vector2 Button::ReportSize() const noexcept
 	{
+		Vector2 size = Vector2::Zero;
+		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();
+		const ESizePolicy verticalSizePolicy = GetVerticalSizePolicy();
+		const bool fixedWidth = horizontalSizePolicy == ESizePolicy::Fixed;
+		const bool fixedHeight = verticalSizePolicy == ESizePolicy::Fixed;
+
+		if (fixedWidth)
+			size.x = this->GetFixedWidth();
+		if (fixedHeight)
+			size.y = this->GetFixedHeight();
+
+		if (fixedWidth && fixedHeight)
+			return size;
+
 		ImFont* pFont = GetStyle().GetFont();
 		if (pFont)
 			ImGui::PushFont(pFont);
@@ -36,17 +45,15 @@ namespace Relentless
 		const float lineHeight = ImGui::GetFontSize();
 		const float textHeight = (m_Text.empty() ? lineHeight : textSize.y);
 
-		Vector2 sizeToReport(textSize.x + padding.x, textHeight + padding.y);
-
-		if (m_Size.x > 0.0f) 
-			sizeToReport.x = Math::Max(sizeToReport.x, m_Size.x);
-		if (m_Size.y > 0.0f) 
-			sizeToReport.y = Math::Max(sizeToReport.y, m_Size.y);
+		if (!fixedWidth)
+			size.x = textSize.x + padding.x;
+		if (!fixedHeight)
+			size.y = textHeight + padding.y;
 
 		if (pFont) 
 			ImGui::PopFont();
 
-		return sizeToReport;
+		return size;
 	}
 
 	Button* Button::SetActiveColor(const Color& color) noexcept
@@ -69,8 +76,10 @@ namespace Relentless
 
 	void Button::OnRender() noexcept
 	{
-		if (ImGui::Button(m_Text.c_str(), ImVec2(m_Size.x, m_Size.y)))
-			m_OnClickedCallback();
+		const Vector2 size = GetAssignedSize();
+
+		if (ImGui::Button(m_Text.c_str(), ImVec2(size.x, size.y)))
+			m_OnClickedCallback.ExecuteIfSet();
 
 		if (!this->m_IsHovered && ImGui::IsItemHovered())
 			this->OnMouseEnter_private();
@@ -78,14 +87,13 @@ namespace Relentless
 			this->OnMouseExit_private();
 	}
 
-	void Button::SetSize(const Vector2& size) noexcept
+	void Button::SetText(const String& aText) noexcept
 	{
-		m_Size = size;
+		m_Text = aText;
 	}
 
-	void Button::SetText(const String& text) noexcept
+	bool Button::RequiresAssignedSize() const noexcept
 	{
-		m_Text = text;
+		return true;
 	}
-
 }

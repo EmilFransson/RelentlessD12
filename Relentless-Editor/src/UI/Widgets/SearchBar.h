@@ -9,8 +9,6 @@ namespace Relentless
 	public:
 		SearchBar(std::string_view hintText = "", bool enableSearchHistory = false) noexcept;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		template<typename Func>
 		SearchBar* OnTextChanged(Func&& callback) noexcept
 		{

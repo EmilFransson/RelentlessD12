@@ -150,13 +150,13 @@ namespace Relentless
 
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 
 			pInnerBox->AddWidget(new FloatSlider(0.08f, 163.48f, "%.3f m", ImGuiSliderFlags_Logarithmic))
 				->Value(this, &SpotLightComponentDetailCustomization::GetAttenuationRadius)
 				->OnValueChanged(this, &SpotLightComponentDetailCustomization::OnAttenuationRadiusChanged)
-				->SetSizePolicy(ESizePolicy::Stretch);
+				->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pBox->AddWidget(pInnerBox);
 			pRow->SetColumnWidget(1, pBox);
@@ -185,13 +185,13 @@ namespace Relentless
 
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 
 			pInnerBox->AddWidget(new FloatSlider(0.0f, 80.0f, "%.3f"))
 				->Value(this, &SpotLightComponentDetailCustomization::GetInnerConeAngleDegrees)
 				->OnValueChanged(this, &SpotLightComponentDetailCustomization::OnInnerConeAngleChanged)
-				->SetSizePolicy(ESizePolicy::Stretch);
+				->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pBox->AddWidget(pInnerBox);
 			pRow->SetColumnWidget(1, pBox);
@@ -220,13 +220,13 @@ namespace Relentless
 
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetSpacing(0.0f);
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 
 			pInnerBox->AddWidget(new FloatSlider(0.0f, 80.0f, "%.3f"))
 				->Value(this, &SpotLightComponentDetailCustomization::GetOuterConeAngleDegrees)
 				->OnValueChanged(this, &SpotLightComponentDetailCustomization::OnOuterConeAngleChanged)
-				->SetSizePolicy(ESizePolicy::Stretch);
+				->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pBox->AddWidget(pInnerBox);
 			pRow->SetColumnWidget(1, pBox);

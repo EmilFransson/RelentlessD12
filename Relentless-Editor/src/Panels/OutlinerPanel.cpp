@@ -1,5 +1,7 @@
 #include "OutlinerPanel.h"
-#include "../Core/Editor.h"
+#include "Core/Editor.h"
+
+#include "Subsystem/EditorSceneBridgeSubsystem.h"
 
 namespace Relentless
 {
@@ -37,7 +39,7 @@ namespace Relentless
 			break;
 		}
 		case RLS_Key::H:
-			Editor::Get()->SetVisibilityForSelectedEntities(Keyboard::IsKeyDown(RLS_Key::LCtrl));
+			Editor::Get()->GetSubsystem<EditorSceneBridgeSubsystem>()->SetVisibilityForSelectedEntities(Keyboard::IsKeyDown(RLS_Key::LCtrl));
 			return true;
 		default:
 			return false;

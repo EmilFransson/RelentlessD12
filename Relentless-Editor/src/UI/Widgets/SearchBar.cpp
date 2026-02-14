@@ -14,17 +14,13 @@ namespace Relentless
 		:m_HintText{hintText}
 		,m_EnableSearchHistory{ enableSearchHistory }
 	{
-		SetFrameRounding(10.0f);
+		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
-		SetPadding({ ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 3.0f });
+		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
+		//SetPadding({ ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 3.0f });
 		
 		SetBackgroundColor(Colors::Normalize(17.0f, 17.0f, 17.0f, 255.0f));
 		SetBorderColor(Colors::Normalize(SearchBarEx_private::SearchbarBackgroundColor));
-	}
-
-	float SearchBar::CalcDesiredWidth() const noexcept
-	{
-		return 0.0f;
 	}
 
 	void SearchBar::OnRender() noexcept
@@ -95,7 +91,7 @@ namespace Relentless
 
 		if (ImGui::IsItemDeactivatedAfterEdit() && m_OnTextCommitted.IsSet())
 		{
-			ETextCommitType type = Keyboard::IsKeyDown(RLS_Key::Enter) ? ETextCommitType::OnEnter : ETextCommitType::OnUserMovedFocus;
+			ETextCommitType type = Keyboard::IsKeyPressed(RLS_Key::Enter) ? ETextCommitType::OnEnter : ETextCommitType::OnUserMovedFocus;
 			m_OnTextCommitted(m_CallbackUserData.Input.c_str(), type);
 		}
 
@@ -107,7 +103,7 @@ namespace Relentless
 		const ImVec2 itemMax = ImVec2(m_AreaMax.x, m_AreaMax.y);
 		ImGui::PushClipRect(itemMin, itemMax, true);
 
-		ImGui::SetItemAllowOverlap();
+		ImGui::SetNextItemAllowOverlap();
 		m_IsActive = ImGui::IsItemActive();
 		m_IsHovered = ImGui::IsItemHovered() && !m_CancelIconHovered && !m_ChevronIconHovered && !m_MagnifyingGlassIconHovered;
 		const bool isFocused = ImGui::IsItemFocused() && m_IsActive;
@@ -140,6 +136,8 @@ namespace Relentless
 
 	void SearchBar::DrawSearchIcon(const ImVec2& searchBarStartPos) noexcept
 	{
+		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+
 		const ImVec2 magnifyingGlassSize = ImGui::CalcTextSize(ICON_FA_MAGNIFYING_GLASS);
 		constexpr float margin = 5.0f;
 		const float magnifyingGlassXPosition = searchBarStartPos.x + margin;
@@ -151,10 +149,14 @@ namespace Relentless
 		m_MagnifyingGlassIconHovered = ImGui::IsItemHovered();
 		if (m_MagnifyingGlassIconHovered)
 			ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_Arrow);
+
+		ImGui::PopFont();
 	}
 
 	void SearchBar::DrawCancelIcon(const ImVec2& searchBarStartPos) noexcept
 	{
+		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+
 		const ImVec2 xMarkSize = ImGui::CalcTextSize(ICON_FA_XMARK);
 		constexpr float margin = 5.0f;
 		const float xMarkXPosition = searchBarStartPos.x + margin;
@@ -174,10 +176,14 @@ namespace Relentless
 			m_CancelIconHovered = false;
 			m_CallbackUserData.ClearedInput = true;
 		}
+	
+		ImGui::PopFont();
 	}
 
 	void SearchBar::DrawSearchHistoryPopupIcon(const ImVec2& searchBarStartPos) noexcept
 	{
+		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+
 		const ImVec2 chevronSize = ImGui::CalcTextSize(ICON_FA_CHEVRON_DOWN);
 		constexpr float margin = 5.0f;
 		const float chevronXPosition = searchBarStartPos.x + m_Size.x - chevronSize.x - margin;
@@ -200,6 +206,8 @@ namespace Relentless
 			ImGui::SetTooltip("Click to show the Search History");
 			ImGui::PopStyleColor(2);
 		}
+
+		ImGui::PopFont();
 	}
 
 	void SearchBar::DrawSearchHistoryPopup(const ImVec2& searchBarStartPos) noexcept
@@ -251,34 +259,23 @@ namespace Relentless
 		const ImGuiStyle& style = ImGui::GetStyle();
 		const float frameHeight = ImGui::GetFontSize() + padding.y;
 
-		// Icon glyph sizes (Font Awesome)
 		const ImVec2 magSize = ImGui::CalcTextSize(ICON_FA_MAGNIFYING_GLASS);
 		const ImVec2 cancelSize = ImGui::CalcTextSize(ICON_FA_XMARK);
 		const ImVec2 chevronSize = ImGui::CalcTextSize(ICON_FA_CHEVRON_DOWN);
 
-		// Your hardcoded placements
-		constexpr float iconMargin = 5.0f; // you use this on both sides
+		constexpr float iconMargin = 5.0f;
 		const float inner = style.ItemInnerSpacing.x;
 
-		// Inside-frame occlusions
 		const float leftOcclusion = iconMargin + Math::Max(magSize.x, cancelSize.x);
 		const float rightOcclusion = m_EnableSearchHistory ? (inner + chevronSize.x + iconMargin) : 0.0f;
 
-		// Text budget: hint width OR N average glyphs so it doesn’t collapse
 		const float hintW = m_HintText.empty() ? 0.0f : ImGui::CalcTextSize(m_HintText.c_str()).x;
 		const int   minChars = 12;
 		const float avgW = ImGui::CalcTextSize("M").x;
 		const float desiredTextW = Math::Max(hintW, avgW * (float)minChars);
 
-		// Preferred overall width = occlusions + desired text width
 		float width = leftOcclusion + desiredTextW + rightOcclusion;
 		float height = Math::Max(frameHeight, Math::Max(magSize.y, Math::Max(cancelSize.y, chevronSize.y)));
-
-		// If you expose an explicit size, let it clamp upward (never smaller than preferred)
-		if (m_Size.x > 0.0f) 
-			width = Math::Max(width, m_Size.x);
-		if (m_Size.y > 0.0f) 
-			height = Math::Max(height, m_Size.y);
 
 		if (pFont) 
 			ImGui::PopFont();

@@ -11,15 +11,12 @@ namespace Relentless
 	public:
 		Float3Drag(float speed = 1.0f, float min = -FLT_MAX, float max = FLT_MAX, const char* pFormat = "", int flags = 0) noexcept;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		template<typename InstanceType>
 		Float3Drag* Value(InstanceType* instance, Vector3(InstanceType::*method)()) noexcept;
 
 		template<typename T>
 		Float3Drag* Value(T&& callback) noexcept;
 
-		virtual void OnPreRender() noexcept override;
 		virtual void OnRender() noexcept override;
 
 		template<typename T>
@@ -34,14 +31,11 @@ namespace Relentless
 		Float3Drag* SetIndicatorColor(uint8 handleIndex, const Color& color) noexcept;
 
 		Broadcaster<void(bool state)> OnActiveChanged;
-
-
 	private:
-		[[nodiscard]] float GetValue(int componentIndex) const noexcept;
+		NO_DISCARD float GetValue(int componentIndex) const noexcept;
 
-
-		[[nodiscard]] bool IsAnyHovered() const noexcept;
-		[[nodiscard]] bool IsAnyUsed() const noexcept;
+		NO_DISCARD bool IsAnyHovered() const noexcept;
+		NO_DISCARD bool IsAnyUsed() const noexcept;
 
 		void SetActive(bool state, uint8 componentIndex) noexcept;
 		void SetValue(float value, int componentIndex) noexcept;

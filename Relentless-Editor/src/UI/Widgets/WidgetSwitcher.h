@@ -26,8 +26,6 @@ namespace Relentless
 			return pWidget.Get();
 		}
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		NO_DISCARD Ref<IBaseWidget> GetActiveWidget() const noexcept;
 		NO_DISCARD int32 GetActiveWidgetIndex() noexcept;
 		NO_DISCARD uint32 GetNumWidgets() const noexcept;

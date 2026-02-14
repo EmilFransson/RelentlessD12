@@ -94,11 +94,11 @@ namespace Relentless
 		
 		Ref<VerticalBox> pTopVerticalBox = new VerticalBox();
 		Ref<VerticalBox> pMiddleVerticalBox = new VerticalBox({}, true);
-		pMiddleVerticalBox->SetSizePolicy(ESizePolicy::Stretch);
+		pMiddleVerticalBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 		Ref<HorizontalBox> pHorizontalBox = new HorizontalBox();
 		Ref<HorizontalBox> pLeftBox = new HorizontalBox({}, true);
-		pLeftBox->SetSizePolicy(ESizePolicy::Stretch);
+		pLeftBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		Ref<HorizontalBox> pRightBox = new HorizontalBox({}, true);
 
 		pHorizontalBox->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 5.0f));
@@ -106,7 +106,7 @@ namespace Relentless
 		pLeftBox->AddWidget(new SearchBar("Search...", true))
 			->OnTextChanged(this, &EntityOutlinerView::OnSearchTextChanged)
 			->OnTextCommitted(this, &EntityOutlinerView::OnSearchTextCommitted)
-			->SetSizePolicy(ESizePolicy::Stretch);
+			->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 		pRightBox->AddWidget(new Button(ICON_FA_FOLDER_PLUS))
 			->OnClicked(this, &EntityOutlinerView::OnCreateNewFolderButtonClicked)
@@ -125,7 +125,7 @@ namespace Relentless
 			->SetBorderColor(Colors::Transparent);
 
 		m_pOutlinerListBox = new HorizontalBox(Vector2(0.0f, 0.0f), true);
-		m_pOutlinerListBox->SetSizePolicy(ESizePolicy::Stretch);
+		m_pOutlinerListBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		m_pOutlinerListBox->OnFocusChanged.Connect(this, &EntityOutlinerView::OnFocusChanged);
 		m_pOutlinerListBox->AddWidget(m_pOutlinerTreeView);
 
@@ -143,8 +143,9 @@ namespace Relentless
 
 		Border* pBorder = pBorderBox->AddWidget(new Border());
 		HorizontalBox* pInBox = pBorder->SetContent(new HorizontalBox({}, true));
-		pInBox->SetEnableScrolling(false);
-		pInBox->SetSizePolicy(ESizePolicy::Stretch);
+		pInBox->SetScrollBarsVisible(false);
+		pInBox->SetMouseScrollingEnabled(false);
+		pInBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 		pInBox->AddWidget(new Label(""))
 			->SetFont(ImGui::GetIO().Fonts->Fonts[2])
@@ -163,7 +164,6 @@ namespace Relentless
 	{
 		Editor* pEditor = Editor::Get();
 
-		pEditor->OnShutDown.Detach(this);
 		pEditor->OnSceneChange.Detach(this);
 		pEditor->OnSceneChanged.Detach(this);
 
@@ -173,7 +173,7 @@ namespace Relentless
 		if (EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>())
 		{
 			pFoldersSubsystem->OnEntityFolderCreated.Detach(this);
-			pFoldersSubsystem->OnEntityFolderDeleted.Detach(this);
+			pFoldersSubsystem->OnEntityFolderDelete.Detach(this);
 			pFoldersSubsystem->OnEntityFolderMoved.Detach(this);
 			pFoldersSubsystem->OnEntityAttachedToFolder.Detach(this);
 			pFoldersSubsystem->OnEntityRemovedFromFolder.Detach(this);

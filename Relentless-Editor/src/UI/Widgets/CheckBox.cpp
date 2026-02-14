@@ -14,16 +14,11 @@ namespace Relentless
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
-	float CheckBox::CalcDesiredWidth() const noexcept
-	{
-		return ImGui::GetFrameHeight(); // checkbox square;
-	}
-
 	void CheckBox::OnRender() noexcept
 	{
-		bool state = m_ValueCallback();
+		bool state = m_ValueCallback.IsSet() ? m_ValueCallback() : false;
 		if (ImGui::Checkbox("##Checkbox", &state))
-			m_OnCheckStateChanged(state);
+			m_OnCheckStateChanged.ExecuteIfSet(state);
 
 		m_Hovered = ImGui::IsItemHovered();
 		if (m_Hovered)
@@ -34,15 +29,32 @@ namespace Relentless
 
 	Vector2 CheckBox::ReportSize() const noexcept
 	{
+		Vector2 size = Vector2::Zero;
+		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();
+		const ESizePolicy verticalSizePolicy = GetVerticalSizePolicy();
+		const bool fixedWidth = horizontalSizePolicy == ESizePolicy::Fixed;
+		const bool fixedHeight = verticalSizePolicy == ESizePolicy::Fixed;
+
+		if (fixedWidth)
+			size.x = GetFixedWidth();
+		if (fixedHeight)
+			size.y = GetFixedHeight();
+
 		ImFont* pFont = GetStyle().GetFont();
-		if (pFont) 
+		if (pFont)
 			ImGui::PushFont(pFont);
 
-		const float box = ImGui::GetFrameHeight();
+		const Vector2 padding = GetPadding() * 2.0f;
+		const float frameHeight = ImGui::GetFontSize() + padding.y;
 
-		if (pFont) 
+		if (!fixedWidth)
+			size.x = frameHeight;
+		if (!fixedHeight)
+			size.y = frameHeight;
+
+		if (pFont)
 			ImGui::PopFont();
 
-		return { box, box };
+		return size;
 	}
 }

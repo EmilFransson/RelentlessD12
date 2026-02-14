@@ -26,8 +26,6 @@ namespace Relentless
 		void OnDeleteSelection() noexcept;
 		void OnRenameSelection() noexcept;
 	private:
-		NO_DISCARD float CalcDesiredWidth() const noexcept override { return 0.0f; } 
-
 		NO_DISCARD Ref<OutlinerListItem> CreateEntityListItem(entity aEntity) noexcept;
 		NO_DISCARD Ref<OutlinerListItem> CreateEntityFolderListItem(EntityFolder* apFolder) noexcept;
 		NO_DISCARD Ref<OutlinerListItem> CreateSceneListItem(Scene* pScene) noexcept;

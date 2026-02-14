@@ -1,10 +1,11 @@
 #pragma once
+#include "Core/DLLExport.h"
 #include "DeviceResource.h"
 #include "Fence.h"
 
 namespace Relentless
 {
-	class CommandQueue : public DeviceObject
+	class RLS_API CommandQueue : public DeviceObject
 	{
 	public:
 		CommandQueue(GraphicsDevice* pParent, D3D12_COMMAND_LIST_TYPE type) noexcept;

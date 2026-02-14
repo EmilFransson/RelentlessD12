@@ -23,9 +23,11 @@ namespace Relentless
 	public:
 		void Execute(const TransformGizmoControllerContext& context) noexcept;
 
-		[[nodiscard]] ETransformGizmoMode GetActiveMode() const noexcept;
-		[[nodiscard]] ETransformGizmoInteractionState GetCurrentInteractionState() const noexcept;
-		[[nodiscard]] ETransformGizmoType GetActiveTransformType() const noexcept;
+		NO_DISCARD ETransformGizmoMode GetActiveMode() const noexcept;
+		NO_DISCARD ETransformGizmoInteractionState GetCurrentInteractionState() const noexcept;
+		NO_DISCARD ETransformGizmoType GetActiveTransformType() const noexcept;
+
+		NO_DISCARD bool IsInteracting() const noexcept;
 
 		void SetActiveType(ETransformGizmoType type) noexcept;
 		void SetActiveMode(ETransformGizmoMode space) noexcept;

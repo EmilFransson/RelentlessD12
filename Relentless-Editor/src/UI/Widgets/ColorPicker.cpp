@@ -2,36 +2,30 @@
 
 namespace Relentless
 {
-	ColorPicker::ColorPicker(const Vector2& size, int flags) noexcept
-		: m_Size{size}
+	ColorPicker::ColorPicker(int flags) noexcept
 	{
 		SetFlags(flags);
 
 		SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
+		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
-		SetFrameRounding(3.0f);
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
-	}
-
-	float ColorPicker::CalcDesiredWidth() const noexcept
-	{
-		return 0.0f;
 	}
 
 	void ColorPicker::OnRender() noexcept
 	{
+		constexpr Color HOVER_BORDER_COLOR = Colors::Normalize(75.0f, 75.0f, 75.0f, 255.0f);
+		constexpr Color BORDER_COLOR = Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f);
+
 		if (m_IsHovered)
-			SetBorderColor(Colors::Normalize(75.0f, 75.0f, 75.0f, 255.0f));
+			SetBorderColor(HOVER_BORDER_COLOR);
 		else
-			SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
+			SetBorderColor(BORDER_COLOR);
 
-		const float frameHeight = ImGui::GetFrameHeight();
+		const Vector2 size = GetRenderedSize();
 
-		const float width = GetSizePolicy() == ESizePolicy::Stretch ? ImGui::CalcItemWidth() : (m_Size.x > 0.0f) ? m_Size.x : frameHeight;
-		const float height = (m_Size.y > 0.0f) ? m_Size.y : frameHeight;
-
-		Color color = m_ValueCallback();
-		if (ImGui::ColorButton("##ColorButton", ImVec4(color.R(), color.G(), color.B(), color.A()), GetFlags(), ImVec2(width, height)))
+		Color color = m_ValueCallback.IsSet() ? m_ValueCallback() : Colors::White;
+		if (ImGui::ColorButton("##ColorButton", ImVec4(color.R(), color.G(), color.B(), color.A()), GetFlags(), ImVec2(size.x, size.y)))
 			ImGui::OpenPopup("ColorPickerPopup");
 
 		m_IsHovered = ImGui::IsItemHovered();
@@ -39,19 +33,57 @@ namespace Relentless
 		if (ImGui::BeginPopup("ColorPickerPopup"))
 		{
 			if (ImGui::ColorPicker4("##picker", &color.x, m_PickerFlags) && m_OnChanged.IsSet())
-				m_OnChanged(color);
+				m_OnChanged.ExecuteIfSet(color);
 
 			ImGui::EndPopup();
 		}
 	}
 
+	Vector2 ColorPicker::GetRenderedSize() const noexcept
+	{
+		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();
+		const ESizePolicy verticalSizePolicy = GetVerticalSizePolicy();
+
+		Vector2 size = Vector2::Zero;
+		if (horizontalSizePolicy == ESizePolicy::Fixed)
+			size.x = GetFixedWidth();
+		else if (horizontalSizePolicy == ESizePolicy::Stretch)
+			size.x = GetAssignedSize().x;
+		else
+			size.x = 200.0f;
+
+		if (verticalSizePolicy == ESizePolicy::Fixed)
+			size.y = GetFixedHeight();
+		else if (verticalSizePolicy == ESizePolicy::Stretch)
+			size.y = GetAssignedSize().y;
+		else
+			size.y = ImGui::GetFrameHeight();
+	
+		return size;
+	}
+
 	Vector2 ColorPicker::ReportSize() const noexcept
 	{
-		const float frameHeight = ImGui::GetFrameHeight();
-		const float width = (m_Size.x > 0.0f) ? m_Size.x : frameHeight;
-		const float height = (m_Size.y > 0.0f) ? m_Size.y : frameHeight;
+		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();
+		const ESizePolicy verticalSizePolicy = GetVerticalSizePolicy();
+		Vector2 size = Vector2::Zero;
 
-		return { width, height };
+		if (horizontalSizePolicy == ESizePolicy::Fixed)
+			size.x = GetFixedWidth();
+		else
+			size.x = 200.0f;
+
+		if (verticalSizePolicy == ESizePolicy::Fixed)
+			size.y = GetFixedHeight();
+		else
+			size.y = ImGui::GetFrameHeight();
+
+		return size;
+	}
+
+	bool ColorPicker::RequiresAssignedSize() const noexcept
+	{
+		return GetHorizontalSizePolicy() == ESizePolicy::Stretch || GetVerticalSizePolicy() == ESizePolicy::Stretch;
 	}
 
 	void ColorPicker::SetColorPickerFlags(int flags) noexcept

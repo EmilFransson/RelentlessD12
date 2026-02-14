@@ -1,12 +1,12 @@
 #include "Outlines.h"
 
+#include "Assets/CoreTypes/Mesh.h"
+
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
 
 #include "Scene/Scene.h"
-
-#include "Mesh/Mesh.h"
 
 namespace Relentless
 {

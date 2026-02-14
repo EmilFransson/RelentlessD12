@@ -95,7 +95,10 @@ namespace Relentless
 		VERIFY_HR(pCompileResults->GetResult(pShaderBlob.ReleaseAndGetAddressOf()));
 
 		Ref<IDxcBlobUtf8> pErrors;
-		if (SUCCEEDED(pCompileResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(pErrors.GetAddressOf()), nullptr)))
+		RLS_DEBUG_ONLY(const HRESULT compileResultsHR =) pCompileResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(pErrors.GetAddressOf()), nullptr);
+		
+		#if defined(RLS_DEBUG)
+		if (SUCCEEDED(compileResultsHR) && pErrors && pErrors->GetStringLength())
 		{
 			if (pErrors && pErrors->GetStringLength())
 			{
@@ -103,15 +106,15 @@ namespace Relentless
 				RLS_CORE_CRITICAL("{}", errorMessage);
 			}
 		}
-
-		HRESULT hrStatus;
-		if (FAILED(pCompileResults->GetStatus(&hrStatus)) || FAILED(hrStatus))
+		else if (!SUCCEEDED(compileResultsHR))
 		{
-			//RLS_ASSERT(false, "FAILED TO COMPILE SHADER");
+			RLS_ASSERT(false, "[ShaderCompiler::CompileFromFile]: Failed to compile shader.");
 		}
+		#endif
 
 		//Validation
 		{
+			#if defined(RLS_DEBUG)
 			Ref<IDxcOperationResult> pResult = nullptr;
 			VERIFY_HR(pValidator->Validate(pShaderBlob.Get(), DxcValidatorFlags_InPlaceEdit, pResult.GetAddressOf()));
 			HRESULT validationResult = S_FALSE;
@@ -127,8 +130,9 @@ namespace Relentless
 				const char* errorMessage = pPrintBlobUtf8->GetStringPointer();
 
 				RLS_CORE_CRITICAL("{}", errorMessage);
-				RLS_ASSERT(false, errorMessage);
+				RLS_VERIFY(false, errorMessage);
 			}
+			#endif
 		}
 
 		RLS_CORE_INFO("Compiled shader: '{0}'", fileName);

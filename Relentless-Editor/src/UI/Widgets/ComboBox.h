@@ -16,7 +16,6 @@ namespace Relentless
 		};
 		
 		ComboBox* AddSelectables(Span<const char*> selectables) noexcept;
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
 		NO_DISCARD const char* GetSelectedItem() const;
 		NO_DISCARD int GetSelectedIndex() const;
 
@@ -46,7 +45,6 @@ namespace Relentless
 		void SetSelectableBackgroundColor(const Color& color) noexcept;
 
 	protected:
-		virtual void OnPreRender() noexcept override;
 		virtual void OnRender() noexcept override;
 	private:
 		Callback<void(const SelectionInfo&)> m_OnSelectionChanged;

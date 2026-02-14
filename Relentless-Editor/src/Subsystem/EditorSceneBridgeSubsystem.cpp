@@ -21,7 +21,57 @@ namespace Relentless
 		pFoldersSubsystem->OnEntityFolderMoved.Connect(this, &EditorSceneBridgeSubsystem::OnEntityFolderMoved);
 		pFoldersSubsystem->OnEntityFolderDelete.Connect(this, &EditorSceneBridgeSubsystem::OnEntityFolderDelete);
 
+		m_pEditor = pEditor;
 		return true;
+	}
+
+	void EditorSceneBridgeSubsystem::DeleteSelectedEntities() noexcept
+	{
+		SelectionSubsystem* pSelection = m_pEditor->GetSubsystem<SelectionSubsystem>();
+		const std::vector<entity>& selectedEntities = pSelection->GetSelectedEntities();
+
+		for (int i = static_cast<int>(selectedEntities.size()) - 1; i >= 0; --i)
+			m_pBridgedScene->DestroyEntity(selectedEntities[i]);
+	}
+
+	void EditorSceneBridgeSubsystem::SelectAllEntities() noexcept
+	{
+		SelectionSubsystem* pSelection = m_pEditor->GetSubsystem<SelectionSubsystem>();
+		m_pBridgedScene->GetEntityManager().Collect<IDComponent>().Do([pSelection](entity aEntity)
+			{
+				if (!pSelection->IsEntitySelected(aEntity))
+					pSelection->SelectEntity(aEntity);
+			});
+	}
+
+	void EditorSceneBridgeSubsystem::SetVisibilityForSelectedEntities(bool aVisibilityState) noexcept
+	{
+		if (aVisibilityState)
+		{
+			m_pBridgedScene->GetEntityManager().Collect<HiddenInGameComponent, RootComponent>().Do([this, aVisibilityState](entity aEntity)
+				{
+					m_pBridgedScene->SetEntityVisibleInGame(aEntity, aVisibilityState);
+				});
+
+			m_pBridgedScene->GetEntityManager().Collect<HiddenInGameComponent>().Do([this, aVisibilityState](entity aEntity)
+				{
+					m_pBridgedScene->SetEntityVisibleInGame(aEntity, aVisibilityState);
+				});
+		}
+		else
+		{
+			SelectionSubsystem* pSelection = m_pEditor->GetSubsystem<SelectionSubsystem>();
+
+			const std::vector<entity>& selectedEntities = pSelection->GetSelectedEntities();
+
+			for (int i = (int)selectedEntities.size() - 1; i >= 0; --i)
+			{
+				const entity currentEntity = selectedEntities[i];
+
+				m_pBridgedScene->SetEntityVisibleInGame(currentEntity, aVisibilityState);
+				pSelection->DeselectEntity(currentEntity);
+			}
+		}
 	}
 
 	void EditorSceneBridgeSubsystem::OnEntityAttached(entity aChildEntity, MAYBE_UNUSED entity aParentEntity) noexcept
@@ -37,7 +87,7 @@ namespace Relentless
 
 	void EditorSceneBridgeSubsystem::OnEntityDestroy(entity aEntity) noexcept
 	{
-		SelectionSubsystem* pSelection = Editor::Get()->GetSubsystem<SelectionSubsystem>();
+		SelectionSubsystem* pSelection = m_pEditor->GetSubsystem<SelectionSubsystem>();
 
 		if (pSelection->IsEntitySelected(aEntity))
 			pSelection->DeselectEntity(aEntity);
@@ -100,4 +150,6 @@ namespace Relentless
 		m_pBridgedScene->OnEntityDestroy.Connect(this, &EditorSceneBridgeSubsystem::OnEntityDestroy);
 		m_pBridgedScene->OnEntityAttached.Connect(this, &EditorSceneBridgeSubsystem::OnEntityAttached);
 	}
+
+
 }

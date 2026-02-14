@@ -53,7 +53,6 @@ namespace Relentless
 		OutlinerTableRow(const OutlinerTableRowCreateInfo& createInfo) noexcept;
 		virtual ~OutlinerTableRow() noexcept override = default;
 
-		NO_DISCARD float CalcDesiredWidth() const noexcept override;
 		NO_DISCARD Ref<IBaseWidget> GetWidget(uint8 column) noexcept;
 		
 		virtual void OnRenderColumn(uint32 column) noexcept override;

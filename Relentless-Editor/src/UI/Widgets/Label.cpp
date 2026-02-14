@@ -11,11 +11,6 @@ namespace Relentless
 			SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
-	float Label::CalcDesiredWidth() const noexcept
-	{
-		return ImGui::CalcTextSize(m_Text.c_str()).x;
-	}
-
 	const String& Label::GetText() const noexcept
 	{
 		return m_Text;

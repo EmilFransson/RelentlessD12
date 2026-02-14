@@ -15,37 +15,6 @@ namespace Relentless
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
-	float Table::CalcDesiredWidth() const noexcept
-	{
-		if (m_Cells.empty())
-			return 0.0f;
-
-		std::vector<float> columnWidths(m_NumColumns, 0.0f);
-
-		for (const auto& [pos, widgets] : m_Cells)
-		{
-			const uint32 column = pos.first;
-
-			for (const auto& widget : widgets)
-			{
-				if (widget && widget->GetSizePolicy() != ESizePolicy::Stretch)
-				{
-					columnWidths[column] = ImMax(columnWidths[column], widget->CalcDesiredWidth());
-				}
-			}
-		}
-
-		float spacing = ImGui::GetStyle().CellPadding.x * 2.0f + ImGui::GetStyle().ItemSpacing.x;
-		float total = 0.0f;
-
-		for (uint32 i = 0; i < m_NumColumns; ++i)
-			total += columnWidths[i];
-
-		total += spacing * (m_NumColumns - 1); // spacing between columns
-
-		return total;
-	}
-
 	bool Table::HasWidget(Ref<IBaseWidget> pWidget) const noexcept
 	{
 		return std::any_of(m_Cells.begin(), m_Cells.end(), [&](const auto& cell)

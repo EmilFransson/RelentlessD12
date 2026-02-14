@@ -2,6 +2,7 @@
 #include "Assets/AssetManager.h"
 
 #include "Callback/Callback.h"
+#include "Core/Window.h"
 
 #include "EventSystem/LayerStack.h"
 #include "EventSystem/EventBus.h"
@@ -17,8 +18,6 @@
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/ResourceViews.h"
 #include "Graphics/RHI/Swapchain.h"
-#include "Graphics/RHI/Window.h"
-//#include "ImGui/ImguiLayer.h"
 
 #include "Time.h"
 #include "Threading/ThreadPool.h"
@@ -126,7 +125,7 @@ namespace Relentless
 		return m_pGraphicsDevice;
 	}
 
-	const UniquePtr<WindowEx>& Application::GetWindow() const noexcept
+	const UniquePtr<Window>& Application::GetWindow() const noexcept
 	{
 		return m_pWindow;
 	}
@@ -178,8 +177,8 @@ namespace Relentless
 		options.UseGPUValidation = false;
 		m_pGraphicsDevice = new GraphicsDevice(options);
 
-		const Vector2i displaySize = WindowEx::GetDisplaySize();
-		m_pWindow = std::make_unique<WindowEx>(uint32(displaySize.x * 0.85f), uint32(displaySize.y * 0.85f));
+		const Vector2i displaySize = Window::GetDisplaySize();
+		m_pWindow = std::make_unique<Window>(uint32(displaySize.x * 0.85f), uint32(displaySize.y * 0.85f));
 		m_pWindow->SetTitle(m_ApplicationSpecification.Name.c_str());
 
 		m_pWindow->OnCloseOrDestroy.Connect(this, &Application::OnWindowClosedOrDestroyed);
@@ -193,9 +192,6 @@ namespace Relentless
 		m_pSwapchain = RLS_NEW Swapchain(m_pGraphicsDevice, 3, m_pWindow->GetNativeWindow());
 
 		SystemPaths::Initialize();
-
-		//m_pImGuiLayer = std::make_unique<ImguiLayer>(m_pGraphicsDevice);
-		//PushOverlay(m_pImGuiLayer.get());
 
 		Initialize();
 		m_IsRunning = true;

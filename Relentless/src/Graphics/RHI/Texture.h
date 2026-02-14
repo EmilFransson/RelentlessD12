@@ -1,8 +1,8 @@
 #pragma once
+#include "Assets/IAsset.h"
 
 #include "Core/CoreTypes.h"
 #include "Core/DLLExport.h"
-#include "Core/IAsset.h"
 
 #include "D3D.h"
 #include "DeviceResource.h"

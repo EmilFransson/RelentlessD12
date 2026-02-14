@@ -7,40 +7,28 @@ namespace Relentless
 	{
 	}
 
-	void PerspectiveCameraController::Update() noexcept
+	void PerspectiveCameraController::Update(const Input& aInput) noexcept
 	{
 		if (!m_pCamera || !m_Enabled)
 			return;
 
 		const bool wasMoving = m_Velocity.LengthSquared() > Math::EPSILON;
 
-		if (AllowsMovement())
+		switch (m_CurrentMode)
 		{
-			const ECameraControllerNavigationState state = DetermineState();
-			if (state != m_CurrentState)
-				SetState(state);
-
-			switch (m_CurrentState)
-			{
-			case ECameraControllerNavigationState::Fly:		OnFly(); break;
-			case ECameraControllerNavigationState::Orbit:	OnOrbit(); break;
-			case ECameraControllerNavigationState::Dolly:	OnDollyForward(); break;
-			case ECameraControllerNavigationState::Pan:		OnPan(); break;
+			case ECameraControllerNavigationMode::Fly:		OnFly(aInput); break;
+			case ECameraControllerNavigationMode::Orbit:	OnOrbit(aInput); break;
+			case ECameraControllerNavigationMode::Dolly:	OnDollyForward(aInput); break;
+			case ECameraControllerNavigationMode::Pan:		OnPan(aInput); break;
 			default:										break;
-			}
 		}
 
-		const bool isMoving = m_CurrentState != ECameraControllerNavigationState::None && (Mouse::GetDeltaCoordinates() != Vector2i::Zero() || m_Velocity.LengthSquared() > Math::EPSILON);
+		const bool isMoving = m_CurrentMode != ECameraControllerNavigationMode::None && (aInput.MouseDelta != Vector2i::Zero() || m_Velocity.LengthSquared() > Math::EPSILON);
 
 		if (!wasMoving && isMoving)
 			OnBeginTransform();
 		else if (wasMoving && !isMoving)
 			OnEndTransform();
-	}
-
-	bool PerspectiveCameraController::AllowsMovement() const noexcept
-	{
-		return m_AllowMovement;
 	}
 
 	float PerspectiveCameraController::GetFarPlane() const noexcept
@@ -73,14 +61,14 @@ namespace Relentless
 		return m_OrbitDistance;
 	}
 
-	ECameraControllerNavigationState PerspectiveCameraController::GetState() const noexcept
+	ECameraControllerNavigationMode PerspectiveCameraController::GetMode() const noexcept
 	{
-		return m_CurrentState;
+		return m_CurrentMode;
 	}
 
 	float PerspectiveCameraController::GetSpeedMultiplier() const noexcept
 	{
-		return m_Speed;
+		return m_SpeedMultiplier;
 	}
 
 	void PerspectiveCameraController::SetCamera(PerspectiveCamera* pCamera) noexcept
@@ -105,11 +93,6 @@ namespace Relentless
 			OnDisabled();
 	}
 
-	void PerspectiveCameraController::SetAllowMovement(bool state) noexcept
-	{
-		m_AllowMovement = state;
-	}
-
 	void PerspectiveCameraController::SetFarPlane(float farPlane) noexcept
 	{
 		RLS_ASSERT(m_pCamera, "[PerspectiveCameraController::SetFarPlane] Camera Is Invalid.");
@@ -122,7 +105,7 @@ namespace Relentless
 
 	void PerspectiveCameraController::SetFoV(float fov) noexcept
 	{
-		RLS_ASSERT(m_pCamera, "[PerspectiveCameraController::SetFarPlane] Camera Is Invalid.");
+		RLS_ASSERT(m_pCamera, "[PerspectiveCameraController::SetFoV] Camera Is Invalid.");
 		m_pCamera->SetFoV(fov);
 	}
 
@@ -138,7 +121,7 @@ namespace Relentless
 
 	void PerspectiveCameraController::SetNearPlane(float nearPlane) noexcept
 	{
-		RLS_ASSERT(m_pCamera, "[PerspectiveCameraController::SetFarPlane] Camera Is Invalid.");
+		RLS_ASSERT(m_pCamera, "[PerspectiveCameraController::SetNearPlane] Camera Is Invalid.");
 		
 		if (m_pCamera->GetViewTransform().FarPlane < nearPlane)
 			m_pCamera->SetFarPlane(nearPlane);
@@ -156,6 +139,11 @@ namespace Relentless
 		m_Speed = speed;
 	}
 
+	void PerspectiveCameraController::SetSpeedMultiplier(float aSpeedMultiplier) noexcept
+	{
+		m_SpeedMultiplier = Math::Clamp(aSpeedMultiplier, m_MinSpeedMultiplierLimit, m_MaxSpeedMultiplierLimit);
+	}
+
 	void PerspectiveCameraController::SetVelocity(const Vector3& velocity) noexcept
 	{
 		const bool wasMoving = m_Velocity.LengthSquared() > Math::EPSILON;
@@ -167,7 +155,7 @@ namespace Relentless
 
 	void PerspectiveCameraController::SetViewport(const FloatRect& viewport) noexcept
 	{
-		RLS_ASSERT(m_pCamera, "[PerspectiveCameraController::SetFarPlane] Camera Is Invalid.");
+		RLS_ASSERT(m_pCamera, "[PerspectiveCameraController::SetViewport] Camera Is Invalid.");
 		m_pCamera->SetViewport(viewport);
 
 		const float aspectRatio = viewport.GetWidth() / viewport.GetHeight();
@@ -205,27 +193,11 @@ namespace Relentless
 		m_Damping = damping;
 	}
 
-	ECameraControllerNavigationState PerspectiveCameraController::DetermineState() noexcept
-	{
-		ECameraControllerNavigationState state = ECameraControllerNavigationState::None;
-
-		if (Mouse::IsButtonDown(RLS_Button::Right))
-			state = ECameraControllerNavigationState::Fly;
-		else if (Mouse::IsButtonDown(RLS_Button::Left) && Keyboard::IsKeyDown(RLS_Key::Alt))
-			state = ECameraControllerNavigationState::Orbit;
-		else if (Mouse::IsButtonDown(RLS_Button::Left))
-			state = ECameraControllerNavigationState::Dolly;
-		else if (Mouse::IsButtonDown(RLS_Button::Wheel))
-			state = ECameraControllerNavigationState::Pan;
-
-		return state;
-	}
-
-	void PerspectiveCameraController::OnDollyForward() noexcept
+	void PerspectiveCameraController::OnDollyForward(const Input& aInput) noexcept
 	{
 		const Quaternion& currentRotation = m_pCamera->GetRotation();
 
-		const Vector2i mouseDelta = Mouse::GetDeltaCoordinates();
+		const Vector2i mouseDelta = aInput.MouseDelta;
 
 		const Quaternion pr = Quaternion::CreateFromYawPitchRoll(mouseDelta.x * Time::GetDeltaTime() * 0.3f, 0, 0);
 		Quaternion rotation = currentRotation * pr;
@@ -244,13 +216,13 @@ namespace Relentless
 		m_pCamera->SetLocation(currentLocation + translation);
 	}
 
-	void PerspectiveCameraController::OnFly() noexcept
+	void PerspectiveCameraController::OnFly(const Input& aInput) noexcept
 	{
 		const float dt = Time::GetDeltaTime();
 
 		const Quaternion& currentRotation = m_pCamera->GetRotation();
 
-		const Vector2i mouseDelta = Mouse::GetDeltaCoordinates();
+		const Vector2i mouseDelta = aInput.MouseDelta;
 		const float mouseSensitivity = 0.7f; 
 
 		const Quaternion pitchRot = Quaternion::CreateFromYawPitchRoll(0.0f, mouseDelta.y * dt * mouseSensitivity, 0.0f);
@@ -260,14 +232,7 @@ namespace Relentless
 		rotation.Normalize();
 		m_pCamera->SetRotation(rotation);
 
-		Vector3 inputDir = Vector3::Zero;
-		inputDir.x -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::A));
-		inputDir.x += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::D));
-		inputDir.z -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::S));
-		inputDir.z += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::W));
-		inputDir.y -= static_cast<float>(Keyboard::IsKeyDown(RLS_Key::Q));
-		inputDir.y += static_cast<float>(Keyboard::IsKeyDown(RLS_Key::E));
-
+		Vector3 inputDir = aInput.MoveAxis;
 		const bool hasInput = inputDir.LengthSquared() > Math::EPSILON;
 
 		if (hasInput)
@@ -275,6 +240,7 @@ namespace Relentless
 
 		const Vector3 moveDirWorld = hasInput ? Vector3::Transform(inputDir, rotation) : Vector3::Zero;
 
+		//TODO: Set speed multiplier from outside! MTF!!
 		const float shiftMultiplier = Keyboard::IsKeyDown(RLS_Key::LShift) ? 2.0f : 1.0f;
 		const float targetSpeed = m_Speed * m_SpeedMultiplier * shiftMultiplier;
 
@@ -319,9 +285,9 @@ namespace Relentless
 		m_OrbitRotation.Normalize();
 	}
 
-	void PerspectiveCameraController::OnOrbit() noexcept
+	void PerspectiveCameraController::OnOrbit(const Input& aInput) noexcept
 	{
-		const Vector2i delta = Mouse::GetDeltaCoordinates();
+		const Vector2i delta = aInput.MouseDelta;
 
 		const float yaw = delta.x * Time::GetDeltaTime();
 		const float pitch = delta.y * Time::GetDeltaTime();
@@ -341,9 +307,9 @@ namespace Relentless
 		m_pCamera->SetRotation(m_OrbitRotation);
 	}
 
-	void PerspectiveCameraController::OnPan() noexcept
+	void PerspectiveCameraController::OnPan(const Input& aInput) noexcept
 	{
-		const Vector2i mouseDelta = Mouse::GetDeltaCoordinates();
+		const Vector2i mouseDelta = aInput.MouseDelta;
 		Vector3 movement = Vector3::Zero;
 		const Quaternion& rotation = m_pCamera->GetRotation();
 
@@ -352,23 +318,23 @@ namespace Relentless
 		movement.y -= static_cast<float>(mouseDelta.y);
 		movement.Normalize();
 
-		const float speedMultiplier = 10.0f;
+		constexpr float speedMultiplier = 10.0f;
 
 		const Vector3 translation = movement * Time::GetDeltaTime() * speedMultiplier;
 		const Vector3& currentLocation = m_pCamera->GetLocation();
 		m_pCamera->SetLocation(currentLocation + translation);
 	}
 
-	void PerspectiveCameraController::SetState(ECameraControllerNavigationState newState) noexcept
+	void PerspectiveCameraController::SetMode(ECameraControllerNavigationMode aNewMode) noexcept
 	{
-		m_CurrentState = newState;
+		m_CurrentMode = aNewMode;
 		
-		if (m_CurrentState == ECameraControllerNavigationState::Orbit)
+		if (m_CurrentMode == ECameraControllerNavigationMode::Orbit)
 			OnOrbitBegin();
 		
-		if (m_CurrentState != ECameraControllerNavigationState::Fly)
+		if (m_CurrentMode != ECameraControllerNavigationMode::Fly)
 			m_Velocity = Vector3::Zero;
 
-		OnStateChanged(m_CurrentState);
+		OnModeChanged(m_CurrentMode);
 	}
 }

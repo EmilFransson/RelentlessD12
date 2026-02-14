@@ -9,12 +9,9 @@ namespace Relentless
 	public:
 		IntDrag(float aSpeed = 1.0f, int aMin = INT_MIN , int aMax = INT_MAX, const char* aFormat = "", int someFlags = 0) noexcept;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		template<typename T>
 		IntDrag* Value(T&& callback) noexcept;
 
-		virtual void OnPreRender() noexcept override;
 		virtual void OnRender() noexcept override;
 
 		template<typename T>

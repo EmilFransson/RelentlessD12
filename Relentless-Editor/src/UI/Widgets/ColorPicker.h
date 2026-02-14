@@ -7,9 +7,7 @@ namespace Relentless
 	class ColorPicker : public IStylableWidget<ColorPicker>
 	{
 	public:
-		ColorPicker(const Vector2& size = Vector2(0.0f, 0.0f), int flags = 0) noexcept;
-
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
+		ColorPicker(int flags = 0) noexcept;
 
 		template<typename T>
 		ColorPicker* OnValueChanged(T&& callBack) noexcept 
@@ -41,14 +39,18 @@ namespace Relentless
 			return this;
 		}
 
+		bool RequiresAssignedSize() const noexcept override;
+		
 		void SetColorPickerFlags(int flags) noexcept;
+
 	protected:
 		virtual void OnRender() noexcept override;
+	private:
+		NO_DISCARD Vector2 GetRenderedSize() const noexcept;
 	private:
 		Callback<Color()> m_ValueCallback;
 		Callback<void(Color color)> m_OnChanged;
 
-		Vector2 m_Size = Vector2::Zero;
 		int m_PickerFlags = 0;
 		bool m_IsHovered = false;
 	};

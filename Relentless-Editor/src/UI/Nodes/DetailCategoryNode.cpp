@@ -1,6 +1,5 @@
 #include "DetailCategoryNode.h"
 #include "DetailRowNode.h"
-#include "UI/Details/DetailCategoryRow.h"
 
 namespace Relentless
 {

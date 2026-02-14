@@ -26,13 +26,15 @@ namespace Relentless
 
 		void AssignSize(const Vector2& aSize) noexcept;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept = 0;
-
 		NO_DISCARD const Vector2& GetAssignedSize() const noexcept;
+		NO_DISCARD float GetFixedWidth() const noexcept;
+		NO_DISCARD float GetFixedHeight() const noexcept;
+		NO_DISCARD const Vector2& GetFixedSize() const noexcept;
 		NO_DISCARD const FloatRect& GetMargin() const noexcept;
 		NO_DISCARD EHorizontalAlignmentPolicy GetHorizontalAlignmentPolicy() const noexcept;
+		NO_DISCARD ESizePolicy GetHorizontalSizePolicy() const noexcept;
 		NO_DISCARD const FloatRect& GetPadding() const noexcept;
-		NO_DISCARD ESizePolicy GetSizePolicy() const noexcept;
+		NO_DISCARD ESizePolicy GetVerticalSizePolicy() const noexcept;
 		NO_DISCARD EVerticalAlignmentPolicy GetVerticalAlignmentPolicy() const noexcept;
 
 		NO_DISCARD bool HasAssignedSize() const noexcept;
@@ -44,14 +46,16 @@ namespace Relentless
 
 		virtual void Render() noexcept = 0;
 		NO_DISCARD virtual Vector2 ReportSize() const noexcept { return Vector2::Zero; }
+		NO_DISCARD virtual bool RequiresAssignedSize() const noexcept { return false; }
 
-		void SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy aAlignmentPolicy) noexcept;
+		IBaseWidget* SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy aAlignmentPolicy) noexcept;
+		IBaseWidget* SetHorizontalSizePolicy(ESizePolicy aSizePolicy) noexcept;
 		void SetIsEnabled(bool aIsEnabledState) noexcept;
 		void SetIsVisible(bool aVisibleState) noexcept;
 		void SetMargin(const FloatRect& aMargin) noexcept;
-		void SetSizePolicy(ESizePolicy aSizePolicy) noexcept;
-		void SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy aAlignmentPolicy) noexcept;
-		virtual void SetWidthConstraint(float width) noexcept = 0;
+		void SetSize(const Vector2& aSize) noexcept;
+		IBaseWidget* SetVerticalSizePolicy(ESizePolicy aSizePolicy) noexcept;
+		IBaseWidget* SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy aAlignmentPolicy) noexcept;
 
 		Broadcaster<void(bool)> OnEnabledStateChanged;
 		Broadcaster<void(bool)> OnVisibilityChanged;
@@ -59,9 +63,11 @@ namespace Relentless
 		FloatRect m_Margin = FloatRect{};
 		FloatRect m_Padding = FloatRect{};
 		Vector2 m_AssignedSize = Vector2::Zero;
+		Vector2 m_FixedSize = Vector2::Zero;
 		EHorizontalAlignmentPolicy m_HorizontalAlignmentPolicy = EHorizontalAlignmentPolicy::Left;
 		EVerticalAlignmentPolicy m_VerticalAlignmentPolicy = EVerticalAlignmentPolicy::Top;
 		ESizePolicy m_SizePolicy = ESizePolicy::Auto;
+		ESizePolicy m_VerticalSizePolicy = ESizePolicy::Auto;
 		bool m_IsEnabled = true;
 		bool m_IsVisible = true;
 	};
@@ -126,6 +132,11 @@ namespace Relentless
 			return static_cast<DerivedType*>(this);
 		}
 
+		void RemoveFlags(int flags) noexcept
+		{
+			m_Flags &= ~flags;
+		}
+
 		virtual void Render() noexcept override
 		{
 			ImGui::PushID((const void*)this);
@@ -177,18 +188,11 @@ namespace Relentless
 			return static_cast<DerivedType*>(this);
 		}
 
-		virtual void SetWidthConstraint(float width) noexcept override
-		{
-			m_WidthConstraint = width;
-		}
-		
 		Broadcaster<void()> OnPreRenderEnd;
 		Broadcaster<void()> OnRenderEnd;
 		Broadcaster<void()> OnPostRenderEnd;
 
 	protected:
-		void DiscardAllStylesAndColors();
-
 		virtual void OnMouseEnter_private() noexcept
 		{
 			m_OnMouseEnterCallback.ExecuteIfSet(static_cast<DerivedType*>(this));
@@ -221,7 +225,6 @@ namespace Relentless
 		Callback<void(DerivedType*)> m_OnMouseEnterCallback;
 		Callback<void(DerivedType*)> m_OnMouseExitCallback;
 	protected:
-		float m_WidthConstraint = -1.0f;
 		bool m_IsHovered = false;
 		bool m_ShouldForceKeyboardFocus = false;
 		Ref<Tooltip> m_pTooltip = nullptr;

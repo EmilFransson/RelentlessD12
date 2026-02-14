@@ -57,7 +57,7 @@ namespace Relentless
 			pDisplayNameLabel->SetTooltipText(createInfo.Name);
 
 			pSwitcher->Add(new EditableTextBox())
-				->SetSizePolicy(ESizePolicy::Stretch);
+				->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pSwitcher->SetActiveWidgetIndex(0);
 
@@ -73,11 +73,6 @@ namespace Relentless
 
 			m_ColumnWidgets.push_back(pColumn2Box);
 		}
-	}
-
-	float OutlinerTableRow::CalcDesiredWidth() const noexcept
-	{
-		return 0.0f;
 	}
 
 	Ref<IBaseWidget> OutlinerTableRow::GetWidget(uint8 column) noexcept

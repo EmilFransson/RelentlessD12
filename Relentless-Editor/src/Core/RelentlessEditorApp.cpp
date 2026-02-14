@@ -2,6 +2,8 @@
 #include "EntryPoint.h"
 #include "ImGui/ImGuiLayer.h"
 
+#include "Subsystem/EditorViewportSubsystem.h"
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 615; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = "D3D12\\"; }
@@ -29,7 +31,7 @@ namespace Relentless
 		m_pEditorLayer = MakeUnique<EditorLayer>();
 		PushLayer(m_pEditorLayer.get());
 
-		WindowEx::SetWndProcHook(&EditorWndProcHook);
+		Window::SetWndProcHook(&EditorWndProcHook);
 	}
 
 	//At this point all layers have finished both Updating & Rendering
@@ -39,11 +41,11 @@ namespace Relentless
 		options.HBAOPlusEnabled = true;
 		options.SampleCount = 1u;
 
-		std::vector<ViewportRenderView>& renderViews = Editor::Get()->GetRenderViews();
+		std::vector<ViewportRenderView>& renderViews = Editor::Get()->GetSubsystem<EditorViewportSubsystem>()->GetRenderViews();
 		for (size_t i = 0; i < renderViews.size(); ++i)
 		{
-			const uint32 width	= static_cast<uint32>(Math::Max(1.0f, Math::Min(renderViews[i].Viewport.GetWidth(), (float)WindowEx::GetDisplaySize().x)));
-			const uint32 height = static_cast<uint32>(Math::Max(1.0f, Math::Min(renderViews[i].Viewport.GetHeight(), (float)WindowEx::GetDisplaySize().y)));
+			const uint32 width	= static_cast<uint32>(Math::Max(1.0f, Math::Min(renderViews[i].Viewport.GetWidth(), (float)Window::GetDisplaySize().x)));
+			const uint32 height = static_cast<uint32>(Math::Max(1.0f, Math::Min(renderViews[i].Viewport.GetHeight(), (float)Window::GetDisplaySize().y)));
 
 			if (!m_pColorTarget || m_pColorTarget->GetWidth() != width || m_pColorTarget->GetHeight() != height)
 				m_pColorTarget = m_pGraphicsDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource), std::format("Target: {}", i).c_str());

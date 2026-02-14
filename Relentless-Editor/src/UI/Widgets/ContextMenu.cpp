@@ -9,11 +9,11 @@ namespace Relentless
 		: m_pMenu{ new ContextMenu() }
 	{
 		Ref<HorizontalBox> pBox = new HorizontalBox();
-		pBox->SetSizePolicy(ESizePolicy::Stretch);
+		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		pBox->SetMargin(FloatRect(20, 10, 20, 0));
 		
 		pBox->AddWidget(new SearchBar("Start typing to search"))
-			->SetSizePolicy(ESizePolicy::Stretch);
+			->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		
 		Ref<MenuItem> pEntry = new MenuItem();
 		pEntry->pWidget = pBox;
@@ -25,7 +25,7 @@ namespace Relentless
 	MenuBuilder* MenuBuilder::AddWidget(Ref<IBaseWidget> pWidget, const String& label, const String& tooltip) noexcept
 	{
 		Ref<HorizontalBox> pBox = new HorizontalBox();
-		pBox->SetSizePolicy(ESizePolicy::Stretch);
+		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		pBox->AddWidget(pWidget);
 
 		Ref<Label> pLabel = new Label(label, ImGui::GetIO().Fonts->Fonts[2]);
@@ -57,7 +57,7 @@ namespace Relentless
 		Ref<MenuItem> pItem = new MenuItem();
 
 		Ref<HorizontalBox> pBox = new HorizontalBox();
-		pBox->SetSizePolicy(ESizePolicy::Stretch);
+		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		pBox->SetMargin(FloatRect(20, 0, 20, 0));
 
 		Ref<Separator> pSeparator = new Separator(label, 10.0f);
@@ -77,7 +77,7 @@ namespace Relentless
 	MenuBuilder* MenuBuilder::BeginSubMenu(const String& label, const String& tooltip, const String& icon) noexcept
 	{
 		Ref<HorizontalBox> pBox = new HorizontalBox();
-		pBox->SetSizePolicy(ESizePolicy::Stretch);
+		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		pBox->SetMargin(FloatRect(0.0f, 4.0f, 0.0f, 0.0f));
 
 		if (!icon.empty())

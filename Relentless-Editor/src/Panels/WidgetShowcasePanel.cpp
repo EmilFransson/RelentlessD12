@@ -79,18 +79,22 @@ namespace Relentless
 				HorizontalBox* pHorizontal = pRootBox->AddWidget(new HorizontalBox());
 
 				pHorizontal->AddWidget(new Label("Color Picker"));
-				pHorizontal->AddWidget(new ColorPicker(Vector2(100.0f, 0.0f)))
+				ColorPicker* pPicker = pHorizontal->AddWidget(new ColorPicker());
+				pPicker
 					->Value([]() { return Colors::White; })
 					->OnValueChanged([](Color) {});
+				
+				pPicker->SetHorizontalSizePolicy(ESizePolicy::Fixed);
+				pPicker->SetSize(Vector2(100.0f, 0.0f));
 			}
 
 			{
 				HorizontalBox* pHorizontal = pRootBox->AddWidget(new HorizontalBox());
-				pHorizontal->SetSizePolicy(ESizePolicy::Stretch);
+				pHorizontal->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 				pHorizontal->AddWidget(new Label("Searchbar"));
 				pHorizontal->AddWidget(new SearchBar("Search...", true))
-					->SetSizePolicy(ESizePolicy::Stretch);
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			}
 
 			{
@@ -113,11 +117,11 @@ namespace Relentless
 
 			{
 				HorizontalBox* pHorizontal = pRootBox->AddWidget(new HorizontalBox());
-				pHorizontal->SetSizePolicy(ESizePolicy::Stretch);
+				pHorizontal->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 				pHorizontal->AddWidget(new Label("Editable Text Box"));
-				pHorizontal->AddWidget(new EditableTextBox({100.0f, 0.0f}))
-					->SetSizePolicy(ESizePolicy::Stretch);
+				pHorizontal->AddWidget(new EditableTextBox())
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			}
 
 		}

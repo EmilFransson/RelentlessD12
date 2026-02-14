@@ -1,6 +1,8 @@
 #pragma once
 #include "UI/Widgets/ITableRow.h"
 
+#include "Property/PropertyHandle.h"
+
 namespace Relentless
 {
 	class ITableRow;
@@ -10,10 +12,12 @@ namespace Relentless
 	{
 	public:
 		explicit DetailNode(const char* aName) noexcept;
+		explicit DetailNode(const char* aName, Ref<IPropertyHandleBase> aPropertyHandle) noexcept;
 		virtual ~DetailNode() noexcept = default;
 
 		NO_DISCARD const std::vector<Ref<DetailNode>>& GetChildren() const noexcept;
 		NO_DISCARD const String& GetName() const noexcept;
+		NO_DISCARD Ref<IPropertyHandleBase> GetPropertyHandle() const noexcept;
 
 		template<typename InstanceType>
 		void OnRequestRow(InstanceType* aInstance, Ref<ITableRow>(InstanceType::*aMethod)(const ItemInfo&)) noexcept;
@@ -28,6 +32,8 @@ namespace Relentless
 		std::vector<Ref<DetailNode>> m_Children;
 		String m_Name;
 		Callback<Ref<ITableRow>(const ItemInfo&)> m_OnRequestRowCallback;
+
+		Ref<IPropertyHandleBase> m_pPropertyHandle = nullptr;
 	};
 
 	template<typename InstanceType>

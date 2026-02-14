@@ -2,11 +2,6 @@
 
 namespace Relentless
 {
-	float Border::CalcDesiredWidth() const noexcept
-	{
-		return m_pContent ? m_pContent->CalcDesiredWidth() : 0.0f;
-	}
-
 	Ref<IBaseWidget> Border::GetContent() const noexcept
 	{
 		return m_pContent;

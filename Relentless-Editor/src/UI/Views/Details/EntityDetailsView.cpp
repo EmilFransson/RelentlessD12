@@ -61,20 +61,20 @@ namespace Relentless
 
 		Ref<VerticalBox> pTopVerticalBox = new VerticalBox();
 		Ref<VerticalBox> pMiddleBox = new VerticalBox(Vector2(0.0f, 0.0f), true);
-		pMiddleBox->SetSizePolicy(ESizePolicy::Stretch);
+		pMiddleBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 		Ref<VerticalBox> pBottomBox = new VerticalBox();
 		pBottomBox->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Bottom);
 
 		Ref<HorizontalBox> pSearchbarBox = new HorizontalBox();
-		pSearchbarBox->SetSizePolicy(ESizePolicy::Stretch);
+		pSearchbarBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		pSearchbarBox->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 5.0f));
 
 		pSearchbarBox->AddWidget(new SearchBar("Search..."))
-			->SetSizePolicy(ESizePolicy::Stretch);
+			->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 		m_pDetailsListBox = new HorizontalBox(Vector2(0.0f, 0.0f), true);
-		m_pDetailsListBox->SetSizePolicy(ESizePolicy::Stretch);
+		m_pDetailsListBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		m_pDetailsListBox->AddWidget(m_pEntityDetailsTreeView);
 
 		pMiddleBox->AddWidget(m_pDetailsListBox);
@@ -111,11 +111,6 @@ namespace Relentless
 		}
 
 		m_pMainBox->Render();
-	}
-
-	float EntityDetailsView::CalcDesiredWidth() const noexcept
-	{
-		return 0.0f;
 	}
 
 	const std::vector<entity>& EntityDetailsView::GetInspectedEntities() const noexcept

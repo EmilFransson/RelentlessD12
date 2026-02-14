@@ -261,9 +261,12 @@ namespace Relentless
 		if (!std::ranges::any_of(GetInspectedEntities(), [aEntity](entity aInspectedEntity) { return aInspectedEntity == aEntity; }))
 			return;
 
-		m_pRevertLocationButton->SetIsVisible(!IsLocationDefaultForInspected());
-		m_pRevertRotationButton->SetIsVisible(!IsRotationDefaultForInspected());
-		m_pRevertScaleButton->SetIsVisible(!IsScaleDefaultForInspected());
+		if (m_pRevertLocationButton)
+			m_pRevertLocationButton->SetIsVisible(!IsLocationDefaultForInspected());
+		if (m_pRevertRotationButton)
+			m_pRevertRotationButton->SetIsVisible(!IsRotationDefaultForInspected());
+		if (m_pRevertScaleButton)
+			m_pRevertScaleButton->SetIsVisible(!IsScaleDefaultForInspected());
 	}
 
 	void TransformComponentDetailCustomization::OnMouseEnterScaleButton(Button* aButton) noexcept
@@ -425,12 +428,12 @@ namespace Relentless
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(110.0f, 32.0f), true);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pInnerBox->SetSpacing(0.0f);
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 
 			pInnerBox->AddWidget(new ComboBox())
 				->AddSelectables({ "Location", "Absolute Location" })
 				->OnSelectionChanged(this, &TransformComponentDetailCustomization::OnLocationComboBoxSelectionChanged)
-				->SetSizePolicy(ESizePolicy::Stretch);
+				->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pBox->AddWidget(pInnerBox);
 
@@ -458,7 +461,7 @@ namespace Relentless
 						});
 					
 					pEntryBox->SetIndicatorColor(Colors::OffRed);
-					pEntryBox->SetSizePolicy(ESizePolicy::Stretch);
+					pEntryBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 				}
 				{
 					FloatEntryBox* pEntryBox = pDragBox->AddWidget(new FloatEntryBox(0.0f, GetLocationComponentFormat(EVectorComponent::Y)));
@@ -472,7 +475,7 @@ namespace Relentless
 						});
 					
 					pEntryBox->SetIndicatorColor(Colors::OffGreen);
-					pEntryBox->SetSizePolicy(ESizePolicy::Stretch);
+					pEntryBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 				}
 				{
 					FloatEntryBox* pEntryBox = pDragBox->AddWidget(new FloatEntryBox(0.0f, GetLocationComponentFormat(EVectorComponent::Z)));
@@ -485,7 +488,7 @@ namespace Relentless
 							pEntryBox->SetFormat(GetLocationComponentFormat(EVectorComponent::Z));
 						});
 					pEntryBox->SetIndicatorColor(Colors::OffBlue);
-					pEntryBox->SetSizePolicy(ESizePolicy::Stretch);
+					pEntryBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 				}
 			}
 			else
@@ -498,7 +501,7 @@ namespace Relentless
 							OnLocationChanged(Vector3(aValueX, currentLocation.y, currentLocation.z));
 						})
 					->SetIndicatorColor(Colors::OffRed)
-					->SetSizePolicy(ESizePolicy::Stretch);
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 				pDragBox->AddWidget(new FloatDrag(0.01f, -FLT_MAX, FLT_MAX, "%.2f"))
 					->Value([this]() { return GetLocation().y; })
@@ -508,7 +511,7 @@ namespace Relentless
 							OnLocationChanged(Vector3(currentLocation.x, aValueY, currentLocation.z));
 						})
 					->SetIndicatorColor(Colors::OffGreen)
-					->SetSizePolicy(ESizePolicy::Stretch);
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 				pDragBox->AddWidget(new FloatDrag(0.01f, -FLT_MAX, FLT_MAX, "%.2f"))
 					->Value([this]() { return GetLocation().z; })
@@ -518,7 +521,7 @@ namespace Relentless
 							OnLocationChanged(Vector3(currentLocation.x, currentLocation.y, aValueZ));
 						})
 					->SetIndicatorColor(Colors::OffBlue)
-					->SetSizePolicy(ESizePolicy::Stretch);
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			}
 			
 			pBox->AddWidget(pDragBox);
@@ -546,12 +549,12 @@ namespace Relentless
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(110.0f, 32.0f), true);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pInnerBox->SetSpacing(0.0f);
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 
 			pInnerBox->AddWidget(new ComboBox())
 				->AddSelectables({ "Rotation", "Absolute Rotation" })
 				->OnSelectionChanged(this, &TransformComponentDetailCustomization::OnRotationComboBoxSelectionChanged)
-				->SetSizePolicy(ESizePolicy::Stretch);
+				->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			pBox->AddWidget(pInnerBox);
 
@@ -580,7 +583,7 @@ namespace Relentless
 						});
 
 					pEntryBox->SetIndicatorColor(Colors::OffRed);
-					pEntryBox->SetSizePolicy(ESizePolicy::Stretch);
+					pEntryBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 				}
 				{
 					FloatEntryBox* pEntryBox = pDragBox->AddWidget(new FloatEntryBox(0.0f, GetRotationComponentFormat(EVectorComponent::Y)));
@@ -596,7 +599,7 @@ namespace Relentless
 						});
 					
 					pEntryBox->SetIndicatorColor(Colors::OffGreen);
-					pEntryBox->SetSizePolicy(ESizePolicy::Stretch);
+					pEntryBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 				}
 				{
 					FloatEntryBox* pEntryBox = pDragBox->AddWidget(new FloatEntryBox(0.0f, GetRotationComponentFormat(EVectorComponent::Z)));
@@ -612,7 +615,7 @@ namespace Relentless
 
 						});
 					pEntryBox->SetIndicatorColor(Colors::OffBlue);
-					pEntryBox->SetSizePolicy(ESizePolicy::Stretch);
+					pEntryBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 				}
 			}
 			else
@@ -626,7 +629,7 @@ namespace Relentless
 							OnRotationChanged(newRotation);
 						})
 					->SetIndicatorColor(Colors::OffRed)
-					->SetSizePolicy(ESizePolicy::Stretch);
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 				pDragBox->AddWidget(new FloatDrag(1.0f, -FLT_MAX, FLT_MAX, "%.2f\xC2\xB0"))
 					->Value([this]() { return GetRotation().y; })
@@ -637,7 +640,7 @@ namespace Relentless
 							OnRotationChanged(newRotation);
 						})
 					->SetIndicatorColor(Colors::OffGreen)
-					->SetSizePolicy(ESizePolicy::Stretch);
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 				pDragBox->AddWidget(new FloatDrag(1.0f, -FLT_MAX, FLT_MAX, "%.2f\xC2\xB0"))
 					->Value([this]() { return GetRotation().z; })
@@ -648,7 +651,7 @@ namespace Relentless
 							OnRotationChanged(newRotation);
 						})
 					->SetIndicatorColor(Colors::OffBlue)
-					->SetSizePolicy(ESizePolicy::Stretch);
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			}
 
 			pBox->AddWidget(pDragBox);
@@ -675,12 +678,12 @@ namespace Relentless
 			Ref<HorizontalBox> pInnerBox = new HorizontalBox(Vector2(140.0f, 32.0f), true);
 			pInnerBox->SetMargin(FloatRect(0.0f, 3.0f, 0.0f, 3.0f));
 			pInnerBox->SetSpacing(0.0f);
-			pInnerBox->SetSizePolicy(ESizePolicy::Fixed);
+			pInnerBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 
 			pInnerBox->AddWidget(new ComboBox())
 				->AddSelectables({ "Scale", "Absolute Scale" })
 				->OnSelectionChanged(this, &TransformComponentDetailCustomization::OnScaleComboBoxSelectionChanged)
-				->SetSizePolicy(ESizePolicy::Stretch);
+				->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 			m_pScaleLockButton = pInnerBox->AddWidget(new Button(ICON_FA_LOCK_OPEN, Vector2(30.0f, 30.0f)))
 				->OnClicked(this, &TransformComponentDetailCustomization::OnScaleLockButtonClicked)
@@ -719,7 +722,7 @@ namespace Relentless
 						});
 
 					pEntryBoxX->SetIndicatorColor(Colors::OffRed);
-					pEntryBoxX->SetSizePolicy(ESizePolicy::Stretch);
+					pEntryBoxX->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 				}
 
 				{
@@ -737,7 +740,7 @@ namespace Relentless
 						});
 
 					pEntryBoxY->SetIndicatorColor(Colors::OffGreen);
-					pEntryBoxY->SetSizePolicy(ESizePolicy::Stretch);
+					pEntryBoxY->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 				}
 
 				{
@@ -755,7 +758,7 @@ namespace Relentless
 						});
 
 					pEntryBoxZ->SetIndicatorColor(Colors::OffBlue);
-					pEntryBoxZ->SetSizePolicy(ESizePolicy::Stretch);
+					pEntryBoxZ->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 				}
 
 			}
@@ -770,7 +773,7 @@ namespace Relentless
 							OnScaleChanged(newScale, EVectorComponent::X);
 						})
 					->SetIndicatorColor(Colors::OffRed)
-					->SetSizePolicy(ESizePolicy::Stretch);
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 				pDragBox->AddWidget(new FloatDrag(0.01f, -FLT_MAX, FLT_MAX, "%.2f"))
 					->Value([this]() { return GetScale().y; })
@@ -781,7 +784,7 @@ namespace Relentless
 							OnScaleChanged(newScale, EVectorComponent::Y);
 						})
 					->SetIndicatorColor(Colors::OffGreen)
-					->SetSizePolicy(ESizePolicy::Stretch);
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 				pDragBox->AddWidget(new FloatDrag(0.01f, -FLT_MAX, FLT_MAX, "%.2f"))
 					->Value([this]() { return GetScale().z; })
@@ -792,7 +795,7 @@ namespace Relentless
 							OnScaleChanged(newScale, EVectorComponent::Z);
 						})
 					->SetIndicatorColor(Colors::OffBlue)
-					->SetSizePolicy(ESizePolicy::Stretch);
+					->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			}
 
 			pBox->AddWidget(pDragBox);

@@ -9,8 +9,6 @@ namespace Relentless
 	public:
 		CheckBox() noexcept;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		template<typename InstanceType>
 		CheckBox* Value(InstanceType* instance, bool(InstanceType::* method)() const) noexcept
 		{

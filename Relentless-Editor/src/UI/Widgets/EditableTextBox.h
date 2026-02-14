@@ -7,10 +7,8 @@ namespace Relentless
 	class EditableTextBox : public IStylableWidget<EditableTextBox>
 	{
 	public:
-		EditableTextBox(const Vector2& aSize = Vector2::Zero, std::string_view aHintText = "") noexcept;
+		EditableTextBox(std::string_view aHintText = "") noexcept;
 		virtual ~EditableTextBox() noexcept override = default;
-
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
 
 		virtual void OnRender() noexcept override;
 		void SetText(const String& aText) noexcept;
@@ -44,6 +42,7 @@ namespace Relentless
 		}
 
 		NO_DISCARD virtual Vector2 ReportSize() const noexcept override;
+		NO_DISCARD bool RequiresAssignedSize() const noexcept override;
 
 	private:
 		Callback<void(const char*)> m_OnTextChanged;
@@ -51,7 +50,6 @@ namespace Relentless
 
 		char m_InputBuffer[128];
 		String m_HintText{};
-		Vector2 m_Size = Vector2::Zero;
 		bool m_IsActive = false;
 	};
 }

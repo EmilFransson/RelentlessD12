@@ -9,8 +9,6 @@ namespace Relentless
 		VerticalBox(const Vector2 aSize = Vector2::Zero, bool aIsChildRegion = false) noexcept;
 		virtual ~VerticalBox() noexcept = default;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override { return 0.0f; }
-
 		NO_DISCARD Vector2 ReportSize() const noexcept override;
 
 		virtual VerticalBox* SetSpacing(float aSpacing) noexcept override;

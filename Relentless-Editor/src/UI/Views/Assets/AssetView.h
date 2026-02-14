@@ -22,7 +22,6 @@ namespace Relentless
 		NO_DISCARD Vector2 ReportSize() const noexcept override { return m_ColumnWidgets[0]->ReportSize(); }
 		void SetThumbnail(const Ref<Thumbnail>& aThumbnail) noexcept;
 	protected:
-		NO_DISCARD float CalcDesiredWidth() const noexcept override { return 0.0f; }
 		NO_DISCARD const Color& GetBackgroundColor() const noexcept override { return Colors::Transparent; }
 		NO_DISCARD uint32 GetNumColumns() noexcept override { return 1u; }
 		NO_DISCARD bool IsDragDropEligible() noexcept override { return false; }
@@ -41,8 +40,6 @@ namespace Relentless
 	public:
 		AssetView() noexcept;
 		virtual ~AssetView() noexcept;
-
-		NO_DISCARD float CalcDesiredWidth() const noexcept override;
 
 	private:
 		void InitializeFromAssetRegistry() noexcept;

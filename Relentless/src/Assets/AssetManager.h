@@ -1,11 +1,11 @@
 #pragma once
+#include "Assets/IAsset.h"
 #include "AssetMeta.h"
 #include "AssetRegistry.h"
 
 #include "Callback/Callback.h"
 
 #include "Core/DLLExport.h"
-#include "Core/IAsset.h"
 #include "Core/StaticTypeInfo.h"
 
 #include "Module/AssetRegistryModule.h"

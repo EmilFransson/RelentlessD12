@@ -34,9 +34,4 @@ namespace Relentless
 		const Vector2 secondSize = m_ColumnWidgets[1]->ReportSize();
 		return Vector2(firstSize.x + secondSize.x, Math::Max(firstSize.y, secondSize.y));
 	}
-
-	float EntityDetailRow::CalcDesiredWidth() const noexcept
-	{
-		return 0.0f;
-	}
 }

@@ -10,22 +10,15 @@ namespace Relentless
 		constexpr const Color SearchbarHoveredColor = Color(100.0f, 100.0f, 100.0f, 200.0f);
 	}
 
-	EditableTextBox::EditableTextBox(const Vector2& aSize, std::string_view aHintText) noexcept
+	EditableTextBox::EditableTextBox(std::string_view aHintText) noexcept
 		:m_InputBuffer{'\0'}
 		,m_HintText{aHintText}
-		,m_Size{aSize}
 	{
-		SetFrameRounding(10.0f);
+		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
-		SetPadding({ ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 3.0f });
 
 		SetBackgroundColor(Colors::Normalize(17.0f, 17.0f, 17.0f, 255.0f));
 		SetBorderColor(Colors::Normalize(SearchBarEx_private::SearchbarBackgroundColor));
-	}
-
-	float EditableTextBox::CalcDesiredWidth() const noexcept
-	{
-		return m_Size.x;
 	}
 
 	void EditableTextBox::OnRender() noexcept
@@ -33,12 +26,25 @@ namespace Relentless
 		const Color borderCol = m_IsActive ? SearchBarEx_private::SearchbarActiveColor : m_IsHovered ? SearchBarEx_private::SearchbarHoveredColor : SearchBarEx_private::SearchbarBorderColor;
 		SetBorderColor(Colors::Normalize(borderCol));
 		
-		const float frameHeight = ImGui::GetFrameHeight();
+		Vector2 size = Vector2::Zero;
+		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();
+		const ESizePolicy verticalSizePolicy = GetVerticalSizePolicy();
 
-		const float width = GetSizePolicy() == ESizePolicy::Stretch ? -1.0f : (m_Size.x > 0.0f) ? m_Size.x : frameHeight;
-		const float height = (m_Size.y > 0.0f) ? m_Size.y : frameHeight;
+		if (horizontalSizePolicy == ESizePolicy::Auto)
+			size.x = 200.0f;
+		else if (horizontalSizePolicy == ESizePolicy::Fixed)
+			size.x = GetFixedWidth();
+		else //Stretch
+			size.x = GetAssignedSize().x;
 
-		const bool inputDone = ImGui::InputTextEx("##EditableTextBox", m_HintText.c_str(), m_InputBuffer, IM_ARRAYSIZE(m_InputBuffer), ImVec2(width, height), ImGuiInputTextFlags_None);
+		if (verticalSizePolicy == ESizePolicy::Auto)
+			size.y = ImGui::GetFrameHeight();
+		else if (verticalSizePolicy == ESizePolicy::Fixed)
+			size.y = GetFixedHeight();
+		else //Stretch
+			size.y = GetAssignedSize().y;
+
+		const bool inputDone = ImGui::InputTextEx("##EditableTextBox", m_HintText.c_str(), m_InputBuffer, IM_ARRAYSIZE(m_InputBuffer), ImVec2(size.x, size.y), ImGuiInputTextFlags_None);
 
 		m_IsActive = ImGui::IsItemActive();
 
@@ -63,10 +69,37 @@ namespace Relentless
 
 	Vector2 EditableTextBox::ReportSize() const noexcept
 	{
-		const float frameHeight = ImGui::GetFrameHeight();
-		const float width = (m_Size.x > 0.0f) ? m_Size.x : frameHeight;
-		const float height = (m_Size.y > 0.0f) ? m_Size.y : frameHeight;
+		Vector2 size = Vector2::Zero;
+		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();
+		const ESizePolicy verticalSizePolicy = GetVerticalSizePolicy();
+		const bool fixedWidth = horizontalSizePolicy == ESizePolicy::Fixed;
+		const bool fixedHeight = verticalSizePolicy == ESizePolicy::Fixed;
 
-		return { width, height };
+		if (fixedWidth)
+			size.x = GetFixedWidth();
+		if (fixedHeight)
+			size.y = GetFixedHeight();
+
+		ImFont* pFont = GetStyle().GetFont();
+		if (pFont)
+			ImGui::PushFont(pFont);
+
+		const Vector2 padding = GetPadding() * 2.0f;
+		const float frameHeight = ImGui::GetFontSize() + padding.y;
+
+		if (!fixedWidth)
+			size.x = 200.0f;
+		if (!fixedHeight)
+			size.y = frameHeight;
+
+		if (pFont)
+			ImGui::PopFont();
+
+		return size;
+	}
+
+	bool EditableTextBox::RequiresAssignedSize() const noexcept
+	{
+		return GetHorizontalSizePolicy() == ESizePolicy::Stretch || GetVerticalSizePolicy() == ESizePolicy::Stretch;
 	}
 }

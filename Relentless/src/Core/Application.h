@@ -11,11 +11,10 @@ namespace Relentless
 	
 	class CommandContext;
 	class GraphicsDevice;
-	//class ImguiLayer;
 	class Layer;
 	class Swapchain;
 	class ThreadPool;
-	class WindowEx;
+	class Window;
 
 	class RLS_API Application : public EventPublisher
 	{
@@ -25,7 +24,7 @@ namespace Relentless
 		virtual ~Application() noexcept;
 
 		NO_DISCARD GraphicsDevice* GetGraphicsDevice() const noexcept;
-		NO_DISCARD const UniquePtr<WindowEx>& GetWindow() const noexcept;
+		NO_DISCARD const UniquePtr<Window>& GetWindow() const noexcept;
 
 		void InitializeShutdownProcedure();
 
@@ -59,13 +58,12 @@ namespace Relentless
 	protected:
 		Ref<GraphicsDevice> m_pGraphicsDevice = nullptr;
 		Ref<Swapchain> m_pSwapchain = nullptr;
-		UniquePtr<WindowEx> m_pWindow;
+		UniquePtr<Window> m_pWindow;
 	private:
 		static Application* s_Instance;
 		UniquePtr<ThreadPool> m_ThreadPool;
 
 		ApplicationSpecification m_ApplicationSpecification;
-		//UniquePtr<ImguiLayer> m_pImGuiLayer;
 		bool m_IsRunning;
 
 		std::queue<std::function<void()>> m_MainThreadFunctionQueue;

@@ -1,19 +1,24 @@
 #include "Renderer.h"
 
 #include "Assets/AssetManager.h"
-//#include "Assets/Factory/TextureFactory.h"
+#include "Assets/CoreTypes/Material.h"
+#include "Assets/CoreTypes/Texture2D.h"
+#include "Assets/CoreTypes/Mesh.h"
+
 #include "Core/Time.h"
+
 #include "ECS/Component.h"
+
 #include "File/FilePath.h"
-#include "Graphics/Resources/Material.h"
-#include "Graphics/Resources/Texture2D.h"
+
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/RingBufferAllocator.h"
-#include "Mesh/Mesh.h"
-//#include "Module/AssetToolsModule.h"
+
 #include "Module/ModuleManager.h"
+
 #include "Scene/Scene.h"
+
 #include "Utility/FilepathUtils.h"
 
 namespace Relentless

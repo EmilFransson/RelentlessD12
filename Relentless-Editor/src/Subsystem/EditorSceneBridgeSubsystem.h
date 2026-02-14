@@ -4,6 +4,7 @@
 
 namespace Relentless
 {
+	class Editor;
 	class EntityFolder;
 	enum class ESelectionState : uint8;
 
@@ -12,6 +13,10 @@ namespace Relentless
 	public:
 		NO_DISCARD virtual bool OnLoad(ISystemManager* aSystemManager) noexcept override;
 		
+		void DeleteSelectedEntities() noexcept;
+
+		void SelectAllEntities() noexcept;
+		void SetVisibilityForSelectedEntities(bool aVisibilityState) noexcept;
 		static bool ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept;
 	protected:
 		void OnEntityAttached(entity aChildEntity, MAYBE_UNUSED entity aParentEntity) noexcept;
@@ -21,6 +26,7 @@ namespace Relentless
 		void OnEntitySelectionChanged(entity aEntity, ESelectionState aSelectionState) noexcept;
 		void OnSceneChanged(Scene* aNewScene) noexcept;
 	private:
+		Editor* m_pEditor = nullptr;
 		Scene* m_pBridgedScene = nullptr;
 	};
 }

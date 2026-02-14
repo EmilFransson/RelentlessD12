@@ -19,36 +19,19 @@ namespace Relentless
 			->Value(std::bind(&Float3Drag::GetValue, this, 0))
 			->OnValueChanged(std::bind(&Float3Drag::SetValue, this, _1, 0))
 			->SetIndicatorColor(Colors::OffRed)
-			->SetSizePolicy(ESizePolicy::Stretch);
+			->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 		m_pFloatDragBox->AddWidget(new FloatDrag(speed, min, max, pFormat, flags))
 			->Value(std::bind(&Float3Drag::GetValue, this, 1))
 			->OnValueChanged(std::bind(&Float3Drag::SetValue, this, _1, 1))
 			->SetIndicatorColor(Colors::OffGreen)
-			->SetSizePolicy(ESizePolicy::Stretch);
+			->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 		m_pFloatDragBox->AddWidget(new FloatDrag(speed, min, max, pFormat, flags))
 			->Value(std::bind(&Float3Drag::GetValue, this, 2))
 			->OnValueChanged(std::bind(&Float3Drag::SetValue, this, _1, 2))
 			->SetIndicatorColor(Colors::OffBlue)
-			->SetSizePolicy(ESizePolicy::Stretch);
-	}
-
-	float Float3Drag::CalcDesiredWidth() const noexcept
-	{
-		if (GetSizePolicy() == ESizePolicy::Stretch)
-			return 0.0f;
-
-		const float grabSize = ImGui::GetStyle().GrabMinSize;
-		const float padding = ImGui::GetStyle().FramePadding.x * 2.0f;
-
-		// Width of numeric value text (e.g. %.2f ° lux etc.)
-		float valueTextWidth = ImGui::CalcTextSize(m_Format.c_str()).x + padding;
-
-		// Optional color indicator width
-		const float indicatorWidth = m_DrawColorIndicator ? 5.0f + 6.0f : 0.0f; // rect + spacing
-
-		return (valueTextWidth + grabSize + indicatorWidth + 6.0f) * 3.0f; // extra spacing
+			->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 	}
 
 	float Float3Drag::GetValue(int componentIndex) const noexcept
@@ -62,12 +45,6 @@ namespace Relentless
 		}
 
 		return 0.0f;
-	}
-
-	void Float3Drag::OnPreRender() noexcept
-	{
-		if (!Math::AreValuesClose(m_WidthConstraint, -1.0f))
-			ImGui::SetNextItemWidth(m_WidthConstraint);
 	}
 
 	//Could need another pass:

@@ -9,15 +9,12 @@ namespace Relentless
 	public:
 		FloatEntryBox(float aStep = 1.0f, const char* pFormat = "", int flags = 0) noexcept;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		template<typename T>
 		FloatEntryBox* Value(T&& callback) noexcept;
 
 		template<typename InstanceType>
 		FloatEntryBox* Value(InstanceType* instance, float(InstanceType::*method)()) noexcept;
 
-		virtual void OnPreRender() noexcept override;
 		virtual void OnRender() noexcept override;
 
 		template<typename T>

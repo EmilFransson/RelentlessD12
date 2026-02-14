@@ -9,8 +9,6 @@ namespace Relentless
 	public:
 		Label(std::string_view text = "", ImFont* pFont = nullptr) noexcept;
 
-		NO_DISCARD virtual float CalcDesiredWidth() const noexcept override;
-
 		NO_DISCARD const String& GetText() const noexcept;
 
 		virtual void OnRender() noexcept override;

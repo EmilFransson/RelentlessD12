@@ -69,7 +69,7 @@ namespace Relentless
 			return str;
 		}
 
-		inline bool LogHRESULT(HRESULT hr, ID3D12Device* pDevice, const char* pCode, const char* pFileName, uint32_t lineNumber)
+		inline bool LogHRESULT(HRESULT hr, MAYBE_UNUSED ID3D12Device* pDevice, MAYBE_UNUSED const char* pCode, MAYBE_UNUSED const char* pFileName, MAYBE_UNUSED uint32_t lineNumber)
 		{
 			if (!SUCCEEDED(hr))
 			{
