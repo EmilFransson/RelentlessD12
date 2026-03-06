@@ -26,7 +26,12 @@ namespace Relentless
 
 	struct Column
 	{
-		Ref<Label> pLabel = nullptr;
+		Column() noexcept
+		{
+			pBox = RLS_NEW HorizontalBox();
+		}
+
+		Ref<HorizontalBox> pBox = nullptr;
 		float Weight = 0.0f;
 		int Flags = 0;
 	};

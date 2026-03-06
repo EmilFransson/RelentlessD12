@@ -1,5 +1,7 @@
 #include "CheckBox.h"
 
+#include "Property/PropertyHandle.h"
+
 namespace Relentless
 {
 	CheckBox::CheckBox() noexcept
@@ -14,11 +16,29 @@ namespace Relentless
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
+	CheckBox* CheckBox::Bind(Ref<PropertyHandle<bool>> aPropertyHandle) noexcept
+	{
+		m_pPropertyHandle = aPropertyHandle;
+		return this;
+	}
+
 	void CheckBox::OnRender() noexcept
 	{
-		bool state = m_ValueCallback.IsSet() ? m_ValueCallback() : false;
+		bool state = false;
+		EPropertyAccessResult accessResult = EPropertyAccessResult::Fail;
+
+		if (m_pPropertyHandle)
+			accessResult = m_pPropertyHandle->GetValue(state);
+		else if (accessResult == EPropertyAccessResult::Fail && m_ValueCallback.IsSet())
+			state = m_ValueCallback();
+		
 		if (ImGui::Checkbox("##Checkbox", &state))
-			m_OnCheckStateChanged.ExecuteIfSet(state);
+		{
+			if (m_pPropertyHandle)
+				m_pPropertyHandle->SetValue(state);
+			else
+				m_OnCheckStateChanged.ExecuteIfSet(state);
+		}
 
 		m_Hovered = ImGui::IsItemHovered();
 		if (m_Hovered)

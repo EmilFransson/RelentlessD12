@@ -53,6 +53,7 @@ namespace Relentless
 		void SetIsEnabled(bool aIsEnabledState) noexcept;
 		void SetIsVisible(bool aVisibleState) noexcept;
 		void SetMargin(const FloatRect& aMargin) noexcept;
+		IBaseWidget* SetPadding(const FloatRect& aPadding) noexcept;
 		void SetSize(const Vector2& aSize) noexcept;
 		IBaseWidget* SetVerticalSizePolicy(ESizePolicy aSizePolicy) noexcept;
 		IBaseWidget* SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy aAlignmentPolicy) noexcept;
@@ -141,7 +142,9 @@ namespace Relentless
 		{
 			ImGui::PushID((const void*)this);
 
-			if (!IsEnabled())
+			const bool isEnabled = IsEnabled();
+
+			if (!isEnabled)
 				ImGui::BeginDisabled();
 
 			OnPreRender();
@@ -159,7 +162,7 @@ namespace Relentless
 			OnPostRender();
 			OnPostRenderEnd();
 
-			if (!IsEnabled())
+			if (!isEnabled)
 				ImGui::EndDisabled();
 
 			ShowTooltipIfApplicable();
@@ -167,9 +170,10 @@ namespace Relentless
 			ImGui::PopID();
 		}
 
-		void SetFlags(int flags) noexcept
+		DerivedType* SetFlags(int someFlags) noexcept
 		{
-			m_Flags = flags;
+			m_Flags = someFlags;
+			return static_cast<DerivedType*>(this);
 		}
 
 		DerivedType* SetTooltip(Ref<Tooltip> pTooltip) noexcept
@@ -278,7 +282,9 @@ namespace Relentless
 
 			ImGui::PushID(this);
 
-			if (!this->IsEnabled())
+			const bool isEnabled = this->IsEnabled();
+
+			if (!isEnabled)
 				ImGui::BeginDisabled();
 
 			m_Style.Apply();
@@ -300,7 +306,7 @@ namespace Relentless
 
 			m_Style.Discard();
 
-			if (!this->IsEnabled())
+			if (!isEnabled)
 				ImGui::EndDisabled();
 
 			ImGui::PopID();

@@ -1,6 +1,6 @@
 #include "DetailCategoryRow.h"
 
-#include "UI/Widgets/HorizontalBoxEx.h"
+#include "UI/Widgets/HorizontalBox.h"
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/Label.h"
 
@@ -8,7 +8,7 @@ namespace Relentless
 {
 	DetailCategoryRow::DetailCategoryRow(std::string_view aName, bool aIsExpanded) noexcept
 	{
-		Ref<HorizontalBoxEx> pBox = RLS_NEW HorizontalBoxEx();
+		Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
 		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
 		pBox->AddWidget(RLS_NEW Button(aIsExpanded ? ICON_FA_CHEVRON_DOWN : ICON_FA_CHEVRON_RIGHT, Vector2(25.0f, 30.0f)))
@@ -27,7 +27,7 @@ namespace Relentless
 
 	Button* DetailCategoryRow::GetExpandButton() const noexcept
 	{
-		return static_cast<HorizontalBoxEx*>(m_ColumnWidgets2[0].Get())->GetWidget<Button>(0);
+		return static_cast<HorizontalBox*>(m_ColumnWidgets2[0].Get())->GetWidget<Button>(0);
 	}
 
 	Vector2 DetailCategoryRow::ReportSize() const noexcept

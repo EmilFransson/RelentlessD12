@@ -22,6 +22,9 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::Compute, "AverageLuminance.hlsl", "cs_main"));
 		Add(Shader::Create(ShaderType::Compute, "LuminanceHistogram.hlsl", "cs_main"));
 
+		Add(Shader::Create(ShaderType::VERTEX, "EquirectangularToCubemapShader.hlsl", "vs_main"));
+		Add(Shader::Create(ShaderType::PIXEL, "EquirectangularToCubemapShader.hlsl", "ps_main"));
+
 		//Add(Shader::Create(ShaderType::VERTEX, "FullScreenTriVertexShader.hlsl"));
 		//Add(Shader::Create(ShaderType::PIXEL, "PickingPixelShader.hlsl"));
 		//Add(Shader::Create(ShaderType::PIXEL, "PixelShaderOrangeOutput.hlsl"));

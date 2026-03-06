@@ -1,18 +1,18 @@
 #pragma once
 #include <Relentless.h>
 
-#include <Controller/PerspectiveCameraController.h>
-#include <Controller/TransformGizmoController.h>
+#include "Controller/PerspectiveCameraController.h"
+#include "Controller/TransformGizmoController.h"
 
-#include <UI/Widgets/Canvas.h>
-#include <UI/Widgets/HorizontalBoxEx.h>
-#include <UI/Widgets/VerticalBoxEx.h>
-#include <UI/Widgets/Panel.h>
+#include "UI/Widgets/Canvas.h"
+#include "UI/Widgets/Panel.h"
 
 namespace Relentless
 {
 	class Editor;
+	class HorizontalBox;
 	class ViewportDetailsView;
+	class VerticalBox;
 
 	class ViewportPanel : public PanelBase
 	{
@@ -22,7 +22,7 @@ namespace Relentless
 
 		NO_DISCARD virtual bool AcceptsMouseInput() const noexcept override;
 
-		NO_DISCARD Ref<VerticalBoxEx> BuildWindowLayout() noexcept;
+		NO_DISCARD Ref<VerticalBox> BuildWindowLayout() noexcept;
 
 		NO_DISCARD std::shared_ptr<PerspectiveCamera> GetCamera() const noexcept;
 		NO_DISCARD const UniquePtr<PerspectiveCameraController>& GetCameraController() const noexcept;
@@ -101,8 +101,8 @@ namespace Relentless
 
 		ViewportDetailsView* m_pViewportDetailsView = nullptr;
 
-		Ref<HorizontalBoxEx> m_pToolbarBox = nullptr;
-		VerticalBoxEx* m_pSettingsBox = nullptr;
+		Ref<HorizontalBox> m_pToolbarBox = nullptr;
+		VerticalBox* m_pSettingsBox = nullptr;
 		Canvas* m_pCanvas = nullptr;
 	};
 }

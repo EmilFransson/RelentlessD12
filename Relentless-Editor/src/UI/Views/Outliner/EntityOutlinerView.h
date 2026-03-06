@@ -3,7 +3,7 @@
 
 #include "Subsystem/EntityFoldersSubsystem.h"
 
-#include "UI/OutlinerTableRow.h"
+#include "UI/Views/Outliner/TableRows/OutlinerTableRow.h"
 #include "UI/Views/TreeView.h"
 #include "UI/Widgets/IWidget.h"
 

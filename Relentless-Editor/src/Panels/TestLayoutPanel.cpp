@@ -8,7 +8,7 @@
 #include "UI/Widgets/FloatDrag.h"
 #include "UI/Widgets/FloatEntryBox.h"
 #include "UI/Widgets/FloatSlider.h"
-#include "UI/Widgets/HorizontalBoxEx.h"
+#include "UI/Widgets/HorizontalBox.h"
 #include "UI/Widgets/IntDrag.h"
 #include "UI/Widgets/IntSlider.h"
 #include "UI/Widgets/Label.h"
@@ -17,7 +17,7 @@
 #include "UI/Widgets/Slider.h"
 #include "UI/Widgets/Spacer.h"
 #include "UI/Widgets/SpinBox.h"
-#include "UI/Widgets/VerticalBoxEx.h"
+#include "UI/Widgets/VerticalBox.h"
 
 namespace Relentless
 {
@@ -25,18 +25,18 @@ namespace Relentless
 		:PanelBase("Test Layout")
 	{
 		SetPadding(Vector2(5.0f, 5.0f));
-		Ref<VerticalBoxEx> pRoot = new VerticalBoxEx();
+		Ref<VerticalBox> pRoot = new VerticalBox();
 		pRoot->SetScrollBarsVisible(false);
 		pRoot->SetMouseScrollingEnabled(false);
 
-		HorizontalBoxEx* pTopBox = pRoot->AddWidget(new HorizontalBoxEx());
+		HorizontalBox* pTopBox = pRoot->AddWidget(new HorizontalBox());
 		pTopBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		pTopBox->SetScrollBarsVisible(false);
 		pTopBox->SetMouseScrollingEnabled(false);
 
 		//Top Left:
 		{
-			HorizontalBoxEx* pTopLeftBox = pTopBox->AddWidget(new HorizontalBoxEx());
+			HorizontalBox* pTopLeftBox = pTopBox->AddWidget(new HorizontalBox());
 			pTopLeftBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			pTopLeftBox->SetSpacing(5.0f);
 			pTopLeftBox->SetMargin(FloatRect(3.0f, 3.0f, 3.0f, 3.0f));
@@ -54,7 +54,7 @@ namespace Relentless
 		}
 		//Top Right:
 		{
-			HorizontalBoxEx* pTopRightBox = pTopBox->AddWidget(new HorizontalBoxEx());
+			HorizontalBox* pTopRightBox = pTopBox->AddWidget(new HorizontalBox());
 			pTopRightBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			pTopRightBox->SetMargin(FloatRect(3.0f, 3.0f, 3.0f, 3.0f));
 
@@ -64,14 +64,14 @@ namespace Relentless
 			pPicker->SetSize(Vector2(50.0f, -1.0f));
 		}
 
-		HorizontalBoxEx* pBottomBox = pRoot->AddWidget(new HorizontalBoxEx());
+		HorizontalBox* pBottomBox = pRoot->AddWidget(new HorizontalBox());
 		pBottomBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		pBottomBox->SetScrollBarsVisible(false);
 		pBottomBox->SetMouseScrollingEnabled(false);
 
 		//Bottom Left:
 		{
-			HorizontalBoxEx* pBottomLeftBox = pBottomBox->AddWidget(new HorizontalBoxEx());
+			HorizontalBox* pBottomLeftBox = pBottomBox->AddWidget(new HorizontalBox());
 			pBottomLeftBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			pBottomLeftBox->SetMargin(FloatRect(3.0f, 3.0f, 3.0f, 3.0f));
 			pBottomLeftBox->SetScrollBarsVisible(true);
@@ -88,7 +88,7 @@ namespace Relentless
 		{
 			static float value = 0;
 
-			VerticalBoxEx* pBottomRightBox = pBottomBox->AddWidget(new VerticalBoxEx());
+			VerticalBox* pBottomRightBox = pBottomBox->AddWidget(new VerticalBox());
 			pBottomRightBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			pBottomRightBox->SetMargin(FloatRect(3.0f, 3.0f, 3.0f, 3.0f));
 			pBottomRightBox->SetScrollBarsVisible(true);

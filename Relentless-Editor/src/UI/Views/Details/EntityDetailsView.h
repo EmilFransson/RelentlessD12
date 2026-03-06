@@ -1,45 +1,32 @@
 #pragma once
-#include "Customizations/IDetailCustomization.h"
-#include "DetailNode.h"
 #include "IDetailsView.h"
+
+#include "UI/Views/Details/Context/EntityDetailsContext.h"
 
 namespace Relentless
 {
-	class Button;
-	class Editor;
-	class EntityDetailLayoutBuilder;
 	enum class ESelectionState : uint8;
-	template<typename T>
-	class TreeView;
-	class HorizontalBox;
-	class VerticalBox;
 
 	class EntityDetailsView : public IDetailsView
 	{
 	public:
-		explicit EntityDetailsView() noexcept;
+		EntityDetailsView() noexcept;
 		virtual ~EntityDetailsView() noexcept override;
 
-		NO_DISCARD const std::vector<entity>& GetInspectedEntities() const noexcept;
-		NO_DISCARD uint32 GetNumInspectedEntities() const noexcept;
+		NO_DISCARD bool IsLocked() const noexcept;
 
-		void OnRender() noexcept override;
+		void SetLocked(bool aLock) noexcept;
+	protected:
+		virtual void OnPreRequestSource(bool aFromManualTrigger) noexcept override;
 	private:
-		void OnExpandCollapseButtonClicked(MAYBE_UNUSED Button* aButton, Ref<DetailNode> aItem) noexcept override;
-		
-		NO_DISCARD Ref<ITableRow> OnGenerateRow(const Ref<DetailNode>& aItem) noexcept override;
-		void OnGetChildren(const Ref<DetailNode>& aParent, std::vector<Ref<DetailNode>>& outChildren) noexcept override;
-		NO_DISCARD const std::vector<Ref<DetailNode>>* OnRequestSource() noexcept override;
-		void OnSelectionChanged(MAYBE_UNUSED entity aEntity, MAYBE_UNUSED ESelectionState aSelectionState) noexcept;
-
-		void Rebuild() noexcept;
+		void OnEntityDestroyed(entity aDestroyedEntity) noexcept;
+		void OnEntityTransformed(entity aTransformedEntity) noexcept;
+		void OnSceneChanged(Scene* aScene) noexcept;
+		void OnSelectionChanged(entity aEntity, ESelectionState aSelectionState) noexcept;
 	private:
-		std::vector<Ref<DetailNode>> m_RootNodes;
-		std::vector<entity> m_InspectedEntities;
-
-		Ref<TreeView<Ref<DetailNode>>> m_pEntityDetailsTreeView = nullptr;
-		UniquePtr<EntityDetailLayoutBuilder> m_pLayoutBuilder;
-		Ref<VerticalBox> m_pMainBox = nullptr;
-		Ref<HorizontalBox> m_pDetailsListBox = nullptr;
+		EntityDetailsContext m_Context;
+		Scene* m_pInspectedScene = nullptr;
+		bool m_IsLocked = false;
+		bool m_RequestedRefresh = true;
 	};
 }

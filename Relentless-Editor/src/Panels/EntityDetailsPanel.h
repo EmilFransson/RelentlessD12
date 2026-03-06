@@ -9,8 +9,8 @@ namespace Relentless
 	{
 	public:
 		EntityDetailsPanel() noexcept;
-		virtual ~EntityDetailsPanel() noexcept override;
+		virtual ~EntityDetailsPanel() noexcept override = default;
 	private:
-		Ref<EntityDetailsView> m_pEntityDetailsView;
+		EntityDetailsView* m_pEntityDetailsView = nullptr;
 	};
 }

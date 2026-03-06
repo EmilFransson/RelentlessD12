@@ -109,5 +109,8 @@ namespace Relentless
 		std::mutex m_OnUpdateMutex;
 		std::mutex m_OnUIRenderMutex;
 		std::mutex m_OnEventMutex;
+
+		Ref<Texture> m_pCubeMap;
+		RenderJobHandle m_RenderJobHandle;
 	};
 }

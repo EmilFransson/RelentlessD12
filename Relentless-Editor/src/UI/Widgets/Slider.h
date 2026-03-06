@@ -13,7 +13,7 @@ namespace Relentless
 		Slider() noexcept;
 		virtual ~Slider() noexcept = default;
 
-		Slider<DataType>* Bind(PropertyHandle<DataType>* aPropertyHandle) noexcept;
+		Slider<DataType>* Bind(Ref<PropertyHandle<DataType>> aPropertyHandle) noexcept;
 
 		template<typename T>
 		Slider* OnValueChanged(T&& aCallback);
@@ -53,11 +53,11 @@ namespace Relentless
 
 		bool m_IsActive = false;
 
-		PropertyHandle<DataType>* m_pPropertyHandle = nullptr;
+		Ref<PropertyHandle<DataType>> m_pPropertyHandle = nullptr;
 	};
 
 	template<typename DataType>
-	Slider<DataType>* Slider<DataType>::Bind(PropertyHandle<DataType>* aPropertyHandle) noexcept
+	Slider<DataType>* Slider<DataType>::Bind(Ref<PropertyHandle<DataType>> aPropertyHandle) noexcept
 	{
 		m_pPropertyHandle = aPropertyHandle;
 		return this;

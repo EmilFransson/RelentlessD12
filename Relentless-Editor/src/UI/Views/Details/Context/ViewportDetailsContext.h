@@ -7,7 +7,5 @@ namespace Relentless
 	struct ViewportDetailsContext
 	{
 		PerspectiveCameraController* CameraController = nullptr;
-		std::vector<entity> Entities;
-		EntityManager* EntityManager;
 	};
 }

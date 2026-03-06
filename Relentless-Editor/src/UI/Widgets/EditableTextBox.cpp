@@ -1,70 +1,88 @@
 #include "EditableTextBox.h"
 
+#include "Property/PropertyHandle.h"
+
 namespace Relentless
 {
-	namespace SearchBarEx_private
+	namespace EditableTextBox_private
 	{
-		constexpr const Color SearchbarBackgroundColor = Color(17.0f, 17.0f, 17.0f, 255.0f);
-		constexpr const Color SearchbarBorderColor = Color(60.0f, 60.0f, 60.0f, 200.0f);
-		constexpr const Color SearchbarActiveColor = Color(30.0f, 120.0f, 255.0f, 200.0f);
-		constexpr const Color SearchbarHoveredColor = Color(100.0f, 100.0f, 100.0f, 200.0f);
+		constexpr const Color BackgroundColor = Color(17.0f, 17.0f, 17.0f, 255.0f);
+		constexpr const Color BorderColor = Color(60.0f, 60.0f, 60.0f, 200.0f);
+		constexpr const Color ActiveColor = Color(30.0f, 120.0f, 255.0f, 200.0f);
+		constexpr const Color HoveredColor = Color(100.0f, 100.0f, 100.0f, 200.0f);
+
+		static int InputTextCallback_Resize(ImGuiInputTextCallbackData* aData)
+		{
+			if (aData->EventFlag == ImGuiInputTextFlags_CallbackResize)
+			{
+				String* str = static_cast<String*>(aData->UserData);
+				str->resize(static_cast<size_t>(aData->BufTextLen));
+				aData->Buf = str->data();
+			}
+
+			return 0;
+		}
 	}
 
 	EditableTextBox::EditableTextBox(std::string_view aHintText) noexcept
-		:m_InputBuffer{'\0'}
-		,m_HintText{aHintText}
+		:m_HintText{aHintText}
 	{
 		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
 
 		SetBackgroundColor(Colors::Normalize(17.0f, 17.0f, 17.0f, 255.0f));
-		SetBorderColor(Colors::Normalize(SearchBarEx_private::SearchbarBackgroundColor));
+		SetBorderColor(Colors::Normalize(EditableTextBox_private::BackgroundColor));
+	}
+
+	EditableTextBox* EditableTextBox::Bind(Ref<PropertyHandle<String>> aPropertyHandle) noexcept
+	{
+		m_pPropertyHandle = aPropertyHandle;
+		return this;
 	}
 
 	void EditableTextBox::OnRender() noexcept
 	{
-		const Color borderCol = m_IsActive ? SearchBarEx_private::SearchbarActiveColor : m_IsHovered ? SearchBarEx_private::SearchbarHoveredColor : SearchBarEx_private::SearchbarBorderColor;
+		const Color borderCol = m_IsActive ? EditableTextBox_private::ActiveColor : m_IsHovered ? EditableTextBox_private::HoveredColor : EditableTextBox_private::BorderColor;
 		SetBorderColor(Colors::Normalize(borderCol));
 		
-		Vector2 size = Vector2::Zero;
-		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();
-		const ESizePolicy verticalSizePolicy = GetVerticalSizePolicy();
+		const char* pPreview = m_HintText.c_str();
 
-		if (horizontalSizePolicy == ESizePolicy::Auto)
-			size.x = 200.0f;
-		else if (horizontalSizePolicy == ESizePolicy::Fixed)
-			size.x = GetFixedWidth();
-		else //Stretch
-			size.x = GetAssignedSize().x;
+		if (m_pPropertyHandle)
+		{
+			String value;
+			const EPropertyAccessResult accessResult = m_pPropertyHandle->GetValue(value);
 
-		if (verticalSizePolicy == ESizePolicy::Auto)
-			size.y = ImGui::GetFrameHeight();
-		else if (verticalSizePolicy == ESizePolicy::Fixed)
-			size.y = GetFixedHeight();
-		else //Stretch
-			size.y = GetAssignedSize().y;
+			if (accessResult == EPropertyAccessResult::Success)
+				m_Buffer = std::move(value);
+			else if (accessResult == EPropertyAccessResult::MixedValues)
+				pPreview = "Mixed";
+		}
 
-		const bool inputDone = ImGui::InputTextEx("##EditableTextBox", m_HintText.c_str(), m_InputBuffer, IM_ARRAYSIZE(m_InputBuffer), ImVec2(size.x, size.y), ImGuiInputTextFlags_None);
+		constexpr int flags = ImGuiInputTextFlags_CallbackResize;
+
+		const bool inputDone = ImGui::InputTextWithHint("##EditableTextBox", pPreview, m_Buffer.data(),
+			m_Buffer.capacity() + 1, flags, EditableTextBox_private::InputTextCallback_Resize, &m_Buffer);
 
 		m_IsActive = ImGui::IsItemActive();
 
 		if (inputDone)
-			m_OnTextChanged.ExecuteIfSet(m_InputBuffer);
+		{
+			if (m_pPropertyHandle)
+				m_pPropertyHandle->SetValue(m_Buffer);
+			else 
+				m_OnTextChanged.ExecuteIfSet(m_Buffer.c_str());
+		}
 
 		if (ImGui::IsItemDeactivatedAfterEdit() || ImGui::IsItemDeactivated())
 		{
 			const ETextCommitType type = Keyboard::IsKeyDown(RLS_Key::Enter) ? ETextCommitType::OnEnter : ETextCommitType::OnUserMovedFocus;
-			m_OnTextCommitted.ExecuteIfSet(m_InputBuffer, type);
+			m_OnTextCommitted.ExecuteIfSet(m_Buffer.c_str(), type);
 		}
 	}
 
 	void EditableTextBox::SetText(const String& aText) noexcept
 	{
-		const size_t maxLen = sizeof(m_InputBuffer) - 1;
-		const size_t len = Math::Min(aText.size(), maxLen);
-
-		std::memcpy(m_InputBuffer, aText.data(), len);
-		m_InputBuffer[len] = '\0';
+		m_Buffer = aText;
 	}
 
 	Vector2 EditableTextBox::ReportSize() const noexcept
@@ -96,10 +114,5 @@ namespace Relentless
 			ImGui::PopFont();
 
 		return size;
-	}
-
-	bool EditableTextBox::RequiresAssignedSize() const noexcept
-	{
-		return GetHorizontalSizePolicy() == ESizePolicy::Stretch || GetVerticalSizePolicy() == ESizePolicy::Stretch;
 	}
 }

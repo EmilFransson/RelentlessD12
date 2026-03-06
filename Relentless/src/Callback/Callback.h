@@ -49,13 +49,21 @@ namespace Relentless
 				return (*m_CallbackFunc)(std::forward<Args>(args)...);
 		}
 
-		template<typename InstanceType>
-		static Callback Bind(InstanceType* instance, RetVal(InstanceType::* method)(Args...))
+		template<class Obj, class MemFn>
+		requires std::is_invocable_r_v<RetVal, MemFn, Obj*, Args...>
+		static Callback Bind(Obj* aInstance, MemFn aMethod)
 		{
-			return Callback([instance, method](Args... args) -> RetVal
+			return Callback([aInstance, aMethod](Args... args) -> RetVal
 				{
-					return (instance->*method)(std::forward<Args>(args)...);
+					return std::invoke(aMethod, aInstance, std::forward<Args>(args)...);
 				});
+		}
+
+		template<class Func>
+		requires std::is_invocable_r_v<RetVal, Func&, Args...>
+		static Callback Bind(Func&& aFunction)
+		{
+			return Callback(std::forward<Func>(aFunction));
 		}
 
 		[[nodiscard]] bool IsSet() const noexcept { return (bool)m_CallbackFunc; }

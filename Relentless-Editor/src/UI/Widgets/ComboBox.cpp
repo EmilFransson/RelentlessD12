@@ -21,7 +21,6 @@ namespace Relentless
 		SetSelectableBackgroundColor(Colors::Normalize(66.0f, 150.0f, 250.0f, 255.0f));
 
 		SetFrameRounding(6.0f);
-		//SetPadding(Vector2(6.0f, 5.0f));
 		SetBorderSize(2.0f);
 		SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
@@ -35,6 +34,12 @@ namespace Relentless
 		m_Selectables = selectables.Copy();
 		m_CurrentSelection.Name = m_Selectables[0];
 
+		return this;
+	}
+
+	ComboBox* ComboBox::Bind(PropertyHandle<int>* aPropertyHandle) noexcept
+	{
+		m_pPropertyHandle = aPropertyHandle;
 		return this;
 	}
 
@@ -96,17 +101,36 @@ namespace Relentless
 
 	void ComboBox::OnRender() noexcept
 	{
+		const char* preview = m_CurrentSelection.Name;
 		if (m_Selectables.empty())
-			return;
-		
+			preview = "-";
+		else if (m_pPropertyHandle)
+		{
+			int index = 0;
+			const EPropertyAccessResult accessResult = m_pPropertyHandle->GetValue(index);
+
+			if (accessResult == EPropertyAccessResult::Success)
+			{
+				index = Math::Clamp(index, 0, static_cast<int>(m_Selectables.size()) - 1);
+				if (index != m_CurrentSelection.Index)
+				{
+					m_CurrentSelection.Index = index;
+					m_CurrentSelection.Name = m_Selectables[index];
+					preview = m_CurrentSelection.Name;
+				}
+			}
+			else if (accessResult == EPropertyAccessResult::MixedValues)
+				preview = "Mixed";
+		}
+
 		if (m_IsHovered)
 			SetBorderColor(Colors::Normalize(75.0f, 75.0f, 75.0f, 255.0f));
 		else
 			SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 
-		if (ImGui::BeginCombo("##ComboBox", m_Selectables[m_CurrentSelection.Index]))
+		if (ImGui::BeginCombo("##ComboBox", preview))
 		{
-			for (size_t i = 0; i < m_Selectables.size(); ++i)
+			for (size_t i = 0u; i < m_Selectables.size(); ++i)
 			{
 				const bool isSelected = m_CurrentSelection.Index == static_cast<int>(i);
 				if (ImGui::Selectable(m_Selectables[i], isSelected))
@@ -116,13 +140,17 @@ namespace Relentless
 						m_CurrentSelection.Index = static_cast<int>(i);
 						m_CurrentSelection.Name = m_Selectables[m_CurrentSelection.Index];
 
-						m_OnSelectionChanged.ExecuteIfSet(m_CurrentSelection);
+						if (m_pPropertyHandle)
+							m_pPropertyHandle->SetValue(i);
+						else
+							m_OnSelectionChanged.ExecuteIfSet(m_CurrentSelection);
 					}
 				}
 
 				if (isSelected)
 					ImGui::SetItemDefaultFocus();
 			}
+
 			ImGui::EndCombo();
 		}
 

@@ -35,7 +35,10 @@ namespace Relentless
 		const std::vector<UniquePtr<IDetailCustomization>> customizations = registry.GetCustomizations<InspectedType>();
 
 		for (const auto& customization : customizations)
-			customization->CustomizeDetails(*this);
+		{
+			if (customization->ShouldCustomize(*this))
+				customization->CustomizeDetails(*this);
+		}
 
 		std::vector<Ref<DetailNode>> nodesToReturn;
 		for (auto& [name, pBuilder] : m_Categories)

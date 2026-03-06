@@ -1,6 +1,6 @@
 #include "OutlinerDragDropOperation.h"
 
-#include "UI/OutlinerTableRow.h"
+#include "UI/Views/Outliner/TableRows/OutlinerTableRow.h"
 #include "Subsystem/EntityFoldersSubsystem.h"
 
 namespace Relentless

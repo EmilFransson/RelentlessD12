@@ -1,5 +1,7 @@
 #include "ColorPicker.h"
 
+#include "Property/PropertyHandle.h"
+
 namespace Relentless
 {
 	ColorPicker::ColorPicker(int flags) noexcept
@@ -10,6 +12,12 @@ namespace Relentless
 		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
 		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
+	}
+
+	ColorPicker* ColorPicker::Bind(Ref<PropertyHandle<Color>> aPropertyHandle) noexcept
+	{
+		m_pPropertyHandle = aPropertyHandle;
+		return this;
 	}
 
 	void ColorPicker::OnRender() noexcept
@@ -23,8 +31,14 @@ namespace Relentless
 			SetBorderColor(BORDER_COLOR);
 
 		const Vector2 size = GetRenderedSize();
+		Color color = Colors::Transparent;
+		EPropertyAccessResult accessResult = EPropertyAccessResult::Fail;
 
-		Color color = m_ValueCallback.IsSet() ? m_ValueCallback() : Colors::White;
+		if (m_pPropertyHandle)
+			accessResult = m_pPropertyHandle->GetValue(color);
+		if (accessResult == EPropertyAccessResult::Fail && m_ValueCallback.IsSet())
+			color = m_ValueCallback();
+
 		if (ImGui::ColorButton("##ColorButton", ImVec4(color.R(), color.G(), color.B(), color.A()), GetFlags(), ImVec2(size.x, size.y)))
 			ImGui::OpenPopup("ColorPickerPopup");
 
@@ -32,8 +46,13 @@ namespace Relentless
 
 		if (ImGui::BeginPopup("ColorPickerPopup"))
 		{
-			if (ImGui::ColorPicker4("##picker", &color.x, m_PickerFlags) && m_OnChanged.IsSet())
-				m_OnChanged.ExecuteIfSet(color);
+			if (ImGui::ColorPicker4("##picker", &color.x, m_PickerFlags))
+			{
+				if (m_pPropertyHandle)
+					m_pPropertyHandle->SetValue(color);
+				else
+					m_OnChanged.ExecuteIfSet(color);
+			}
 
 			ImGui::EndPopup();
 		}

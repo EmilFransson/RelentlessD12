@@ -1,5 +1,6 @@
 #pragma once
-#include "IDetailCustomization.h"
+
+#include "UI/Views/Details/Customizations/IDetailCustomization.h"
 
 namespace Relentless
 {

@@ -79,7 +79,7 @@ namespace Relentless
 			return static_cast<ModuleType&>(*pEntry->Module);
 		}
 
-		void ShutDown() noexcept
+		static void ShutDown() noexcept
 		{
 			ShutdownAllModules();
 		}

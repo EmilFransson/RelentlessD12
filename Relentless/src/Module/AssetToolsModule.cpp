@@ -63,8 +63,12 @@ namespace Relentless
 					{
 						if (importResult)
 						{
+							Path destinationPath = task.DestinationPath;
+							if (destinationPath.empty())
+								destinationPath = task.FilePath;
+
 							Ref<IAsset> pAsset = AssetManager::Get(importResult.value());
-							Path fullDestination = FilepathUtils::Combine(Project::GetProjectDirectory(), task.DestinationPath);
+							Path fullDestination = FilepathUtils::Combine(Project::GetProjectDirectory(), destinationPath);
 							fullDestination = FilepathUtils::Combine(fullDestination, pAsset->GetName());
 
 							if (!SerializeAsset(pAsset, fullDestination, Time::GetCurrentTimePoint()))

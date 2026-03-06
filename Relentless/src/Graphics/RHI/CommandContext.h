@@ -50,6 +50,9 @@ namespace Relentless
 
 			RenderTargetAccessFlags BeginAccessFlags = RenderTargetAccessFlags::None;
 			RenderTargetAccessFlags EndAccessFlags = RenderTargetAccessFlags::None;
+
+			uint8 MipLevel = 0;
+			uint8 ArrayIndex = 0;
 		};
 
 		struct DepthTargetInfo

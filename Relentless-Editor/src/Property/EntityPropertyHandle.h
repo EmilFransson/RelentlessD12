@@ -9,7 +9,7 @@ namespace Relentless
 	public:
 		using MemberPtr = DataType ComponentType::*;
 		using ComponentGetter = Callback<DataType(const ComponentType&)>;
-		using ComponentSetter = Callback<void(ComponentType&, const DataType&)>;
+		using ComponentSetter = Callback<void(entity, ComponentType&, const DataType&)>;
 
 		EntityPropertyHandle(EntityManager& aManager, std::vector<entity>& someEntities, MemberPtr aMember) noexcept;
 		EntityPropertyHandle(EntityManager& aManager, std::vector<entity>& someEntities, MemberPtr aMember, Callback<DataType()> aDefaultGetter) noexcept;
@@ -99,7 +99,7 @@ namespace Relentless
 			{
 				const entity e = someEntities[aIndex];
 				ComponentType& component = aManager.Get<ComponentType>(e);
-				setter(component, aNewValue);
+				setter(e, component, aNewValue);
 			},
 			static_cast<uint32>(someEntities.size())
 		)
@@ -120,7 +120,7 @@ namespace Relentless
 			{
 				const entity e = someEntities[aIndex];
 				ComponentType& component = aManager.Get<ComponentType>(e);
-				setter(component, aNewValue);
+				setter(e, component, aNewValue);
 			},
 			static_cast<uint32>(someEntities.size()),
 			std::move(aDefaultGetter))
@@ -141,7 +141,7 @@ namespace Relentless
 			{
 				const entity e = someEntities[aIndex];
 				ComponentType& component = aManager.Get<ComponentType>(e);
-				setter(component, aNewValue);
+				setter(e, component, aNewValue);
 			},
 			static_cast<uint32>(someEntities.size()),
 			aDefaultValue

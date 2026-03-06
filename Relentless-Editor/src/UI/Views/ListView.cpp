@@ -24,15 +24,10 @@ namespace Relentless
 		if (m_IsPinned)
 			ImGui::TableSetupScrollFreeze(0, 1);
 
-		static std::array<ImGuiID, 3> ColumnIDs;
-		ColumnIDs[0] = ImGui::GetID("MyTable|ColA");
-		ColumnIDs[1] = ImGui::GetID("MyTable|ColB");
-		ColumnIDs[2] = ImGui::GetID("MyTable|ColC");
-
 		for (uint32 col = 0u; col < GetNumColumns(); ++col)
 		{
 			const Column& column = GetColumn(col);
-			ImGui::TableSetupColumn(column.pLabel ? column.pLabel->GetText().c_str() : "", column.Flags, column.Weight, ColumnIDs[col]);
+			ImGui::TableSetupColumn("##Column", column.Flags, column.Weight);
 		}
 
 		if (!m_IsVisible)
@@ -42,7 +37,9 @@ namespace Relentless
 		for (uint32 col = 0u; col < GetNumColumns(); ++col)
 		{
 			ImGui::TableSetColumnIndex(col);
-			GetColumn(col).pLabel->Render();
+			const Column& column = GetColumn(col);
+			column.pBox->AssignSize({ ImGui::GetContentRegionAvail().x, 32.0f });
+			column.pBox->Render();
 		}
 	}
 

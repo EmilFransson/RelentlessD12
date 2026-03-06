@@ -41,7 +41,7 @@ namespace Relentless
 
 		void SetLocalLocation(const Vector3& aLocation) noexcept;
 		void SetLocalRotation(const Quaternion& aRotation) noexcept;
-		void SetLocalRotationEuler(const Vector3& aEulerDegrees) noexcept;
+		void SetLocalRotationEulerDegrees(const Vector3& aEulerDegrees) noexcept;
 		void SetLocalScale(const Vector3& aScale) noexcept;
 		void SetWorldLocation(const Vector3& aLocation) noexcept;
 		void SetWorldRotation(const Quaternion& aRotation) noexcept;
@@ -221,11 +221,15 @@ namespace Relentless
 		void SetInnerConeAngleDegrees(float aAngleDegrees) noexcept
 		{
 			InnerConeAngle = Math::DegToRad(aAngleDegrees);
+			if (InnerConeAngle > OuterConeAngle)
+				std::swap(InnerConeAngle, OuterConeAngle);
 		}
 
 		void SetOuterConeAngleDegrees(float aAngleDegrees) noexcept
 		{
 			OuterConeAngle = Math::DegToRad(aAngleDegrees);
+			if (OuterConeAngle < InnerConeAngle)
+				std::swap(OuterConeAngle, InnerConeAngle);
 		}
 
 	private:

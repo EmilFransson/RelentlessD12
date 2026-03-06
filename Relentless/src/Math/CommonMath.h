@@ -45,6 +45,7 @@ namespace Relentless
 	namespace Math
 	{
 		constexpr float PI = 3.14159265358979323846f;
+		constexpr float PI_DIV_2 = 1.57079632679489661923f;
 		constexpr float PI_DIV_4 = 0.78539816339744830961f;
 		constexpr float TAU = PI * 2.0f;
 		constexpr float EPSILON = 1e-6f;
@@ -247,6 +248,17 @@ namespace Relentless
 		NO_DISCARD inline float Cos(float aRadians) noexcept
 		{
 			return std::cos(aRadians);
+		}
+
+		constexpr inline Quaternion EulerDegreesToQuaternion_YawPitchRoll(const Vector3& aEulerDegrees) noexcept
+		{
+			const float yaw = Math::DegToRad(aEulerDegrees.y);
+			const float pitch = Math::DegToRad(aEulerDegrees.x);
+			const float roll = Math::DegToRad(aEulerDegrees.z);
+
+			Quaternion quat = Quaternion::CreateFromYawPitchRoll(yaw, pitch, roll);
+			quat.Normalize();
+			return quat;
 		}
 
 		namespace Photometry

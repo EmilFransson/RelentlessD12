@@ -6,11 +6,11 @@
 
 namespace Relentless
 {
-	class DetailPropertyRow2 : public ITableRow
+	class DetailPropertyRow : public ITableRow
 	{
 	public:
-		DetailPropertyRow2() noexcept;
-		virtual ~DetailPropertyRow2() noexcept override;
+		DetailPropertyRow() noexcept;
+		virtual ~DetailPropertyRow() noexcept override;
 
 		const Color& GetBackgroundColor() const noexcept override;
 		uint32 GetNumColumns() noexcept override;

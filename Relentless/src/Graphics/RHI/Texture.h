@@ -236,6 +236,8 @@ namespace Relentless
 		NO_DISCARD RenderTargetView* GetRTV(uint32 subResourceIndex = 0) const noexcept;
 		NO_DISCARD uint32 GetRTVIndex(uint32 subResourceIndex = 0) const noexcept;
 
+		NO_DISCARD bool HasRTV(uint32 subResourceIndex = 0) const noexcept;
+
 		void SetDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex = 0u) noexcept;
 		void SetSRV(Ref<ShaderResourceView> pSRV) noexcept;
 		void SetRTV(Ref<RenderTargetView> pRTV, uint32 subResourceIndex = 0u) noexcept;

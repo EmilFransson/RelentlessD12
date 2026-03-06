@@ -1,7 +1,7 @@
 #pragma once
 #include "UI/Widgets/IWidget.h"
 
-#include "DetailNode.h"
+#include "UI/Nodes/DetailNode.h"
 
 #include "LayoutBuilders/IDetailLayoutBuilder.h"
 
@@ -21,8 +21,6 @@ namespace Relentless
 		template<typename ContextType>
 		NO_DISCARD ContextType& GetContext() noexcept;
 
-		NO_DISCARD bool IsLocked() const noexcept;
-
 		virtual void OnRender() noexcept override;
 		
 		template<typename InspectedType>
@@ -31,18 +29,19 @@ namespace Relentless
 		void RequestRefresh() noexcept;
 
 		void SetContext(void* aContext) noexcept;
+	protected:
+		virtual void OnPreRequestSource(MAYBE_UNUSED bool aFromManualTrigger) noexcept {};
 	private:
 		virtual void OnExpandCollapseButtonClicked(MAYBE_UNUSED Button* aButton, Ref<DetailNode> aItem) noexcept;
 		NO_DISCARD virtual Ref<ITableRow> OnGenerateRow(const Ref<DetailNode>& aItem) noexcept;
 		virtual void OnGetChildren(const Ref<DetailNode>& aParent, std::vector<Ref<DetailNode>>& outChildren) noexcept;
-		NO_DISCARD virtual const std::vector<Ref<DetailNode>>* OnRequestSource() noexcept;
+		NO_DISCARD const std::vector<Ref<DetailNode>>* OnRequestSource() noexcept;
 	protected:
 		std::vector<Ref<DetailNode>> m_RootNodes;
 		Ref<TreeView<Ref<DetailNode>>> m_pDetailsTreeView = nullptr;
-		bool m_ShouldRefresh = true;
 	private:
-		bool m_IsLocked = false;
 		void* m_pContext = nullptr;
+		bool m_ManualRefreshTriggered = false;
 	};
 
 	template<typename ContextType>

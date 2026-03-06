@@ -1,5 +1,5 @@
 #pragma once
-#include "UI/OutlinerTableRow.h"	
+#include "UI/Views/Outliner/TableRows/OutlinerTableRow.h"	
 
 namespace Relentless
 {

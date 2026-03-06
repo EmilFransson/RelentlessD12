@@ -18,7 +18,7 @@ namespace Relentless
 		NO_DISCARD virtual bool DiffersFromDefault() const noexcept override;
 
 		NO_DISCARD virtual uint32 GetItemCount() const noexcept;
-		NO_DISCARD virtual EPropertyAccessResult GetValue(DataType& aOutValue) const noexcept override;
+		virtual EPropertyAccessResult GetValue(DataType& aOutValue) const noexcept override;
 
 		virtual void ResetToDefault() noexcept override;
 

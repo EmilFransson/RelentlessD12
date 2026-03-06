@@ -106,7 +106,7 @@ namespace Relentless
 		std::array<ShaderDesc, (size_t)ShaderType::Max> m_ShaderInfo;
 	};
 
-	class PipelineState : public DeviceObject
+	class RLS_API PipelineState : public DeviceObject
 	{
 	public:
 		PipelineState(GraphicsDevice* pDevice, const PipelineStateInitializer& pipelineStateInitializer) noexcept;

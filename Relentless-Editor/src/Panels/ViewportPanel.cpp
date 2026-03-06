@@ -1,8 +1,10 @@
 #include "ViewportPanel.h"
-#include <Core/Editor.h>
+#include "Core/Editor.h"
 
 #include "UI/Widgets/Button.h"
+#include "UI/Widgets/HorizontalBox.h"
 #include "UI/Widgets/Spacer.h"
+#include "UI/Widgets/VerticalBox.h"
 #include "UI/Views/Details/ViewportDetailsView.h"
 
 #include "Subsystem/EditorViewportSubsystem.h"
@@ -38,13 +40,13 @@ namespace Relentless
 		return IsCameraValidClientAreaHovered();
 	}
 
-	Ref<VerticalBoxEx> ViewportPanel::BuildWindowLayout() noexcept
+	Ref<VerticalBox> ViewportPanel::BuildWindowLayout() noexcept
 	{
-		Ref<VerticalBoxEx> pRoot = new VerticalBoxEx();
+		Ref<VerticalBox> pRoot = new VerticalBox();
 
 		//Toolbar box:
 		{
-			HorizontalBoxEx* pToolbarBox = pRoot->AddWidget(RLS_NEW HorizontalBoxEx());
+			HorizontalBox* pToolbarBox = pRoot->AddWidget(RLS_NEW HorizontalBox());
 			pToolbarBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			pToolbarBox->SetVerticalSizePolicy(ESizePolicy::Fixed);
 			pToolbarBox->SetSize(Vector2(-1.0f, 30.0f));
@@ -62,13 +64,13 @@ namespace Relentless
 				->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		} 
 
-		HorizontalBoxEx* pCanvasAndSettingsBox = pRoot->AddWidget(RLS_NEW HorizontalBoxEx());
+		HorizontalBox* pCanvasAndSettingsBox = pRoot->AddWidget(RLS_NEW HorizontalBox());
 		pCanvasAndSettingsBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		pCanvasAndSettingsBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
 
 		//Canvas box:
 		{
-			HorizontalBoxEx* pCanvasBox = pCanvasAndSettingsBox->AddWidget(RLS_NEW HorizontalBoxEx());
+			HorizontalBox* pCanvasBox = pCanvasAndSettingsBox->AddWidget(RLS_NEW HorizontalBox());
 			pCanvasBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			pCanvasBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
 
@@ -84,10 +86,10 @@ namespace Relentless
 		}
 		//Viewport Settings box:
 		{
-			m_pSettingsBox = pCanvasAndSettingsBox->AddWidget(RLS_NEW VerticalBoxEx());
+			m_pSettingsBox = pCanvasAndSettingsBox->AddWidget(RLS_NEW VerticalBox());
 			m_pSettingsBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 			m_pSettingsBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
-			m_pSettingsBox->SetSize(Vector2(350.0f, -1.0f));
+			m_pSettingsBox->SetSize(Vector2(450.0f, -1.0f));
 			m_pSettingsBox->SetIsVisible(false);
 
 			m_pViewportDetailsView = m_pSettingsBox->AddWidget(RLS_NEW ViewportDetailsView(this));

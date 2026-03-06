@@ -19,50 +19,22 @@ namespace Relentless
 		pHeaderRow->SetIsVisible(false);
 
 		Column column;
-		column.pLabel = new Label("First");
+		column.pBox->AddWidget(new Label("First"));
 		pHeaderRow->AddColumn(column);
 
 		m_pBox = new HorizontalBox();
+		m_pBox->SetPadding(FloatRect(20.0f, 10.0f, 20.0f, 10.0f));
 
 		m_pAssetsTreeView = m_pBox->AddWidget(new TileView<Ref<ContentBrowserItem>>(pHeaderRow));
-		m_pAssetsTreeView->SetMargin(FloatRect(20.0f, 10.0f, 0.0f, 0.0f));
 
 		m_pAssetsTreeView
 			->SetItemWidth(100.0f)
 			->SetItemHeight(170.0f)
 			->OnRequestSource(this, &AssetView::OnRequestSource)
 			->OnGenerateRow(this, &AssetView::OnGenerateRow)
-			->OnSelectionChanged(this, &AssetView::OnSelectionChanged);
-
-		//std::vector<AssetImportTask> tasks;
-		//{
-		//	AssetImportTask& task = tasks.emplace_back();
-		//	task.FilePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/cube_256x256.png");
-		//
-		//	Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
-		//	pFactory->SetImportAsSRGB(true);
-		//	task.pFactory = pFactory;
-		//}
-		//{
-		//	AssetImportTask& task = tasks.emplace_back();
-		//	task.FilePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/folder_256x256.png");
-		//
-		//	Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
-		//	pFactory->SetImportAsSRGB(true);
-		//	task.pFactory = pFactory;
-		//}
-		//
-		//AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
-		//std::vector<AssetImportResult> importResults = assetToolsModule.Import(tasks);
-		//
-		//m_MeshIconHandle = importResults[0].Handle;
-		//m_FolderIconHandle = importResults[1].Handle;
-		//
-		//Ref<Texture2D> pMeshIconTexture2D = AssetManager::Get<Texture2D>(m_MeshIconHandle);
-		//Ref<Texture2D> pFolderIconTexture2D = AssetManager::Get<Texture2D>(m_FolderIconHandle);
-		//
-		//pMeshIconTexture2D->CreateResource();
-		//pFolderIconTexture2D->CreateResource();
+			->OnSelectionChanged(this, &AssetView::OnSelectionChanged)
+			->SetHorizontalSizePolicy(ESizePolicy::Stretch)
+			->SetVerticalSizePolicy(ESizePolicy::Stretch);
 
 		ContentBrowserModule& contentBrowser = ModuleManager::LoadModuleChecked<ContentBrowserModule>();
 		contentBrowser.GetAssetThumbnailPool()->OnThumbnailRegenerated.Connect(this, &AssetView::OnThumbnailRegenerated);
@@ -141,6 +113,7 @@ namespace Relentless
 
 	void AssetView::OnRender() noexcept
 	{
+		m_pBox->AssignSize(GetAssignedSize());
 		m_pBox->Render();
 	}
 

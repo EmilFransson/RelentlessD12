@@ -12,7 +12,7 @@ namespace Relentless
 		NumericEntryBox() noexcept;
 		virtual ~NumericEntryBox() noexcept = default;
 
-		NumericEntryBox* Bind(PropertyHandle<DataType>* aPropertyHandle) noexcept;
+		NumericEntryBox* Bind(Ref<PropertyHandle<DataType>> aPropertyHandle) noexcept;
 
 		template<typename T>
 		NumericEntryBox* OnValueChanged(T&& aCallback);
@@ -36,6 +36,7 @@ namespace Relentless
 		NumericEntryBox* SetMinValue(DataType aValue) noexcept;
 		NumericEntryBox* SetSteppingEnabled(bool aState) noexcept;
 		NumericEntryBox* SetSuffix(StringView aSuffix) noexcept;
+		NumericEntryBox* SetDisplayText(StringView aSuffix) noexcept;
 
 		template<typename T>
 		NumericEntryBox* Value(T&& aCallback);
@@ -49,7 +50,7 @@ namespace Relentless
 		void SetActive(bool aState) noexcept;
 	private:
 		String m_Format;
-		String m_FormatAndSuffix;
+		String m_DisplayText;
 		String m_Suffix;
 		Callback<DataType()> m_ValueCallback;
 		Callback<void(DataType)> m_OnValueChanged;
@@ -62,35 +63,14 @@ namespace Relentless
 		bool m_IsActive = false;
 		bool m_StepButtonsEnabled = true;
 
-		PropertyHandle<DataType>* m_pPropertyHandle = nullptr;
+		Ref<PropertyHandle<DataType>> m_pPropertyHandle = nullptr;
 	};
-
-	template<typename DataType>
-	NumericEntryBox<DataType>* NumericEntryBox<DataType>::SetButtonActiveColor(const Color& aColor) noexcept
-	{
-		this->m_Style.SetStyleColor(ImGuiCol_ButtonActive, ImVec4(aColor.R(), aColor.G(), aColor.B(), aColor.A()));
-		return this;
-	}
-
-	template<typename DataType>
-	NumericEntryBox<DataType>* NumericEntryBox<DataType>::SetButtonBackgroundColor(const Color& aColor) noexcept
-	{
-		this->m_Style.SetStyleColor(ImGuiCol_Button, ImVec4(aColor.R(), aColor.G(), aColor.B(), aColor.A()));
-		return this;
-	}
-
-	template<typename DataType>
-	NumericEntryBox<DataType>* NumericEntryBox<DataType>::SetButtonHoverColor(const Color& aColor) noexcept
-	{
-		this->m_Style.SetStyleColor(ImGuiCol_ButtonHovered, ImVec4(aColor.R(), aColor.G(), aColor.B(), aColor.A()));
-		return this;
-	}
 
 	template<typename DataType>
 	NumericEntryBox<DataType>::NumericEntryBox() noexcept
 	{
 		m_Format = String(ImGuiHelpers::GetTypeFormat<DataType>());
-		m_FormatAndSuffix = m_Format;
+		m_DisplayText = m_Format;
 		m_MinValue = std::numeric_limits<DataType>::lowest() / (DataType)2;
 		m_MaxValue = std::numeric_limits<DataType>::max() / (DataType)2;
 
@@ -111,7 +91,7 @@ namespace Relentless
 	}
 
 	template<typename DataType>
-	NumericEntryBox<DataType>* NumericEntryBox<DataType>::Bind(PropertyHandle<DataType>* aPropertyHandle) noexcept
+	NumericEntryBox<DataType>* NumericEntryBox<DataType>::Bind(Ref<PropertyHandle<DataType>> aPropertyHandle) noexcept
 	{
 		m_pPropertyHandle = aPropertyHandle;
 		return this;
@@ -156,9 +136,37 @@ namespace Relentless
 	}
 
 	template<typename DataType>
+	NumericEntryBox<DataType>* NumericEntryBox<DataType>::SetButtonActiveColor(const Color& aColor) noexcept
+	{
+		this->m_Style.SetStyleColor(ImGuiCol_ButtonActive, ImVec4(aColor.R(), aColor.G(), aColor.B(), aColor.A()));
+		return this;
+	}
+
+	template<typename DataType>
+	NumericEntryBox<DataType>* NumericEntryBox<DataType>::SetButtonBackgroundColor(const Color& aColor) noexcept
+	{
+		this->m_Style.SetStyleColor(ImGuiCol_Button, ImVec4(aColor.R(), aColor.G(), aColor.B(), aColor.A()));
+		return this;
+	}
+
+	template<typename DataType>
+	NumericEntryBox<DataType>* NumericEntryBox<DataType>::SetButtonHoverColor(const Color& aColor) noexcept
+	{
+		this->m_Style.SetStyleColor(ImGuiCol_ButtonHovered, ImVec4(aColor.R(), aColor.G(), aColor.B(), aColor.A()));
+		return this;
+	}
+
+	template<typename DataType>
 	NumericEntryBox<DataType>* NumericEntryBox<DataType>::SetDelta(DataType aDelta) noexcept
 	{
 		m_Delta = aDelta;
+		return this;
+	}
+
+	template<typename DataType>
+	NumericEntryBox<DataType>* NumericEntryBox<DataType>::SetDisplayText(StringView aDisplayText) noexcept
+	{
+		m_DisplayText = String(aDisplayText);
 		return this;
 	}
 
@@ -187,7 +195,7 @@ namespace Relentless
 	NumericEntryBox<DataType>* NumericEntryBox<DataType>::SetSuffix(StringView aSuffix) noexcept
 	{
 		m_Suffix = aSuffix;
-		m_FormatAndSuffix = m_Format + m_Suffix;
+		m_DisplayText = m_Format + m_Suffix;
 		return this;
 	}
 
@@ -252,7 +260,7 @@ namespace Relentless
 
 		constexpr ImGuiDataType dataType = ImGuiHelpers::ToImGuiDataType<DataType>();
 
-		if (ImGui::InputScalar("##NumericEntryBox", dataType, &value, m_StepButtonsEnabled ? &m_Delta : nullptr, nullptr, accessResult == EPropertyAccessResult::MixedValues ? "Mixed" : m_FormatAndSuffix.c_str(), this->GetFlags()))
+		if (ImGui::InputScalar("##NumericEntryBox", dataType, &value, m_StepButtonsEnabled ? &m_Delta : nullptr, nullptr, accessResult == EPropertyAccessResult::MixedValues ? "Mixed" : m_DisplayText.c_str(), this->GetFlags()))
 		{
 			if (value >= m_MinValue && value <= m_MaxValue)
 			{

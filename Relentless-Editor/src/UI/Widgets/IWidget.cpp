@@ -107,6 +107,12 @@ namespace Relentless
 		m_Margin = aMargin;
 	}
 
+	IBaseWidget* IBaseWidget::SetPadding(const FloatRect& aPadding) noexcept
+	{
+		m_Padding = aPadding;
+		return this;
+	}
+
 	void IBaseWidget::SetSize(const Vector2& aSize) noexcept
 	{
 		m_FixedSize = aSize;

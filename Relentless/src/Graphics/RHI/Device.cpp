@@ -605,8 +605,8 @@ namespace Relentless
 		case TextureType::TextureCube:
 		{
 			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-			srvDesc.TextureCube.MostDetailedMip = 0;
-			srvDesc.TextureCube.MipLevels = 1;
+			srvDesc.TextureCube.MipLevels = textureSRVDesc.NumMipLevels;
+			srvDesc.TextureCube.MostDetailedMip = textureSRVDesc.MipLevel;
 			srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
 			break;
 		}

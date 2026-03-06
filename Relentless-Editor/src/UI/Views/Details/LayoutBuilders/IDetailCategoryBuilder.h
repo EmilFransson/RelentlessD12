@@ -1,11 +1,11 @@
 #pragma once
-#include "UI/Views/Details/DetailNode.h"
-
 #include "DetailPropertyRowBuilder.h"
 
 #include "Property/PropertyHandle.h"
 #include "Property/MultiPropertyHandle.h"
 #include "Property/EntityPropertyHandle.h"
+
+#include "UI/Nodes/DetailNode.h"
 
 namespace Relentless
 {

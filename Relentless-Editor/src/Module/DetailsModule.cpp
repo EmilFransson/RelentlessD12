@@ -1,8 +1,13 @@
 #include "DetailsModule.h"
 
-#include "UI/Views/Details/Customizations/ViewportCameraDetailCustomization.h"
-#include "UI/Views/Details/Customizations/ViewportTestDetailCustomization.h"
-#include "UI/Views/Details/ViewportDetailsContext.h"
+#include "UI/Views/Details/Customizations/Viewport/ViewportCameraDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/TransformComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/DirectionalLightComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/PointLightComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/SpotLightComponentDetailCustomization.h"
+
+#include "UI/Views/Details/Context/EntityDetailsContext.h"
+#include "UI/Views/Details/Context/ViewportDetailsContext.h"
 
 namespace Relentless
 {
@@ -13,7 +18,13 @@ namespace Relentless
 
 	void DetailsModule::OnLoad()
 	{
+		//Viewport Details:
 		m_DetailCustomizationRegistry.Register<ViewportDetailsContext, ViewportCameraDetailCustomization>();
-		m_DetailCustomizationRegistry.Register<ViewportDetailsContext, ViewportTestDetailCustomization>();
+
+		//Entity Details:
+		m_DetailCustomizationRegistry.Register<EntityDetailsContext, TransformComponentDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<EntityDetailsContext, DirectionalLightComponentDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<EntityDetailsContext, PointLightComponentDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<EntityDetailsContext, SpotLightComponentDetailCustomization>();
 	}
 }

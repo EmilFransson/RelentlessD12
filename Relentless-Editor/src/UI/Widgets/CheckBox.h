@@ -4,10 +4,14 @@
 
 namespace Relentless
 {
+	template<typename DataType> class PropertyHandle;
+
 	class CheckBox : public IStylableWidget<CheckBox>
 	{
 	public:
 		CheckBox() noexcept;
+
+		CheckBox* Bind(Ref<PropertyHandle<bool>> aPropertyHandle) noexcept;
 
 		template<typename InstanceType>
 		CheckBox* Value(InstanceType* instance, bool(InstanceType::* method)() const) noexcept
@@ -45,5 +49,6 @@ namespace Relentless
 		Callback<void(bool isChecked)> m_OnCheckStateChanged;
 
 		bool m_Hovered = false;
+		Ref<PropertyHandle<bool>> m_pPropertyHandle = nullptr;
 	};
 }

@@ -26,10 +26,10 @@ namespace Relentless
 
 		pEditor->OnSceneChange.Connect(this, &EntityOutlinerView::OnPreSceneChanged);
 		pEditor->OnSceneChanged.Connect(this, &EntityOutlinerView::OnSceneChanged);
-
+		
 		SelectionSubsystem* pSelection = pEditor->GetSubsystem<SelectionSubsystem>();
 		pSelection->OnSelectionChanged.Connect(this, &EntityOutlinerView::OnSelectionChangedExternally);
-
+		
 		EntityFoldersSubsystem* pFoldersSubsystem = pEditor->GetSubsystem<EntityFoldersSubsystem>();
 		
 		pFoldersSubsystem->OnEntityFolderCreated.Connect(this, &EntityOutlinerView::OnFolderCreated);
@@ -43,32 +43,33 @@ namespace Relentless
 
 		{
 			Column column;
-			column.pLabel = new Label(ICON_FA_EYE);
-			column.pLabel
+			column.pBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);
+			column.pBox->AddWidget(new Label(ICON_FA_EYE))
 				->SetAlpha(0.7f)
 				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
-				->SetTooltipText("Visibility");
+				->SetTooltipText("Visibility")
+				->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
 			column.Flags = ImGuiTableColumnFlags_NoSort | ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize;
-			column.Weight = 22.0f;
+			column.Weight = 32.0f;
 
 			pHeaderRow->AddColumn(column);
 		}
 		{
 			Column column;
-			column.pLabel = new Label("Item Label");
-			column.pLabel
+			column.pBox->AddWidget(new Label("Item Label"))
 				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
-				->SetTooltipText("Item Label");
+				->SetTooltipText("Item Label")
+				->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
 			pHeaderRow->AddColumn(column);
 		}
 		{
 			Column column;
-			column.pLabel = new Label("Type");
-			column.pLabel
+			column.pBox->AddWidget(new Label("Type"))
 				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
-				->SetTooltipText("Type");
+				->SetTooltipText("Type")
+				->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
 			pHeaderRow->AddColumn(column);
 		}
@@ -86,72 +87,54 @@ namespace Relentless
 			->OnDebugItemToString(this, &EntityOutlinerView::OnDebugItemToString)
 			->OnSelectionChanged(this, &EntityOutlinerView::OnSelectionChanged)
 			->OnContextMenuOpening(this, &EntityOutlinerView::OnContextMenuOpening)
-			->OnItemScrolledIntoView(this, &EntityOutlinerView::OnItemScrolledIntoView);
+			->OnItemScrolledIntoView(this, &EntityOutlinerView::OnItemScrolledIntoView)
+			->SetHorizontalSizePolicy(ESizePolicy::Stretch)
+			->SetVerticalSizePolicy(ESizePolicy::Stretch);
 
 		m_pOutlinerTreeView->OnTreeRefreshed.Connect(this, &EntityOutlinerView::OnOutlinerTreeRefreshed);
 
-		m_pMainBox = new VerticalBox();
-		
-		Ref<VerticalBox> pTopVerticalBox = new VerticalBox();
-		Ref<VerticalBox> pMiddleVerticalBox = new VerticalBox({}, true);
-		pMiddleVerticalBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		m_pMainBox = RLS_NEW VerticalBox();
 
-		Ref<HorizontalBox> pHorizontalBox = new HorizontalBox();
-		Ref<HorizontalBox> pLeftBox = new HorizontalBox({}, true);
-		pLeftBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		Ref<HorizontalBox> pRightBox = new HorizontalBox({}, true);
-
-		pHorizontalBox->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 5.0f));
-
-		pLeftBox->AddWidget(new SearchBar("Search...", true))
+		Ref<HorizontalBox> pTopHorizontalBox = m_pMainBox->AddWidget(RLS_NEW HorizontalBox());
+		pTopHorizontalBox->AddWidget(RLS_NEW SearchBar("Search...", true))
 			->OnTextChanged(this, &EntityOutlinerView::OnSearchTextChanged)
 			->OnTextCommitted(this, &EntityOutlinerView::OnSearchTextCommitted)
-			->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+			->SetHorizontalSizePolicy(ESizePolicy::Stretch)
+			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
-		pRightBox->AddWidget(new Button(ICON_FA_FOLDER_PLUS))
+		pTopHorizontalBox->AddWidget(new Button(ICON_FA_FOLDER_PLUS))
 			->OnClicked(this, &EntityOutlinerView::OnCreateNewFolderButtonClicked)
 			->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 			->SetBackgroundColor(Colors::Transparent)
 			->SetActiveColor(Colors::Transparent)
 			->SetHoverColor(Colors::Gray)
 			->SetBorderColor(Colors::Transparent)
-			->SetTooltipText("Create a new folder containing the current selection");
+			->SetTooltipText("Create a new folder containing the current selection")
+			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
-		pRightBox->AddWidget(new Button(ICON_FA_GEAR))
-			->SetFont(ImGui::GetIO().Fonts->Fonts[2])
-			->SetBackgroundColor(Colors::Transparent)
-			->SetActiveColor(Colors::Transparent)
-			->SetHoverColor(Colors::Gray)
-			->SetBorderColor(Colors::Transparent);
+		Ref<VerticalBox> pMiddleVerticalBox2 = m_pMainBox->AddWidget(RLS_NEW VerticalBox());
+		pMiddleVerticalBox2->SetVerticalSizePolicy(ESizePolicy::Stretch);
+		pMiddleVerticalBox2->AddWidget(m_pOutlinerTreeView);
 
-		m_pOutlinerListBox = new HorizontalBox(Vector2(0.0f, 0.0f), true);
-		m_pOutlinerListBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		m_pOutlinerListBox->OnFocusChanged.Connect(this, &EntityOutlinerView::OnFocusChanged);
-		m_pOutlinerListBox->AddWidget(m_pOutlinerTreeView);
+		//m_pOutlinerListBox = new HorizontalBox();
+		//m_pOutlinerListBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		//m_pOutlinerListBox->OnFocusChanged.Connect(this, &EntityOutlinerView::OnFocusChanged);
+		//m_pOutlinerListBox->AddWidget(m_pOutlinerTreeView);
 
-		pHorizontalBox->AddWidget(pLeftBox);
-		pHorizontalBox->AddWidget(pRightBox);
-
-		pTopVerticalBox->AddWidget(pHorizontalBox);
-		pMiddleVerticalBox->AddWidget(m_pOutlinerListBox);
-
-		m_pMainBox->AddWidget(pTopVerticalBox);
-		m_pMainBox->AddWidget(pMiddleVerticalBox);
-
-		Ref<VerticalBox> pBorderBox = new VerticalBox();
-		pBorderBox->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Bottom);
-
-		Border* pBorder = pBorderBox->AddWidget(new Border());
-		HorizontalBox* pInBox = pBorder->SetContent(new HorizontalBox({}, true));
-		pInBox->SetScrollBarsVisible(false);
-		pInBox->SetMouseScrollingEnabled(false);
-		pInBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-
-		pInBox->AddWidget(new Label(""))
-			->SetFont(ImGui::GetIO().Fonts->Fonts[2])
-			->SetPadding(Vector2(10.0f, 10.0f));
-
-		m_pMainBox->AddWidget(pBorderBox);
+		//Ref<VerticalBox> pBorderBox = new VerticalBox();
+		//pBorderBox->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Bottom);
+		//
+		//Border* pBorder = pBorderBox->AddWidget(new Border());
+		//HorizontalBox* pInBox = pBorder->SetContent(new HorizontalBox());
+		//pInBox->SetScrollBarsVisible(false);
+		//pInBox->SetMouseScrollingEnabled(false);
+		//pInBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		//
+		//pInBox->AddWidget(new Label(""))
+		//	->SetFont(ImGui::GetIO().Fonts->Fonts[2])
+		//	->SetPadding(Vector2(10.0f, 10.0f));
+		//
+		//m_pMainBox->AddWidget(pBorderBox);
 
 		m_pFilter = std::make_unique<TextFilterExpressionEvaluator>();
 		m_pPolicies = std::make_unique<EntityOutlinerPolicies>();
@@ -1172,6 +1155,7 @@ namespace Relentless
 	void EntityOutlinerView::OnRender() noexcept
 	{
 		PROFILE_FUNC;
+		m_pMainBox->AssignSize(GetAssignedSize());
 		m_pMainBox->Render();
 	}
 

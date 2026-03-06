@@ -56,6 +56,25 @@ namespace Relentless
 		m_StaticSamplers.push_back(desc);
 	}
 
+	void RootSignature::AddStaticSampler(uint32 aRegisterSlot, D3D12_FILTER aFilter, D3D12_TEXTURE_ADDRESS_MODE aAddressU, D3D12_TEXTURE_ADDRESS_MODE aAddressV, D3D12_TEXTURE_ADDRESS_MODE aAddressW, D3D12_COMPARISON_FUNC aCompareFunc /*= D3D12_COMPARISON_FUNC_ALWAYS*/) noexcept
+	{
+		D3D12_STATIC_SAMPLER_DESC desc{};
+		desc.AddressU = aAddressU;
+		desc.AddressV = aAddressV;
+		desc.AddressW = aAddressW;
+		desc.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+		desc.ComparisonFunc = aCompareFunc;
+		desc.Filter = aFilter;
+		desc.MaxAnisotropy = 16;
+		desc.MaxLOD = FLT_MAX;
+		desc.MinLOD = 0.0f;
+		desc.RegisterSpace = 1;
+		desc.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		desc.ShaderRegister = aRegisterSlot;
+		desc.MipLODBias = 0.0f;
+		m_StaticSamplers.push_back(desc);
+	}
+
 	void RootSignature::Finalize(const char* pName) noexcept
 	{
 		D3D12_ROOT_SIGNATURE_FLAGS flags =
@@ -71,6 +90,7 @@ namespace Relentless
 		AddStaticSampler(staticSamplerRegisterSlot++, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
 		AddStaticSampler(staticSamplerRegisterSlot++, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 		AddStaticSampler(staticSamplerRegisterSlot++, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_BORDER);
+		AddStaticSampler(staticSamplerRegisterSlot++, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 
 		AddStaticSampler(staticSamplerRegisterSlot++, D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
 		AddStaticSampler(staticSamplerRegisterSlot++, D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);

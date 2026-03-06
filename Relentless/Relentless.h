@@ -47,6 +47,7 @@
 #include <src/Module/AssetToolsModule.h>
 #include <src/Module/IModule.h>
 #include <src/Module/ModuleManager.h>
+#include <src/Module/RenderModule.h>
 
 //Graphics:
 #include <src/Graphics/Renderer/Renderer.h>
@@ -57,6 +58,7 @@
 #include <src/Graphics/RHI/ResourceViews.h>
 #include <src/Graphics/RHI/CommandContext.h>
 #include <src/Graphics/RHI/Swapchain.h>
+#include <src/Graphics/Renderer/Service/RenderBakeService.h>
 
 //Assets:
 #include <src/Assets/AssetManager.h>

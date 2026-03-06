@@ -82,21 +82,32 @@ namespace Relentless
 			RLS_ASSERT(renderTargetInfo.pTarget, "[CommandContext::BeginRenderPass] Render Target is invalid.");
 
 			const TextureDesc& desc = renderTargetInfo.pTarget->GetDesc();
+			uint32 rtvIndex = 0u;
+
 			switch (desc.Type)
 			{
 			case TextureType::Texture2D:
 			{
-				for (uint8 mip = 0u; mip < desc.Mips; ++mip)
-					renderTargetInfo.pTarget->SetRTV(GetParent()->CreateRTV(renderTargetInfo.pTarget, TextureRTVDesc(mip, 0u, 1u, 0u)), mip);
+				RLS_ASSERT(renderTargetInfo.ArrayIndex == 0, "ArrayIndex must be 0 for Texture2D.");
+				RLS_ASSERT(renderTargetInfo.MipLevel < desc.Mips, "MipLevel out of range.");
+
+				rtvIndex = renderTargetInfo.MipLevel;
+
+				if (!renderTargetInfo.pTarget->HasRTV(rtvIndex))
+					renderTargetInfo.pTarget->SetRTV(GetParent()->CreateRTV(renderTargetInfo.pTarget, TextureRTVDesc(renderTargetInfo.MipLevel, 0u, 1u, 0u)), rtvIndex);
+				
 				break;
 			}
 			case TextureType::TextureCube:
 			{
-				for (uint8 face = 0u; face < 6; ++face)
-				{
-					for (uint8 mip = 0u; mip < desc.Mips; ++mip)
-						renderTargetInfo.pTarget->SetRTV(GetParent()->CreateRTV(renderTargetInfo.pTarget, TextureRTVDesc(mip, face, 1u, 0u)), (face * desc.Mips) + mip);
-				}
+				RLS_ASSERT(renderTargetInfo.ArrayIndex < 6, "Cubemap face out of range.");
+				RLS_ASSERT(renderTargetInfo.MipLevel < desc.Mips, "MipLevel out of range.");
+
+				rtvIndex = uint32(renderTargetInfo.ArrayIndex) * uint32(desc.Mips) + uint32(renderTargetInfo.MipLevel);
+
+				if (!renderTargetInfo.pTarget->HasRTV(rtvIndex))
+					renderTargetInfo.pTarget->SetRTV(GetParent()->CreateRTV(renderTargetInfo.pTarget, TextureRTVDesc(renderTargetInfo.MipLevel, renderTargetInfo.ArrayIndex, 1u, 0u)), rtvIndex);
+
 				break;
 			}
 			default:
@@ -105,7 +116,7 @@ namespace Relentless
 			}
 
 			D3D12_RENDER_PASS_RENDER_TARGET_DESC& renderTargetDesc = renderTargets[i];
-			renderTargetDesc.cpuDescriptor = renderTargetInfo.pTarget->GetRTV()->GetDescriptorHandle().CPUHandle;
+			renderTargetDesc.cpuDescriptor = renderTargetInfo.pTarget->GetRTV(rtvIndex)->GetDescriptorHandle().CPUHandle;
 
 			if (EnumHasAnyFlags(renderTargetInfo.BeginAccessFlags, RenderTargetAccessFlags::Preserve))
 				renderTargetDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;

@@ -46,11 +46,6 @@ namespace Relentless
 		return pTreeView;
 	}
 
-	bool IDetailsView::IsLocked() const noexcept
-	{
-		return m_IsLocked;
-	}
-
 	void IDetailsView::OnRender() noexcept
 	{
 		m_pDetailsTreeView->Render();
@@ -58,7 +53,8 @@ namespace Relentless
 
 	void IDetailsView::RequestRefresh() noexcept
 	{
-		m_ShouldRefresh = true;
+		m_pDetailsTreeView->RequestTreeRefresh();
+		m_ManualRefreshTriggered = true;
 	}
 
 	void IDetailsView::SetContext(void* aContext) noexcept
@@ -70,8 +66,6 @@ namespace Relentless
 	{
 		const bool isExpanded = m_pDetailsTreeView->GetItemInfo(aItem).IsExpanded;
 		m_pDetailsTreeView->SetItemExpandedState(aItem, !isExpanded);
-
-		m_pDetailsTreeView->RequestTreeRefresh();
 	}
 
 	Ref<ITableRow> IDetailsView::OnGenerateRow(const Ref<DetailNode>& aItem) noexcept
@@ -96,6 +90,9 @@ namespace Relentless
 
 	const std::vector<Ref<DetailNode>>* IDetailsView::OnRequestSource() noexcept
 	{
+		OnPreRequestSource(m_ManualRefreshTriggered);
+		m_ManualRefreshTriggered = false;
+
 		return &m_RootNodes;
 	}
 

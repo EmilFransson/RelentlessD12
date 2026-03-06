@@ -46,4 +46,27 @@ namespace Relentless
 		Fence* m_pFence = nullptr;
 		uint64 m_FenceValue = 0u;
 	};
+
+	struct RenderJobState : public RefCounted<RenderJobState>
+	{
+		SyncPoint Sync;
+		std::mutex Mutex;
+		std::condition_variable ConditionVariable;
+		bool Submitted = false;
+	};
+
+	class RLS_API RenderJobHandle
+	{
+	public:
+		RenderJobHandle(const Ref<RenderJobState>& aRenderJobState) noexcept;
+		RenderJobHandle() noexcept = default;
+		virtual ~RenderJobHandle() noexcept = default;
+
+		NO_DISCARD bool IsComplete() const noexcept;
+		NO_DISCARD bool IsSubmitted() const noexcept;
+
+		void Wait() noexcept;
+	private:
+		Ref<RenderJobState> m_pRenderJobState = nullptr;
+	};
 }

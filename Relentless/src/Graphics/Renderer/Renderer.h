@@ -28,6 +28,8 @@ namespace Relentless
 {
 	class Scene;
 
+	enum class ERenderJobType : uint8 { None = 0u, Raster, Compute };
+
 	class RLS_API Renderer
 	{
 	public:
@@ -50,12 +52,22 @@ namespace Relentless
 			m_OnRequestBRDFLut = [instance, method]() { return (instance->*method)(); };
 		}
 		
+		static RenderJobHandle SubmitComputeJob(Callback<void(CommandContext&)>&& aCallback) noexcept;
+		static RenderJobHandle SubmitRenderJob(Callback<void(CommandContext&)>&& aCallback) noexcept;
+
 	private:
 		void GetViewUniforms(const RenderView& renderView, ShaderInterop::ViewUniforms& outViewUniform) noexcept;
 		void InitializePipelines();
 		void UploadSceneData(CommandContext& commandContext) noexcept;
 		void UploadViewUniforms(CommandContext& commandContext, RenderView& view) noexcept;
 	private:
+		struct RenderJob
+		{
+			Callback<void(CommandContext&)> Callback;
+			ERenderJobType Type = ERenderJobType::None;
+			Ref<RenderJobState> State = nullptr;
+		};
+
 		GraphicsDevice* m_pDevice = nullptr;
 		RenderView m_MainView{};
 
@@ -71,6 +83,8 @@ namespace Relentless
 
 		uint32 m_Frame = 0u;
 
+		inline static std::vector<RenderJob> s_EnqueuedRenderJobs;
+		inline static std::vector<RenderJob> s_InProgressRenderJobs;
 		std::vector<Batch> m_Batches;
 
 		Ref<Texture> m_pColortarget = nullptr;
@@ -89,7 +103,7 @@ namespace Relentless
 		UniquePtr<Outlines> m_pOutlines = nullptr;
 		UniquePtr<AutoExposure> m_pAutoExposure = nullptr;
 
-		AssetHandle m_BRDFLutTextureHandle;
+		AssetHandle m_BRDFLutTextureHandle = AssetHandle::INVALID;
 		
 		Ref<Buffer> m_EntityIDReadbackBuffer = nullptr;
 		
@@ -97,5 +111,7 @@ namespace Relentless
 		std::queue<SyncPoint> m_EntityIDSyncs;
 
 		Callback<AssetHandle()> m_OnRequestBRDFLut;
+
+		inline static std::mutex m_RenderJobMutex;
 	};
 }

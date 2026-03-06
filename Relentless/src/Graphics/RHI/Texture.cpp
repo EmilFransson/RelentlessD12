@@ -105,6 +105,11 @@ namespace Relentless
 		return m_RTVs[subResourceIndex]->GetDescriptorIndex();
 	}
 
+	bool Texture::HasRTV(uint32 subResourceIndex /*= 0*/) const noexcept
+	{
+		return subResourceIndex < m_RTVs.size();
+	}
+
 	void Texture::SetDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex) noexcept
 	{
 		if (subResourceIndex >= m_DSVs.size())

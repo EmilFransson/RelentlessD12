@@ -1,6 +1,9 @@
 #pragma once
 #include <Relentless.h>
+
 #include "IWidget.h"
+
+#include "Property/PropertyHandle.h"
 
 namespace Relentless
 {
@@ -11,11 +14,14 @@ namespace Relentless
 
 		struct SelectionInfo
 		{
-			const char* Name = nullptr;
+			const char* Name = "";
 			int Index = 0;
 		};
 		
 		ComboBox* AddSelectables(Span<const char*> selectables) noexcept;
+
+		ComboBox* Bind(PropertyHandle<int>* aPropertyHandle) noexcept;
+
 		NO_DISCARD const char* GetSelectedItem() const;
 		NO_DISCARD int GetSelectedIndex() const;
 
@@ -52,5 +58,7 @@ namespace Relentless
 		std::vector<const char*> m_Selectables;
 		SelectionInfo m_CurrentSelection;
 		bool m_IsHovered = false;
+
+		PropertyHandle<int>* m_pPropertyHandle = nullptr;
 	};
 }

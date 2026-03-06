@@ -16,7 +16,7 @@ namespace Relentless
 		SpinBox() noexcept;
 		virtual ~SpinBox() noexcept;
 
-		SpinBox* Bind(PropertyHandle<DataType>* aPropertyHandle) noexcept;
+		SpinBox* Bind(Ref<PropertyHandle<DataType>> aPropertyHandle) noexcept;
 
 		template<typename T>
 		SpinBox* OnValueChanged(T&& aCallback);
@@ -60,7 +60,7 @@ namespace Relentless
 		bool m_IsActive = false;
 		bool m_DrawColorIndicator = false;
 
-		PropertyHandle<DataType>* m_pPropertyHandle = nullptr;
+		Ref<PropertyHandle<DataType>> m_pPropertyHandle = nullptr;
 	};
 
 	template<typename DataType>
@@ -89,7 +89,7 @@ namespace Relentless
 	}
 
 	template<typename DataType>
-	SpinBox<DataType>* SpinBox<DataType>::Bind(PropertyHandle<DataType>* aPropertyHandle) noexcept
+	SpinBox<DataType>* SpinBox<DataType>::Bind(Ref<PropertyHandle<DataType>> aPropertyHandle) noexcept
 	{
 		m_pPropertyHandle = aPropertyHandle;
 		return this;
@@ -132,29 +132,20 @@ namespace Relentless
 			value = m_ValueCallback();
 
 		constexpr ImGuiDataType dataType = ImGuiHelpers::ToImGuiDataType<DataType>();
-		bool isUsing = false;
-		
-		if (accessResult == EPropertyAccessResult::MixedValues)
-		{
-			constexpr ImGuiInputTextFlags inputflags = ImGuiInputTextFlags_CharsScientific | ImGuiInputTextFlags_CharsNoBlank;
-			isUsing = ImGui::InputScalar("##NumericEntryBox", dataType, &value, nullptr, nullptr, "Mixed", inputflags);
-		}
-		else
-		{
-			isUsing = ImGui::DragScalar("##SpinBox", dataType, &value, (float)m_Delta, &m_MinValue, &m_MaxValue, m_FormatAndSuffix.c_str(), this->GetFlags());
+		bool isUsing = ImGui::DragScalar("##SpinBox", dataType, &value, (float)m_Delta, &m_MinValue, &m_MaxValue, m_FormatAndSuffix.c_str(), this->GetFlags());
 
-			if (m_MouseDelta != Vector2i::Zero())
-			{
-				value += (m_Delta * (DataType)m_MouseDelta.x);
-				value = Math::Max(value, m_MinValue);
-				value = Math::Min(value, m_MaxValue);
-				m_MouseDelta = Vector2i::Zero();
-				isUsing = true;
-			}
-
-			if (this->m_IsHovered)
-				ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_ResizeEW);
+		if (m_MouseDelta != Vector2i::Zero())
+		{
+			value += (m_Delta * (DataType)m_MouseDelta.x);
+			value = Math::Max(value, m_MinValue);
+			value = Math::Min(value, m_MaxValue);
+			m_MouseDelta = Vector2i::Zero();
+			isUsing = true;
 		}
+
+		if (this->m_IsHovered)
+			ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_ResizeEW);
+	
 
 		if (isUsing)
 		{

@@ -2,15 +2,21 @@
 
 namespace Relentless
 {
-	VerticalBox::VerticalBox(const Vector2 aSize, bool aIsChildRegion) noexcept
-		: IWidgetContainer<VerticalBox>(aSize, aIsChildRegion)
-	{
-	}
-
 	Vector2 VerticalBox::ReportSize() const noexcept
 	{
-		if (GetHorizontalSizePolicy() == ESizePolicy::Fixed)
-			return m_Size;
+		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();
+		const ESizePolicy verticalSizePolicy = GetVerticalSizePolicy();
+		const bool isFixedWidth = horizontalSizePolicy == ESizePolicy::Fixed;
+		const bool isFixedHeight = verticalSizePolicy == ESizePolicy::Fixed;
+
+		Vector2 size = Vector2::Zero;
+		if (isFixedWidth)
+			size.x = GetFixedWidth();
+		if (isFixedHeight)
+			size.y = GetFixedHeight();
+
+		if (isFixedWidth && isFixedHeight)
+			return size;
 
 		float totalHeight = 0.0f;
 		float maxWidth = 0.0f;
@@ -21,11 +27,11 @@ namespace Relentless
 			if (!pWidget->IsVisible())
 				continue;
 
-			const Vector2 size = pWidget->ReportSize();
+			const Vector2 widgetSize = pWidget->ReportSize();
 			const FloatRect margin = pWidget->GetMargin();
 
-			totalHeight += (size.y + margin.Top + margin.Bottom);
-			maxWidth = Math::Max(maxWidth, size.x + margin.Left + margin.Right);
+			totalHeight += (widgetSize.y + margin.Top + margin.Bottom);
+			maxWidth = Math::Max(maxWidth, widgetSize.x + margin.Left + margin.Right);
 
 			visibleCount++;
 		}
@@ -37,7 +43,12 @@ namespace Relentless
 		totalHeight += padding.Top + padding.Bottom;
 		maxWidth += padding.Left + padding.Right;
 
-		return Vector2(maxWidth, totalHeight);
+		if (!isFixedWidth)
+			size.x = maxWidth;
+		if (!isFixedHeight)
+			size.y = totalHeight;
+
+		return size;
 	}
 
 	VerticalBox* VerticalBox::SetSpacing(float aSpacing) noexcept
@@ -52,209 +63,201 @@ namespace Relentless
 			return;
 
 		const FloatRect& padding = GetPadding();
-		const ImVec2 basePosition = ImGui::GetCursorPos();
-		ImGui::SetCursorPos({ basePosition.x + padding.Left, basePosition.y + padding.Top });
 
-		ImGuiWindowFlags boxFlags = 0;
-		if (!IsScrollBarsVisible())
-			boxFlags |= ImGuiWindowFlags_NoScrollbar;
+		//Final box size == Assigned size - padding.
+		Vector2 boxSize = GetAssignedSize();
+		boxSize.x -= (padding.Left + padding.Right);
+		boxSize.y -= (padding.Top + padding.Bottom);
+		boxSize.x = Math::Max(boxSize.x, 0.0f);
+		boxSize.y = Math::Max(boxSize.y, 0.0f);
+
+		const ImVec2 baseCursorPos = ImGui::GetCursorPos();
+		ImGui::SetCursorPos(ImVec2(baseCursorPos.x + padding.Left, baseCursorPos.y + padding.Top));
+
+		ImGuiWindowFlags windowFlags = 0;
 		if (!IsMouseScrollingEnabled())
-			boxFlags |= ImGuiWindowFlags_NoScrollWithMouse;
+			windowFlags |= ImGuiWindowFlags_NoScrollWithMouse;
+		if (IsHorizontalScrollBarEnabled())
+			windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
+		if (!IsScrollBarsVisible())
+			windowFlags |= ImGuiWindowFlags_NoScrollbar;
 
-		if (m_IsChildRegion)
+		const ImGuiChildFlags childFlags = 0;
+
+		ScopedStyleVar styleVarScope;
+		styleVarScope.Push(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+		if (!ImGui::BeginChild(ImGui::GetID(this), ImVec2(boxSize.x, boxSize.y), childFlags, windowFlags))
 		{
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-			const Vector2 targetSize = HasAssignedSize() ? GetAssignedSize() : m_Size;
-			const Vector2 innerSize = Vector2(Math::Max(0.0f, targetSize.x - (padding.Left + padding.Right)), Math::Max(0.0f, targetSize.y - (padding.Top + padding.Bottom)));
-
-			ImGui::BeginChild(ImGui::GetID(this), ImVec2(innerSize.x, innerSize.y), false, boxFlags);
+			ImGui::EndChild();
+			return;
 		}
+
+		const bool hasVerticalScroll = IsScrollBarsVisible() && ImGui::GetScrollMaxY() > 0.0f;
+		const bool hasHorizontalScroll = IsScrollBarsVisible() && IsHorizontalScrollBarEnabled() && ImGui::GetScrollMaxX() > 0.0f;
+		const float scrollBarSize = ImGui::GetStyle().ScrollbarSize;
 
 		// ---- MEASURE pass (children desired, with margins) ----
-		struct ChildMeasure
+		struct ResolvedChild
 		{
-			IBaseWidget* pWidget;
-			Vector2 Size;
-			FloatRect Margin;
-			bool Stretch;
+			IBaseWidget* pWidget = nullptr;
+			FloatRect Margin = FloatRect::Zero();
+			Vector2 Size = Vector2::Zero;
+			Vector2 OccupiedSize = Vector2::Zero;
+			bool Stretch = false;
 		};
 
-		std::vector<ChildMeasure> list;
+		std::vector<ResolvedChild> list;
 		list.reserve(m_Widgets.size());
 
-		float sumFixedContentHeight = 0.0f;
-		float sumMarginsY = 0.0f;
-		int   numStretchY = 0;
-		float maxRowWidth = 0.0f; // cross-axis
+		float totalFixedHeight = 0.0f;
+		float rowMaxWidth = 0.0f;
+		uint32 numWidgetsWithStretchPolicy = 0u;
 
-		for (const auto& pWidget : m_Widgets)
+		for (const Ref<IBaseWidget>& pWidget : m_Widgets)
 		{
-			if (!pWidget->IsVisible()) 
+			if (!pWidget->IsVisible())
 				continue;
 
-			ChildMeasure measuredChild
-			{
-				pWidget,
-				pWidget->ReportSize(),
-				pWidget->GetMargin(),
-				(pWidget->GetHorizontalSizePolicy() == ESizePolicy::Stretch),
-			};
+			ResolvedChild& resolved = list.emplace_back();
+			resolved.pWidget = pWidget.Get();
+			resolved.Margin = pWidget->GetMargin();
+			resolved.Size = pWidget->ReportSize();
+			resolved.Stretch = pWidget->GetVerticalSizePolicy() == ESizePolicy::Stretch;
+			resolved.OccupiedSize = Vector2(resolved.Size.x + resolved.Margin.Left + resolved.Margin.Right, resolved.Size.y + resolved.Margin.Top + resolved.Margin.Bottom);
 
-			// primary axis (Y)
-			sumMarginsY += (measuredChild.Margin.Top + measuredChild.Margin.Bottom);
-			if (measuredChild.Stretch) 
-				++numStretchY;
-			else             
-				sumFixedContentHeight += measuredChild.Size.y;
+			if (resolved.Stretch)
+				numWidgetsWithStretchPolicy++;
+			else
+				totalFixedHeight += resolved.OccupiedSize.y;
 
-			// cross axis (X): width is max of content + margins (for alignment/bounds)
-			maxRowWidth = Math::Max(maxRowWidth, measuredChild.Size.x + measuredChild.Margin.Left + measuredChild.Margin.Right);
-
-			list.push_back(measuredChild);
+			rowMaxWidth = Math::Max(rowMaxWidth, resolved.OccupiedSize.x);
 		}
 
-		const int   n = (int)list.size();
-		const float spacingY = m_Spacing.y;
-		const float totalSpacingY = (n > 0) ? spacingY * (n - 1) : 0.0f;
+		const uint32 numWidgetsToRender = static_cast<uint32>(list.size());
+		const float totalSpacing = (numWidgetsToRender > 0u) ? (m_Spacing.y * (numWidgetsToRender - 1u)) : 0.0f;
+		const float totalStretchHeight = Math::Max(boxSize.y - totalFixedHeight - totalSpacing, 0.0f);
+		const float stretchSlice = totalStretchHeight / Math::Max(numWidgetsWithStretchPolicy, 1u);
+		const float totalPackedHeight = totalFixedHeight + totalSpacing;
 
-		// Inner available height at current cursor (child window already removes its own padding)
-		const float innerAvailableHeight = Math::Max(0.0f, ImGui::GetContentRegionAvail().y - (m_IsChildRegion ? 0.0f : padding.Bottom));
+		const EVerticalAlignmentPolicy verticalAlignmentPolicy = GetVerticalAlignmentPolicy();
+		EHorizontalAlignmentPolicy horizontalAlignmentPolicy = GetHorizontalAlignmentPolicy();
 
-		// Solve stretch slice for HEIGHT (content-only)
-		const float stretchContentHeight = (innerAvailableHeight - sumFixedContentHeight - sumMarginsY - totalSpacingY) / Math::Max(numStretchY, 1);
+		float verticalAlignmentOffsetY = 0.0f;
+		if (verticalAlignmentPolicy == EVerticalAlignmentPolicy::Center)
+			verticalAlignmentOffsetY = Math::Max(0.0f, (boxSize.y - totalPackedHeight) * 0.5f);
+		else if (verticalAlignmentPolicy == EVerticalAlignmentPolicy::Bottom)
+			verticalAlignmentOffsetY = Math::Max(0.0f, (boxSize.y - totalPackedHeight));
 
-		// Total occupied height (what alignment acts on)
-		const float totalContentHeight = sumMarginsY + totalSpacingY + sumFixedContentHeight + Math::Max(0.0f, stretchContentHeight) * numStretchY;
+		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + verticalAlignmentOffsetY);
 
-		// ===== VERTICAL alignment (Top/Center/Bottom) =====
-		float offsetY = 0.0f;
-		switch (GetVerticalAlignmentPolicy())
+		// ---- RENDER pass ----
+		ImVec2 origin = ImGui::GetCursorPos();
+		ImVec2 layoutCursor = origin;
+
+		const float rowSlotWidth = Math::Max(1.0f, boxSize.x);
+
+		for (size_t i = 0; i < list.size(); ++i)
 		{
-		case EVerticalAlignmentPolicy::Center: 
-			offsetY = Math::Max(0.0f, (innerAvailableHeight - totalContentHeight) * 0.5f);
-			break;
-		case EVerticalAlignmentPolicy::Bottom: 
-			offsetY = Math::Max(0.0f, (innerAvailableHeight - totalContentHeight)); 
-			break;
-		default:
-			break;
+			if (i != 0)
+				layoutCursor.y += m_Spacing.y;
+
+			ResolvedChild& child = list[i];
+
+			float allocatedHeight = child.Stretch ? stretchSlice : child.OccupiedSize.y;
+			const float allocatedWidth = rowSlotWidth;
+
+			if (child.pWidget->GetVerticalSizePolicy() == ESizePolicy::Auto)
+			{
+				const float remainingBoxHeight = Math::Max(0.0f, boxSize.y - layoutCursor.y);
+				allocatedHeight = Math::Min(allocatedHeight, remainingBoxHeight);
+			}
+
+			const float contentWidth = Math::Max(0.0f, allocatedWidth - (child.Margin.Left + child.Margin.Right));
+			const float contentHeight = Math::Max(0.0f, allocatedHeight - (child.Margin.Top + child.Margin.Bottom));
+
+			float assignedWidth = contentWidth;
+			float assignedHeight = contentHeight;
+			const bool childWantsHorizontalStretch = (child.pWidget->GetHorizontalSizePolicy() == ESizePolicy::Stretch);
+
+			const float desiredWidth = Math::Max(0.0f, child.Size.x);
+
+			if (!child.pWidget->IsContainer() && !childWantsHorizontalStretch)
+				assignedWidth = Math::Min(desiredWidth, contentWidth);
+
+			horizontalAlignmentPolicy = child.pWidget->GetHorizontalAlignmentPolicy();
+
+			float alignmentXOffset = 0.0f;
+			if (horizontalAlignmentPolicy == EHorizontalAlignmentPolicy::Center)
+				alignmentXOffset = Math::Max(0.0f, (contentWidth - assignedWidth) * 0.5f);
+			else if (horizontalAlignmentPolicy == EHorizontalAlignmentPolicy::Right)
+				alignmentXOffset = Math::Max(0.0f, (contentWidth - assignedWidth));
+
+			if (hasVerticalScroll && child.pWidget->GetHorizontalSizePolicy() != ESizePolicy::Fixed)
+			{
+				if (layoutCursor.x + assignedWidth + alignmentXOffset > boxSize.x - scrollBarSize)
+				{
+					assignedWidth -= scrollBarSize;
+					assignedWidth = Math::Max(0.0f, assignedWidth);
+				}
+			}
+			if (hasHorizontalScroll && child.pWidget->GetHorizontalSizePolicy() != ESizePolicy::Fixed && i == list.size() - 1)
+			{
+				if (layoutCursor.y + assignedHeight > boxSize.y - scrollBarSize)
+					assignedHeight = Math::Max(0.0f, assignedHeight - scrollBarSize);
+			}
+
+			if (assignedWidth <= 3.0f || assignedHeight <= 3.0f)
+				continue;
+
+			ImGui::SetCursorPos(layoutCursor);
+
+			ImVec2 contentPos = layoutCursor;
+			contentPos.x += alignmentXOffset;
+			contentPos.x += child.Margin.Left;
+			contentPos.y += child.Margin.Top;
+
+			ImGui::SetCursorPos(contentPos);
+
+			const bool shouldAssignSize =
+				child.pWidget->IsContainer() ||
+				child.pWidget->RequiresAssignedSize() ||
+				child.Stretch;
+
+			if (shouldAssignSize)
+				child.pWidget->AssignSize({ assignedWidth, assignedHeight });
+
+			if (child.pWidget->GetHorizontalSizePolicy() == ESizePolicy::Auto || (!shouldAssignSize && child.pWidget->GetHorizontalSizePolicy() == ESizePolicy::Stretch))
+				ImGui::SetNextItemWidth(assignedWidth);
+
+			child.pWidget->Render();
+
+			layoutCursor.y += allocatedHeight;
+			layoutCursor.x = origin.x;
 		}
-		if (offsetY > 0.0f)
-			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY);
 
-		// Use one spacing mechanism: ItemSpacing.y
-		ScopedStyleVar itemStyle;
-		itemStyle.Push(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, spacingY));
+		const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+		if (!m_IsHovered && hovered)
+			OnMouseEnter_private();
+		else if (m_IsHovered && !hovered)
+			OnMouseExit_private();
 
-		// ===== LAYOUT pass =====
-		ImVec2 boundsMin(+FLT_MAX, +FLT_MAX), boundsMax(-FLT_MAX, -FLT_MAX);
-		bool anyItem = false;
-
-		ImGui::BeginGroup();
-
-		bool first = true;
-		for (const auto& visibleChild : list)
+		const bool isFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
+		if (m_IsFocused != isFocused)
 		{
-			if (!first) {
-				// rely on ItemSpacing.y to advance between rows
-			}
-			else {
-				first = false;
-			}
-
-			// Apply TOP/LEFT margins via cursor offsets
-			ImVec2 currentCursorPos = ImGui::GetCursorPos();
-			ImGui::SetCursorPos({ currentCursorPos.x + visibleChild.Margin.Left, currentCursorPos.y + visibleChild.Margin.Top });
-
-			// Compute content height (stretch or fixed)
-			const float contentHeight = visibleChild.Stretch ? Math::Max(0.0f, stretchContentHeight) : visibleChild.Size.y;
-
-			// CROSS-AXIS (X) alignment per box policy (optional “Fill” via stretchX)
-			const float innerWidth = Math::Max(0.0f, ImGui::GetContentRegionAvail().x - (m_IsChildRegion ? 0.0f : padding.Right));
-
-			const float contentWidth = /*cm.stretchX ? std::max(0.0f, innerW - (cm.mg.Left + cm.mg.Right)) :*/ visibleChild.Size.x;
-
-			switch (GetHorizontalAlignmentPolicy()) // alignment inside VBox across X
-			{
-			case EHorizontalAlignmentPolicy::Left:
-				// cursor already at left + margin
-				break;
-			case EHorizontalAlignmentPolicy::Center:
-			{
-				const float freeX = Math::Max(0.0f, innerWidth - (contentWidth + visibleChild.Margin.Left + visibleChild.Margin.Right));
-				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + freeX * 0.5f);
-				break;
-			}
-			case EHorizontalAlignmentPolicy::Right:
-			{
-				const float freeX = Math::Max(0.0f, innerWidth - (contentWidth + visibleChild.Margin.Left + visibleChild.Margin.Right));
-				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + freeX);
-				break;
-			}
-			}
-
-			// Hints for typical ImGui inputs/sliders
-			if (!visibleChild.pWidget->IsContainer())
-				ImGui::SetNextItemWidth(contentWidth);
-
-			// Container child? Give it the box it should use (still cursor-driven, no AssignedRect object)
-			if (visibleChild.pWidget->IsContainer())
-			{
-				visibleChild.pWidget->AssignSize({ contentWidth, contentHeight }); // your virtual setter used by its own BeginChild
-			}
-
-			// Render
-			visibleChild.pWidget->Render();
-			anyItem = true;
-
-			// Update outer bounds
-			ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-			boundsMin.x = std::min(boundsMin.x, a.x); boundsMin.y = std::min(boundsMin.y, a.y);
-			boundsMax.x = std::max(boundsMax.x, b.x); boundsMax.y = std::max(boundsMax.y, b.y);
-
-			// Advance by RIGHT/BOTTOM margins without adding extra spacing twice:
-			// - For VERTICAL flow we need to consume bottom margin by a zero-width dummy of that height.
-			ImGui::Dummy(ImVec2(0.0f, visibleChild.Margin.Bottom));
-
-			// For left/right margins, we already offset before render; no extra horizontal dummy needed here.
+			m_IsFocused = isFocused;
+			OnFocusChanged(m_IsFocused);
 		}
 
-		ImGui::EndGroup();
+		const ImVec2 rMin = ImGui::GetWindowPos();
+		const ImVec2 rMax = ImVec2(rMin.x + ImGui::GetWindowSize().x,
+			rMin.y + ImGui::GetWindowSize().y);
 
-		// If VBox itself stretches vertically, consume remaining height so parent flow continues
-		if (GetHorizontalSizePolicy() == ESizePolicy::Stretch && !HasAssignedSize())
-		{
-			const float toConsume = ImGui::GetContentRegionAvail().y;
-			if (toConsume > 0.0f) 
-				ImGui::Dummy(ImVec2(0.0f, toConsume));
-		}
+		ImDrawList* parentDL = ImGui::GetCurrentWindow()->DrawList;
 
-		// Hover union
-		if (anyItem)
-		{
-			const bool hovered = ImGui::IsMouseHoveringRect(boundsMin, boundsMax);
-			if (!m_IsHovered && hovered) 
-				OnMouseEnter_private();
-			else if (m_IsHovered && !hovered) 
-				OnMouseExit_private();
-		}
+		ImGui::EndChild();
 
-		// Close inner child region if we opened it
-		if (m_IsChildRegion)
-		{
-			const bool isFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
-
-			if (m_IsFocused != isFocused)
-			{
-				m_IsFocused = isFocused;
-				OnFocusChanged(m_IsFocused);
-			}
-
-			ImGui::PopStyleVar();
-			ImGui::EndChild();
-		}
-
-		// Advance parent cursor by bottom padding
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + padding.Bottom);
+		if (hovered)
+			parentDL->AddRect(rMin, rMax, IM_COL32(255, 0, 255, 255), 0.0f, 0, 2.0f);
 	}
 }

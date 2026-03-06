@@ -97,7 +97,6 @@ namespace Relentless
 	struct GraphicsOptions
 	{
 		uint32 SampleCount		= 1u;
-
 		bool HBAOPlusEnabled	= true;
 	};
 

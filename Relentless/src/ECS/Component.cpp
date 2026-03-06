@@ -35,7 +35,7 @@ namespace Relentless
 
 	void TransformComponent::AddLocalRotationEulerDegrees(const Vector3& aDeltaEulerDegrees) noexcept
 	{
-		SetLocalRotationEuler(GetLocalRotationEulerDegrees() + aDeltaEulerDegrees);
+		SetLocalRotationEulerDegrees(GetLocalRotationEulerDegrees() + aDeltaEulerDegrees);
 	}
 
 	void TransformComponent::AddLocalScale(const Vector3& aDeltaScale) noexcept
@@ -61,15 +61,19 @@ namespace Relentless
 
 	Quaternion TransformComponent::GetWorldRotation() const noexcept
 	{
-		Matrix world = GetWorldMatrix();
+		Quaternion local = GetLocalRotation();
+		local.Normalize();
 
-		Vector3    scale		= Vector3::One;
-		Quaternion rotation		= Quaternion::Identity;
-		Vector3    translation	= Vector3::Zero;
+		if (!Scene->HasParent(Self))
+			return local;
 
-		RLS_DEBUG_ONLY(const bool ok =) world.Decompose(scale, rotation, translation);
-		RLS_ASSERT(ok, "[TransformComponent::GetWorldRotation]: Failed to decompose world matrix.");
-		return rotation;
+		auto& parentTc = Scene->GetEntityManager().Get<TransformComponent>(Scene->GetParent(Self));
+		Quaternion parentWorld = parentTc.GetWorldRotation();
+		parentWorld.Normalize();
+
+		Quaternion world = local * parentWorld;
+		world.Normalize();
+		return world;
 	}
 
 	Vector3 TransformComponent::GetWorldRotationEulerDegrees() const noexcept
@@ -137,7 +141,7 @@ namespace Relentless
 		LocalVersion++;
 	}
 
-	void TransformComponent::SetLocalRotationEuler(const Vector3& aEulerDegrees) noexcept
+	void TransformComponent::SetLocalRotationEulerDegrees(const Vector3& aEulerDegrees) noexcept
 	{
 		const float yaw = Math::DegToRad(aEulerDegrees.y);
 		const float pitch = Math::DegToRad(aEulerDegrees.x);
@@ -175,6 +179,7 @@ namespace Relentless
 	void TransformComponent::SetWorldRotation(const Quaternion& aRotation) noexcept
 	{
 		Quaternion localRotation = aRotation;
+
 		if (Scene->HasParent(Self))
 		{
 			auto& parentTc = Scene->GetEntityManager().Get<TransformComponent>(Scene->GetParent(Self));
@@ -186,6 +191,7 @@ namespace Relentless
 		}
 
 		LocalTransform.Rotation = localRotation;
+		LocalTransform.Rotation.Normalize();
 		LocalVersion++;
 	}
 

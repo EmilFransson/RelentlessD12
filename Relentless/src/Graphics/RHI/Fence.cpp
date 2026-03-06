@@ -107,4 +107,48 @@ namespace Relentless
 		return !!m_pFence;
 	}
 
+	RenderJobHandle::RenderJobHandle(const Ref<RenderJobState>& aRenderJobState) noexcept
+		: m_pRenderJobState{aRenderJobState}
+	{
+	}
+
+	bool RenderJobHandle::IsComplete() const noexcept
+	{
+		Ref<RenderJobState> pState = m_pRenderJobState;
+		RLS_ASSERT(pState, "[RenderJobHandle::IsComplete]: Render Job state is invalid.");
+
+		SyncPoint syncPoint;
+		{
+			std::lock_guard<std::mutex> guard(pState->Mutex);
+			if (!pState->Submitted)
+				return false;
+
+			syncPoint = pState->Sync;
+		}
+
+		return syncPoint.IsComplete();
+	}
+
+	bool RenderJobHandle::IsSubmitted() const noexcept
+	{
+		Ref<RenderJobState> pState = m_pRenderJobState;
+		RLS_ASSERT(pState, "[RenderJobHandle::IsComplete]: Render Job state is invalid.");
+
+		std::lock_guard<std::mutex> guard(pState->Mutex);
+		return pState->Submitted;
+	}
+
+	void RenderJobHandle::Wait() noexcept
+	{
+		Ref<RenderJobState> pState = m_pRenderJobState;
+		RLS_ASSERT(pState, "[RenderJobHandle::IsComplete]: Render Job state is invalid.");
+
+		SyncPoint sp;
+		{
+			std::unique_lock lock(pState->Mutex);
+			pState->ConditionVariable.wait(lock, [&] { return pState->Submitted; });
+			sp = pState->Sync;
+		}
+		sp.Wait();
+	}
 }

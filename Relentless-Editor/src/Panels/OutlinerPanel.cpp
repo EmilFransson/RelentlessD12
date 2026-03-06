@@ -8,8 +8,13 @@ namespace Relentless
 	OutlinerPanel::OutlinerPanel() noexcept
 		: PanelBase{ICON_FA_LINES_LEANING " Outliner", ImGuiWindowFlags_NoScrollbar}
 	{
-		m_pEntityOutlinerView = new EntityOutlinerView();
-		SetRoot(m_pEntityOutlinerView);
+		Ref<VerticalBox> pVerticalBox = RLS_NEW VerticalBox();
+
+		m_pEntityOutlinerView = pVerticalBox->AddWidget(RLS_NEW EntityOutlinerView());
+		m_pEntityOutlinerView->SetVerticalSizePolicy(ESizePolicy::Stretch);
+		m_pEntityOutlinerView->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+
+		SetRoot(pVerticalBox);
 
 		SetPadding(Vector2(2.0f, 0.0f));
 	}

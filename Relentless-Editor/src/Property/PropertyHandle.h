@@ -21,7 +21,8 @@ namespace Relentless
 
 		NO_DISCARD virtual bool DiffersFromDefault() const noexcept;
 
-		NO_DISCARD virtual EPropertyAccessResult GetValue(Type& aOutValue) const noexcept;
+		virtual EPropertyAccessResult GetDefaultValue(Type& aOutValue) const noexcept;
+		virtual EPropertyAccessResult GetValue(Type& aOutValue) const noexcept;
 
 		virtual void ResetToDefault() noexcept;
 
@@ -74,6 +75,16 @@ namespace Relentless
 			return !Math::AreValuesClose<Type>(m_Getter(), m_DefaultGetter.value()());
 		else
 			return m_Getter() != (m_DefaultGetter.value())();
+	}
+
+	template<typename Type>
+	EPropertyAccessResult PropertyHandle<Type>::GetDefaultValue(Type& aOutValue) const noexcept
+	{
+		if (!CanResetToDefault())
+			return EPropertyAccessResult::Fail;
+
+		aOutValue = (m_DefaultGetter.value())();
+		return EPropertyAccessResult::Success;
 	}
 
 	template<typename Type>

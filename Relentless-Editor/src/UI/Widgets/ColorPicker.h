@@ -4,10 +4,14 @@
 
 namespace Relentless
 {
+	template<typename DataType> class PropertyHandle;
+
 	class ColorPicker : public IStylableWidget<ColorPicker>
 	{
 	public:
 		ColorPicker(int flags = 0) noexcept;
+
+		ColorPicker* Bind(Ref<PropertyHandle<Color>> aPropertyHandle) noexcept;
 
 		template<typename T>
 		ColorPicker* OnValueChanged(T&& callBack) noexcept 
@@ -53,5 +57,7 @@ namespace Relentless
 
 		int m_PickerFlags = 0;
 		bool m_IsHovered = false;
+
+		Ref<PropertyHandle<Color>> m_pPropertyHandle = nullptr;
 	};
 }

@@ -151,6 +151,34 @@ namespace Relentless
 			std::sort(m_Batches.begin(), m_Batches.end(), CompareSort);
 		}
 
+		//TODO: Remove job when done:
+		//Free standing ("one-shot") render jobs:
+		{
+			PROFILE_SCOPE("Renderer::Render::RenderJobs");
+			
+			for (auto it = s_InProgressRenderJobs.begin(); it != s_InProgressRenderJobs.end();)
+			{
+				RenderJob& job = *it;
+				if (job.State->Sync.IsComplete())
+					it = s_InProgressRenderJobs.erase(it);
+				else
+					break;
+			}
+
+
+			std::lock_guard<std::mutex> guard(m_RenderJobMutex);
+			for (auto& job : s_EnqueuedRenderJobs)
+			{
+				CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(job.Type == ERenderJobType::Raster ? D3D12_COMMAND_LIST_TYPE_DIRECT : D3D12_COMMAND_LIST_TYPE_COMPUTE);
+				job.Callback(*pCommandContext);
+				job.State->Sync = pCommandContext->Execute();
+				job.State->Submitted = true;
+			}
+
+			std::ranges::move(s_EnqueuedRenderJobs, std::back_inserter(s_InProgressRenderJobs));
+			s_EnqueuedRenderJobs.clear();
+		}
+
 		//Pre-Z
 		{
 			PROFILE_SCOPE("Renderer::Render::Pre-Z");
@@ -335,6 +363,32 @@ namespace Relentless
 		}
 
 		m_Frame++;
+	}
+
+	RenderJobHandle Renderer::SubmitComputeJob(Callback<void(CommandContext&)>&& aCallback) noexcept
+	{
+		Ref<RenderJobState> pJobState = RLS_NEW RenderJobState();
+
+		std::lock_guard<std::mutex> guard(m_RenderJobMutex);
+		RenderJob& renderJob = s_EnqueuedRenderJobs.emplace_back();
+		renderJob.Callback = std::move(aCallback);
+		renderJob.Type = ERenderJobType::Compute;
+		renderJob.State = pJobState;
+
+		return RenderJobHandle(pJobState);
+	}
+
+	RenderJobHandle Renderer::SubmitRenderJob(Callback<void(CommandContext&)>&& aCallback) noexcept
+	{
+		Ref<RenderJobState> pJobState = RLS_NEW RenderJobState();
+		
+		std::lock_guard<std::mutex> guard(m_RenderJobMutex);
+		RenderJob& renderJob = s_EnqueuedRenderJobs.emplace_back();
+		renderJob.Callback = std::move(aCallback);
+		renderJob.Type = ERenderJobType::Raster;
+		renderJob.State = pJobState;
+
+		return RenderJobHandle(pJobState);
 	}
 
 	void Renderer::DrawScene(CommandContext& context, const RenderView& view, Batch::Blending blendMode) noexcept

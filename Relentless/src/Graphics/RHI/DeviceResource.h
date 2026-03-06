@@ -53,7 +53,7 @@ namespace Relentless
 		bool m_AllUseSameResourceState = true;
 	};
 
-	class DeviceResource : public DeviceObject
+	class RLS_API DeviceResource : public DeviceObject
 	{
 	public:
 		DeviceResource(GraphicsDevice* pParent, ID3D12ResourceX* pResource) noexcept;

@@ -88,11 +88,6 @@ namespace Relentless
 		if (ImGui::Button("Spawn viewport"))
 			GetSubsystem<EditorViewportSubsystem>()->CreateViewportPanel();
 
-		//ImGui::DragFloat("Min Log Luminance", &m_MinLogLuminance, 0.1f, -100.0f, 100.0f);
-		//ImGui::DragFloat("Min EV100", &m_MinEV100, 0.1f, -10.0f, 20.0f);
-		//ImGui::DragFloat("Max EV100", &m_MaxEV100, 0.1f, -10.0f, 20.0f);
-		//ImGui::DragFloat("Exposure Compensation", &m_ExposureCompensation, 0.1f, -15.0f, 15.0f);
-
 		static int counter = 0;
 		if (ImGui::Button("Spawn Entity"))
 		{
@@ -134,10 +129,27 @@ namespace Relentless
 		Project::Load("D:\\UntitledRelentlessProject\\UntitledRelentlessProject.rproject");
 		CreateSubsystems();
 		CreateStartScene();
+
+		Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
+		pFactory->SetGenerateMipmaps(false);
+		pFactory->SetImportAsSRGB(false);
+
+		AssetHandle skyHandle = AssetManager::LoadAsset("Assets/Textures/pure_sky");
+		Ref<Texture2D> pSkyEquiRect = AssetManager::Get<Texture2D>(skyHandle);
+		pSkyEquiRect->CreateResource();
+
+		RenderModule& renderModule = ModuleManager::LoadModuleChecked<RenderModule>();
+
+		EquirectangularToCubemapSpecification spec;
+		spec.CubeFaceDimension = 512u;
+		spec.EquirectangularTexture = pSkyEquiRect->GetResource();
+
+		m_RenderJobHandle = renderModule.GetRenderBakeService()->RequestEquirectangularToCubemapConversion(spec, m_pCubeMap);
 	}
 
 	void Editor::OnDestroy() noexcept
 	{
+		ModuleManager::ShutDown();
 		OnShutDown();
 	}
 
@@ -147,6 +159,13 @@ namespace Relentless
 
 		m_pActiveScene->OnUpdate(aDeltaTime);
 		UpdateSubsystems(aDeltaTime);
+
+		if (m_RenderJobHandle.IsComplete())
+		{
+			auto desc = m_pCubeMap->GetResource()->GetDesc();
+
+			RLS_CORE_INFO("Width: {0}", m_pCubeMap->GetDesc().Width);
+		}
 	}
 
 	void Editor::OnRender() noexcept
@@ -339,6 +358,7 @@ namespace Relentless
 		ModuleManager::LoadModuleChecked<UIModule>();
 		ModuleManager::LoadModuleChecked<ContentBrowserModule>();
 		ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		ModuleManager::LoadModuleChecked<RenderModule>();
 	}
 
 	void Editor::OnViewportEntityDuplicationRequest() noexcept

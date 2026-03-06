@@ -2,185 +2,112 @@
 
 #include "Core/Editor.h"
 
-#include "LayoutBuilders/EntityDetailLayoutBuilder.h"
-
 #include "Subsystem/SelectionSubsystem.h"
-
-#include "TableRows/EntityDetailCategoryRow.h"
-
-#include "UI/Views/TreeView.h"
-#include "UI/Widgets/Button.h"
-#include "UI/Widgets/HorizontalBox.h"
-#include "UI/Widgets/SearchBar.h"
-#include "UI/Widgets/VerticalBox.h"
 
 namespace Relentless
 {
 	EntityDetailsView::EntityDetailsView() noexcept
 	{
-		Editor* pEditor = Editor::Get();
+		SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		SetVerticalSizePolicy(ESizePolicy::Stretch);
 
+		Editor::OnEntityTransformed.Connect(this, &EntityDetailsView::OnEntityTransformed);
+
+		Editor* pEditor = Editor::Get();
+		pEditor->OnSceneChanged.Connect(this, &EntityDetailsView::OnSceneChanged);
 		pEditor->GetSubsystem<SelectionSubsystem>()->OnSelectionChanged.Connect(this, &EntityDetailsView::OnSelectionChanged);
 
-		if (Scene* pScene = pEditor->GetActiveScene())
-			m_pLayoutBuilder = MakeUnique<EntityDetailLayoutBuilder>(this, *pScene);
-
-		std::shared_ptr<HeaderRow> pHeaderRow = std::make_shared<HeaderRow>();
-		pHeaderRow->SetIsVisible(false);
-
-		{
-			Column column;
-			column.pLabel = new Label("First");
-			pHeaderRow->AddColumn(column);
-		}
-		{
-			Column column;
-			column.pLabel = new Label("Second");
-			column.Flags = ImGuiTableColumnFlags_NoResize;
-			pHeaderRow->AddColumn(column);
-		}
-		{
-			Column column;
-			column.Weight = 0.2f;
-			column.Flags = ImGuiTableColumnFlags_NoResize;
-			column.pLabel = new Label("Third");
-			pHeaderRow->AddColumn(column);
-		}
-
-		m_pEntityDetailsTreeView = new TreeView<Ref<DetailNode>>(pHeaderRow);
-		m_pEntityDetailsTreeView->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
-		m_pEntityDetailsTreeView->SetFlags(ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersH | ImGuiTableFlags_SizingStretchProp);
-		m_pEntityDetailsTreeView->SetClippingActive(false);
-
-		m_pEntityDetailsTreeView
-			->OnGetChildren(this, &EntityDetailsView::OnGetChildren)
-			->OnRequestSource(this, &EntityDetailsView::OnRequestSource)
-			->OnGenerateRow(this, &EntityDetailsView::OnGenerateRow);
-
-		m_pMainBox = new VerticalBox();
-
-		Ref<VerticalBox> pTopVerticalBox = new VerticalBox();
-		Ref<VerticalBox> pMiddleBox = new VerticalBox(Vector2(0.0f, 0.0f), true);
-		pMiddleBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-
-		Ref<VerticalBox> pBottomBox = new VerticalBox();
-		pBottomBox->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Bottom);
-
-		Ref<HorizontalBox> pSearchbarBox = new HorizontalBox();
-		pSearchbarBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pSearchbarBox->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 5.0f));
-
-		pSearchbarBox->AddWidget(new SearchBar("Search..."))
-			->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-
-		m_pDetailsListBox = new HorizontalBox(Vector2(0.0f, 0.0f), true);
-		m_pDetailsListBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		m_pDetailsListBox->AddWidget(m_pEntityDetailsTreeView);
-
-		pMiddleBox->AddWidget(m_pDetailsListBox);
-		pTopVerticalBox->AddWidget(pSearchbarBox);
-		m_pMainBox->AddWidget(pTopVerticalBox);
-		m_pMainBox->AddWidget(pMiddleBox);
-
-		Ref<HorizontalBox> pAddComponentBox = new HorizontalBox();
-		pAddComponentBox->AddWidget(new Button("Add Component"))
-			->SetPadding(Vector2(3.0f, 5.0f))
-			->SetMargin(FloatRect(0.0f, 5.0f, 0.0f, 5.0f));
-
-		pAddComponentBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Center);
-
-		pBottomBox->AddWidget(pAddComponentBox);
-		m_pMainBox->AddWidget(pBottomBox);
+		SetContext(&m_Context);
 	}
 
 	EntityDetailsView::~EntityDetailsView() noexcept
 	{
-		if (const auto& pSelection = Editor::Get()->GetSubsystem<SelectionSubsystem>())
-			pSelection->OnSelectionChanged.Detach(this);
-	}
-
-	void EntityDetailsView::OnRender() noexcept
-	{
-		PROFILE_FUNC;
-
-		if (m_ShouldRefresh)
+		if (Editor* pEditor = Editor::Get())
 		{
-			Rebuild();
-			m_pEntityDetailsTreeView->RequestTreeRefresh();
-			m_ShouldRefresh = false;
+			if (const auto& pSelection = pEditor->GetSubsystem<SelectionSubsystem>())
+				pSelection->OnSelectionChanged.Detach(this);
+
+			pEditor->OnSceneChanged.Detach(this);
 		}
 
-		m_pMainBox->Render();
-	}
-
-	const std::vector<entity>& EntityDetailsView::GetInspectedEntities() const noexcept
-	{
-		return m_InspectedEntities;
-	}
-
-	uint32 EntityDetailsView::GetNumInspectedEntities() const noexcept
-	{
-		return static_cast<uint32>(m_InspectedEntities.size());
-	}
-
-	void EntityDetailsView::OnExpandCollapseButtonClicked(MAYBE_UNUSED Button* aButton, Ref<DetailNode> aItem) noexcept
-	{
-		const bool isExpanded = m_pEntityDetailsTreeView->GetItemInfo(aItem).IsExpanded;
-		m_pEntityDetailsTreeView->SetItemExpandedState(aItem, !isExpanded);
-
-		m_pEntityDetailsTreeView->RequestTreeRefresh();
-	}
-
-	Ref<ITableRow> EntityDetailsView::OnGenerateRow(const Ref<DetailNode>& aItem) noexcept
-	{
-		const ItemInfo& info = m_pEntityDetailsTreeView->GetItemInfo(aItem);
-
-		Ref<ITableRow> pRow = aItem->RequestRowWidget(info);
-
-		if (EntityDetailCategoryRow* pCastRow = dynamic_cast<EntityDetailCategoryRow*>(pRow.Get()))
+		if (m_pInspectedScene)
 		{
-			Button* pExpandButton = pCastRow->GetExpandButton();
-			pExpandButton->OnClicked(std::bind(&EntityDetailsView::OnExpandCollapseButtonClicked, this, pExpandButton, aItem));
+			m_pInspectedScene->OnEntityDestroyed.Detach(this);
+			m_pInspectedScene = nullptr;
 		}
 
-		return pRow;
+		Editor::OnEntityTransformed.Detach(this);
 	}
 
-	void EntityDetailsView::OnGetChildren(const Ref<DetailNode>& aParent, std::vector<Ref<DetailNode>>& outChildren) noexcept
+	bool EntityDetailsView::IsLocked() const noexcept
 	{
-		outChildren = aParent->GetChildren();
+		return m_IsLocked;
 	}
 
-	const std::vector<Ref<DetailNode>>* EntityDetailsView::OnRequestSource() noexcept
+	void EntityDetailsView::SetLocked(bool aLock) noexcept
 	{
-		//TODO: Sort... ?
-		return &m_RootNodes;
+		m_IsLocked = aLock;
 	}
 
-	void EntityDetailsView::OnSelectionChanged(MAYBE_UNUSED entity aEntity, MAYBE_UNUSED ESelectionState aSelectionState) noexcept
+	void EntityDetailsView::OnPreRequestSource(bool aFromManualTrigger) noexcept
+	{
+		if (aFromManualTrigger)
+			Rebuild<EntityDetailsContext>();
+	}
+
+	void EntityDetailsView::OnEntityDestroyed(entity aDestroyedEntity) noexcept
+	{
+		const size_t numEntitiesPreRemove = m_Context.Entities.size();
+		std::erase_if(m_Context.Entities, [aDestroyedEntity](entity aEntity) { return aEntity == aDestroyedEntity; });
+
+		const bool removedAnyEntity = numEntitiesPreRemove > m_Context.Entities.size();
+		if (removedAnyEntity)
+		{
+			SetLocked(false);
+			RequestRefresh();
+		}
+	}
+
+	void EntityDetailsView::OnEntityTransformed(entity aTransformedEntity) noexcept
+	{
+		if (std::ranges::any_of(m_Context.Entities, [aTransformedEntity](entity aEntity) { return aEntity == aTransformedEntity; }))
+			RequestRefresh();
+	}
+
+	void EntityDetailsView::OnSceneChanged(Scene* aScene) noexcept
+	{
+		SetLocked(false);
+
+		if (m_pInspectedScene)
+		{
+			m_pInspectedScene->OnEntityDestroyed.Detach(this);
+			m_pInspectedScene = nullptr;
+		}
+
+		m_Context.Entities.clear();
+
+		if (!aScene)
+			m_Context.EntityManager = nullptr;
+		else
+		{
+			m_pInspectedScene = aScene;
+			m_pInspectedScene->OnEntityDestroyed.Connect(this, &EntityDetailsView::OnEntityDestroyed);
+			m_Context.EntityManager = &aScene->GetEntityManager();
+		}
+	
+		RequestRefresh();
+	}
+
+	void EntityDetailsView::OnSelectionChanged(entity aEntity, ESelectionState aSelectionState) noexcept
 	{
 		if (IsLocked())
 			return;
+
+		if (aSelectionState == ESelectionState::Selected)
+			m_Context.Entities.push_back(aEntity);
+		else
+			m_Context.Entities.erase(std::remove(m_Context.Entities.begin(), m_Context.Entities.end(), aEntity), m_Context.Entities.end());
 		
-		Rebuild();
-		m_pEntityDetailsTreeView->RequestTreeRefresh();
-	}
-
-	void EntityDetailsView::Rebuild() noexcept
-	{
-		if (!m_pLayoutBuilder)
-		{
-			Scene* pScene = Editor::Get()->GetActiveScene();
-			if (!pScene)
-				return;
-
-			m_pLayoutBuilder = MakeUnique<EntityDetailLayoutBuilder>(this, *pScene);
-		}
-
-		SelectionSubsystem* pSelection = Editor::Get()->GetSubsystem<SelectionSubsystem>();
-		RLS_ASSERT(pSelection, "[EntityDetailsView::Rebuild]: Selection context is invalid.");
-
-		m_InspectedEntities = pSelection->GetSelectedEntities();
-		m_RootNodes = m_pLayoutBuilder->Rebuild();
+		RequestRefresh();
 	}
 }
