@@ -72,6 +72,5 @@ float4 ps_main(VS_OUT psIn) : SV_Target
     const float2 uv = SampleSphericalMap(normalize(psIn.PositionWS));
     Texture2D equirectangularMap = ResourceDescriptorHeap[PassData.EquirectTextureIndex];
     const float3 color = equirectangularMap.Sample(sLinearWrapClamp, uv).rgb;
-    
     return float4(color, 1.0f);
 }

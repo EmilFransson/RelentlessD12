@@ -2,11 +2,14 @@
 
 #include "Module/UIModule.h"
 
+#include "IWidget.h"
+
 namespace Relentless
 {
 	PanelBase::PanelBase(const char* pName, ImGuiWindowFlags flags) noexcept
-	: m_Name{ pName }, m_Flags{ flags }
-	{}
+		: m_Name{ std::format("{}###{}", pName, (const void*)this) }, m_Flags{ flags }
+	{
+	}
 
 	PanelBase::~PanelBase() noexcept{ }
 

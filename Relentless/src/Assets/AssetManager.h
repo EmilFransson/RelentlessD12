@@ -134,6 +134,7 @@ namespace Relentless
 		}
 
 		NO_DISCARD static AssetHandle LoadAsset(const String& aFilepath) noexcept;
+		NO_DISCARD static AssetHandle LoadAsset(const AssetData& aAssetData) noexcept;
 		static void LoadAssetAsync(const String& aFilepath, AssetDoneLoadingCallback&& aCallback) noexcept;
 
 		template<typename TAsset>
@@ -182,8 +183,5 @@ namespace Relentless
 		{
 			return *Storages().at(aType);
 		}
-
-	private:
-		//static jg::dense_hash_map<TypeIndex, UniquePtr<AssetStorage>> s_AssetStorages;
 	};
 }

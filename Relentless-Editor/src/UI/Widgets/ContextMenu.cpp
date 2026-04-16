@@ -61,7 +61,6 @@ namespace Relentless
 		pBox->SetMargin(FloatRect(20, 0, 20, 0));
 
 		Ref<Separator> pSeparator = new Separator(label, 10.0f);
-		pSeparator->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
 		pSeparator->SetMargin({ 0, 0, 20, 0 });
 		pSeparator->SetAlpha(0.5f);
 		pBox->AddWidget(pSeparator);
@@ -82,16 +81,16 @@ namespace Relentless
 
 		if (!icon.empty())
 		{
-			Ref<Label> pIconLabel = new Label(icon, ImGui::GetIO().Fonts->Fonts[2]);
+			Ref<Label> pIconLabel = new Label(icon);
 			pIconLabel->SetAlpha(0.5f);
 			pBox->AddWidget(pIconLabel);
 		}
 
-		Ref<Label> pLabel = new Label(label, ImGui::GetIO().Fonts->Fonts[2]);
+		Ref<Label> pLabel = new Label(label);
 
 		pBox->AddWidget(pLabel);
 
-		Ref<Label> pChevronIcon = new Label(ICON_FA_CHEVRON_RIGHT, ImGui::GetIO().Fonts->Fonts[2]);
+		Ref<Label> pChevronIcon = new Label(ICON_FA_CHEVRON_RIGHT);
 
 		Ref<HorizontalBox> pRightBox = new HorizontalBox();
 		pRightBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);

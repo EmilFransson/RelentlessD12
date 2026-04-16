@@ -46,9 +46,6 @@ namespace Relentless
 		void OnDuplicateSelection() noexcept;
 
 		NO_DISCARD String OnDebugItemToString(const Ref<OutlinerListItem>& apItem) const noexcept;
-		NO_DISCARD Ref<DragDropOperation> OnDragDetected(OutlinerTableRow* apRow) noexcept;
-		NO_DISCARD bool OnDragEnter(OutlinerTableRow* apRow, OutlinerDragDropOperation& aDragDropOp) noexcept;
-		NO_DISCARD bool OnDrop(OutlinerTableRow* apRow, OutlinerDragDropOperation& aDragDropOp) noexcept;
 
 		NO_DISCARD std::vector<EntityFolder*> MergeFoldersByLabel(const std::vector<EntityFolder*>& someFolders) noexcept;
 

@@ -13,7 +13,7 @@ namespace Relentless
 
 	ContentBrowserModule::~ContentBrowserModule(){}
 
-	const UniquePtr<AssetThumbnailPool>& ContentBrowserModule::GetAssetThumbnailPool() const noexcept
+	const SharedPtr<AssetThumbnailPool>& ContentBrowserModule::GetAssetThumbnailPool() const noexcept
 	{
 		return m_pThumbnailPool;
 	}
@@ -22,8 +22,8 @@ namespace Relentless
 	{
 		m_OnUpdateCallbackHandle = Editor::Get()->RegisterUpdateCallback(Callback<void(float)>::Bind(this, &ContentBrowserModule::OnUpdate));
 
-		m_pThumbnailPool = MakeUnique<AssetThumbnailPool>();
-		ModuleManager::LoadModuleChecked<UIModule>().AddPanel<ContentBrowserPanel>();
+		m_pThumbnailPool = MakeShared<AssetThumbnailPool>();
+		ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<ContentBrowserPanel>();
 	}
 
 	void ContentBrowserModule::OnUnload()

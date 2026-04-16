@@ -1,6 +1,5 @@
 #pragma once
 #include <Relentless.h>
-#include "../UI/Widgets/Thumbnail.h"
 
 namespace Relentless
 {
@@ -13,20 +12,20 @@ namespace Relentless
 
 	struct ThumbnailEntry
 	{
-		Ref<Thumbnail> Thumbnail;
+		Ref<Texture> Texture;
 		bool Resident = false;
 		std::list<UUID>::iterator LRUIterator;
 		uint64 ResidentBytes = 0u;
 	};
 
-	class AssetThumbnailPool
+	class AssetThumbnailPool : public SharedFromThis<AssetThumbnailPool>
 	{
 	public:
 		constexpr static uint64 RESIDENT_BYTES_CAPACITY = 128u * 1024u * 1024u; //128 mb
 
 		AssetThumbnailPool() noexcept;
 
-		NO_DISCARD Ref<Thumbnail> GetAssetThumbnail(const AssetData& aAssetData) noexcept;
+		NO_DISCARD Ref<Texture> GetAssetThumbnail(const AssetData& aAssetData) noexcept;
 		
 		void InvalidateAssetThumbnail(const AssetData& aAssetData) noexcept;
 
@@ -34,21 +33,20 @@ namespace Relentless
 
 		void RegenerateAssetThumbnail(const AssetData& aAssetData) noexcept;
 
-		Broadcaster<void(const AssetData& aAsset, const Ref<Thumbnail>& aThumbnail)> OnThumbnailRegenerated;
+		Broadcaster<void(const AssetData& aAsset, const Ref<Texture>& aThumbnail)> OnThumbnailRegenerated;
 	private:
 		void CacheThumbnail(const AssetData& aAssetData, Ref<Texture2D> aTexture2D, uint32 aGeneration) noexcept;
-		void CreateThumbnailEntry(const AssetData& aAssetData, const Ref<Thumbnail>& aThumbnail, uint64 aResidentBytes) noexcept;
+		NO_DISCARD Ref<Texture> CreateTextureFromArchive(LoadArchive& aArchive);
+		void CreateThumbnailEntry(const AssetData& aAssetData, const Ref<Texture>& aThumbnailTexture, uint64 aResidentBytes) noexcept;
 
 		void EnqueueRequest(const AssetData& aAssetData) noexcept;
 		void Evict() noexcept;
 
-		NO_DISCARD Ref<Thumbnail> TryFindThumbnail(const AssetData& aAssetData) noexcept;
-		NO_DISCARD Ref<Thumbnail> TryLoadThumbnail(const AssetData& aAssetData) noexcept;
+		NO_DISCARD Ref<Texture> TryFindThumbnail(const AssetData& aAssetData) noexcept;
+		NO_DISCARD Ref<Texture> TryLoadThumbnail(const AssetData& aAssetData) noexcept;
 
-		NO_DISCARD Ref<Thumbnail> GenerateDefaultForAsset(const AssetData& aAssetData) noexcept;
+		NO_DISCARD Ref<Texture> GenerateDefaultForAsset(const AssetData& aAssetData) noexcept;
 		NO_DISCARD Path GenerateThumbnailPath(const AssetData& aAssetData) noexcept;
-
-		void ResolveThumbnailInfo(const Ref<Thumbnail>& aThumbnail, const AssetData& aAssetData) noexcept;
 
 		void TouchLRU(const UUID& aUUID, ThumbnailEntry& aEntry) noexcept;
 	private:
@@ -64,7 +62,7 @@ namespace Relentless
 
 		std::priority_queue<ThumbnailRegenerateRequest, std::vector<ThumbnailRegenerateRequest>, decltype(NewestFirst)> m_ThumbnailRegenerateRequests;
 
-		Ref<Thumbnail> m_pDefaultThumbnail = nullptr;
+		Ref<Texture> m_pDefaultThumbnailTexture = nullptr;
 		uint64 m_ResidentBytes = 0u;
 	};
 }

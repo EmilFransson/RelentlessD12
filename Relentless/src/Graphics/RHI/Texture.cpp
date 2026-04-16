@@ -81,6 +81,12 @@ namespace Relentless
 		return m_pSRV->GetDescriptorIndex();
 	}
 
+	uint32 Texture::GetArraySRVIndex(uint32 aMip) const noexcept
+	{
+		RLS_ASSERT(m_PerMipSRVs.size() > aMip, "[Texture::GetArraySRVIndex] Index Out Of Bounds Error.");
+		return m_PerMipSRVs[aMip]->GetDescriptorIndex();
+	}
+
 	UnorderedAccessView* Texture::GetUAV(uint32 subResourceIndex) const noexcept
 	{
 		RLS_ASSERT(m_UAVs.size() > subResourceIndex, "[Texture::GetUAV] Index Out Of Bounds Error.");
@@ -123,6 +129,14 @@ namespace Relentless
 		m_pSRV = pSRV;
 	}
 	
+	void Texture::SetMipArraySRV(Ref<ShaderResourceView> aSRV, uint32 aMip) noexcept
+	{
+		if (aMip >= m_PerMipSRVs.size())
+			m_PerMipSRVs.resize(aMip + 1);
+		
+		m_PerMipSRVs[aMip] = aSRV;
+	}
+
 	void Texture::SetRTV(Ref<RenderTargetView> pRTV, uint32 subResourceIndex) noexcept
 	{
 		if (subResourceIndex >= m_RTVs.size())

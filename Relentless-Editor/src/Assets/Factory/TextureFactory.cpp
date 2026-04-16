@@ -25,6 +25,11 @@ namespace Relentless
 			compressedFormat = DXGI_FORMAT::DXGI_FORMAT_BC5_UNORM;
 			break;
 		}
+		case ETextureCompressionType::BC6_HDR_Unsigned:
+		{
+			compressedFormat = DXGI_FORMAT::DXGI_FORMAT_BC6H_UF16;
+			break;
+		}
 		case ETextureCompressionType::BC7:
 		case ETextureCompressionType::BC7_Quick:
 		{
@@ -93,6 +98,11 @@ namespace Relentless
 		return std::vector<String>(m_SupportedFormats.begin(), m_SupportedFormats.end());
 	}
 
+	void TextureFactory::SetImportAsCubemap(bool aImportAsCubemap) noexcept
+	{
+		m_ImportAsCubemap = aImportAsCubemap;
+	}
+
 	FactoryResult TextureFactory::ImportFromFileImpl(const Path& aPath, MAYBE_UNUSED const Path& aPackagePath, MAYBE_UNUSED const String& aName, MAYBE_UNUSED Ref<FeedbackContext> aFeedbackContext) noexcept
 	{
 		if (!File::Exists(aPath))
@@ -109,6 +119,11 @@ namespace Relentless
 	void TextureFactory::SetGraphicsDevice(GraphicsDevice* aGraphicsDevice) noexcept
 	{
 		m_pDevice = aGraphicsDevice;
+	}
+
+	void TextureFactory::SetMaxTextureSize(uint32 aMaxSize) noexcept
+	{
+		m_MaxSize = static_cast<int>(aMaxSize);
 	}
 
 	bool TextureFactory::SupportsFileExtension(const std::string_view aFileExtension) const noexcept
@@ -191,7 +206,25 @@ namespace Relentless
 		Ref<Texture2D> pNewTexture = new Texture2D(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), std::move(image));
 		pNewTexture->SetName(fileName);
 
-		m_ImportedAsset = AssetManager::RegisterAsset<Texture2D>(pNewTexture);
+		if (m_ImportAsCubemap)
+		{
+			pNewTexture->CreateResource();
+
+			RenderModule& renderModule = ModuleManager::LoadModuleChecked<RenderModule>();
+
+			EquirectangularToCubemapSpecification spec;
+			spec.CubeFaceDimension = (m_MaxSize == -1) ? Math::Max(metaData.width, metaData.height) : m_MaxSize;
+			spec.EquirectangularTexture = pNewTexture->GetResource();
+
+			Ref<Texture> pOutCubemap = nullptr;
+			RenderJobHandle renderJobHandle = renderModule.GetRenderBakeService()->RequestEquirectangularToCubemapConversion(spec, pOutCubemap);
+			renderJobHandle.Wait();
+			
+			Ref<TextureCube> pNewCubeMap = RLS_NEW TextureCube(pOutCubemap);
+			m_ImportedAsset = AssetManager::RegisterAsset<TextureCube>(pNewCubeMap);
+		}
+		else
+			m_ImportedAsset = AssetManager::RegisterAsset<Texture2D>(pNewTexture);
 
 		return true;
 	}

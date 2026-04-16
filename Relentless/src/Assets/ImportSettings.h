@@ -6,7 +6,7 @@ namespace Relentless
 
 	enum class ETextureCompressionType : uint8_t
 	{
-		Uncompressed = 0u, BC5, BC7, BC7_Quick
+		Uncompressed = 0u, BC5, BC6_HDR_Unsigned, BC7, BC7_Quick
 	};
 
 	struct TextureImportSettings

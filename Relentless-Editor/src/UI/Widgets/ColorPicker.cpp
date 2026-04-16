@@ -11,7 +11,6 @@ namespace Relentless
 		SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
 		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
-		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	ColorPicker* ColorPicker::Bind(Ref<PropertyHandle<Color>> aPropertyHandle) noexcept

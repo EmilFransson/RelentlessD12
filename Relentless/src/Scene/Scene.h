@@ -6,6 +6,10 @@
 #include "Core/DLLExport.h"
 
 #include "ECS/EntityManager.h"
+#include "ECS/IObserverSystem.h"
+#include "ECS/ISystem.h"
+
+#include "Subsystem/ISystemManager.h"
 
 #include "Threading/ThreadSafeQueue.h"
 
@@ -13,7 +17,7 @@ namespace Relentless
 {
 	enum class ELightType : uint8 { Directional = 0, Point, Spot };
 
-	class RLS_API Scene : public AssetBase<Scene>
+	class RLS_API Scene : public AssetBase<Scene>, public ISystemManager
 	{
 	public:
 		explicit Scene(const char* aName = "Sample Scene") noexcept;
@@ -24,17 +28,21 @@ namespace Relentless
 		NO_DISCARD const UUID& GetUUID() const noexcept;
 
 		void SetName(const std::string& name) noexcept;
-		void OnUpdate(const float deltaTime) noexcept;
+		void OnUpdate(const float aDeltaTime) noexcept;
 		entity DuplicateEntity(entity entityToCopy, bool preserveHierarchy) noexcept;
 		entity CreateCamera(const char* name) noexcept;
 		entity CreateEntity(const char* tag) noexcept;
 		entity CreateEntityWithUUID(const char* tag, const UUID& guid) noexcept;
 		entity CreateLight(const char* aName, ELightType aLightType) noexcept;
 
+		NO_DISCARD entity GetActiveSkyBox() const noexcept;
+		NO_DISCARD entity GetActiveSkyLight() const noexcept;
+
 		void OnRuntimeStart() noexcept;
 		void OnRuntimeStop() noexcept;
 
-		void DestroyEntity(const entity entityHandle) noexcept;
+		void DestroyEntity(entity aEntity) noexcept;
+
 		NO_DISCARD EntityManager& GetEntityManager() noexcept { return m_EntityManager; }
 		NO_DISCARD const EntityManager& GetEntityManager() const noexcept { return m_EntityManager; }
 		NO_DISCARD const std::string& GetName() const noexcept { return m_Name; }
@@ -51,7 +59,23 @@ namespace Relentless
 		NO_DISCARD std::vector<entity> GetAllEntityDescendants(entity rootEntity) noexcept;
 		NO_DISCARD std::vector<entity> GetAllEntityAncestors(entity rootEntity) noexcept;
 		NO_DISCARD std::vector<entity> GetEntityChildren(entity parent) noexcept;
-		NO_DISCARD entity FindEntityByUUID(const UUID& uuid) noexcept;
+		NO_DISCARD entity GetEntityByUUID(const UUID& aUUID) const noexcept;
+
+		template<typename SystemType>
+		void RegisterObserverSystem() noexcept
+		{
+			static_assert(std::derived_from<SystemType, IObserverSystem>, "[Scene::RegisterSystem]: Registered system must derive from ISystem");
+			auto [it, inserted] = m_ObserverSystems.insert(MakeUnique<SystemType>());
+			(*it)->Register(*this);
+		}
+
+		template<typename SystemType>
+		void RegisterSystem() noexcept
+		{
+			static_assert(std::derived_from<SystemType, ISystem>, "[Scene::RegisterSystem]: Registered system must derive from ISystem");
+			m_Systems.push_back(MakeUnique<SystemType>());
+		}
+
 		void SetEntityVisibleInGame(entity e, bool visibilityState) noexcept;
 
 		NO_DISCARD bool IsParent(entity e) noexcept;
@@ -66,15 +90,18 @@ namespace Relentless
 		template<typename ComponentType>
 		void CopyComponentIfExists(entity srcEntity, entity dstEntity) noexcept;
 
-		NO_DISCARD bool IsEntityVisible(entity e) noexcept;
+		NO_DISCARD bool IsEntityVisible(entity aEntity) noexcept;
 
 		void MarkDirty() noexcept;
 
-		NO_DISCARD bool SerializeCore(IArchive& aArchive) noexcept override;
+		void RemoveActiveSkyBox() noexcept;
+		void RemoveActiveSkyLight() noexcept;
 
-		//std::shared_ptr<TextureCube> m_pSkyBox = nullptr;
-		//std::shared_ptr<TextureCube> m_pIrradianceMap = nullptr;
-		//std::shared_ptr<TextureCube> m_pRadianceMap = nullptr;
+		NO_DISCARD bool SerializeCore(IArchive& aArchive) noexcept override;
+		void SetActiveSkyBox(entity aSkyBoxEntity) noexcept;
+		void SetActiveSkyLight(entity aSkyLightEntity) noexcept;
+
+		NO_DISCARD entity TryGetEntityByUUID(const UUID& aUUID) const noexcept;
 
 		Broadcaster<void(entity e)> OnEntityCreated;
 		Broadcaster<void(entity e)> OnEntityDestroy;
@@ -82,19 +109,23 @@ namespace Relentless
 		Broadcaster<void(entity child, entity parent)> OnEntityAttached;
 		Broadcaster<void(entity detachedEntity, entity formerParent)> OnEntityDetached;
 		Broadcaster<void(entity e, bool visibilityState)> OnEntityVisibilityChanged;
+		Broadcaster<void(Scene& aScene, entity aCurrentSkyLight, entity aNewSkyLight)> OnSkyLightChange;
+		Broadcaster<void(Scene& aScene, entity aCurrentSkyBox, entity aNewSkyBox)> OnSkyBoxChange;
 	private:
-		bool SerializeEntity(IArchive& aArchive, entity aEntity) noexcept;
-	private:
-		friend class SceneSerializer;
-		friend struct DeferredEntityDeletionSystem;
-		
-		ThreadSafeQueue<entity> m_PendingEntityDeletionQueue;
+		friend class DeferredEntityDeletionSystem;
+
+		std::vector<UniquePtr<ISystem>> m_Systems;
+		std::unordered_set<UniquePtr<IObserverSystem>> m_ObserverSystems;
+		std::unordered_map<UUID, entity> m_EntityUUIDMap;
 
 		mutable EntityManager m_EntityManager;
 		UUID m_UUID = NULL_UUID;
 		String m_Name;
 		bool m_IsPaused = false;
 		bool m_IsDirty = false;
+
+		entity m_ActiveSkyBoxEntity = NULL_ENTITY;
+		entity m_ActiveSkyLightEntity = NULL_ENTITY;
 	};
 
 	struct SceneState
@@ -113,7 +144,13 @@ namespace Relentless
 		if (!m_EntityManager.Has<ComponentType>(dstEntity))
 			m_EntityManager.Add<ComponentType>(dstEntity);
 
-		if constexpr (!std::is_empty_v<ComponentType>)
+		if constexpr (std::is_base_of_v<ManagedComponent<ComponentType>, ComponentType>)
+		{
+			ComponentType& originalComponent = m_EntityManager.Get<ComponentType>(srcEntity);
+			ComponentType& newComponent = m_EntityManager.Get<ComponentType>(dstEntity);
+			newComponent.CopyFrom(originalComponent, dstEntity, m_EntityManager);
+		}
+		else if constexpr (!std::is_empty_v<ComponentType>)
 		{
 			const ComponentType& originalComponent = m_EntityManager.Get<ComponentType>(srcEntity);
 			ComponentType& newComponent = m_EntityManager.Get<ComponentType>(dstEntity);

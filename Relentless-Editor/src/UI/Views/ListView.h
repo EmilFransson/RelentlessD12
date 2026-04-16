@@ -135,34 +135,34 @@ namespace Relentless
 		NO_DISCARD bool IsItemVisible(const ItemType& item) const noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnClick(InstanceType* instance, void(InstanceType::* method)(const PointerInfo& pointerInfo, const ItemType& item)) noexcept;
+		ListView<ItemType>* OnClick(InstanceType* instance, void(InstanceType::*method)(const PointerInfo& pointerInfo, const ItemType& item)) noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnContextMenuOpening(InstanceType* instance, Ref<ContextMenu>(InstanceType::* method)(const ItemType& item)) noexcept;
+		ListView<ItemType>* OnContextMenuOpening(InstanceType* instance, Ref<ContextMenu>(InstanceType::*method)(const ItemType& item)) noexcept;
 
 		template<typename InstanceType>
 		ListView<ItemType>* OnDebugItemToString(const InstanceType* instance, String(InstanceType::*method)(const ItemType&) const) noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnDoubleClick(InstanceType* instance, void(InstanceType::* method)(const ItemType& item)) noexcept;
+		ListView<ItemType>* OnDoubleClick(InstanceType* instance, void(InstanceType::*method)(const ItemType& item)) noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnEntryInitialized(InstanceType* instance, void(InstanceType::* method)(const ItemType&, const Ref<ITableRow>&)) noexcept;
+		ListView<ItemType>* OnEntryInitialized(InstanceType* instance, void(InstanceType::*method)(const ItemType&, const Ref<ITableRow>&)) noexcept;
 
 		template<typename InstanceType>
 		ListView<ItemType>* OnIsSelectableOrNavigable(InstanceType* instance, bool(InstanceType::*method)(const ItemType&)) noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnItemScrolledIntoView(InstanceType* instance, void(InstanceType::* method)(const ItemType&)) noexcept;
+		ListView<ItemType>* OnItemScrolledIntoView(InstanceType* instance, void(InstanceType::*method)(const ItemType&)) noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnGenerateRow(InstanceType* instance, Ref<ITableRow>(InstanceType::* method)(const ItemType&)) noexcept;
+		ListView<ItemType>* OnGenerateRow(InstanceType* instance, Ref<ITableRow>(InstanceType::*method)(const ItemType&)) noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnRequestSource(InstanceType* instance, const std::vector<ItemType>*(InstanceType::* method)()) noexcept;
+		ListView<ItemType>* OnRequestSource(InstanceType* instance, const std::vector<ItemType>*(InstanceType::*method)()) noexcept;
 
 		template<typename InstanceType>
-		ListView<ItemType>* OnRowReleased(InstanceType* instance, void(InstanceType::* method)(const Ref<ITableRow>&)) noexcept;
+		ListView<ItemType>* OnRowReleased(InstanceType* instance, void(InstanceType::*method)(const Ref<ITableRow>&)) noexcept;
 
 		template<typename InstanceType>
 		ListView<ItemType>* OnSelectionChanged(InstanceType* instance, void(InstanceType::*method)(const ItemType&, ESelectionType)) noexcept;
@@ -694,7 +694,8 @@ namespace Relentless
 
 		if (ImGui::BeginTable("##Table", numColumns, this->GetFlags()))
 		{
-			this->m_pHeaderRow->OnRender();
+			if (this->m_pHeaderRow)
+				this->m_pHeaderRow->OnRender();
 
 			ImGuiListClipper clipper;
 			clipper.Begin(source.size());

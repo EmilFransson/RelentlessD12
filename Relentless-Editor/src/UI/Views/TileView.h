@@ -7,8 +7,8 @@ namespace Relentless
 	class TileView : public ListView<ItemType>
 	{
 	public:
-		TileView(std::shared_ptr<HeaderRow> pHeaderRow, const TableViewStyle& style = TableViewStyle()) noexcept
-			: ListView<ItemType>(pHeaderRow, style)
+		TileView(const TableViewStyle& style = TableViewStyle()) noexcept
+			: ListView<ItemType>(nullptr, style)
 		{
 			this->m_Mode = ETableViewMode::Tile;
 		}

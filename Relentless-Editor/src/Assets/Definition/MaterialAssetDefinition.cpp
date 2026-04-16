@@ -1,13 +1,9 @@
 #include "MaterialAssetDefinition.h"
 
-#include "../../Assets/Factory/TextureFactory.h"
+#include "Assets/Factory/TextureFactory.h"
 
 namespace Relentless
 {
-	MaterialAssetDefinition::MaterialAssetDefinition() noexcept
-	{
-	}
-
 	bool MaterialAssetDefinition::RequestGenerateThumbnail(MAYBE_UNUSED const AssetData& aAssetData, const Callback<void(const Ref<Texture2D>&)>& aOnThumbnailGeneratedCallback) noexcept
 	{
 		if (!m_pThumbnail)

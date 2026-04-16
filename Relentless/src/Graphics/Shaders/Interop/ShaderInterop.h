@@ -64,10 +64,42 @@ using float4x4 = Matrix;
 		uint Padding;
 	};
 
-	struct Environment
+	struct SkyboxData
 	{
 		float3 BackgroundColor;
-		uint Padding;
+		float Intensity;
+
+		float4x4 WorldRotation;
+
+		uint EnvironmentMapAIndex;
+		uint EnvironmentMapBIndex;
+		float LODBias;
+		float BlendFactor;
+	};
+
+	struct SkyLightData
+	{
+		float3 Tint;
+		float Intensity;
+
+		float4x4 WorldRotation;
+
+		uint IrradianceMapIndex;
+		uint RadianceMapIndex;
+		uint BRDFLutTextureIndex;
+		float BlendFactor;
+
+		float4 LowerHemisphereColor;
+
+		uint BlendIrradianceMapIndex;
+		uint BlendRadianceMapIndex;
+		float2 Padding;
+	};
+
+	struct Environment
+	{
+		SkyboxData Skybox;
+		SkyLightData SkyLight;
 	};
 
 	struct Light
@@ -98,7 +130,7 @@ using float4x4 = Matrix;
 		float4x4 ClipToWorld;
 
 		float3 ViewLocation;
-		uint BRDFfLutTextureIndex;
+		float Padding0;
 
 		float2 ViewportDimensions;
 		float2 ViewportDimensionsInv;
@@ -106,12 +138,12 @@ using float4x4 = Matrix;
 		uint FrameIndex;
 		float DeltaTime;
 		float ElapsedTime;
-		uint RadianceMapIndex;
+		uint SkyLightIndex;
 
 		uint NumInstances;
 		uint LightCount;
 		uint EnvironmentIndex;
-		uint IrradianceMapIndex;
+		uint SkyBoxIndex;
 
 		uint InstancesIndex;
 		uint MeshesIndex;

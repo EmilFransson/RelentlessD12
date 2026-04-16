@@ -14,9 +14,20 @@ namespace Relentless
 		return *(it->second);
 	}
 
+	void IDetailLayoutBuilder::ForceRefreshDetails() noexcept
+	{
+		m_pView->RequestRefresh();
+	}
+
 	IDetailsView* IDetailLayoutBuilder::GetDetailsView() const noexcept
 	{
 		return m_pView;
+	}
+
+	void IDetailLayoutBuilder::TearDown() noexcept
+	{
+		m_Categories.clear();
+		m_Customizations.clear();
 	}
 
 }

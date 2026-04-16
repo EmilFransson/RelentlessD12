@@ -15,9 +15,13 @@ namespace Relentless
 		explicit DetailNode(const char* aName, Ref<IPropertyHandleBase> aPropertyHandle) noexcept;
 		virtual ~DetailNode() noexcept = default;
 
+		void AddChild(const Ref<DetailNode>& aChildNode) noexcept;
+
 		NO_DISCARD const std::vector<Ref<DetailNode>>& GetChildren() const noexcept;
 		NO_DISCARD const String& GetName() const noexcept;
 		NO_DISCARD Ref<IPropertyHandleBase> GetPropertyHandle() const noexcept;
+
+		NO_DISCARD bool IsGroupNode() const noexcept;
 
 		template<typename InstanceType>
 		void OnRequestRow(InstanceType* aInstance, Ref<ITableRow>(InstanceType::*aMethod)(const ItemInfo&)) noexcept;
@@ -28,12 +32,14 @@ namespace Relentless
 		NO_DISCARD Ref<ITableRow> RequestRowWidget(const ItemInfo& aItemInfo) noexcept;
 
 		void SetChildren(const std::vector<Ref<DetailNode>>& someChildren) noexcept;
-	private:
+		void SetIsGroupNode(bool aIsGroupNode) noexcept;
+	protected:
 		std::vector<Ref<DetailNode>> m_Children;
 		String m_Name;
 		Callback<Ref<ITableRow>(const ItemInfo&)> m_OnRequestRowCallback;
 
 		Ref<IPropertyHandleBase> m_pPropertyHandle = nullptr;
+		bool m_IsGroupNode = false;
 	};
 
 	template<typename InstanceType>

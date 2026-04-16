@@ -1,10 +1,13 @@
 #pragma once
 #include <Relentless.h>
-#include "IWidget.h"
 #include "Event/EditorEvents.h"
+
+#include "ImGui/ImGuiIncludes.h"
 
 namespace Relentless
 {
+	class IBaseWidget;
+
 	class IPanel
 	{
 	public:

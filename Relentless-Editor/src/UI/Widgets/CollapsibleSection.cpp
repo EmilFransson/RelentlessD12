@@ -11,7 +11,6 @@ namespace Relentless
 		const ImVec4& frameColor = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
 		SetActiveColor(Color(frameColor.x, frameColor.y, frameColor.z, frameColor.w));
 		SetHoverColor(Color(frameColor.x, frameColor.y, frameColor.z, frameColor.w));
-		SetFont(ImGui::GetIO().Fonts->Fonts[2]);
 
 		SetPadding(Vector2(5.0f, 6.0f));
 	}

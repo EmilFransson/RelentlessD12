@@ -42,6 +42,7 @@ float GetLuminance(float3 color)
 }
 
 static const float PI = 3.14159265359f;
+static const float TwoPI = 2.0f * PI;
 static const float RECIPROCAL_PI = 0.3183098861837907f;
 static const float EPSILON = 0.0000001f;
 

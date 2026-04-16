@@ -14,10 +14,13 @@
 #include "Graphics/Renderer/Techniques/HBAOPlus.h"
 #include "Graphics/Renderer/Techniques/Outlines.h"
 #include "Graphics/Renderer/Techniques/PostProcessing.h"
+#include "Graphics/Renderer/Techniques/SkyBoxRenderer.h"
 #include "Graphics/RHI/RHI.h"
 #include "Graphics/RHI/DescriptorHeap.h"
 
 #include "RenderTypes.h"
+
+#include "Subsystem/ISystemManager.h"
 
 namespace ShaderInterop
 {
@@ -30,17 +33,20 @@ namespace Relentless
 
 	enum class ERenderJobType : uint8 { None = 0u, Raster, Compute };
 
-	class RLS_API Renderer
+	class RLS_API Renderer : public ISystemManager
 	{
 	public:
 		Renderer(GraphicsDevice* pDevice) noexcept;
 		~Renderer() noexcept = default;
 
 		static void BindViewData(CommandContext& commandContext, const RenderView& pRenderView) noexcept;
+		
+		static void Dispatch(Callback<void(Renderer*)>&& aCallback) noexcept;
 		static void DrawScene(CommandContext& context, const RenderView& view, Batch::Blending blendMode) noexcept;
 		static void DrawScene(CommandContext& context, Span<const Batch> batches, Batch::Blending blendMode) noexcept;
 		
 		NO_DISCARD Span<const Batch> GetBatches() const noexcept;
+		NO_DISCARD GraphicsDevice* GetDevice() const noexcept;
 		NO_DISCARD uint32 GetFrameIndex() const noexcept;
 		void Render(Scene* pScene, ViewTransform* pViewTransform, MAYBE_UNUSED const GraphicsOptions& graphicsOptions, Ref<Texture> pTarget) noexcept;
 		
@@ -52,12 +58,18 @@ namespace Relentless
 			m_OnRequestBRDFLut = [instance, method]() { return (instance->*method)(); };
 		}
 		
+		CallbackID RegisterOnFrameRenderBeginCallback(Callback<void()> aFrameRenderBeginCallback) noexcept;
+		CallbackID RegisterOnUploadCallback(Callback<void(CommandContext&)> aUploadCallback) noexcept;
+
 		static RenderJobHandle SubmitComputeJob(Callback<void(CommandContext&)>&& aCallback) noexcept;
 		static RenderJobHandle SubmitRenderJob(Callback<void(CommandContext&)>&& aCallback) noexcept;
 
+		void UnregisterOnFrameRenderBeginCallback(CallbackID aCallbackID) noexcept;
+		void UnregisterOnUploadCallback(CallbackID aCallbackID) noexcept;
 	private:
 		void GetViewUniforms(const RenderView& renderView, ShaderInterop::ViewUniforms& outViewUniform) noexcept;
 		void InitializePipelines();
+
 		void UploadSceneData(CommandContext& commandContext) noexcept;
 		void UploadViewUniforms(CommandContext& commandContext, RenderView& view) noexcept;
 	private:
@@ -67,6 +79,9 @@ namespace Relentless
 			ERenderJobType Type = ERenderJobType::None;
 			Ref<RenderJobState> State = nullptr;
 		};
+
+		std::unordered_map<CallbackID, Callback<void()>> m_OnFrameBeginCallbacks;
+		std::unordered_map<CallbackID, Callback<void(CommandContext&)>> m_OnUploadCallbacks;
 
 		GraphicsDevice* m_pDevice = nullptr;
 		RenderView m_MainView{};
@@ -83,6 +98,7 @@ namespace Relentless
 
 		uint32 m_Frame = 0u;
 
+		inline static std::vector<Callback<void(Renderer*)>> s_EnqueuedRequests;
 		inline static std::vector<RenderJob> s_EnqueuedRenderJobs;
 		inline static std::vector<RenderJob> s_InProgressRenderJobs;
 		std::vector<Batch> m_Batches;
@@ -102,6 +118,7 @@ namespace Relentless
 		UniquePtr<HBAOPlus> m_pHBAOPlus = nullptr;
 		UniquePtr<Outlines> m_pOutlines = nullptr;
 		UniquePtr<AutoExposure> m_pAutoExposure = nullptr;
+		UniquePtr<SkyBoxRenderer> m_pSkyBoxRenderer = nullptr;
 
 		AssetHandle m_BRDFLutTextureHandle = AssetHandle::INVALID;
 		
@@ -112,6 +129,9 @@ namespace Relentless
 
 		Callback<AssetHandle()> m_OnRequestBRDFLut;
 
-		inline static std::mutex m_RenderJobMutex;
+		inline static std::mutex s_RenderJobMutex;
+		inline static std::mutex s_DispatchMutex;
+		std::mutex m_OnFrameBeginMutex;
+		std::mutex m_OnUploadMutex;
 	};
 }

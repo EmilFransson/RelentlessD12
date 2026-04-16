@@ -67,9 +67,12 @@ namespace Relentless
 		}
 
 		template<typename T>
-		T AreValuesClose(T value, T alignment) noexcept
+		NO_DISCARD inline static bool AreValuesClose(T value, T alignment) noexcept
 		{
-			return std::abs(value - alignment) < EPSILON;
+			if constexpr (std::is_floating_point_v<T>)
+				return std::abs(value - alignment) < static_cast<T>(EPSILON);
+			else
+				return value == alignment;
 		}
 
 		template<typename T, typename U, typename V>
@@ -151,6 +154,17 @@ namespace Relentless
 		NO_DISCARD inline static float Log2f(float value) noexcept
 		{
 			return std::log2f(value);
+		}
+
+		template<typename T>
+		NO_DISCARD inline static uint32 NearestPowerOfTwo(T aValue) noexcept
+		{
+			if (aValue <= static_cast<T>(1))
+				return static_cast<T>(1);
+
+			const float exponent = std::log2(static_cast<float>(aValue));
+			const float roundedExponent = std::round(exponent);
+			return static_cast<uint32>(std::pow(2.0f, roundedExponent));
 		}
 
 		NO_DISCARD inline static float NormalizeDegrees(float degrees) noexcept

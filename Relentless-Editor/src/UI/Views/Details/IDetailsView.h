@@ -29,6 +29,14 @@ namespace Relentless
 		void RequestRefresh() noexcept;
 
 		void SetContext(void* aContext) noexcept;
+
+		void TearDown() noexcept
+		{
+			if (!m_pLayoutBuilder)
+				return;
+
+			m_pLayoutBuilder->TearDown();
+		}
 	protected:
 		virtual void OnPreRequestSource(MAYBE_UNUSED bool aFromManualTrigger) noexcept {};
 	private:
@@ -40,6 +48,7 @@ namespace Relentless
 		std::vector<Ref<DetailNode>> m_RootNodes;
 		Ref<TreeView<Ref<DetailNode>>> m_pDetailsTreeView = nullptr;
 	private:
+		UniquePtr<IDetailLayoutBuilder> m_pLayoutBuilder = nullptr;
 		void* m_pContext = nullptr;
 		bool m_ManualRefreshTriggered = false;
 	};
@@ -54,8 +63,10 @@ namespace Relentless
 	template<typename InspectedType>
 	void IDetailsView::Rebuild() noexcept
 	{
-		IDetailLayoutBuilder layoutBuilder(this);
-		m_RootNodes = layoutBuilder.Build<InspectedType>();
+		if (!m_pLayoutBuilder)
+			m_pLayoutBuilder = MakeUnique<IDetailLayoutBuilder>(this);
+
+		m_RootNodes = m_pLayoutBuilder->Build<InspectedType>();
 	}
 
 }

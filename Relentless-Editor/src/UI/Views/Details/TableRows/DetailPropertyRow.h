@@ -15,8 +15,6 @@ namespace Relentless
 		const Color& GetBackgroundColor() const noexcept override;
 		uint32 GetNumColumns() noexcept override;
 
-		bool IsDragDropEligible() noexcept override;
-
 		void OnRenderColumn(uint32 aColumn) noexcept override;
 
 		NO_DISCARD Vector2 ReportSize() const noexcept override;

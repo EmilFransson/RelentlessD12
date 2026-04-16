@@ -1,5 +1,5 @@
 #pragma once
-#include "IWidget.h"
+#include "IStylableWidget.h"
 #include "UI/Meta/ImGuiHelpers.h"
 
 #include "Property/PropertyHandle.h"
@@ -81,7 +81,6 @@ namespace Relentless
 		this->SetHandleSize(20.0f);
 		this->SetFrameRounding(6.0f);
 		this->SetBorderSize(2.0f);
-		this->SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	template<typename DataType>

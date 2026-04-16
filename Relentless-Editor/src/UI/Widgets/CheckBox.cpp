@@ -13,7 +13,6 @@ namespace Relentless
 
 		SetFrameRounding(3.0f);
 		SetBorderSize(2.0f);
-		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	CheckBox* CheckBox::Bind(Ref<PropertyHandle<bool>> aPropertyHandle) noexcept

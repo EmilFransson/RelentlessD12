@@ -1,12 +1,17 @@
 #include "DetailsModule.h"
 
+#include "UI/Views/Details/Customizations/Assets/EnvironmentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Viewport/ViewportCameraDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/TransformComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/DirectionalLightComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/PointLightComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/SpotLightComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/SkyBoxComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/SkyLightComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/PostProcessVolumeComponentDetailCustomization.h"
 
 #include "UI/Views/Details/Context/EntityDetailsContext.h"
+#include "UI/Views/Details/Context/EnvironmentDetailsContext.h"
 #include "UI/Views/Details/Context/ViewportDetailsContext.h"
 
 namespace Relentless
@@ -26,5 +31,12 @@ namespace Relentless
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, DirectionalLightComponentDetailCustomization>();
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, PointLightComponentDetailCustomization>();
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, SpotLightComponentDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<EntityDetailsContext, SkyBoxComponentDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<EntityDetailsContext, SkyLightComponentDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<EntityDetailsContext, PostProcessVolumeComponentDetailCustomization>();
+
+		//Assets
+		m_DetailCustomizationRegistry.Register<EnvironmentDetailsContext, EnvironmentDetailCustomization>();
+
 	}
 }

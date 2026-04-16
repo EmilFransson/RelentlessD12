@@ -23,7 +23,6 @@ namespace Relentless
 		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
 		SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
-		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	ComboBox* ComboBox::AddSelectables(Span<const char*> selectables) noexcept

@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <Relentless.h>
 
-#include "IWidget.h"
+#include "IStylableWidget.h"
 #include "HorizontalBox.h"
 #include "Label.h"
 #include "VerticalBox.h"
@@ -239,12 +239,12 @@ namespace Relentless
 
 			if (!icon.empty())
 			{
-				Ref<Label> pLabel = new Label(icon, ImGui::GetIO().Fonts->Fonts[2]);
+				Ref<Label> pLabel = new Label(icon);
 				pLabel->SetAlpha(0.5f);
 				pBox->AddWidget(pLabel);
 			}
 
-			Ref<Label> pLabel = new Label(label, ImGui::GetIO().Fonts->Fonts[2]);
+			Ref<Label> pLabel = new Label(label);
 
 			pBox->AddWidget(pLabel);
 			

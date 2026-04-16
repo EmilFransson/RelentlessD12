@@ -7,7 +7,7 @@ namespace Relentless
 	class MaterialAssetDefinition : public IAssetDefinition
 	{
 	public:
-		MaterialAssetDefinition() noexcept;
+		MaterialAssetDefinition() noexcept = default;
 		NO_DISCARD virtual bool RequestGenerateThumbnail(const AssetData& aAssetData, const Callback<void(const Ref<Texture2D>&)>& aOnThumbnailGeneratedCallback) noexcept override;
 		NO_DISCARD virtual std::vector<String> GetAssetCategories() const noexcept override;
 		NO_DISCARD virtual Color GetAssetColor() const noexcept override;

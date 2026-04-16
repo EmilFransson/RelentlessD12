@@ -1,11 +1,10 @@
 #pragma once
+#include "ECS/ISystem.h"
 
 namespace Relentless
 {
-	struct SceneState;
-
-	struct DeferredEntityDeletionSystem
+	class DeferredEntityDeletionSystem : public ISystem
 	{
-		static void Execute(SceneState& sceneState) noexcept;
+		void Execute(SceneState& aSceneState) noexcept override final;
 	};
 }

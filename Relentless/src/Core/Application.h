@@ -1,9 +1,13 @@
 #pragma once
 #include "DLLExport.h"
 #include "EventSystem/EventPublisher.h"
+#include "Memory/LinearArena.h"
 
 namespace Relentless
 {
+	static constexpr size_t FrameScratchSize = 4u * 1024u * 1024u;
+	inline static LinearArena g_FrameScratchArena;
+
 	struct ApplicationSpecification
 	{
 		std::string Name;

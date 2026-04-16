@@ -4,80 +4,77 @@
 
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RHI/CommandContext.h"
+#include "Graphics/Shaders/Interop/ShaderInterop.h"
 
 namespace Relentless
 {
-	RenderBakeService::RenderBakeService() noexcept
+	RenderBakeService::RenderBakeService(GraphicsDevice* aGraphicsDevice) noexcept
+		: m_pGraphicsDevice{aGraphicsDevice}
 	{
-		GraphicsDevice* pDevice = Application::Get().GetGraphicsDevice();
-
-		PipelineStateInitializer psoDesc{};
-		psoDesc.SetDepthWrite(false);
-		psoDesc.SetDepthEnabled(false);
-		psoDesc.SetName("Equirectangular To Cubemap");
-		psoDesc.SetRootSignature(pDevice->GetGlobalRootSignature());
-		psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, 1);
-		psoDesc.SetVertexShader("EquirectangularToCubemapShader", "vs_main");
-		psoDesc.SetPixelShader("EquirectangularToCubemapShader", "ps_main");
-
-		m_pEquirectToCubemapPSO = pDevice->CreatePipeline(psoDesc);
+		m_pEquirectToCubemapPSO = m_pGraphicsDevice->CreateComputePipeline(m_pGraphicsDevice->GetGlobalRootSignature(), "EquirectangularToCubemapComputeShader", "cs_main");
+		m_pCubeMipGenPSO = m_pGraphicsDevice->CreateComputePipeline(m_pGraphicsDevice->GetGlobalRootSignature(), "CubeMipGenerationShader", "cs_main");
 	}
 
 	RenderBakeService::~RenderBakeService() noexcept = default;
 
 	RenderJobHandle RenderBakeService::RequestEquirectangularToCubemapConversion(EquirectangularToCubemapSpecification& aSpecification, Ref<Texture>& aOutCubemap) noexcept
 	{
-		return Renderer::SubmitRenderJob([this, aSpecification, &aOutCubemap](CommandContext& aCommandContext) mutable
+		return Renderer::SubmitComputeJob([this, aSpecification, &aOutCubemap](CommandContext& aCommandContext) mutable
 			{
-				GraphicsDevice* pDevice = Application::Get().GetGraphicsDevice();
+				const String name = aSpecification.EquirectangularTexture->GetName() + "_CubeMap";
+				const uint32 dimension = aSpecification.CubeFaceDimension;
+				const uint32 numMips = static_cast<uint32>(std::floor(Math::Log2f(static_cast<float>(dimension)) + 1.0f));
 
-				Ref<Texture> pTextureCube = pDevice->CreateTexture(TextureDesc::CreateCube(aSpecification.CubeFaceDimension, aSpecification.CubeFaceDimension, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource), "Temp_Name");
-
-				const Matrix viewMatrices[] = 
-				{
-					Math::CreateLookToMatrix(Vector3::Zero, Vector3::Right,		Vector3::Up),
-					Math::CreateLookToMatrix(Vector3::Zero, Vector3::Left,		Vector3::Up),
-					Math::CreateLookToMatrix(Vector3::Zero, Vector3::Up,		Vector3::Forward),
-					Math::CreateLookToMatrix(Vector3::Zero, Vector3::Down,		Vector3::Backward),
-					Math::CreateLookToMatrix(Vector3::Zero, Vector3::Backward,	Vector3::Up),
-					Math::CreateLookToMatrix(Vector3::Zero, Vector3::Forward,	Vector3::Up),
-				};
-
-				const Matrix projection = Math::CreatePerspectiveMatrix(Math::PI_DIV_2, 1.0f, 0.01f, 1'000.0f);
+				Ref<Texture> pTextureCube = m_pGraphicsDevice->CreateTexture(TextureDesc::CreateCube(dimension, dimension, ResourceFormat::RGBA32_FLOAT, numMips, TextureFlag::UnorderedAccess | TextureFlag::ShaderResource), name.c_str());
+				
+				aCommandContext.InsertResourceBarrier(pTextureCube, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+				aCommandContext.InsertResourceBarrier(aSpecification.EquirectangularTexture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 				struct
 				{
-					Matrix ViewProjectionMatrix = Matrix::Identity;
-					uint32 EquirectangularTextureIndex = 0u;
-					float Padding[3];
+					uint32 EquirectangularTextureIndex = ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+					uint32 OutputCubeIndex = ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+					uint32 CubeDimensions = 0u;
+					float Padding = 0.0f;
 				} passData;
 
 				passData.EquirectangularTextureIndex = aSpecification.EquirectangularTexture->GetSRVIndex();
+				passData.OutputCubeIndex = pTextureCube->GetUAVIndex();
+				passData.CubeDimensions = aSpecification.CubeFaceDimension;
 
-				for (uint32 face = 0u; face < 6; ++face)
+				aCommandContext.SetComputeRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
+				aCommandContext.SetPipelineState(m_pEquirectToCubemapPSO);
+				aCommandContext.BindRootCBV(BindingSlot::PerInstance, (const void*)&passData, sizeof(passData));
+				aCommandContext.Dispatch(ComputeUtils::GetNumThreadGroups(aSpecification.CubeFaceDimension, 32, aSpecification.CubeFaceDimension, 32, 6, 1));
+				
+				aCommandContext.InsertUAVBarrier();
+
+				for (uint32 mip = 0u; mip < numMips - 1u; ++mip)
 				{
-					passData.ViewProjectionMatrix = viewMatrices[face] * projection;
+					const uint32 srcMip = mip;
+					const uint32 dstMip = mip + 1u;
 
-					RenderPassInfo renderPassInfo;
-					renderPassInfo.RenderTargets[0].pTarget = pTextureCube;
-					renderPassInfo.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Preserve;
-					renderPassInfo.RenderTargets[0].EndAccessFlags = RenderTargetAccessFlags::Preserve;
-					renderPassInfo.RenderTargets[0].ArrayIndex = face;
-					renderPassInfo.RenderTargets[0].MipLevel = 0;
-					renderPassInfo.RenderTargetCount++;
+					struct
+					{
+						uint32 SrcTextureIndex;
+						uint32 DstTextureIndex;
+						uint32 SrcTextureDimension;
+						uint32 DstTextureDimension;
+					} passData2;
 
-					aCommandContext.BeginRenderPass(renderPassInfo);
-					
-					aCommandContext.SetGraphicsRootSignature(pDevice->GetGlobalRootSignature());
-					aCommandContext.SetPipelineState(m_pEquirectToCubemapPSO);
-					aCommandContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+					passData2.SrcTextureIndex = pTextureCube->GetArraySRVIndex(srcMip);
+					passData2.SrcTextureDimension = Math::Max(1u, dimension >> srcMip);
+					passData2.DstTextureIndex = pTextureCube->GetUAVIndex(dstMip);
+					passData2.DstTextureDimension = Math::Max(1u, dimension >> dstMip);
 
-					aCommandContext.BindRootCBV(BindingSlot::PerInstance, (const void*)&passData, sizeof(passData));
-					aCommandContext.Draw(0u, 36u, 0u, 1u);
-					
-					aCommandContext.EndRenderPass();
+					aCommandContext.SetComputeRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
+					aCommandContext.SetPipelineState(m_pCubeMipGenPSO);
+					aCommandContext.BindRootCBV(BindingSlot::PerInstance, (const void*)&passData2, sizeof(passData2));
+					aCommandContext.Dispatch(ComputeUtils::GetNumThreadGroups(passData2.DstTextureDimension, 32, passData2.DstTextureDimension, 32, 6, 1));
+
+					if (mip < numMips - 2u)
+						aCommandContext.InsertUAVBarrier();
 				}
-
 				aOutCubemap = pTextureCube;
 			});
 	}

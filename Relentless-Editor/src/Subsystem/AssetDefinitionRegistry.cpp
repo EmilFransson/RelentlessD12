@@ -1,4 +1,5 @@
 #include "AssetDefinitionRegistry.h"
+#include "../Assets/Definition/EnvironmentAssetDefinition.h"
 #include "../Assets/Definition/MaterialAssetDefinition.h"
 #include "../Assets/Definition/MeshAssetDefinition.h"
 #include "../Assets/Definition/Texture2DAssetDefinition.h"
@@ -39,9 +40,10 @@ namespace Relentless
 
 	bool AssetDefinitionRegistry::OnLoad(MAYBE_UNUSED ISystemManager* aSystemManager) noexcept
 	{
-		RegisterAssetDefinition(new MaterialAssetDefinition());
-		RegisterAssetDefinition(new MeshAssetDefinition());
-		RegisterAssetDefinition(new Texture2DAssetDefinition());
+		RegisterAssetDefinition(RLS_NEW MaterialAssetDefinition());
+		RegisterAssetDefinition(RLS_NEW MeshAssetDefinition());
+		RegisterAssetDefinition(RLS_NEW Texture2DAssetDefinition());
+		RegisterAssetDefinition(RLS_NEW EnvironmentAssetDefinition());
 
 		return true;
 	}

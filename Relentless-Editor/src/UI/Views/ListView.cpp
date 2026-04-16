@@ -38,7 +38,7 @@ namespace Relentless
 		{
 			ImGui::TableSetColumnIndex(col);
 			const Column& column = GetColumn(col);
-			column.pBox->AssignSize({ ImGui::GetContentRegionAvail().x, 32.0f });
+			column.pBox->AssignSize({ ImGui::GetContentRegionAvail().x, 22.0f });
 			column.pBox->Render();
 		}
 	}

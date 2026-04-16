@@ -10,9 +10,9 @@ namespace Relentless
 	AutoExposure::AutoExposure(GraphicsDevice* pDevice) noexcept
 		: m_pDevice{ pDevice }
 	{
-		m_pDownsampleColorPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "DownsampleColor", "cs_main");
-		m_pLuminanceHistogramPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "LuminanceHistogram", "cs_main");
-		m_pAverageLuminancePSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "AverageLuminance", "cs_main");
+		m_pDownsampleColorPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "DownsampleColorShader", "cs_main");
+		m_pLuminanceHistogramPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "LuminanceHistogramShader", "cs_main");
+		m_pAverageLuminancePSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "AverageLuminanceShader", "cs_main");
 	}
 
 	void AutoExposure::Render(CommandContext& commandContext, MAYBE_UNUSED const RenderView& renderView, SceneTextures& sceneTextures, float aMinLogLuminance, float aMinEV100, float aMaxEV100, float aExposureCompensation) noexcept
@@ -133,13 +133,13 @@ namespace Relentless
 			parameters.MinLogLuminance = aMinLogLuminance;
 			parameters.LogLuminanceRange = 20.0f - aMinLogLuminance;
 			parameters.TimeDelta = Time::GetDeltaTime();
-			parameters.SpeedUp = 3.0f;
-			parameters.SpeedDown = 1.0f;
+			parameters.SpeedUp = 6.0f;
+			parameters.SpeedDown = 5.0f;
 			parameters.ExposureCompensation = aExposureCompensation;
 			parameters.MinEV100 = aMinEV100;
 			parameters.MaxEV100 = aMaxEV100;
-			parameters.LowPercent = 0.05f;
-			parameters.HighPercent = 0.95f;
+			parameters.LowPercent = 0.1f;
+			parameters.HighPercent = 0.90f;
 			parameters.LuminanceHistogramIndex = m_pLuminanceHistogram->GetSRVIndex();
 			parameters.LuminanceOutputIndex = m_pAverageLuminance->GetUAVIndex();
 

@@ -51,8 +51,15 @@ namespace Relentless
 
 	void EntityDetailsView::OnPreRequestSource(bool aFromManualTrigger) noexcept
 	{
-		if (aFromManualTrigger)
+		if (aFromManualTrigger && !m_Context.Entities.empty())
 			Rebuild<EntityDetailsContext>();
+		else
+		{
+			if (m_Context.Entities.empty())
+				m_RootNodes.clear();
+
+			TearDown();
+		}
 	}
 
 	void EntityDetailsView::OnEntityDestroyed(entity aDestroyedEntity) noexcept
@@ -87,12 +94,16 @@ namespace Relentless
 		m_Context.Entities.clear();
 
 		if (!aScene)
+		{
 			m_Context.EntityManager = nullptr;
+			m_Context.Scene = nullptr;
+		}
 		else
 		{
 			m_pInspectedScene = aScene;
 			m_pInspectedScene->OnEntityDestroyed.Connect(this, &EntityDetailsView::OnEntityDestroyed);
 			m_Context.EntityManager = &aScene->GetEntityManager();
+			m_Context.Scene = aScene;
 		}
 	
 		RequestRefresh();

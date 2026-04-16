@@ -144,7 +144,7 @@ namespace Relentless
 			if (auto it = m_PathToFolders.find(current); it != m_PathToFolders.end())
 			{
 				for (const String& child : it->second)
-					toProcess.push(current.empty() ? child : (current + child));
+					toProcess.push(current.empty() ? (child + "/") : (current + child + "/"));
 			}
 		}
 	}
@@ -225,13 +225,13 @@ namespace Relentless
 		const Path absAssets = std::filesystem::absolute(assetsBase).lexically_normal();
 		const Path relative = std::filesystem::relative(absFull, absAssets);
 
-		String folder = relative.string();
+		String folder = relative.string() + "/";
 		StringUtils::ReplaceCharacters(folder, '\\', '/');
 
 		const AssetKeys keys
 		{
 			.FolderKey	= folder,
-			.FileKey	= folder + "/" + aAssetData.Name + ".rasset",
+			.FileKey	= folder + aAssetData.Name + ".rasset",
 			.Type		= aAssetData.Type,
 			.Uuid		= aAssetData.Uuid
 		};
@@ -353,7 +353,7 @@ namespace Relentless
 		const std::vector<String> tokens = StringUtils::Split(pathString, '/');
 		String path = tokens[0] + "/";
 		for (size_t i = 1; i < tokens.size() - 1; ++i)
-			path += ("/" + tokens[i + 1]);
+			path += (tokens[i] + "/");
 
 		std::unique_lock<std::shared_mutex> lock(m_Mutex);
 		std::unordered_set<String>& folders = m_PathToFolders[path];

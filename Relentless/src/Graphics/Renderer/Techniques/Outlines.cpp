@@ -28,7 +28,7 @@ namespace Relentless
 		psoDesc.SetName("Outlines - Solid");
 
 		m_pSolidPSO = m_pDevice->CreatePipeline(psoDesc);
-		m_pGaussianBlurPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "GaussianBlurSeparable", "cs_main");
+		m_pGaussianBlurPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "GaussianBlurSeparableShader", "cs_main");
 
 		constexpr float sigma = static_cast<float>(RADIUS) / 2.0f;
 		float sum = 0.0f;

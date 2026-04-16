@@ -12,8 +12,8 @@ namespace Relentless
 		psoDesc.SetBlendMode(BlendMode::Replace);
 		psoDesc.SetAlphaToCoverageEnable(false);
 		psoDesc.SetName("Forward - Opaque");
-		psoDesc.SetVertexShader("EvolvingShader", "vs_main");
-		psoDesc.SetPixelShader("EvolvingShader", "ps_main", {"RED_OUTPUT"});
+		psoDesc.SetVertexShader("ForwardShader", "vs_main");
+		psoDesc.SetPixelShader("ForwardShader", "ps_main", {"RED_OUTPUT"});
 		psoDesc.SetDepthWrite(false);
 		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_EQUAL);
 		psoDesc.SetDepthEnabled(true);
@@ -28,30 +28,11 @@ namespace Relentless
 
 	void ForwardRenderer::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, RenderModeEx renderMode) noexcept
 	{
-		if (!m_pColorTarget || m_pColorTarget->GetWidth() != sceneTextures.pColorTarget->GetWidth() || m_pColorTarget->GetHeight() != sceneTextures.pColorTarget->GetHeight()
-			|| m_pColorTarget->GetFormat() != sceneTextures.pColorTarget->GetFormat())
-		{
-			const uint32 width = sceneTextures.pColorTarget->GetWidth();
-			const uint32 height = sceneTextures.pColorTarget->GetHeight();
-			const ResourceFormat colorFormat = sceneTextures.pColorTarget->GetFormat();
-
-			const TextureDesc colorTargetDesc = TextureDesc::Create2D(
-				width,
-				height,
-				colorFormat,
-				1u,
-				TextureFlag::RenderTarget | TextureFlag::ShaderResource,
-				ClearBinding(Colors::Black),
-				sceneTextures.pColorTarget->GetSampleCount());
-
-			m_pColorTarget = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
-		}
-		
-		commandContext.InsertResourceBarrier(m_pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		commandContext.InsertResourceBarrier(sceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		RenderPassInfo info;
-		info.RenderTargets[0].pTarget = m_pColorTarget;
-		info.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Clear;
+		info.RenderTargets[0].pTarget = sceneTextures.pColorTarget;
+		info.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargets[0].EndAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargetCount++;
 
@@ -77,7 +58,5 @@ namespace Relentless
 		}
 
 		commandContext.EndRenderPass();
-
-		sceneTextures.pColorTarget = m_pColorTarget;
 	}
 }

@@ -1,4 +1,5 @@
 #include "Label.h"
+#include "ImGui/ImGuiFonts.h"
 
 namespace Relentless
 {
@@ -8,7 +9,7 @@ namespace Relentless
 		if (pFont)
 			SetFont(pFont);
 		else
-			SetFont(ImGui::GetIO().Fonts->Fonts[0]);
+			SetFont(UI::Fonts::Get("Default"));
 	}
 
 	const String& Label::GetText() const noexcept

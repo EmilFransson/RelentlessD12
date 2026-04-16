@@ -4,28 +4,23 @@
 
 namespace Relentless
 {
-	void DeferredEntityDeletionSystem::Execute(SceneState& sceneState) noexcept
+	void DeferredEntityDeletionSystem::Execute(SceneState& aSceneState) noexcept
 	{
-		while (!sceneState.Scene.m_PendingEntityDeletionQueue.Empty())
-		{
-			entity toDestroy = NULL_ENTITY;
-			if (!sceneState.Scene.m_PendingEntityDeletionQueue.TryPop(toDestroy))
-				continue;
+		aSceneState.EntityManager.Collect<EntityDeleteRequestComponent, IDComponent>().Do([&aSceneState](entity aEntity, IDComponent& aIDComponent)
+			{
+				RLS_ASSERT(aSceneState.EntityManager.Exists(aEntity), "[DeferredEntityDeletionSystem::Execute]: Entity does not exist.");
 
-			if (!sceneState.EntityManager.Exists(toDestroy))
-				continue;
+				if (aSceneState.Scene.HasParent(aEntity))
+					aSceneState.Scene.DetachEntity(aEntity);
 
-			//Check if the entity itself is a child. If it is, remove its entry from parent child list:
-			if (sceneState.Scene.HasParent(toDestroy))
-				sceneState.Scene.DetachEntity(toDestroy);
-		
-			const std::vector<entity> children = sceneState.Scene.GetEntityChildren(toDestroy);
-			for (entity child : children)
-				sceneState.Scene.DetachEntity(child);
+				const std::vector<entity> children = aSceneState.Scene.GetEntityChildren(aEntity);
+				for (entity child : children)
+					aSceneState.Scene.DetachEntity(child);
 
-			sceneState.Scene.OnEntityDestroy(toDestroy);
-			sceneState.EntityManager.DestroyEntity(toDestroy);
-			sceneState.Scene.OnEntityDestroyed(toDestroy);
-		}
+				aSceneState.Scene.OnEntityDestroy(aEntity);
+				aSceneState.Scene.m_EntityUUIDMap.erase(aIDComponent.UuId);
+				aSceneState.EntityManager.DestroyEntity(aEntity);
+				aSceneState.Scene.OnEntityDestroyed(aEntity);
+			});
 	}
 }

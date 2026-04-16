@@ -135,7 +135,7 @@ namespace Relentless
 			TextureDesc desc;
 			desc.Width = width;
 			desc.Height = height;
-			desc.DepthOrArraySize = 1u;
+			desc.DepthOrArraySize = 6u;
 			desc.Mips = mips;
 			desc.SampleCount = sampleCount;
 			desc.Type = TextureType::TextureCube;
@@ -229,6 +229,7 @@ namespace Relentless
 
 		NO_DISCARD ShaderResourceView* GetSRV() const noexcept;
 		NO_DISCARD uint32 GetSRVIndex() const noexcept;
+		NO_DISCARD uint32 GetArraySRVIndex(uint32 aMip) const noexcept;
 
 		NO_DISCARD UnorderedAccessView* GetUAV(uint32 subResourceIndex = 0) const noexcept;
 		NO_DISCARD uint32 GetUAVIndex(uint32 subResourceIndex = 0) const noexcept;
@@ -240,6 +241,7 @@ namespace Relentless
 
 		void SetDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex = 0u) noexcept;
 		void SetSRV(Ref<ShaderResourceView> pSRV) noexcept;
+		void SetMipArraySRV(Ref<ShaderResourceView> aSRV, uint32 aMip) noexcept;
 		void SetRTV(Ref<RenderTargetView> pRTV, uint32 subResourceIndex = 0u) noexcept;
 		void SetUAV(Ref<UnorderedAccessView> pUAV, uint32 subResourceIndex = 0u) noexcept;
 
@@ -247,6 +249,7 @@ namespace Relentless
 		const TextureDesc m_Desc;
 
 		Ref<ShaderResourceView> m_pSRV = nullptr;
+		std::vector<Ref<ShaderResourceView>> m_PerMipSRVs;
 		std::vector<Ref<UnorderedAccessView>> m_UAVs;
 		std::vector<Ref<RenderTargetView>> m_RTVs;
 		std::vector<Ref<DepthStencilView>> m_DSVs;

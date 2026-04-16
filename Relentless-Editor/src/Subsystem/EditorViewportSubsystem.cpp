@@ -13,7 +13,7 @@ namespace Relentless
 	ViewportPanel* EditorViewportSubsystem::CreateViewportPanel() noexcept
 	{
 		UIModule& uiModule = ModuleManager::LoadModuleChecked<UIModule>();
-		ViewportPanel* pViewport = uiModule.AddPanel<ViewportPanel>(m_EditorViewports.size());
+		ViewportPanel* pViewport = uiModule.OpenPanel<ViewportPanel>(m_EditorViewports.size());
 		pViewport->OnClickedOnViewport.Connect(this, &EditorViewportSubsystem::OnViewportClicked);
 		pViewport->OnHotkeyPressed.Connect(this, &EditorViewportSubsystem::OnViewportHotkeyPressed);
 

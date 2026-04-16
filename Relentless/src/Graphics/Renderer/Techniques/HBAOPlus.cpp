@@ -38,6 +38,18 @@ namespace Relentless
 
 	void HBAOPlus::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept
 	{
+		#if defined(RLS_DEBUG)
+		// HBAO+ internally waits on fence value 0 on first frame — suppress known 3rd party warning
+		Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
+		bool hasInfoQueue = SUCCEEDED(m_pDevice->GetDevice()->QueryInterface(IID_PPV_ARGS(&infoQueue)));
+		if (hasInfoQueue && !m_FirstFrameDone)
+		{
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, FALSE);
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, FALSE);
+			infoQueue->SetMuteDebugOutput(true);
+		}
+		#endif
+
 		GFSDK_SSAO_InputData_D3D12 inputData = {};
 		inputData.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;
 		inputData.DepthData.FullResDepthTextureSRV.pResource = sceneTextures.pDepthTarget->GetResource();
@@ -78,6 +90,17 @@ namespace Relentless
 
 		const GFSDK_SSAO_Status status = m_pSSAOContext->RenderAO(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue(), commandContext.GetCommandList(), inputData, parameters, output, renderMask);
 		RLS_VERIFY(status == GFSDK_SSAO_OK, "Failed To Issue HBAOPlus Render Command.");
+
+		#if defined(RLS_DEBUG)
+		if (hasInfoQueue && !m_FirstFrameDone)
+		{
+			// Restore breaks first, then pop filter
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+			infoQueue->SetMuteDebugOutput(false);
+			m_FirstFrameDone = true;
+		}
+		#endif
 	}
 }
 

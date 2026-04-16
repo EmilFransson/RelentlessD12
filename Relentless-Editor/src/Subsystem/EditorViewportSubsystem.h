@@ -26,7 +26,7 @@ namespace Relentless
 		float m_MinLogLuminance = -4.0f;
 		float m_MinEV100 = -10.0f;
 		float m_MaxEV100 = 20.0f;
-		float m_ExposureCompensation = 1.0f;
+		float m_ExposureCompensation = 2.0f;
 		CallbackID m_OnUpdateCallbackID = 0u;
 		Editor* m_pEditor = nullptr;
 	};

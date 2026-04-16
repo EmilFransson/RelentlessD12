@@ -11,7 +11,6 @@ namespace Relentless
 
 		SetBorderSize(2.0f);
 		SetFrameRounding(4.0f);
-		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	const String& Button::GetText() const noexcept

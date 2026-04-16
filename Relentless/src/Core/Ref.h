@@ -259,8 +259,17 @@ namespace Relentless
 		return !(lhs == rhs);
 	}
 
+	template<typename T>
+	struct Is_Pointer_Like<T*> : std::true_type {};
+
 	template<typename U>
 	struct Is_Pointer_Like<Ref<U>> : std::true_type {};
+
+	template<typename T>
+	struct Is_Pointer_Like<std::shared_ptr<T>> : std::true_type {};
+
+	template<typename T>
+	struct Is_Pointer_Like<std::weak_ptr<T>> : std::true_type {};
 }
 
 namespace std 

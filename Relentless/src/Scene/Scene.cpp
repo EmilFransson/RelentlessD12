@@ -1,9 +1,17 @@
 #include "Scene.h"
+
 #include "Assets/AssetManager.h"
-
-#include "ECS/Systems/DeferredEntityDeletionSystem.h"
-
 #include "Assets/CoreTypes/Material.h"
+
+#include "ECS/Component.h"
+#include "ECS/Components/SkyBoxComponent.h"
+#include "ECS/Components/SkyLightComponent.h"
+#include "ECS/Systems/DeferredEntityDeletionSystem.h"
+#include "ECS/Systems/SkyBoxRenderDispatchSystem.h"
+#include "ECS/Systems/SkyLightRenderDispatchSystem.h"
+#include "ECS/Systems/TransformRenderDispatchSystem.h"
+#include "ECS/ObserverSystems/SkyBoxObserverSystem.h"
+#include "ECS/ObserverSystems/SkyLightObserverSystem.h"
 
 namespace Relentless
 {
@@ -11,6 +19,15 @@ namespace Relentless
 		:m_UUID{ CreateUUID() },
 		 m_Name{ aName }
 	{
+		//ECS-Systems (Order must be preserved!):
+		RegisterSystem<SkyBoxRenderDispatchSystem>();
+		RegisterSystem<SkyLightRenderDispatchSystem>();
+		RegisterSystem<TransformRenderDispatchSystem>();
+		RegisterSystem<DeferredEntityDeletionSystem>();
+
+		//ECS-Observer-Systems:
+		RegisterObserverSystem<SkyBoxObserverSystem>();
+		RegisterObserverSystem<SkyLightObserverSystem>();
 	}
 
 	bool Scene::AnyEntityHasName(const char* pName) const noexcept
@@ -37,7 +54,7 @@ namespace Relentless
 		m_Name = name;
 	}
 
-	void Scene::OnUpdate(const float deltaTime) noexcept
+	void Scene::OnUpdate(const float aDeltaTime) noexcept
 	{
 		PROFILE_FUNC;
 
@@ -45,10 +62,11 @@ namespace Relentless
 		{
 			.Scene = *this,
 			.EntityManager = m_EntityManager,
-			.DeltaTime = deltaTime
+			.DeltaTime = aDeltaTime
 		};
 
-		DeferredEntityDeletionSystem::Execute(state);
+		for (auto& pSystem : m_Systems)
+			pSystem->Execute(state);
 	}
 
 	entity Scene::DuplicateEntity(entity entityToCopy, bool /*preserveHierarchy*/) noexcept
@@ -84,7 +102,6 @@ namespace Relentless
 		CopyComponentIfExists<TransformComponent>(entityToCopy, newEntity);
 		auto& tc = m_EntityManager.Get<TransformComponent>(newEntity);
 		tc.Scene = this;
-		tc.Self = newEntity;
 
 		CopyComponentIfExists<MeshFilterComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<MeshRendererComponent>(entityToCopy, newEntity);
@@ -102,21 +119,22 @@ namespace Relentless
 		return CreateEntityWithUUID(name, CreateUUID());
 	}
 
-	entity Scene::CreateEntityWithUUID(const char* name, const UUID& guid) noexcept
+	entity Scene::CreateEntityWithUUID(const char* name, const UUID& aUUID) noexcept
 	{
-		auto entity = m_EntityManager.CreateEntity();
+		const entity newEntity = m_EntityManager.CreateEntity();
 
-		auto& tc = m_EntityManager.Add<TransformComponent>(entity);
-		tc.Self = entity;
+		auto& tc = m_EntityManager.Add<TransformComponent>(newEntity);
 		tc.Scene = this;
 
-		m_EntityManager.Add<NameComponent>(entity, name);
-		m_EntityManager.Add<IDComponent>(entity, guid);
-		m_EntityManager.Add<RootComponent>(entity);
+		m_EntityManager.Add<NameComponent>(newEntity, name);
+		m_EntityManager.Add<IDComponent>(newEntity, aUUID);
+		m_EntityManager.Add<RootComponent>(newEntity);
 
-		OnEntityCreated(entity);
+		m_EntityUUIDMap[aUUID] = newEntity;
 
-		return entity;
+		OnEntityCreated(newEntity);
+
+		return newEntity;
 	}
 
 	entity Scene::CreateLight(const char* name, ELightType aLightTypetype) noexcept
@@ -133,6 +151,16 @@ namespace Relentless
 		}
 		
 		return lightEntity;
+	}
+
+	entity Scene::GetActiveSkyBox() const noexcept
+	{
+		return m_ActiveSkyBoxEntity;
+	}
+
+	entity Scene::GetActiveSkyLight() const noexcept
+	{
+		return m_ActiveSkyLightEntity;
 	}
 
 	void Scene::OnRuntimeStart() noexcept
@@ -179,9 +207,9 @@ namespace Relentless
 		return camera;
 	}
 			
-	void Scene::DestroyEntity(const entity entityHandle) noexcept
+	void Scene::DestroyEntity(entity aEntity) noexcept
 	{
-		m_PendingEntityDeletionQueue.Push(entityHandle);
+		m_EntityManager.AddOrReplace<EntityDeleteRequestComponent>(aEntity);
 	}
 
 	bool Scene::EntityHasAncestors(entity e) const noexcept
@@ -364,19 +392,9 @@ namespace Relentless
 		return immediateChildren;
 	}
 
-	entity Scene::FindEntityByUUID(const UUID& uuid) noexcept
+	entity Scene::GetEntityByUUID(const UUID& aUUID) const noexcept
 	{
-		entity toReturn = NULL_ENTITY;
-		m_EntityManager.Collect<IDComponent>().Do([&](entity e, const IDComponent& id)
-			{
-				if (uuid == id.UuId)
-				{
-					toReturn = e;
-					return;
-				}
-			});
-
-		return toReturn;
+		return m_EntityUUIDMap.at(aUUID);
 	}
 
 	void Scene::SetEntityVisibleInGame(entity e, bool visibilityState) noexcept
@@ -396,7 +414,6 @@ namespace Relentless
 		for (entity descendant : descendants)
 			SetEntityVisibleInGame(descendant, visibilityState);
 	}
-
 
 	bool Scene::IsParent(entity e) noexcept
 	{
@@ -425,58 +442,75 @@ namespace Relentless
  		m_IsDirty = true;
  	}
 
+	void Scene::RemoveActiveSkyBox() noexcept
+	{
+		OnSkyBoxChange(*this, m_ActiveSkyBoxEntity, NULL_ENTITY);
+		m_ActiveSkyBoxEntity = NULL_ENTITY;
+	}
+
+	void Scene::RemoveActiveSkyLight() noexcept
+	{
+		OnSkyLightChange(*this, m_ActiveSkyLightEntity, NULL_ENTITY);
+		m_ActiveSkyLightEntity = NULL_ENTITY;
+	}
+
 	bool Scene::SerializeCore(IArchive& aArchive) noexcept
 	{
 		if (aArchive.IsSaving())
 		{
 			m_EntityManager.Collect<IDComponent>().Do([this, &aArchive](entity aEntity)
 				{
-					SerializeEntity(aArchive, aEntity);
-
+					//SerializeEntity(aArchive, aEntity);
 				});
 		}
 
 		return true;
 	}
 
-	bool Scene::SerializeEntity(IArchive& /*aArchive*/, entity /*aEntity*/) noexcept
+	void Scene::SetActiveSkyBox(entity aSkyBoxEntity) noexcept
 	{
-		//RLS_ASSERT(m_EntityManager.Exists(aEntity), "[Scene::SerializeEntity]: Entity is invalid.");
-		//
-		//auto&& ConditionallyProcess = [&]<typename ComponentType>() -> bool
-		//{
-		//	bool hasComponent = m_EntityManager.Has<ComponentType>(aEntity);
-		//	if (!aArchive.Process(hasComponent))
-		//		return false;
-		//
-		//	if constexpr (!std::is_empty_v<ComponentType>)
-		//	{
-		//		if (hasComponent)
-		//		{
-		//			ComponentType& component = m_EntityManager.Get<ComponentType>(aEntity);
-		//			if (!aArchive.Process(component))
-		//				return false;
-		//		}
-		//	}
-		//
-		//	return true;
-		//};
-		//
-		//return
-		//	ConditionallyProcess.template operator()<IDComponent>() &&
-		//	ConditionallyProcess.template operator()<NameComponent>() &&
-		//	ConditionallyProcess.template operator()<RootComponent>() &&
-		//	ConditionallyProcess.template operator()<TransformComponent>() &&
-		//	ConditionallyProcess.template operator()<MeshFilterComponent>() &&
-		//	ConditionallyProcess.template operator()<MeshRendererComponent>() &&
-		//	ConditionallyProcess.template operator()<DirectionalLightComponent>() &&
-		//	ConditionallyProcess.template operator()<PointLightComponent>() &&
-		//	ConditionallyProcess.template operator()<SpotLightComponent>() &&
-		//	ConditionallyProcess.template operator()<CameraComponent>() &&
-		//	ConditionallyProcess.template operator()<HiddenInGameComponent>() &&
-		//	ConditionallyProcess.template operator()<FolderComponent>();
+		RLS_ASSERT(m_EntityManager.Exists(aSkyBoxEntity), "[Scene::SetActiveSkyBox]: Entity does not exist.");
 
-		return true;
+		if (m_ActiveSkyBoxEntity == aSkyBoxEntity)
+			return;
+
+		if (!m_EntityManager.Has<SkyBoxComponent>(aSkyBoxEntity))
+		{
+			RLS_CORE_WARN("[Scene::SetActiveSkyBox]: Entity is not a valid sky box.");
+			OnSkyBoxChange(*this, m_ActiveSkyBoxEntity, NULL_ENTITY);
+			m_ActiveSkyBoxEntity = NULL_ENTITY;
+			return;
+		}
+
+		OnSkyBoxChange(*this, m_ActiveSkyBoxEntity, aSkyBoxEntity);
+		m_ActiveSkyBoxEntity = aSkyBoxEntity;
+	}
+
+	void Scene::SetActiveSkyLight(entity aSkyLightEntity) noexcept
+	{
+		RLS_ASSERT(m_EntityManager.Exists(aSkyLightEntity), "[Scene::SetActiveSkyLightEntity]: Entity does not exist.");
+
+		if (m_ActiveSkyLightEntity == aSkyLightEntity)
+			return;
+
+		if (!m_EntityManager.Has<SkyLightComponent>(aSkyLightEntity))
+		{
+			RLS_CORE_WARN("[Scene::SetActiveSkyLightEntity]: Entity is not a valid sky light.");
+			OnSkyLightChange(*this, m_ActiveSkyLightEntity, NULL_ENTITY);
+			m_ActiveSkyLightEntity = NULL_ENTITY;
+			return;
+		}
+		
+		OnSkyLightChange(*this, m_ActiveSkyLightEntity, aSkyLightEntity);
+		m_ActiveSkyLightEntity = aSkyLightEntity;
+	}
+
+	entity Scene::TryGetEntityByUUID(const UUID& aUUID) const noexcept
+	{
+		if (auto it = m_EntityUUIDMap.find(aUUID); it != m_EntityUUIDMap.end())
+			return it->second;
+
+		return NULL_ENTITY;
 	}
 
 	template<typename ComponentType>
@@ -506,7 +540,13 @@ namespace Relentless
 
 					entity entityID = idToEntityMap[uuid];
 
-					dstMgr.AddOrReplace<ComponentType>(entityID, ct);
+					if constexpr (std::is_base_of_v<ManagedComponent<ComponentType>, ComponentType>)
+					{
+						ComponentType& newComponent = dstMgr.AddOrReplace<ComponentType>(entityID);
+						newComponent.CopyFrom(ct, entityID, dstMgr);
+					}
+					else
+						dstMgr.AddOrReplace<ComponentType>(entityID, ct);
 
 					if constexpr (std::is_same_v<ComponentType, IsChildComponent>)
 					{

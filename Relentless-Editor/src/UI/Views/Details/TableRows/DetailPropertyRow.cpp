@@ -22,11 +22,6 @@ namespace Relentless
 		return 3u;
 	}
 
-	bool DetailPropertyRow::IsDragDropEligible() noexcept
-	{
-		return false;
-	}
-
 	void DetailPropertyRow::OnRenderColumn(uint32 aColumn) noexcept
 	{
 		if (aColumn == 0u)

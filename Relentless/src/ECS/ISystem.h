@@ -1,4 +1,6 @@
 #pragma once
+#include "ECS/ECSCommon.h"
+
 namespace Relentless
 {
 	struct SceneState;

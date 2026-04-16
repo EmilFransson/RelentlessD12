@@ -12,7 +12,6 @@ namespace Relentless
 		SetSeparatorActiveColor(Colors::Normalize(110.0f, 110.0f, 110.0f, 255.0f));
 
 		SetCellPadding(Vector2(20.0f, 4.0f));
-		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	bool Table::HasWidget(Ref<IBaseWidget> pWidget) const noexcept

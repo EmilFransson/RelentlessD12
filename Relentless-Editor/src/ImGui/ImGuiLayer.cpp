@@ -1,4 +1,5 @@
 ﻿#include "ImGuiLayer.h"
+#include "ImGuiFonts.h"
 
 namespace Relentless
 {
@@ -117,45 +118,23 @@ namespace Relentless
 
 		ImGui::StyleColorsDark();
 
-		ImFontConfig config;
-		config.PixelSnapH = true;
+		//Configure fonts:
+		{
+			UI::FontConfiguration robotoDefault;
+			robotoDefault.FontName = "Default";
+			robotoDefault.FilePath = "Fonts/Roboto/Roboto-SemiMedium.ttf";
+			robotoDefault.Size = 15.0f;
+			UI::Fonts::Add(robotoDefault, true);
 
-		std::string openSansFontPath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("Fonts\\opensans\\");
-		io.FontDefault = io.Fonts->AddFontFromFileTTF((std::string(openSansFontPath) + std::string("OpenSans-Regular.ttf")).c_str(), 22.0f, &config);
-
-		const std::string fontAwesomePath = std::string(ENGINE_ASSET_DIRECTORY) + std::string("/Fonts/fontawesome/");
-		static const ImWchar iconRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
-		// === Load 22pt font set ===
-		ImFontConfig config22;
-		config22.PixelSnapH = true;
-
-		std::string fullFontPath = openSansFontPath + "OpenSans-Regular.ttf";
-		ImFont* font22 = io.Fonts->AddFontFromFileTTF(
-			fullFontPath.c_str(),
-			22.0f, &config22);
-
-		ImFontConfig iconConfig22;
-		iconConfig22.MergeMode = true;
-		iconConfig22.PixelSnapH = true;
-
-		fullFontPath = fontAwesomePath + "fa-solid-900.ttf";
-		io.Fonts->AddFontFromFileTTF(fullFontPath.c_str()
-			,
-			22.0f, &iconConfig22, iconRanges);
-
-		io.FontDefault = font22;
-
-		ImFontConfig config26;
-		config26.PixelSnapH = true;
-
-		fullFontPath = openSansFontPath + "OpenSans-Regular.ttf";
-		io.Fonts->AddFontFromFileTTF(fullFontPath.c_str(), 26.0f, &config26);
-
-		ImFontConfig iconConfig26;
-		iconConfig26.MergeMode = true;
-		iconConfig26.PixelSnapH = true;
-
-		io.Fonts->AddFontFromFileTTF((fontAwesomePath + "fa-solid-900.ttf").c_str(), 20.0f, &iconConfig26, iconRanges);
+			static const ImWchar s_FontAwesomeRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+			UI::FontConfiguration fontAwesome;
+			fontAwesome.FontName = "FontAwesome";
+			fontAwesome.FilePath = "Fonts/FontAwesome/fa-solid-900.ttf";
+			fontAwesome.Size = 16.0f;
+			fontAwesome.GlyphRanges = s_FontAwesomeRanges;
+			fontAwesome.MergeWithLast = true;
+			UI::Fonts::Add(fontAwesome);
+		}
 
 		if (io.ConfigFlags & ImGuiConfigFlags_::ImGuiConfigFlags_ViewportsEnable)
 		{
@@ -223,6 +202,8 @@ namespace Relentless
 		info.RTVFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 		info.DSVFormat = DXGI_FORMAT_UNKNOWN;
 		info.UserData = &m_Allocator;
+		info.SrvDescriptorHeap = m_pDevice->GetGlobalShaderBindableHeap()->GetDescriptorHeapInterface();
+
 		info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* init, D3D12_CPU_DESCRIPTOR_HANDLE* outCpu, D3D12_GPU_DESCRIPTOR_HANDLE* outGpu)
 			{
 				static_cast<ImGuiSRVAllocator*>(init->UserData)->Allocate(outCpu, outGpu);

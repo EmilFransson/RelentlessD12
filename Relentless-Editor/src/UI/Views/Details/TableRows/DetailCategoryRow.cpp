@@ -16,11 +16,9 @@ namespace Relentless
 			->SetActiveColor(Colors::Transparent)
 			->SetHoverColor(Colors::Transparent)
 			->SetBorderColor(Colors::Transparent)
-			->SetTextColor(Colors::Gray)
-			->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
+			->SetTextColor(Colors::Gray);
 
-		pBox->AddWidget(RLS_NEW Label(aName))
-			->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
+		pBox->AddWidget(RLS_NEW Label(aName));
 
 		m_ColumnWidgets2.push_back(pBox);
 	}
@@ -44,11 +42,6 @@ namespace Relentless
 	uint32 DetailCategoryRow::GetNumColumns() noexcept
 	{
 		return 1u;
-	}
-
-	bool DetailCategoryRow::IsDragDropEligible() noexcept
-	{
-		return false;
 	}
 
 	void DetailCategoryRow::OnRenderColumn(uint32 aColumn) noexcept

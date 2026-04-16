@@ -15,6 +15,11 @@ namespace Relentless
 	{
 	}
 
+	void DetailNode::AddChild(const Ref<DetailNode>& aChildNode) noexcept
+	{
+		m_Children.push_back(aChildNode);
+	}
+
 	const std::vector<Ref<DetailNode>>& DetailNode::GetChildren() const noexcept
 	{
 		return m_Children;
@@ -30,6 +35,11 @@ namespace Relentless
 		return m_pPropertyHandle;
 	}
 
+	bool DetailNode::IsGroupNode() const noexcept
+	{
+		return m_IsGroupNode;
+	}
+
 	Ref<ITableRow> DetailNode::RequestRowWidget(const ItemInfo& aItemInfo) noexcept
 	{
 		return m_OnRequestRowCallback(aItemInfo);
@@ -38,5 +48,10 @@ namespace Relentless
 	void DetailNode::SetChildren(const std::vector<Ref<DetailNode>>& someChildren) noexcept
 	{
 		m_Children = someChildren;	
+	}
+
+	void DetailNode::SetIsGroupNode(bool aIsGroupNode) noexcept
+	{
+		m_IsGroupNode = aIsGroupNode;
 	}
 }

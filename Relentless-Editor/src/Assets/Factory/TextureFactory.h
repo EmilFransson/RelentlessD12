@@ -23,7 +23,9 @@ namespace Relentless
 		NO_DISCARD std::vector<String> GetSupportedFileExtensions() const noexcept override;
 		NO_DISCARD std::vector<String> GetFormats() const noexcept override;
 
+		void SetImportAsCubemap(bool aShouldConvert) noexcept;
 		void SetGraphicsDevice(GraphicsDevice* aGraphicsDevice) noexcept;
+		void SetMaxTextureSize(uint32 aMaxSize) noexcept;
 		NO_DISCARD bool SupportsFileExtension(const std::string_view aFileExtension) const noexcept override;
 		NO_DISCARD bool ShouldShowInNewMenu() const noexcept override;
 	protected:
@@ -40,7 +42,9 @@ namespace Relentless
 		GraphicsDevice* m_pDevice = nullptr;
 
 		ETextureCompressionType m_CompressionType = ETextureCompressionType::Uncompressed;
+		int32 m_MaxSize = -1;
 		bool m_GenerateMipmaps = true;
 		bool m_IsSRGB = false;
+		bool m_ImportAsCubemap = false;
 	};
 }

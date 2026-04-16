@@ -1,4 +1,8 @@
 #include "Component.h"
+
+#include "Assets/AssetManager.h"
+#include "Assets/CoreTypes/Environment.h"
+
 #include "Scene/Scene.h"
 
 namespace Relentless
@@ -43,6 +47,20 @@ namespace Relentless
 		SetLocalScale(GetLocalScale() + aDeltaScale);
 	}
 	
+	void TransformComponent::CopyFrom(const TransformComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
+	{
+		LocalTransform = aOtherComponent.LocalTransform;
+		WorldMatrix = aOtherComponent.WorldMatrix;
+		LocalVersion = aOtherComponent.LocalVersion;
+		WorldVersion = aOtherComponent.WorldVersion;
+		LocalVersionSeenForWorld = aOtherComponent.LocalVersionSeenForWorld;
+		ParentWorldVersionSeen = aOtherComponent.ParentWorldVersionSeen;
+
+		m_Self = aThisEntity;
+		m_EntityManager = &aEntityManager;
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
+	}
+
 	Vector3 TransformComponent::GetWorldForward() const noexcept
 	{
 		return GetWorldMatrix().Forward();
@@ -64,10 +82,10 @@ namespace Relentless
 		Quaternion local = GetLocalRotation();
 		local.Normalize();
 
-		if (!Scene->HasParent(Self))
+		if (!Scene->HasParent(m_Self))
 			return local;
 
-		auto& parentTc = Scene->GetEntityManager().Get<TransformComponent>(Scene->GetParent(Self));
+		auto& parentTc = Scene->GetEntityManager().Get<TransformComponent>(Scene->GetParent(m_Self));
 		Quaternion parentWorld = parentTc.GetWorldRotation();
 		parentWorld.Normalize();
 
@@ -129,16 +147,23 @@ namespace Relentless
 		return LocalTransform.Scale;
 	}
 
+	void TransformComponent::OnBound() noexcept
+	{
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
+	}
+
 	void TransformComponent::SetLocalLocation(const Vector3& aLocation) noexcept
 	{
 		LocalTransform.Location = aLocation;
 		LocalVersion++;
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
 	void TransformComponent::SetLocalRotation(const Quaternion& aRotation) noexcept
 	{
 		LocalTransform.Rotation = aRotation;
 		LocalVersion++;
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
 	void TransformComponent::SetLocalRotationEulerDegrees(const Vector3& aEulerDegrees) noexcept
@@ -154,15 +179,16 @@ namespace Relentless
 	{
 		LocalTransform.Scale = aScale;
 		LocalVersion++;
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
 	void TransformComponent::SetWorldLocation(const Vector3& aLocation) noexcept
 	{
 		Matrix parentWorld = Matrix::Identity;
 
-		if (Scene->HasParent(Self))
+		if (Scene->HasParent(m_Self))
 		{
-			const entity parent = Scene->GetParent(Self);
+			const entity parent = Scene->GetParent(m_Self);
 			auto& parentTc = Scene->GetEntityManager().Get<TransformComponent>(parent);
 			parentWorld = parentTc.GetWorldMatrix();
 		}
@@ -174,15 +200,16 @@ namespace Relentless
 
 		LocalTransform.Location = localPosition;
 		LocalVersion++;
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
 	void TransformComponent::SetWorldRotation(const Quaternion& aRotation) noexcept
 	{
 		Quaternion localRotation = aRotation;
 
-		if (Scene->HasParent(Self))
+		if (Scene->HasParent(m_Self))
 		{
-			auto& parentTc = Scene->GetEntityManager().Get<TransformComponent>(Scene->GetParent(Self));
+			auto& parentTc = Scene->GetEntityManager().Get<TransformComponent>(Scene->GetParent(m_Self));
 			Quaternion parentRot = parentTc.GetWorldRotation();
 
 			Quaternion parentInv = Quaternion::Identity;
@@ -193,6 +220,7 @@ namespace Relentless
 		LocalTransform.Rotation = localRotation;
 		LocalTransform.Rotation.Normalize();
 		LocalVersion++;
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
 	void TransformComponent::SetWorldRotationEulerDegrees(const Vector3& aEulerDegrees) noexcept
@@ -208,9 +236,9 @@ namespace Relentless
 	{
 		Vector3 localScale = aScale;
 
-		if (Scene->HasParent(Self))
+		if (Scene->HasParent(m_Self))
 		{
-			const entity parent = Scene->GetParent(Self);
+			const entity parent = Scene->GetParent(m_Self);
 			auto& parentTc = Scene->GetEntityManager().Get<TransformComponent>(parent);
 
 			const Vector3 parentScale = parentTc.GetWorldScale();
@@ -222,6 +250,7 @@ namespace Relentless
 
 		LocalTransform.Scale = localScale;
 		++LocalVersion;
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
 	void TransformComponent::EnsureWorldUpToDate() const noexcept
@@ -229,7 +258,7 @@ namespace Relentless
 		Matrix parentWorld = Matrix::Identity;
 		uint32 parentWorldVersion = 0;
 
-		const entity parent = Scene->HasParent(Self) ? Scene->GetParent(Self) : NULL_ENTITY;
+		const entity parent = Scene->HasParent(m_Self) ? Scene->GetParent(m_Self) : NULL_ENTITY;
 
 		if (parent != NULL_ENTITY)
 		{
@@ -297,6 +326,111 @@ namespace Relentless
 	void LightBaseComponent::SetUseTemperature(bool aUseTemperature) noexcept
 	{
 		UseTemperature = aUseTemperature;
+	}
+
+	float ExposureSettings::GetCompensation() const noexcept
+	{
+		return m_Compensation;
+	}
+
+	float ExposureSettings::GetMinEV100() const noexcept
+	{
+		return m_MinEV100;
+	}
+
+	float ExposureSettings::GetMaxEV100() const noexcept
+	{
+		return m_MaxEV100;
+	}
+
+	float ExposureSettings::GetSpeedUp() const noexcept
+	{
+		return m_SpeedUp;
+	}
+
+	float ExposureSettings::GetSpeedDown() const noexcept
+	{
+		return m_SpeedDown;
+	}
+
+	float ExposureSettings::GetLowPercent() const noexcept
+	{
+		return m_LowPercent;
+	}
+
+	float ExposureSettings::GetHighPercent() const noexcept
+	{
+		return m_HighPercent;
+	}
+
+	float ExposureSettings::GetHistogramMinEV100() const noexcept
+	{
+		return m_HistogramMinEV100;
+	}
+
+	float ExposureSettings::GetHistogramMaxEV100() const noexcept
+	{
+		return m_HistogramMaxEV100;
+	}
+
+	void ExposureSettings::SetCompensation(float aCompensation) noexcept
+	{
+		m_Compensation = aCompensation;
+	}
+
+	void ExposureSettings::SetMinEV100(float aMinEV100) noexcept
+	{
+		m_MinEV100 = aMinEV100;
+	}
+
+	void ExposureSettings::SetMaxEV100(float aMaxEV100) noexcept
+	{
+		m_MaxEV100 = aMaxEV100;
+	}
+
+	void ExposureSettings::SetSpeedUp(float aSpeedUp) noexcept
+	{
+		m_SpeedUp = aSpeedUp;
+	}
+
+	void ExposureSettings::SetSpeedDown(float aSpeedDown) noexcept
+	{
+		m_SpeedDown = aSpeedDown;
+	}
+
+	void ExposureSettings::SetLowPercent(float aLowPercent) noexcept
+	{
+		m_LowPercent = aLowPercent;
+	}
+
+	void ExposureSettings::SetHighPercent(float aHighPercent) noexcept
+	{
+		m_HighPercent = aHighPercent;
+	}
+
+	void ExposureSettings::SetHistogramMinEV100(float aHistogramMinEV100) noexcept
+	{
+		m_HistogramMinEV100 = aHistogramMinEV100;
+	}
+
+	void ExposureSettings::SetHistogramMaxEV100(float aHistogramMaxEV100) noexcept
+	{
+		m_HistogramMaxEV100 = aHistogramMaxEV100;
+	}
+
+	ExposureSettings& PostProcessVolumeComponent::GetExposure() noexcept
+	{
+		return m_ExposureSettings;
+	}
+
+	const ExposureSettings& PostProcessVolumeComponent::GetExposure() const noexcept
+	{
+		return m_ExposureSettings;
+	}
+
+	bool PostProcessVolumeComponent::HasInfiniteExtent() const noexcept
+	{
+		return m_InfiniteExtent;
 	}
 
 }

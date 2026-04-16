@@ -16,9 +16,6 @@ namespace Relentless
 	{
 		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
-		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
-		//SetPadding({ ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 3.0f });
-		
 		SetBackgroundColor(Colors::Normalize(17.0f, 17.0f, 17.0f, 255.0f));
 		SetBorderColor(Colors::Normalize(SearchBarEx_private::SearchbarBackgroundColor));
 	}
@@ -136,7 +133,7 @@ namespace Relentless
 
 	void SearchBar::DrawSearchIcon(const ImVec2& searchBarStartPos) noexcept
 	{
-		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+		//ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
 
 		const ImVec2 magnifyingGlassSize = ImGui::CalcTextSize(ICON_FA_MAGNIFYING_GLASS);
 		constexpr float margin = 5.0f;
@@ -150,12 +147,12 @@ namespace Relentless
 		if (m_MagnifyingGlassIconHovered)
 			ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_Arrow);
 
-		ImGui::PopFont();
+		//ImGui::PopFont();
 	}
 
 	void SearchBar::DrawCancelIcon(const ImVec2& searchBarStartPos) noexcept
 	{
-		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+		//ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
 
 		const ImVec2 xMarkSize = ImGui::CalcTextSize(ICON_FA_XMARK);
 		constexpr float margin = 5.0f;
@@ -177,12 +174,12 @@ namespace Relentless
 			m_CallbackUserData.ClearedInput = true;
 		}
 	
-		ImGui::PopFont();
+		//ImGui::PopFont();
 	}
 
 	void SearchBar::DrawSearchHistoryPopupIcon(const ImVec2& searchBarStartPos) noexcept
 	{
-		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+		//ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
 
 		const ImVec2 chevronSize = ImGui::CalcTextSize(ICON_FA_CHEVRON_DOWN);
 		constexpr float margin = 5.0f;
@@ -207,7 +204,7 @@ namespace Relentless
 			ImGui::PopStyleColor(2);
 		}
 
-		ImGui::PopFont();
+		//ImGui::PopFont();
 	}
 
 	void SearchBar::DrawSearchHistoryPopup(const ImVec2& searchBarStartPos) noexcept

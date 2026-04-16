@@ -84,8 +84,6 @@ namespace Relentless
 		Ref<Scene> m_pActiveScene = nullptr;
 		Ref<Scene> m_pEditorScene = nullptr;
 
-		std::shared_ptr<UtilityRenderer> m_pUtilityRenderer = nullptr;
-		
 		bool m_DisplayOutlinerPanel = true;
 		bool m_DisplayContentBrowserPanel = true;
 		bool m_DisplayPropertiesPanel = true;
@@ -102,15 +100,10 @@ namespace Relentless
 		AssetHandle m_SimulateButtonTextureHandle = NULL_HANDLE;
 		AssetHandle m_StepButtonTextureHandle = NULL_HANDLE;
 
-		std::shared_ptr<TextureCube> m_SkyBox = nullptr;
-		
 		OutlinerPanel* m_pOutlinerPanel = nullptr;
 
 		std::mutex m_OnUpdateMutex;
 		std::mutex m_OnUIRenderMutex;
 		std::mutex m_OnEventMutex;
-
-		Ref<Texture> m_pCubeMap;
-		RenderJobHandle m_RenderJobHandle;
 	};
 }

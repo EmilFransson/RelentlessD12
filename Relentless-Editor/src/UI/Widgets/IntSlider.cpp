@@ -24,7 +24,6 @@ namespace Relentless
 		SetHandleSize(20.0f);
 		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
-		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	void IntSlider::OnRender() noexcept

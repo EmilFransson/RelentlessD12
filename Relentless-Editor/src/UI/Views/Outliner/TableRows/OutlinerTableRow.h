@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include "Subsystem/EntityFoldersSubsystem.h"
 
-#include "UI/DragDrop/OutlinerDragDropOperation.h"
 #include "UI/Views/TreeView.h"
 #include "UI/Widgets/ITableRow.h"
 
@@ -63,51 +62,8 @@ namespace Relentless
 		NO_DISCARD Label* GetTypeLabel() const noexcept;
 		NO_DISCARD WidgetSwitcher* GetWidgetSwitcher() const noexcept;
 		NO_DISCARD Button* GetVisibilityButton() const noexcept;
-
-		NO_DISCARD bool IsDragDropEligible() noexcept override;
-
-		template<typename InstanceType>
-		OutlinerTableRow* OnDragDetected(InstanceType* instance, Ref<DragDropOperation>(InstanceType::*method)(OutlinerTableRow*)) noexcept
-		{
-			m_OnDragDetectedCallback = [instance, method](OutlinerTableRow* pRow) { return (instance->*method)(pRow); };
-			return this;
-		}
-
-		template<typename InstanceType>
-		OutlinerTableRow* OnDragEnter(InstanceType* instance, bool(InstanceType::*method)(OutlinerTableRow*, OutlinerDragDropOperation&)) noexcept
-		{
-			m_OnDragEnterCallback = [instance, method](OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) { return (instance->*method)(pRow, dragDropOp); };
-			return this;
-		}
-
-		template<typename InstanceType>
-		OutlinerTableRow* OnDragLeave(InstanceType* instance, void(InstanceType::*method)(OutlinerTableRow*, OutlinerDragDropOperation&)) noexcept
-		{
-			m_OnDragLeaveCallback = [instance, method](OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) { return (instance->*method)(pRow, dragDropOp); };
-			return this;
-		}
-
-		template<typename InstanceType>
-		OutlinerTableRow* OnDrop(InstanceType* instance, bool(InstanceType::*method)(OutlinerTableRow*, OutlinerDragDropOperation&)) noexcept
-		{
-			m_OnDropCallback = [instance, method](OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) { return (instance->*method)(pRow, dragDropOp); };
-			return this;
-		}
-
-	private:
-		NO_DISCARD Ref<DragDropOperation> OnDragDetected() noexcept override;
-		NO_DISCARD bool OnDragEnter(const Ref<DragDropOperation>& pDragDropOperation) noexcept override;
-		NO_DISCARD bool OnDragLeave(const Ref<DragDropOperation>& pDragDropOperation) noexcept override;
-		NO_DISCARD bool OnDrop(const Ref<DragDropOperation>& pDragDropOperation) noexcept override;
-
 	private:
 		std::array<FloatRect, 3> m_Margins;
-
-		Callback<Ref<DragDropOperation>(OutlinerTableRow*)> m_OnDragDetectedCallback;
-		Callback<bool(OutlinerTableRow*, OutlinerDragDropOperation&)> m_OnDragEnterCallback;
-		Callback<void(OutlinerTableRow*, OutlinerDragDropOperation&)> m_OnDragLeaveCallback;
-		Callback<bool(OutlinerTableRow*, OutlinerDragDropOperation&)> m_OnDropCallback;
-
 		TreeView<Ref<OutlinerListItem>>* m_pOwningTreeView = nullptr;
 		bool m_Selected = false;
 	};

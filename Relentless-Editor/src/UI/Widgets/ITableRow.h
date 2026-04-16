@@ -1,12 +1,11 @@
 #pragma once
 #include <Relentless.h>
 #include "HorizontalBox.h"
+#include "IStylableWidget.h"
 #include "IWidgetContainer.h"
 
 namespace Relentless
 {
-	class DragDropOperation;
-
 	class ITableRow : public IStylableWidget<ITableRow>
 	{
 	public:
@@ -30,26 +29,24 @@ namespace Relentless
 		template<typename T>
 		ITableRow* OnDoubleClicked(T&& callback) noexcept
 		{
-			m_OnDoubleClickedCallback = Callback<void()>(std::forward<T>(callback));
+			m_OnDoubleClickedCallback = Callback<void(const PointerInfo&, ITableRow*)>(std::forward<T>(callback));
 			return this;
 		}
 
 		template<typename InstanceType>
-		ITableRow* OnDoubleClicked(InstanceType* instance, void(InstanceType::* method)()) noexcept
+		ITableRow* OnDoubleClicked(InstanceType* instance, void(InstanceType::*method)(const PointerInfo&, ITableRow*)) noexcept
 		{
-			m_OnDoubleClickedCallback = [instance, method]() { return (instance->*method)(); };
+			m_OnDoubleClickedCallback = [instance, method](const PointerInfo& aPointerInfo, ITableRow* aTableRow) { return (instance->*method)(aPointerInfo, aTableRow); };
 			return this;
 		}
 
-		virtual const Color& GetBackgroundColor() const noexcept = 0;
+		virtual const Color& GetBackgroundColor() const noexcept
+		{
+			static Color defaultColor = Colors::Transparent;
+			return defaultColor;
+		};
 
 		virtual uint32 GetNumColumns() noexcept = 0;
-		virtual bool IsDragDropEligible() noexcept = 0;
-
-		NO_DISCARD virtual Ref<DragDropOperation> OnDragDetected() noexcept { return nullptr; }
-		NO_DISCARD virtual bool OnDragEnter(const Ref<DragDropOperation>& aDragDropOperation) noexcept;
-		NO_DISCARD virtual bool OnDragLeave(const Ref<DragDropOperation>& aDragDropOperation) noexcept;
-		NO_DISCARD virtual bool OnDrop(const Ref<DragDropOperation>& aDragDropOperation) noexcept;
 
 		virtual void OnRender() noexcept override;
 		virtual void OnRenderColumn(uint32 column) noexcept = 0;
@@ -62,7 +59,7 @@ namespace Relentless
 		std::vector<Ref<HorizontalBox>> m_ColumnWidgets;
 
 		Callback<void(const PointerInfo& pointerInfo)> m_OnClickedCallback;
-		Callback<void()> m_OnDoubleClickedCallback;
+		Callback<void(const PointerInfo& pointerInfo, ITableRow* aTableRow)> m_OnDoubleClickedCallback;
 		
 		uint32 m_IndentationLevel = 0;
 

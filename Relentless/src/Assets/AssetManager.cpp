@@ -80,6 +80,49 @@ namespace Relentless
 		return RegisterAsset(pNewAsset);
 	}
 
+	AssetHandle AssetManager::LoadAsset(const AssetData& aAssetData) noexcept
+	{
+		if (const AssetHandle handle = FindAsset(aAssetData.Type, aAssetData.Uuid); handle.IsValid())
+			return handle;
+
+		AssetToolsModule& assetTools = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		Ref<IFactory> pFactory = assetTools.GetSupportingFactory(aAssetData.Type);
+		if (!pFactory || !pFactory->CanCreateNew())
+			return AssetHandle::INVALID;
+
+		FactoryCreateResult result = pFactory->CreateNew(aAssetData.Name, aAssetData.Uuid);
+		if (!result)
+			return AssetHandle::INVALID;
+
+		Ref<IAsset> pNewAsset = result.value();
+
+		Path fullPath = FilepathUtils::Combine(Project::GetProjectDirectory(), aAssetData.PackagePath);
+
+		LoadArchive coreArchive(fullPath, EArchiveFormat::Binary);
+		if (!coreArchive.IsValid())
+			return AssetHandle::INVALID;
+
+		AssetFileContent content{};
+		if (!coreArchive.Process(content))
+			return AssetHandle::INVALID;
+
+		if (!pNewAsset->SerializeCore(coreArchive))
+			return AssetHandle::INVALID;
+
+		if (content.BulkDataSize > 0)
+		{
+			FilepathUtils::SetExtension(fullPath, ".rbulk");
+			LoadArchive bulkArchive(fullPath, EArchiveFormat::Binary);
+			if (!bulkArchive.IsValid())
+				return AssetHandle::INVALID;
+
+			if (!pNewAsset->SerializeBulk(bulkArchive))
+				return AssetHandle::INVALID;
+		}
+
+		return RegisterAsset(pNewAsset);
+	}
+
 	void AssetManager::LoadAssetAsync(const String& aFilepath, AssetDoneLoadingCallback&& aCallback) noexcept
 	{
 		RLS_ASSERT(aCallback.IsSet(), "[AssetManager::LoadAssetAsync]: Callback is invalid.");

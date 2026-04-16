@@ -12,7 +12,7 @@ namespace Relentless
 	public:
 		PostProcessing(GraphicsDevice* pDevice) noexcept;
 		~PostProcessing() noexcept = default;
-		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<Texture> pOutlinesSolidTexture, Ref<Texture> pOutlinesBlurredTexture, Ref<Buffer> pAverageLuminanceBuffer) noexcept;
+		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, Ref<Texture> pOutlinesSolidTexture, Ref<Texture> pOutlinesBlurredTexture, Ref<Buffer> pAverageLuminanceBuffer, Ref<Texture> aFinalTexture) noexcept;
 	private:
 		GraphicsDevice* m_pDevice = nullptr;
 

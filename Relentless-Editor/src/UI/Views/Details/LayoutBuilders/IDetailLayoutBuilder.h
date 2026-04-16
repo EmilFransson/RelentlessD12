@@ -5,6 +5,7 @@
 #include "Module/ModuleManager.h"
 
 #include "UI/Views/Details/TableRows/DetailCategoryRow.h"
+#include "UI/Views/Details/TableRows/DetailGroupRow.h"
 
 namespace Relentless
 {
@@ -16,25 +17,31 @@ namespace Relentless
 		IDetailLayoutBuilder(IDetailsView* pDetailView) noexcept;
 		virtual ~IDetailLayoutBuilder() noexcept = default;
 
+		template<typename InspectedType>
+		std::vector<Ref<DetailNode>> Build() noexcept;
+		
 		NO_DISCARD IDetailCategoryBuilder& EditCategory(const char* aName) noexcept;
+
+		void ForceRefreshDetails() noexcept;
 
 		NO_DISCARD IDetailsView* GetDetailsView() const noexcept;
 
-		template<typename InspectedType>
-		std::vector<Ref<DetailNode>> Build() noexcept;
-
+		void TearDown() noexcept;
 	protected:
 		std::unordered_map<String, UniquePtr<IDetailCategoryBuilder>> m_Categories;
+		std::vector<UniquePtr<IDetailCustomization>> m_Customizations;
 		IDetailsView* m_pView = nullptr;
 	};
 
 	template<typename InspectedType>
 	std::vector<Ref<DetailNode>> IDetailLayoutBuilder::Build() noexcept
 	{
-		const DetailCustomizationRegistry& registry = ModuleManager::LoadModuleChecked<DetailsModule>().GetRegistry();
-		const std::vector<UniquePtr<IDetailCustomization>> customizations = registry.GetCustomizations<InspectedType>();
+		TearDown();
 
-		for (const auto& customization : customizations)
+		const DetailCustomizationRegistry& registry = ModuleManager::LoadModuleChecked<DetailsModule>().GetRegistry();
+		m_Customizations = registry.GetCustomizations<InspectedType>();
+
+		for (const auto& customization : m_Customizations)
 		{
 			if (customization->ShouldCustomize(*this))
 				customization->CustomizeDetails(*this);
@@ -49,7 +56,22 @@ namespace Relentless
 					return RLS_NEW DetailCategoryRow(name, aItemInfo.IsExpanded);
 				});
 
-			pCategoryNode->SetChildren(pBuilder->GetNodes());
+			for (auto& entry : pBuilder->GetEntries())
+			{
+				if (entry.IsGroup)
+				{
+					entry.Node->OnRequestRow([name = entry.GroupName](const ItemInfo& aItemInfo)
+						{
+							Ref<DetailGroupRow> pGroupRow = RLS_NEW DetailGroupRow(name, aItemInfo.IsExpanded);
+							pGroupRow->SetIndentation(aItemInfo.Depth);
+
+							return pGroupRow;
+						});
+				}
+					
+				pCategoryNode->AddChild(entry.Node);
+			}
+
 			nodesToReturn.push_back(pCategoryNode);
 		}
 

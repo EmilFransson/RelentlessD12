@@ -1,6 +1,8 @@
 #pragma once
 #include <Relentless.h>
 
+#include "Thumbnail/AssetThumbnailData.h"
+
 namespace Relentless
 {
 	enum class ETransformSpace : int { Relative = 0, Absolute };
@@ -22,6 +24,7 @@ namespace Relentless
 		bool ScaleLocked = true;
 		bool ScaleWasLocked = true;
 
+		Scene* Scene = nullptr;
 		EntityManager* EntityManager = nullptr;
 	};
 }

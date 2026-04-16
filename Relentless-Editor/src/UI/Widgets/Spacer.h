@@ -1,5 +1,5 @@
 #pragma once
-#include "IWidget.h"
+#include "IStylableWidget.h"
 
 namespace Relentless
 {

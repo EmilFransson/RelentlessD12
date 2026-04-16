@@ -1,6 +1,6 @@
 #pragma once
 #include <Relentless.h>
-#include "IWidget.h"
+#include "IStylableWidget.h"
 
 namespace Relentless
 {
@@ -15,28 +15,28 @@ namespace Relentless
 		NO_DISCARD const IntRect& GetScreenRect() const noexcept;
 
 		template<typename InstanceType>
-		Canvas* OnResize(InstanceType* instance, void(InstanceType::* method)(const Vector2i&)) noexcept
-		{
-			m_OnResizeCallback = [instance, method](const Vector2i& newSize) { return (instance->*method)(newSize); };
-			return this;
-		}
-
-		template<typename InstanceType>
-		Canvas* Target(InstanceType* instance, Texture*(InstanceType::* method)() const) noexcept
-		{
-			m_TargetCallback = [instance, method]() { return (instance->*method)(); };
-			return this;
-		}
-
-		template<typename InstanceType>
 		Canvas* OnHoverStateChanged(InstanceType* instance, void(InstanceType::* method)(bool)) noexcept
 		{
 			m_OnHoverStateChanged = [instance, method](bool state) { return (instance->*method)(state); };
 			return this;
 		}
-
+		
+		template<typename InstanceType>
+		Canvas* OnResize(InstanceType* instance, void(InstanceType::* method)(const Vector2i&)) noexcept
+		{
+			m_OnResizeCallback = [instance, method](const Vector2i& newSize) { return (instance->*method)(newSize); };
+			return this;
+		}
+		
 		NO_DISCARD virtual Vector2 ReportSize() const noexcept override;
 		NO_DISCARD virtual bool RequiresAssignedSize() const noexcept override;
+	
+		template<typename InstanceType>
+		Canvas* Target(InstanceType* instance, Texture* (InstanceType::* method)() const) noexcept
+		{
+			m_TargetCallback = [instance, method]() { return (instance->*method)(); };
+			return this;
+		}
 	private:
 		virtual void OnRender() noexcept override;
 		void Resize(const Vector2i& newSize) noexcept;

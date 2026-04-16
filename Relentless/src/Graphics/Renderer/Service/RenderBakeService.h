@@ -5,6 +5,7 @@
 
 namespace Relentless
 {
+	class GraphicsDevice;
 	class RenderJobHandle;
 
 	struct RLS_API EquirectangularToCubemapSpecification
@@ -16,10 +17,12 @@ namespace Relentless
 	class RLS_API RenderBakeService
 	{
 	public:
-		RenderBakeService() noexcept;
+		RenderBakeService(GraphicsDevice* aGraphicsDevice) noexcept;
 		~RenderBakeService() noexcept;
 		RenderJobHandle RequestEquirectangularToCubemapConversion(EquirectangularToCubemapSpecification& aSpecification, Ref<Texture>& aOutCubemap) noexcept;
 	private:
+		GraphicsDevice* m_pGraphicsDevice = nullptr;
 		Ref<PipelineState> m_pEquirectToCubemapPSO = nullptr;
+		Ref<PipelineState> m_pCubeMipGenPSO = nullptr;
 	};
 }

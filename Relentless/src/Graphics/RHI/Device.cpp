@@ -330,7 +330,7 @@ namespace Relentless
 				d3d12Desc = CD3DX12_RESOURCE_DESC::Tex2D(format, width, height, (uint16)textureDesc.DepthOrArraySize, (uint16)textureDesc.Mips, textureDesc.SampleCount, 0u, D3D12_RESOURCE_FLAG_NONE, D3D12_TEXTURE_LAYOUT_UNKNOWN);
 				break;
 			case TextureType::TextureCube:
-				d3d12Desc = CD3DX12_RESOURCE_DESC::Tex2D(format, width, height, (uint16)textureDesc.DepthOrArraySize * 6, (uint16)textureDesc.Mips, textureDesc.SampleCount, 0u, D3D12_RESOURCE_FLAG_NONE, D3D12_TEXTURE_LAYOUT_UNKNOWN);
+				d3d12Desc = CD3DX12_RESOURCE_DESC::Tex2D(format, width, height, (uint16)textureDesc.DepthOrArraySize/* * 6*/, (uint16)textureDesc.Mips, textureDesc.SampleCount, 0u, D3D12_RESOURCE_FLAG_NONE, D3D12_TEXTURE_LAYOUT_UNKNOWN);
 				break;
 			default:
 				RLS_ASSERT(false, "[Device] Unreachable.");
@@ -433,7 +433,15 @@ namespace Relentless
 		}
 
 		if (EnumHasAnyFlags(desc.Flags, TextureFlag::ShaderResource))
+		{
 			pTexture->SetSRV(CreateSRV(pTexture, TextureSRVDesc(0u, (uint8)pTexture->GetMipLevels())));
+
+			if (desc.Type == TextureType::TextureCube)
+			{
+				for (uint8 mip = 0; mip < desc.Mips; ++mip)
+					pTexture->SetMipArraySRV(CreateSRV(pTexture, TextureSRVDesc(mip, 1u, ETextureSRVViewType::Array2D)), mip);
+			}
+		}
 		if (EnumHasAnyFlags(desc.Flags, TextureFlag::UnorderedAccess))
 		{
 			pTexture->SetStateTracking(true);
@@ -542,11 +550,11 @@ namespace Relentless
 		return pPipelineState;
 	}
 
-	Ref<PipelineState> GraphicsDevice::CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName, const char* pEntryPoint) noexcept
+	Ref<PipelineState> GraphicsDevice::CreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName, const char* pEntryPoint, Span<String> someDefines) noexcept
 	{
 		PipelineStateInitializer desc;
 		desc.SetRootSignature(pRootSignature);
-		desc.SetComputeShader(pShaderName, pEntryPoint);
+		desc.SetComputeShader(pShaderName, pEntryPoint, someDefines);
 		desc.SetName(std::format("Compute PSO: {0}", pShaderName).c_str());
 		return CreatePipeline(desc);
 	}
@@ -604,10 +612,29 @@ namespace Relentless
 		}
 		case TextureType::TextureCube:
 		{
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-			srvDesc.TextureCube.MipLevels = textureSRVDesc.NumMipLevels;
-			srvDesc.TextureCube.MostDetailedMip = textureSRVDesc.MipLevel;
-			srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+			const ETextureSRVViewType viewType = textureSRVDesc.ViewType == ETextureSRVViewType::Default ? ETextureSRVViewType::Cube : textureSRVDesc.ViewType;
+
+			if (viewType == ETextureSRVViewType::Cube)
+			{
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+				srvDesc.TextureCube.MostDetailedMip = textureSRVDesc.MipLevel;
+				srvDesc.TextureCube.MipLevels = textureSRVDesc.NumMipLevels;
+				srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+			}
+			else if (viewType == ETextureSRVViewType::Array2D)
+			{
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+				srvDesc.Texture2DArray.MostDetailedMip = textureSRVDesc.MipLevel;
+				srvDesc.Texture2DArray.MipLevels = textureSRVDesc.NumMipLevels;
+				srvDesc.Texture2DArray.FirstArraySlice = 0;
+				srvDesc.Texture2DArray.ArraySize = desc.DepthOrArraySize/* * 6*/;
+				srvDesc.Texture2DArray.PlaneSlice = 0;
+				srvDesc.Texture2DArray.ResourceMinLODClamp = 0.0f;
+			}
+			else
+			{
+				RLS_ASSERT(false, "[GraphicsDevice::CreateSRV] Unsupported cubemap SRV view type.");
+			}
 			break;
 		}
 		default:
@@ -635,9 +662,10 @@ namespace Relentless
 			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 			break;
 		case TextureType::TextureCube:
-			uavDesc.Texture2DArray.ArraySize = textureDesc.DepthOrArraySize * 6;
+			uavDesc.Texture2DArray.ArraySize = textureDesc.DepthOrArraySize/* * 6*/;
 			uavDesc.Texture2DArray.FirstArraySlice = 0;
 			uavDesc.Texture2DArray.PlaneSlice = 0;
+			uavDesc.Texture2DArray.MipSlice = desc.MipLevel;
 			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
 			break;
 		default:

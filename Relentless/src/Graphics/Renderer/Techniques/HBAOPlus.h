@@ -19,5 +19,9 @@ namespace Relentless
 
 		GraphicsDevice* m_pDevice = nullptr;
 		GFSDK_SSAO_Context_D3D12* m_pSSAOContext = nullptr;
+
+		#if defined(RLS_DEBUG)
+		bool m_FirstFrameDone = false;
+		#endif
 	};
 }

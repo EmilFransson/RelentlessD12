@@ -48,7 +48,7 @@ namespace Relentless
 			const uint32 height = static_cast<uint32>(Math::Max(1.0f, Math::Min(renderViews[i].Viewport.GetHeight(), (float)Window::GetDisplaySize().y)));
 
 			if (!m_pColorTarget || m_pColorTarget->GetWidth() != width || m_pColorTarget->GetHeight() != height)
-				m_pColorTarget = m_pGraphicsDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource), std::format("Target: {}", i).c_str());
+				m_pColorTarget = m_pGraphicsDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), std::format("Target: {}", i).c_str());
 
 			renderViews[i].pTarget = m_pColorTarget;
 			m_pRenderer->Render(Editor::Get()->GetActiveScene(), &renderViews[i], options, renderViews[i].pTarget);

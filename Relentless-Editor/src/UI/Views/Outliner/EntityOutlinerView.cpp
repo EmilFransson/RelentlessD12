@@ -5,10 +5,10 @@
 #include "Subsystem/SelectionSubsystem.h"
 #include "Subsystem/EntityFoldersSubsystem.h"
 
+#include "UI/DragDrop/DragDropOperation.h"
 #include "UI/Widgets/Border.h"
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/ContextMenu.h"
-#include "UI/Widgets/DragDropOperation.h"
 #include "UI/Widgets/EditableTextBox.h"
 #include "UI/Widgets/HorizontalBox.h"
 #include "UI/Widgets/Label.h"
@@ -46,7 +46,6 @@ namespace Relentless
 			column.pBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);
 			column.pBox->AddWidget(new Label(ICON_FA_EYE))
 				->SetAlpha(0.7f)
-				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 				->SetTooltipText("Visibility")
 				->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
@@ -58,7 +57,6 @@ namespace Relentless
 		{
 			Column column;
 			column.pBox->AddWidget(new Label("Item Label"))
-				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 				->SetTooltipText("Item Label")
 				->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
@@ -67,7 +65,6 @@ namespace Relentless
 		{
 			Column column;
 			column.pBox->AddWidget(new Label("Type"))
-				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 				->SetTooltipText("Type")
 				->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
@@ -75,7 +72,6 @@ namespace Relentless
 		}
 
 		m_pOutlinerTreeView = new TreeView<Ref<OutlinerListItem>>(pHeaderRow);
-		m_pOutlinerTreeView->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
 		m_pOutlinerTreeView->SetFlags(ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_Sortable | 
 			ImGuiTableFlags_NoBordersInBodyUntilResize | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY);
 
@@ -104,7 +100,6 @@ namespace Relentless
 
 		pTopHorizontalBox->AddWidget(new Button(ICON_FA_FOLDER_PLUS))
 			->OnClicked(this, &EntityOutlinerView::OnCreateNewFolderButtonClicked)
-			->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 			->SetBackgroundColor(Colors::Transparent)
 			->SetActiveColor(Colors::Transparent)
 			->SetHoverColor(Colors::Gray)
@@ -115,26 +110,6 @@ namespace Relentless
 		Ref<VerticalBox> pMiddleVerticalBox2 = m_pMainBox->AddWidget(RLS_NEW VerticalBox());
 		pMiddleVerticalBox2->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		pMiddleVerticalBox2->AddWidget(m_pOutlinerTreeView);
-
-		//m_pOutlinerListBox = new HorizontalBox();
-		//m_pOutlinerListBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		//m_pOutlinerListBox->OnFocusChanged.Connect(this, &EntityOutlinerView::OnFocusChanged);
-		//m_pOutlinerListBox->AddWidget(m_pOutlinerTreeView);
-
-		//Ref<VerticalBox> pBorderBox = new VerticalBox();
-		//pBorderBox->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Bottom);
-		//
-		//Border* pBorder = pBorderBox->AddWidget(new Border());
-		//HorizontalBox* pInBox = pBorder->SetContent(new HorizontalBox());
-		//pInBox->SetScrollBarsVisible(false);
-		//pInBox->SetMouseScrollingEnabled(false);
-		//pInBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		//
-		//pInBox->AddWidget(new Label(""))
-		//	->SetFont(ImGui::GetIO().Fonts->Fonts[2])
-		//	->SetPadding(Vector2(10.0f, 10.0f));
-		//
-		//m_pMainBox->AddWidget(pBorderBox);
 
 		m_pFilter = std::make_unique<TextFilterExpressionEvaluator>();
 		m_pPolicies = std::make_unique<EntityOutlinerPolicies>();
@@ -542,90 +517,90 @@ namespace Relentless
 			return std::format("Scene: {}", item->AsScene()->GetName());
 	}
 
-	Ref<DragDropOperation> EntityOutlinerView::OnDragDetected(OutlinerTableRow* pRow) noexcept
-	{
-		Ref<OutlinerDragDropOperation> pEntityDragOp = RLS_NEW OutlinerDragDropOperation(pRow);
+	//Ref<DragDropOperation> EntityOutlinerView::OnDragDetected(OutlinerTableRow* pRow) noexcept
+	//{
+	//	Ref<OutlinerDragDropOperation> pEntityDragOp = RLS_NEW OutlinerDragDropOperation(pRow);
+	//
+	//	std::vector<Ref<OutlinerListItem>> selectedItems;
+	//	m_pOutlinerTreeView->GetSelectedItems(selectedItems);
+	//
+	//	std::vector<entity> draggedEntities;
+	//	std::vector<EntityFolder*> draggedFolders;
+	//
+	//	for (const auto& pSelectedItem : selectedItems)
+	//	{
+	//		if (pSelectedItem->IsEntity())
+	//			draggedEntities.push_back(pSelectedItem->AsEntity());
+	//		else if (pSelectedItem->IsFolder())
+	//			draggedFolders.push_back(pSelectedItem->AsFolder());
+	//	}
+	//
+	//	pEntityDragOp->SetDraggedEntities(std::move(draggedEntities));
+	//	pEntityDragOp->SetDraggedFolders(std::move(draggedFolders));
+	//	
+	//	const Ref<OutlinerListItem>& pPrimaryDraggedItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
+	//
+	//	if (pPrimaryDraggedItem->IsEntity())
+	//	{
+	//		const String tooltipText = std::format(ICON_FA_BAN "   {}. Cannot attach entity to self.", GetRowName(pRow));
+	//		pEntityDragOp->SetTooltipText(tooltipText);
+	//	}
+	//	else if (pPrimaryDraggedItem->IsFolder())
+	//	{
+	//		const String tooltipText = std::format(ICON_FA_BAN "   {}. Cannot attach folder to self.", GetRowName(pRow));
+	//		pEntityDragOp->SetTooltipText(tooltipText);
+	//	}
+	//
+	//	return pEntityDragOp;
+	//}
 
-		std::vector<Ref<OutlinerListItem>> selectedItems;
-		m_pOutlinerTreeView->GetSelectedItems(selectedItems);
+	//bool EntityOutlinerView::OnDragEnter(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept
+	//{
+	//	auto pEditor = Editor::Get();
+	//
+	//	if (dragDropOp.GetDraggedEntities().empty() && dragDropOp.GetDraggedFolders().empty())
+	//		return false;
+	//
+	//	const Ref<OutlinerListItem>& pHoveredItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
+	//	Scene* pScene = pEditor->GetActiveScene();
+	//
+	//	EntityOutlinerPolicies::MoveContext context
+	//	{
+	//		.Scene = *pScene,
+	//		.FoldersSubsystem = *pEditor->GetSubsystem<EntityFoldersSubsystem>(),
+	//		.TargetPayload = pHoveredItem->Payload,
+	//		.Entities = dragDropOp.GetDraggedEntities(),
+	//		.Folders = dragDropOp.GetDraggedFolders()
+	//	};
+	//
+	//	const EntityOutlinerPolicies::ValidationResponse response = m_pPolicies->ValidateMoveRequest(context);
+	//	const String tooltipText = (response.IsValid ? ICON_FA_CHECK"   " : ICON_FA_BAN"   ") + response.Message;
+	//	dragDropOp.SetTooltipText(tooltipText);
+	//	
+	//	return response.IsValid;
+	//}
 
-		std::vector<entity> draggedEntities;
-		std::vector<EntityFolder*> draggedFolders;
-
-		for (const auto& pSelectedItem : selectedItems)
-		{
-			if (pSelectedItem->IsEntity())
-				draggedEntities.push_back(pSelectedItem->AsEntity());
-			else if (pSelectedItem->IsFolder())
-				draggedFolders.push_back(pSelectedItem->AsFolder());
-		}
-
-		pEntityDragOp->SetDraggedEntities(std::move(draggedEntities));
-		pEntityDragOp->SetDraggedFolders(std::move(draggedFolders));
-		
-		const Ref<OutlinerListItem>& pPrimaryDraggedItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
-
-		if (pPrimaryDraggedItem->IsEntity())
-		{
-			const String tooltipText = std::format(ICON_FA_BAN "   {}. Cannot attach entity to self.", GetRowName(pRow));
-			pEntityDragOp->SetTooltipText(tooltipText);
-		}
-		else if (pPrimaryDraggedItem->IsFolder())
-		{
-			const String tooltipText = std::format(ICON_FA_BAN "   {}. Cannot attach folder to self.", GetRowName(pRow));
-			pEntityDragOp->SetTooltipText(tooltipText);
-		}
-
-		return pEntityDragOp;
-	}
-
-	bool EntityOutlinerView::OnDragEnter(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept
-	{
-		auto pEditor = Editor::Get();
-
-		if (dragDropOp.GetDraggedEntities().empty() && dragDropOp.GetDraggedFolders().empty())
-			return false;
-
-		const Ref<OutlinerListItem>& pHoveredItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
-		Scene* pScene = pEditor->GetActiveScene();
-
-		EntityOutlinerPolicies::MoveContext context
-		{
-			.Scene = *pScene,
-			.FoldersSubsystem = *pEditor->GetSubsystem<EntityFoldersSubsystem>(),
-			.TargetPayload = pHoveredItem->Payload,
-			.Entities = dragDropOp.GetDraggedEntities(),
-			.Folders = dragDropOp.GetDraggedFolders()
-		};
-
-		const EntityOutlinerPolicies::ValidationResponse response = m_pPolicies->ValidateMoveRequest(context);
-		const String tooltipText = (response.IsValid ? ICON_FA_CHECK"   " : ICON_FA_BAN"   ") + response.Message;
-		dragDropOp.SetTooltipText(tooltipText);
-		
-		return response.IsValid;
-	}
-
-	bool EntityOutlinerView::OnDrop(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept
-	{
-		auto pEditor = Editor::Get();
-
-		const Ref<OutlinerListItem>& pDropTargetItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
-		Scene& scene = *pEditor->GetActiveScene();
-
-		EntityOutlinerPolicies::MoveContext context
-		{
-			.Scene = scene,
-			.FoldersSubsystem = *pEditor->GetSubsystem<EntityFoldersSubsystem>(),
-			.TargetPayload = pDropTargetItem->Payload,
-			.Entities = dragDropOp.GetDraggedEntities(),
-			.Folders = dragDropOp.GetDraggedFolders()
-		};
-
-		const EntityOutlinerPolicies::MovePlan movePlan = m_pPolicies->ResolveMoveRequest(context);
-		ExecuteMovePlan(movePlan, scene, pDropTargetItem->Payload);
-
-		return true;
-	}
+	//bool EntityOutlinerView::OnDrop(OutlinerTableRow* pRow, OutlinerDragDropOperation& dragDropOp) noexcept
+	//{
+	//	auto pEditor = Editor::Get();
+	//
+	//	const Ref<OutlinerListItem>& pDropTargetItem = m_pOutlinerTreeView->GetItemFromWidget(pRow);
+	//	Scene& scene = *pEditor->GetActiveScene();
+	//
+	//	EntityOutlinerPolicies::MoveContext context
+	//	{
+	//		.Scene = scene,
+	//		.FoldersSubsystem = *pEditor->GetSubsystem<EntityFoldersSubsystem>(),
+	//		.TargetPayload = pDropTargetItem->Payload,
+	//		.Entities = dragDropOp.GetDraggedEntities(),
+	//		.Folders = dragDropOp.GetDraggedFolders()
+	//	};
+	//
+	//	const EntityOutlinerPolicies::MovePlan movePlan = m_pPolicies->ResolveMoveRequest(context);
+	//	ExecuteMovePlan(movePlan, scene, pDropTargetItem->Payload);
+	//
+	//	return true;
+	//}
 
 	std::vector<EntityFolder*> EntityOutlinerView::MergeFoldersByLabel(const std::vector<EntityFolder*>& someFolders) noexcept
 	{
@@ -1054,9 +1029,6 @@ namespace Relentless
 		Ref<OutlinerTableRow> pRow = new OutlinerTableRow(createInfo);
 		pRow->OnMouseEnter(this, &EntityOutlinerView::OnMouseEnterRow);
 		pRow->OnMouseExit(this, &EntityOutlinerView::OnMouseExitRow);
-		pRow->OnDragDetected(this, &EntityOutlinerView::OnDragDetected);
-		pRow->OnDragEnter(this, &EntityOutlinerView::OnDragEnter);
-		pRow->OnDrop(this, &EntityOutlinerView::OnDrop);
 
 		Button* pVisibilityButton = pRow->GetVisibilityButton();
 		pVisibilityButton

@@ -3,10 +3,17 @@
 
 #include "DetailLayoutBuilderHelpers.h"
 
+#include "SlotBuilder.h"
+
+#include "Thumbnail/AssetThumbnailData.h"
+
+#include "UI/Nodes/AssetDetailNode.h"
 #include "UI/Nodes/DetailNode.h"
 #include "UI/Views/Details/TableRows/DetailPropertyRow.h"
 #include "UI/Views/TreeView.h"
 
+#include "UI/Widgets/AssetDropTarget.h"
+#include "UI/Widgets/AssetThumbnail.h"
 #include "UI/Widgets/CheckBox.h"
 #include "UI/Widgets/ColorPicker.h"
 #include "UI/Widgets/ComboBox.h"
@@ -20,237 +27,6 @@
 
 namespace Relentless
 {
-	template<typename DataType> class DetailPropertyRowBuilder;
-	template<typename DataType> class NumericEntryBoxEditorBuilder;
-	template<typename DataType> class SliderEditorBuilder;
-	template<typename DataType> class SpinBoxEditorBuilder;
-	template<typename DataType> class CheckBoxEditorBuilder;
-	template<typename DataType> class ColorPickerEditorBuilder;
-	template<typename DataType> class ComboBoxEditorBuilder;
-	template<typename DataType> class TextBoxEditorBuilder;
-
-	template<typename T>
-	inline constexpr bool is_numeric_not_bool_v = std::is_arithmetic_v<std::remove_cv_t<T>> && !std::is_same_v<std::remove_cv_t<T>, bool>;
-
-	template<typename T>
-	inline constexpr bool is_vector_like_v = std::is_same_v<std::remove_cv_t<T>, Vector2> || std::is_same_v<std::remove_cv_t<T>, Vector3> || std::is_same_v<std::remove_cv_t<T>, Vector4>;
-
-	enum class EEditorType : uint8 { CheckBox = 0u, ColorPicker, ComboBox, Label, NumericEntryBox, Slider, SpinBox, TextBox };
-
-	struct PropertyDetails
-	{
-		std::vector<const char*> ComboBoxOptions;
-		String Label;
-		EEditorType EditorType = EEditorType::Slider;
-		String Unit;
-		String Tooltip;
-		TVector2<double> Range;
-		Vector2 FixedSize		= Vector2::Zero;
-		float Delta				= 1.0f;
-		int ComboBoxIndex		= 0;
-		bool Logarithmic		= false;
-		bool ClampManualInput	= false;
-		bool ClampOnZeroRange	= false;
-		bool WrapAround			= false;
-		bool SteppingEnabled	= false;
-		bool ColorIndicator		= false;
-
-		ESizePolicy HorizontalSizePolicy = ESizePolicy::Auto;
-		ESizePolicy VerticalSizePolicy = ESizePolicy::Auto;
-		EHorizontalAlignmentPolicy HorizontalAlignmentPolicy = EHorizontalAlignmentPolicy::Left;
-		EVerticalAlignmentPolicy VerticalAlignmentPolicy = EVerticalAlignmentPolicy::Center;
-	};
-
-	struct SlotContent
-	{
-		PropertyDetails Details;
-		Callback<Ref<IBaseWidget>()> CustomWidgetCallback;
-		Ref<IPropertyHandleBase> PropertyHandle = nullptr;
-	};
-
-	template<typename DataType>
-	class SlotBuilder
-	{
-	public:
-		SlotBuilder(DetailPropertyRowBuilder<DataType>& aParent, SlotContent& aSlotContent) noexcept
-			:m_SlotContent(aSlotContent),
-			 m_Parent(aParent)
-		{
-		}
-
-		CheckBoxEditorBuilder<DataType> CheckBox() noexcept;
-		ComboBoxEditorBuilder<DataType> ComboBox() noexcept;
-
-		DetailPropertyRowBuilder<DataType>& Row() noexcept
-		{
-			return m_Parent;
-		}
-
-		DetailPropertyRowBuilder<DataType>& Widget(Callback<Ref<IBaseWidget>()> aCallback) noexcept
-		{
-			m_SlotContent.CustomWidgetCallback = std::move(aCallback);
-			return Row();
-		}
-
-	protected:
-		template<typename D, typename T> friend class ArithmeticEditorBuilder;
-		template<typename D, typename T> friend class EditorBuilder;
-		template<typename T> friend class NumericEntryBoxEditorBuilder;
-		template<typename T> friend class SliderEditorBuilder;
-		template<typename T> friend class SpinBoxEditorBuilder;
-		template<typename T> friend class CheckBoxEditorBuilder;
-		template<typename T> friend class ColorPickerEditorBuilder;
-		template<typename T> friend class ComboBoxEditorBuilder;
-		template<typename T> friend class TextBoxEditorBuilder;
-
-		void SetClampManualInput(bool aState) noexcept
-		{
-			m_SlotContent.Details.ClampManualInput = aState;
-		}
-
-		void SetClampOnZeroRange(bool aState) noexcept
-		{
-			m_SlotContent.Details.ClampOnZeroRange = aState;
-		}
-
-		void EnableColorIndicator(bool aState) noexcept
-		{
-			m_SlotContent.Details.ColorIndicator = aState;
-		}
-
-		void SetComboBoxOptions(const std::vector<const char*>& someOptions) noexcept
-		{
-			m_SlotContent.Details.ComboBoxOptions = someOptions;
-		}
-
-		void SetComboBoxIndex(int aIndex) noexcept
-		{
-			m_SlotContent.Details.ComboBoxIndex = aIndex;
-		}
-
-		void SetDelta(float aDelta) noexcept
-		{
-			m_SlotContent.Details.Delta = aDelta;
-		}
-
-		void SetEditorType(EEditorType aType) noexcept
-		{
-			m_SlotContent.Details.EditorType = aType;
-		}
-
-		void SetFixedHeight(float aHeight) noexcept
-		{
-			m_SlotContent.Details.FixedSize.y = aHeight;
-		}
-
-		void SetFixedWidth(float aWidth) noexcept
-		{
-			m_SlotContent.Details.FixedSize.x = aWidth;
-		}
-
-		void SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy aAlignmentPolicy) noexcept
-		{
-			m_SlotContent.Details.HorizontalAlignmentPolicy = aAlignmentPolicy;
-		}
-
-		void SetHorizontalSizePolicy(ESizePolicy aSizePolicy) noexcept
-		{
-			m_SlotContent.Details.HorizontalSizePolicy = aSizePolicy;
-		}
-
-		void SetLogarithmic(bool aState) noexcept
-		{
-			m_SlotContent.Details.Logarithmic = aState;
-		}
-
-		void SetPropertyHandle(Ref<IPropertyHandleBase> aPropertyHandle) noexcept
-		{
-			m_SlotContent.PropertyHandle = aPropertyHandle;
-		}
-
-		void SetRange(const TVector2<double>& aRange) noexcept
-		{
-			m_SlotContent.Details.Range = TVector2<double>(static_cast<double>(aRange.x), static_cast<double>(aRange.y));
-		}
-
-		void SetSteppingEnabled(bool aState) noexcept
-		{
-			m_SlotContent.Details.SteppingEnabled = aState;
-		}
-
-		void SetTooltip(StringView aTooltip) noexcept
-		{
-			m_SlotContent.Details.Tooltip = aTooltip;
-		}
-
-		void SetUnit(StringView aUnit) noexcept
-		{
-			m_SlotContent.Details.Unit = aUnit;
-		}
-
-		void SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy aAlignmentPolicy) noexcept
-		{
-			m_SlotContent.Details.VerticalAlignmentPolicy = aAlignmentPolicy;
-		}
-
-		void SetVerticalSizePolicy(ESizePolicy aSizePolicy) noexcept
-		{
-			m_SlotContent.Details.VerticalSizePolicy = aSizePolicy;
-		}
-
-		void SetWrapAround(bool aState) noexcept
-		{
-			m_SlotContent.Details.WrapAround = aState;
-		}
-
-	protected:
-		SlotContent& m_SlotContent;
-		DetailPropertyRowBuilder<DataType>& m_Parent;
-	};
-
-	template<typename DataType>
-	class NameSlotBuilder : public SlotBuilder<DataType>
-	{
-	public:
-		explicit NameSlotBuilder(DetailPropertyRowBuilder<DataType>& aParent, SlotContent& aSlotContent) noexcept
-			: SlotBuilder<DataType>(aParent, aSlotContent)
-		{
-		}
-
-		DetailPropertyRowBuilder<DataType>& Label(StringView aLabel) noexcept
-		{
-			this->m_SlotContent.Details.EditorType = EEditorType::Label;
-			this->m_SlotContent.Details.Label = aLabel;
-			return this->m_Parent;
-		}
-	};
-
-	template<typename DataType>
-	class ValueSlotBuilder : public SlotBuilder<DataType>
-	{
-	public:
-		explicit ValueSlotBuilder(DetailPropertyRowBuilder<DataType>& aParent, SlotContent& aSlotContent) noexcept
-			: SlotBuilder<DataType>(aParent, aSlotContent)
-		{
-			this->m_SlotContent.Details.HorizontalSizePolicy = ESizePolicy::Stretch;
-		}
-
-		ColorPickerEditorBuilder<DataType> ColorPicker() noexcept
-			requires (std::is_same_v<DataType, Color>);
-
-		NumericEntryBoxEditorBuilder<DataType> NumericEntryBox() noexcept
-			requires (is_numeric_not_bool_v<DataType> || is_vector_like_v<DataType>);
-
-		SliderEditorBuilder<DataType> Slider() noexcept
-			requires (is_numeric_not_bool_v<DataType> || is_vector_like_v<DataType>);
-
-		SpinBoxEditorBuilder<DataType> SpinBox() noexcept
-			requires (is_numeric_not_bool_v<DataType> || is_vector_like_v<DataType>);
-
-		TextBoxEditorBuilder<DataType> TextBox() noexcept
-			requires (std::is_same_v<std::remove_cv_t<DataType>, String>);
-	};
-
 	template<typename DataType>
 	class DetailPropertyRowBuilder
 	{
@@ -264,6 +40,22 @@ namespace Relentless
 			m_ValueSlot.Details.Range	= TVector2<double>(std::numeric_limits<double>::lowest() / 2.0, std::numeric_limits<double>::max() / 2.0);
 		}
 
+		template<typename T = DataType>
+		DetailPropertyRowBuilder<DataType>& AcceptableAssetTypes(Span<TypeIndex> someAssetTypes) noexcept
+			requires std::is_same_v<T, AssetData>
+		{
+			m_AcceptableAssetTypes = someAssetTypes.Copy();
+			return *this;
+		}
+
+		template<typename T = DataType>
+		DetailPropertyRowBuilder<DataType>& OnAssetsDropped(Callback<void(Span<const AssetData>)>&& aCallback) noexcept
+			requires std::is_same_v<T, AssetData>
+		{
+			m_OnAssetsDroppedCallback = std::move(aCallback);
+			return *this;
+		}
+
 		virtual ~DetailPropertyRowBuilder() noexcept
 		{
 			if (!m_HasBuilt)
@@ -272,9 +64,9 @@ namespace Relentless
 
 		void Build() noexcept
 		{
-			m_pDetailNode->OnRequestRow([nameSlot = std::move(m_NameSlot), valueSlot = std::move(m_ValueSlot), revertSlot = std::move(m_RevertSlot), revertCallback = std::move(m_OnRevertCallback), revertedCallback = std::move(m_OnRevertedCallback), propertyBaseHandle = m_pDetailNode->GetPropertyHandle()](const ItemInfo& aItemInfo)
+			m_pDetailNode->OnRequestRow([assetsDroppedCallback = std::move(m_OnAssetsDroppedCallback), nameSlot = std::move(m_NameSlot), valueSlot = std::move(m_ValueSlot), revertSlot = std::move(m_RevertSlot), revertCallback = std::move(m_OnRevertCallback), revertedCallback = std::move(m_OnRevertedCallback)/*, propertyBaseHandle = m_pDetailNode->GetPropertyHandle()*/, pNode = m_pDetailNode, acceptableAssetTypes = std::move(m_AcceptableAssetTypes)](const ItemInfo& aItemInfo)
 				{
-					Ref<PropertyHandle<DataType>> pPropertyHandle = Ref<PropertyHandle<DataType>>(static_cast<PropertyHandle<DataType>*>(propertyBaseHandle.Get()));
+					Ref<PropertyHandle<DataType>> pPropertyHandle = Ref<PropertyHandle<DataType>>(static_cast<PropertyHandle<DataType>*>(pNode->GetPropertyHandle().Get()));
 
 					Ref<DetailPropertyRow> pDetailPropertyRow = RLS_NEW DetailPropertyRow();
 					pDetailPropertyRow->SetIndentation(aItemInfo.Depth);
@@ -290,6 +82,8 @@ namespace Relentless
 							else
 							{
 								Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
+								pBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+
 								pBox->AddWidget(std::move(pCustomWidget));
 								pDetailPropertyRow->SetNameContent(std::move(pBox));
 							}
@@ -297,12 +91,14 @@ namespace Relentless
 						else
 						{
 							Ref<HorizontalBox> pNameBox = RLS_NEW HorizontalBox();
+							pNameBox->SetPadding({0.0f, 2.0f, 0.0f, 2.0f});
 
 							switch (nameSlot.Details.EditorType)
 							{
 							case EEditorType::Label:
 							{
 								pNameBox->AddWidget(RLS_NEW::Relentless::Label(nameSlot.Details.Label))
+									->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.80f))
 									->SetVerticalAlignmentPolicy(nameSlot.Details.VerticalAlignmentPolicy)
 									->SetHorizontalAlignmentPolicy(nameSlot.Details.HorizontalAlignmentPolicy)
 									->SetVerticalSizePolicy(nameSlot.Details.VerticalSizePolicy)
@@ -363,6 +159,8 @@ namespace Relentless
 							else
 							{
 								Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
+								pBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+
 								pBox->AddWidget(std::move(pCustomWidget));
 								pDetailPropertyRow->SetValueContent(std::move(pBox));
 							}
@@ -370,6 +168,7 @@ namespace Relentless
 						else
 						{
 							Ref<HorizontalBox> pValueBox = RLS_NEW HorizontalBox();
+							pValueBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
 
 							if constexpr (std::is_same_v<DataType, Vector2>)
 								CreateVector2Editor(pValueBox, pPropertyHandle, valueSlot.Details);
@@ -406,7 +205,8 @@ namespace Relentless
 									{
 										pValueBox->AddWidget(RLS_NEW::Relentless::CheckBox())
 											->Bind(pPropertyHandle)
-											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center)
+											->SetIsEnabled(valueSlot.Details.Enabled);
 									}
 
 									break;
@@ -448,6 +248,34 @@ namespace Relentless
 									}
 									break;
 								}
+								case EEditorType::AssetThumbnail:
+								{
+									if constexpr (std::is_same_v<DataType, AssetData>)
+									{
+										AssetDetailNode* pAssetDetailNode = static_cast<AssetDetailNode*>(pNode);
+										WeakPtr<AssetThumbnailData> pThumbnailDataWeakPtr = pAssetDetailNode->GetThumbnailData()->GetWeakPtr();
+
+										pValueBox->AddWidget(RLS_NEW::Relentless::AssetDropTarget())
+											->OnAreAssetsAcceptable([acceptableTypes = std::move(acceptableAssetTypes)](Span<const AssetData> someAssetDatas)
+												{
+													return someAssetDatas.GetSize() == 1u && 
+														!acceptableTypes.empty() && 
+														std::ranges::any_of(acceptableTypes, [&someAssetDatas](TypeIndex aType) { return aType == someAssetDatas[0].Type; });
+												})
+											->OnAssetsDropped([assetsDroppedCallback = std::move(assetsDroppedCallback), pThumbnailDataWeakPtr](Span<const AssetData> someAssetDatas)
+												{
+													if (assetsDroppedCallback.IsSet())
+													{
+														assetsDroppedCallback(someAssetDatas);
+														if (SharedPtr<AssetThumbnailData> pAssetThumbnailData = pThumbnailDataWeakPtr.lock())
+															pAssetThumbnailData->SetAssetData(someAssetDatas[0]);
+													}
+												})
+											->Slot(RLS_NEW AssetThumbnail(pThumbnailDataWeakPtr, Vector2(50.0f, 50.0f)))
+											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+									}
+									break;
+								}
 								default:
 									break;
 								}
@@ -457,6 +285,7 @@ namespace Relentless
 						}
 					}
 
+					//Revert content:
 					{
 						if (revertSlot.CustomWidgetCallback.IsSet())
 						{
@@ -467,6 +296,8 @@ namespace Relentless
 							else
 							{
 								Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
+								pBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+
 								pBox->AddWidget(std::move(pCustomWidget));
 								pDetailPropertyRow->SetResetContent(std::move(pBox));
 							}
@@ -474,51 +305,53 @@ namespace Relentless
 						else
 						{
 							Ref<HorizontalBox> pRevertBox = RLS_NEW HorizontalBox();
-
-							Button* pButton = pRevertBox->AddWidget(RLS_NEW Button(ICON_FA_ARROW_ROTATE_LEFT));
-							pButton->SetBackgroundColor(Colors::Transparent);
-							pButton->SetBorderColor(Colors::Transparent);
-							pButton->SetHoverColor(Colors::Transparent);
-							pButton->SetActiveColor(Colors::Transparent);
-							pButton->SetTextColor(pPropertyHandle->DiffersFromDefault() ? Color(1.0f, 1.0f, 1.0f, 0.5f) : Colors::Transparent);
-							pButton->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
-							pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
-
-							if (pPropertyHandle->CanResetToDefault())
+							pRevertBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+							if (pPropertyHandle)
 							{
-								pButton->OnMouseEnter([propertyHandle = pPropertyHandle.Get()](Button* aButton)
-									{
-										if (!propertyHandle->DiffersFromDefault())
-											return;
+								Button* pButton = pRevertBox->AddWidget(RLS_NEW Button(ICON_FA_ARROW_ROTATE_LEFT));
+								pButton->SetBackgroundColor(Colors::Transparent);
+								pButton->SetBorderColor(Colors::Transparent);
+								pButton->SetHoverColor(Colors::Transparent);
+								pButton->SetActiveColor(Colors::Transparent);
+								pButton->SetTextColor(pPropertyHandle->DiffersFromDefault() ? Color(1.0f, 1.0f, 1.0f, 0.5f) : Colors::Transparent);
+								pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
-										aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 1.0f));
-									});
+								if (pPropertyHandle->CanResetToDefault())
+								{
+									pButton->OnMouseEnter([propertyHandle = pPropertyHandle.Get()](Button* aButton)
+										{
+											if (!propertyHandle->DiffersFromDefault())
+												return;
 
-								pButton->OnMouseExit([propertyHandle = pPropertyHandle.Get()](Button* aButton)
-									{
-										if (!propertyHandle->DiffersFromDefault())
-											return;
+											aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 1.0f));
+										});
 
-										aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f));
-									});
+									pButton->OnMouseExit([propertyHandle = pPropertyHandle.Get()](Button* aButton)
+										{
+											if (!propertyHandle->DiffersFromDefault())
+												return;
 
-								pButton->OnClicked([propertyHandle = pPropertyHandle.Get(), preCallback = std::move(revertCallback), postCallback = std::move(revertedCallback)]()
-									{
-										preCallback.ExecuteIfSet();
-										propertyHandle->ResetToDefault();
-										postCallback.ExecuteIfSet();
-									});
+											aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f));
+										});
 
-								const CallbackID valueChangedCallbackID = pPropertyHandle->OnValueChanged.Connect([pButton, propertyHandle = pPropertyHandle.Get()](const DataType&)
-									{
-										const bool differs = propertyHandle->DiffersFromDefault();
-										pButton->SetTextColor(differs ? (pButton->IsHovered() ? Color(1.0f, 1.0f, 1.0f, 1.0f) : Color(1.0f, 1.0f, 1.0f, 0.5f)) : Colors::Transparent);
-									});
+									pButton->OnClicked([propertyHandle = pPropertyHandle.Get(), preCallback = std::move(revertCallback), postCallback = std::move(revertedCallback)]()
+										{
+											preCallback.ExecuteIfSet();
+											propertyHandle->ResetToDefault();
+											postCallback.ExecuteIfSet();
+										});
 
-								pDetailPropertyRow->OnDestroy.Connect([valueChangedCallbackID, propertyHandle = pPropertyHandle.Get()]()
-									{
-										propertyHandle->OnValueChanged.Detach(valueChangedCallbackID);
-									});
+									const CallbackID valueChangedCallbackID = pPropertyHandle->OnValueChanged.Connect([pButton, propertyHandle = pPropertyHandle.Get()](const DataType&)
+										{
+											const bool differs = propertyHandle->DiffersFromDefault();
+											pButton->SetTextColor(differs ? (pButton->IsHovered() ? Color(1.0f, 1.0f, 1.0f, 1.0f) : Color(1.0f, 1.0f, 1.0f, 0.5f)) : Colors::Transparent);
+										});
+
+									pDetailPropertyRow->OnDestroy.Connect([valueChangedCallbackID, propertyHandle = pPropertyHandle.Get()]()
+										{
+											propertyHandle->OnValueChanged.Detach(valueChangedCallbackID);
+										});
+								}
 							}
 
 							pDetailPropertyRow->SetResetContent(pRevertBox);
@@ -726,8 +559,12 @@ namespace Relentless
 		SlotContent m_NameSlot;
 		SlotContent m_ValueSlot;
 		SlotContent m_RevertSlot;
+
+		std::vector<TypeIndex> m_AcceptableAssetTypes;
+
 		Callback<void()> m_OnRevertCallback;
 		Callback<void()> m_OnRevertedCallback;
+		Callback<void(Span<const AssetData>)> m_OnAssetsDroppedCallback;
 
 		DetailNode* m_pDetailNode = nullptr;
 		bool m_HasBuilt = false;
@@ -749,6 +586,12 @@ namespace Relentless
 		Derived& Bind(Ref<IPropertyHandleBase> aPropertyHandle) noexcept
 		{
 			m_ParentBuilder.SetPropertyHandle(aPropertyHandle);
+			return *static_cast<Derived*>(this);
+		}
+
+		Derived& Enabled(bool aEnable) noexcept
+		{
+			m_ParentBuilder.SetEnabled(aEnable);
 			return *static_cast<Derived*>(this);
 		}
 
@@ -805,6 +648,15 @@ namespace Relentless
 	}
 
 	//Specializers:
+
+	template<typename DataType>
+	class AssetThumbnailEditorBuilder : public EditorBuilder<AssetThumbnailEditorBuilder<DataType>, DataType>
+	{
+	public:
+		explicit AssetThumbnailEditorBuilder(SlotBuilder<DataType>& aParentBuilder) noexcept
+			: EditorBuilder<AssetThumbnailEditorBuilder<DataType>, DataType>(aParentBuilder)
+		{}
+	};
 
 	template<typename DataType>
 	class CheckBoxEditorBuilder : public EditorBuilder<CheckBoxEditorBuilder<DataType>, DataType>
@@ -962,6 +814,14 @@ namespace Relentless
 			return *this;
 		}
 	};
+
+	template<typename DataType>
+	AssetThumbnailEditorBuilder<DataType> ValueSlotBuilder<DataType>::AssetThumbnail() noexcept
+		requires (std::is_same_v<std::remove_cv_t<DataType>, AssetData>)
+	{
+		this->SetEditorType(EEditorType::AssetThumbnail);
+		return AssetThumbnailEditorBuilder<DataType>(*this);
+	}
 
 	template<typename DataType>
 	CheckBoxEditorBuilder<DataType> SlotBuilder<DataType>::CheckBox() noexcept

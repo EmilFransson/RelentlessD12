@@ -6,77 +6,29 @@
 #include <Panels/OutlinerPanel.h>
 #include <Panels/WidgetShowcasePanel.h>
 
+#include <UI/DragDrop/DragDropOperation.h>
+
 namespace Relentless
 {
 	// ---------------- PUBLIC FUNCTIONS ------------------
 
-	bool UIModule::BeginDragDropSource(RequestDragDropOpFunc&& aRequestFunc) noexcept
+	void UIModule::ClearActiveDragDropOperation() noexcept
 	{
-		if (!ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoDisableHover | ImGuiDragDropFlags_SourceNoPreviewTooltip))
-			return false;
-
-		if (!m_pDragDropOperation)
-			m_pDragDropOperation = aRequestFunc();
-
-		m_pDragDropOperation->Update();
-
-		ImGui::SetDragDropPayload(m_pDragDropOperation->GetTypeName(), nullptr, 0);
-		ImGui::EndDragDropSource();
-
-		return true;
+		if (m_pDragDropOperation)
+			OnDragDropOperationEnd(m_pDragDropOperation);
+		
+		m_pDragDropOperation = nullptr;
 	}
 
-	bool UIModule::BeginDragDropTarget(uint64 aUniqueID, OnDragEnterFunc&& aOnDragEnterFunc, OnDragLeaveFunc&& aOnDragLeaveFunc, OnDropFunc&& aOnDropFunc) noexcept
+	Ref<DragDropOperationBase> UIModule::GetActiveDragDropOperation() const noexcept
 	{
-		if (!IsDragDropOperationValid())
-			return false;
+		RLS_ASSERT(m_pDragDropOperation, "[UIModule::GetActiveDragDropOperation]: Drag drop operation is invalid");
+		return m_pDragDropOperation;
+	}
 
-		auto& state = m_DragDropHoverStates[aUniqueID];
-
-		if (!ImGui::BeginDragDropTarget())
-		{
-			if (state.Over)
-			{
-				state.Over = false;
-				aOnDragLeaveFunc(m_pDragDropOperation);
-			}
-
-			return false;
-		}
-
-		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(m_pDragDropOperation->GetTypeName(), ImGuiDragDropFlags_AcceptBeforeDelivery))
-		{
-			if (!payload->IsDelivery())
-			{
-				if (!state.Over)
-				{
-					state.Over = true;
-					m_DropTargetIsValid = aOnDragEnterFunc(m_pDragDropOperation);
-				}
-			}
-			else
-			{
-				if (m_DropTargetIsValid)
-				{
-					aOnDropFunc(m_pDragDropOperation);
-					m_pDragDropOperation.Reset();
-					m_DragDropHoverStates.clear();
-					m_DropTargetIsValid = false;
-				}
-			}
-		}
-		else
-		{
-			if (state.Over)
-			{
-				state.Over = false;
-				aOnDragLeaveFunc(m_pDragDropOperation);
-			}
-		}
-
-		ImGui::EndDragDropTarget();
-
-		return true;
+	bool UIModule::HasActiveDragDrop() const noexcept
+	{
+		return m_pDragDropOperation != nullptr;
 	}
 
 	bool UIModule::IsAnyContextMenuActive() const noexcept
@@ -251,12 +203,16 @@ namespace Relentless
 			else
 				m_pActiveContextMenu->Render();
 		}
+
+		if (m_pDragDropOperation && !ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+			ClearActiveDragDropOperation();
 	}
 
 	void UIModule::OnUpdate(MAYBE_UNUSED float aDeltaTime) noexcept
 	{
 		PROFILE_FUNC;
 
+		ResolveOpenRequests();
 		ResolveCloseRequests();
 
 		if (m_PanelStackDirty)
@@ -264,9 +220,6 @@ namespace Relentless
 
 		for (auto& panel : m_PanelStack)
 			panel->Update();
-
-		if (!IsDragDropActive() && IsDragDropOperationValid())
-			m_pDragDropOperation.Reset();
 	}
 
 	void UIModule::RequestClose(PanelBase* aPanel) noexcept
@@ -276,9 +229,9 @@ namespace Relentless
 
 	void UIModule::CreateDefaultPanels() noexcept
 	{
-		AddPanel<EntityDetailsPanel>();
-		AddPanel<OutlinerPanel>();
-		AddPanel<WidgetShowcasePanel>();
+		OpenPanel<EntityDetailsPanel>();
+		OpenPanel<OutlinerPanel>();
+		OpenPanel<WidgetShowcasePanel>();
 	}
 
 	void UIModule::SetActiveContextMenu(Ref<ContextMenu> aContextMenu) noexcept
@@ -292,6 +245,13 @@ namespace Relentless
 		m_ShouldDestroyContextMenu = false;
 	}
 	
+	void UIModule::SetActiveDragDropOperation(Ref<DragDropOperationBase> aDragDropOperation) noexcept
+	{
+		m_pDragDropOperation = aDragDropOperation;
+		m_pDragDropOperation->CreatePreview();
+		OnDragDropOperationBegin(m_pDragDropOperation);
+	}
+
 	// ---------------- PROTECTED FUNCTIONS -----------------
 
 	void UIModule::OnLoad()
@@ -359,4 +319,12 @@ namespace Relentless
 		m_PanelsToClose.clear();
 	}
 
+	void UIModule::ResolveOpenRequests() noexcept
+	{
+		m_PanelStack.insert(m_PanelStack.end(),
+			std::make_move_iterator(std::begin(m_PendingPanelsToOpen)),
+			std::make_move_iterator(std::end(m_PendingPanelsToOpen)));
+
+		m_PendingPanelsToOpen.clear();
+	}
 }

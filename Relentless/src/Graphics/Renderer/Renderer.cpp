@@ -1,9 +1,11 @@
 #include "Renderer.h"
 
 #include "Assets/AssetManager.h"
+#include "Assets/CoreTypes/Environment.h"
 #include "Assets/CoreTypes/Material.h"
-#include "Assets/CoreTypes/Texture2D.h"
 #include "Assets/CoreTypes/Mesh.h"
+#include "Assets/CoreTypes/Texture2D.h"
+#include "Assets/CoreTypes/TextureCube.h"
 
 #include "Core/Time.h"
 
@@ -15,9 +17,9 @@
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/RingBufferAllocator.h"
 
-#include "Module/ModuleManager.h"
-
 #include "Scene/Scene.h"
+#include "Subsystem/CoreTypes/SkyBoxRenderSubsystem.h"
+#include "Subsystem/CoreTypes/SkyLightRenderSubsystem.h"
 
 #include "Utility/FilepathUtils.h"
 
@@ -26,13 +28,20 @@ namespace Relentless
 	Renderer::Renderer(GraphicsDevice* pDevice) noexcept
 		: m_pDevice{pDevice}
 	{
-		m_pForwardRenderer = std::make_unique<ForwardRenderer>(pDevice);
-		m_pEditorGrid = std::make_unique<EditorGrid>(pDevice);
-		m_pPostProcessing = std::make_unique<PostProcessing>(pDevice);
-		m_pDepthPrePass = std::make_unique<DepthPrePass>(pDevice);
-		m_pHBAOPlus = std::make_unique<HBAOPlus>(pDevice);
-		m_pOutlines = std::make_unique<Outlines>(pDevice);
-		m_pAutoExposure = MakeUnique<AutoExposure>(pDevice);
+		GraphicsCommon::Create(m_pDevice);
+
+		//Subsystems:
+		GetSubsystem<SkyBoxRenderSubsystem>();
+		GetSubsystem<SkyLightRenderSubsystem>();
+
+		m_pForwardRenderer			= MakeUnique<ForwardRenderer>(pDevice);
+		m_pEditorGrid				= MakeUnique<EditorGrid>(pDevice);
+		m_pPostProcessing			= MakeUnique<PostProcessing>(pDevice);
+		m_pDepthPrePass				= MakeUnique<DepthPrePass>(pDevice);
+		m_pHBAOPlus					= MakeUnique<HBAOPlus>(pDevice);
+		m_pOutlines					= MakeUnique<Outlines>(pDevice);
+		m_pAutoExposure				= MakeUnique<AutoExposure>(pDevice);
+		m_pSkyBoxRenderer			= MakeUnique<SkyBoxRenderer>(pDevice);
 
 		InitializePipelines();
 
@@ -43,7 +52,57 @@ namespace Relentless
 	{
 		PROFILE_SCOPE("Renderer::Render");
 
-		m_BRDFLutTextureHandle = m_OnRequestBRDFLut();
+		{
+			PROFILE_SCOPE("Renderer::Render::DispatchCallbacks");
+			std::lock_guard<std::mutex> guard(s_DispatchMutex);
+			for (auto& request : s_EnqueuedRequests)
+				request(this);
+
+			s_EnqueuedRequests.clear();
+		}
+
+		{
+			PROFILE_SCOPE("Renderer::Render::OnFrameBeginCallbacks");
+			std::lock_guard<std::mutex> guard(m_OnFrameBeginMutex);
+			for (auto&[id, frameBeginCallback] : m_OnFrameBeginCallbacks)
+				frameBeginCallback();
+		}
+
+		{
+			PROFILE_SCOPE("Renderer::Render::RenderJobs");
+
+			for (auto it = s_InProgressRenderJobs.begin(); it != s_InProgressRenderJobs.end();)
+			{
+				RenderJob& job = *it;
+				if (job.State->Sync.IsComplete())
+				{
+					job.State->ConditionVariable.notify_all();
+					it = s_InProgressRenderJobs.erase(it);
+				}
+				else
+					break;
+			}
+
+			std::lock_guard<std::mutex> guard(s_RenderJobMutex);
+			for (auto& job : s_EnqueuedRenderJobs)
+			{
+				CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(job.Type == ERenderJobType::Raster ? D3D12_COMMAND_LIST_TYPE_DIRECT : D3D12_COMMAND_LIST_TYPE_COMPUTE);
+				job.Callback(*pCommandContext);
+				job.State->Sync = pCommandContext->Execute();
+				job.State->Submitted = true;
+			}
+
+			std::ranges::move(s_EnqueuedRenderJobs, std::back_inserter(s_InProgressRenderJobs));
+			s_EnqueuedRenderJobs.clear();
+		}
+
+		if (!m_BRDFLutTextureHandle.IsValid())
+		{
+			m_BRDFLutTextureHandle = m_OnRequestBRDFLut();
+			Ref<Texture2D> pBRDFLutTexture = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle);
+			pBRDFLutTexture->CreateResource();
+			GetSubsystem<SkyLightRenderSubsystem>()->SetBRDFLutTexture(pBRDFLutTexture->GetResource());
+		}
 
 		if (!m_EntityIDSyncs.empty() && m_EntityIDSyncs.front().IsComplete())
 		{
@@ -108,16 +167,19 @@ namespace Relentless
 
 			m_MainView.PerspectiveFrustum	= pViewTransform->PerspectiveFrustum;
 			m_MainView.OrthographicFrustum	= pViewTransform->OrthographicFrustum;
+
+			m_MainView.FrameIndex			= m_Frame;
 		}
 		
 		if (!m_pColortarget || m_pColortarget->GetWidth() != width || m_pColortarget->GetHeight() != height)
-			m_pColortarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT), "Color Target");
+			m_pColortarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Color Target");
 
 		if (!m_pDepthTarget || m_pDepthTarget->GetWidth() != width || m_pDepthTarget->GetHeight() != height)
 			m_pDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS), "Depth Target");
 
 		m_SceneTextures.pColorTarget = m_pColortarget;
 		m_SceneTextures.pDepthTarget = m_pDepthTarget;
+		m_SceneTextures.pEnvironmentTarget = GraphicsCommon::GetDefaultTexture(DefaultTextureType::BlackCube);
 
 		{
 			PROFILE_SCOPE("Renderer::Render::SyncRingBuffer");
@@ -130,9 +192,14 @@ namespace Relentless
 		{
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			
+			{
+				for (auto& [id, callback] : m_OnUploadCallbacks)
+					callback(*pCommandContext);
+			}
+			
 			UploadSceneData(*pCommandContext);
 			UploadViewUniforms(*pCommandContext, m_MainView);
-			
+
 			pCommandContext->Execute();
 		}
 
@@ -151,34 +218,6 @@ namespace Relentless
 			std::sort(m_Batches.begin(), m_Batches.end(), CompareSort);
 		}
 
-		//TODO: Remove job when done:
-		//Free standing ("one-shot") render jobs:
-		{
-			PROFILE_SCOPE("Renderer::Render::RenderJobs");
-			
-			for (auto it = s_InProgressRenderJobs.begin(); it != s_InProgressRenderJobs.end();)
-			{
-				RenderJob& job = *it;
-				if (job.State->Sync.IsComplete())
-					it = s_InProgressRenderJobs.erase(it);
-				else
-					break;
-			}
-
-
-			std::lock_guard<std::mutex> guard(m_RenderJobMutex);
-			for (auto& job : s_EnqueuedRenderJobs)
-			{
-				CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(job.Type == ERenderJobType::Raster ? D3D12_COMMAND_LIST_TYPE_DIRECT : D3D12_COMMAND_LIST_TYPE_COMPUTE);
-				job.Callback(*pCommandContext);
-				job.State->Sync = pCommandContext->Execute();
-				job.State->Submitted = true;
-			}
-
-			std::ranges::move(s_EnqueuedRenderJobs, std::back_inserter(s_InProgressRenderJobs));
-			s_EnqueuedRenderJobs.clear();
-		}
-
 		//Pre-Z
 		{
 			PROFILE_SCOPE("Renderer::Render::Pre-Z");
@@ -188,23 +227,30 @@ namespace Relentless
 			pCommandContext->Execute();
 		}
 
+		//Skybox
+		{
+			PROFILE_SCOPE("Renderer::Render::Skybox");
+			m_pSkyBoxRenderer->Render(m_MainView, m_SceneTextures);
+		}
+
 		//Forward
 		{
 			PROFILE_SCOPE("Renderer::Render::Forward");
-
+			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
+			
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			m_pForwardRenderer->Render(*pCommandContext, m_MainView, m_SceneTextures, renderMode);
 			pCommandContext->Execute();
 		}
 
 		//HBAO+
-		//{
-		//	PROFILE_SCOPE("Renderer::Render::HBAO+");
-		//	
-		//	CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-		//	m_pHBAOPlus->Render(*pCommandContext, m_MainView, m_SceneTextures);
-		//	pCommandContext->Execute();
-		//}
+		{
+			PROFILE_SCOPE("Renderer::Render::HBAO+");
+			
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			m_pHBAOPlus->Render(*pCommandContext, m_MainView, m_SceneTextures);
+			pCommandContext->Execute();
+		}
 
 		//Entity IDs
 		{
@@ -341,35 +387,57 @@ namespace Relentless
 			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
 
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(D3D12_COMMAND_LIST_TYPE_COMPUTE);
-			m_pPostProcessing->Render(*pCommandContext, m_MainView, m_SceneTextures, m_pOutlines->GetSelectedEntityIDOutput(), m_pOutlines->GetBlurredOutput(), m_pAutoExposure->GetAverageLuminanceBuffer());
+			m_pPostProcessing->Render(*pCommandContext, m_MainView, m_SceneTextures, m_pOutlines->GetSelectedEntityIDOutput(), m_pOutlines->GetBlurredOutput(), m_pAutoExposure->GetAverageLuminanceBuffer(), pTarget);
 			pCommandContext->Execute();
 
 			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
 		}
 
 		//Blit:
-		{
-			PROFILE_SCOPE("Renderer::Render::Blit");
-
-			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			
-			pCommandContext->InsertResourceBarrier(pTarget, D3D12_RESOURCE_STATE_COPY_DEST);
-			pCommandContext->InsertResourceBarrier(m_SceneTextures.pColorTarget, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		
-			pCommandContext->CopyResource(m_SceneTextures.pColorTarget, pTarget);
-		
-			pCommandContext->InsertResourceBarrier(pTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-			pCommandContext->Execute();
-		}
+		//{
+		//	PROFILE_SCOPE("Renderer::Render::Blit");
+		//
+		//	CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+		//	
+		//	pCommandContext->InsertResourceBarrier(pTarget, D3D12_RESOURCE_STATE_COPY_DEST);
+		//	pCommandContext->InsertResourceBarrier(m_SceneTextures.pColorTarget, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		//
+		//	pCommandContext->CopyResource(m_SceneTextures.pColorTarget, pTarget);
+		//
+		//	pCommandContext->InsertResourceBarrier(pTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		//	pCommandContext->Execute();
+		//}
 
 		m_Frame++;
+	}
+
+	CallbackID Renderer::RegisterOnFrameRenderBeginCallback(Callback<void()> aFrameRenderBeginCallback) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_OnFrameBeginMutex);
+		static CallbackID nextCallbackID = 0;
+		CallbackID toReturn = nextCallbackID++;
+
+		m_OnFrameBeginCallbacks.emplace(toReturn, std::move(aFrameRenderBeginCallback));
+
+		return toReturn;
+	}
+
+	CallbackID Renderer::RegisterOnUploadCallback(Callback<void(CommandContext&)> aUploadCallback) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_OnUploadMutex);
+		static CallbackID nextCallbackID = 0;
+		CallbackID toReturn = nextCallbackID++;
+
+		m_OnUploadCallbacks.emplace(toReturn, std::move(aUploadCallback));
+
+		return toReturn;
 	}
 
 	RenderJobHandle Renderer::SubmitComputeJob(Callback<void(CommandContext&)>&& aCallback) noexcept
 	{
 		Ref<RenderJobState> pJobState = RLS_NEW RenderJobState();
 
-		std::lock_guard<std::mutex> guard(m_RenderJobMutex);
+		std::lock_guard<std::mutex> guard(s_RenderJobMutex);
 		RenderJob& renderJob = s_EnqueuedRenderJobs.emplace_back();
 		renderJob.Callback = std::move(aCallback);
 		renderJob.Type = ERenderJobType::Compute;
@@ -382,13 +450,25 @@ namespace Relentless
 	{
 		Ref<RenderJobState> pJobState = RLS_NEW RenderJobState();
 		
-		std::lock_guard<std::mutex> guard(m_RenderJobMutex);
+		std::lock_guard<std::mutex> guard(s_RenderJobMutex);
 		RenderJob& renderJob = s_EnqueuedRenderJobs.emplace_back();
 		renderJob.Callback = std::move(aCallback);
 		renderJob.Type = ERenderJobType::Raster;
 		renderJob.State = pJobState;
 
 		return RenderJobHandle(pJobState);
+	}
+
+	void Renderer::UnregisterOnFrameRenderBeginCallback(CallbackID aCallbackID) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_OnFrameBeginMutex);
+		m_OnFrameBeginCallbacks.erase(aCallbackID);
+	}
+
+	void Renderer::UnregisterOnUploadCallback(CallbackID aCallbackID) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_OnUploadMutex);
+		m_OnUploadCallbacks.erase(aCallbackID);
 	}
 
 	void Renderer::DrawScene(CommandContext& context, const RenderView& view, Batch::Blending blendMode) noexcept
@@ -423,6 +503,11 @@ namespace Relentless
 		return m_Batches;
 	}
 
+	GraphicsDevice* Renderer::GetDevice() const noexcept
+	{
+		return m_pDevice;
+	}
+
 	uint32 Renderer::GetFrameIndex() const noexcept
 	{
 		return m_Frame;
@@ -435,45 +520,41 @@ namespace Relentless
 		commandContext.BindRootCBV(BindingSlot::PerView, &viewUniforms, sizeof(ShaderInterop::ViewUniforms));
 	}
 
-	void Renderer::GetViewUniforms(const RenderView& renderView, ShaderInterop::ViewUniforms& outViewUniform) noexcept
+	void Renderer::Dispatch(Callback<void(Renderer*)>&& aCallback) noexcept
 	{
-		outViewUniform.WorldToView				= renderView.WorldToView;
-		outViewUniform.ViewToWorld				= renderView.ViewToWorld;
-		outViewUniform.ViewToClip				= renderView.ViewToClip;
-		outViewUniform.ClipToView				= renderView.ClipToView;
-		outViewUniform.WorldToClip				= renderView.WorldToClip;
+		std::lock_guard<std::mutex> guard(s_DispatchMutex);
+		s_EnqueuedRequests.emplace_back(std::move(aCallback));
+	}
+
+	void Renderer::GetViewUniforms(const RenderView& aRenderView, ShaderInterop::ViewUniforms& outViewUniform) noexcept
+	{
+		outViewUniform.WorldToView				= aRenderView.WorldToView;
+		outViewUniform.ViewToWorld				= aRenderView.ViewToWorld;
+		outViewUniform.ViewToClip				= aRenderView.ViewToClip;
+		outViewUniform.ClipToView				= aRenderView.ClipToView;
+		outViewUniform.WorldToClip				= aRenderView.WorldToClip;
 		outViewUniform.WorldToClip.Invert(outViewUniform.ClipToWorld);
 
-		outViewUniform.ViewLocation				= renderView.Location;
+		outViewUniform.ViewLocation				= aRenderView.Location;
 
-		outViewUniform.ViewportDimensions		= Vector2(renderView.Viewport.GetWidth(), renderView.Viewport.GetHeight());
-		outViewUniform.ViewportDimensionsInv	= Vector2(1.0f / renderView.Viewport.GetWidth(), 1.0f / renderView.Viewport.GetHeight());
+		outViewUniform.ViewportDimensions		= Vector2(aRenderView.Viewport.GetWidth(), aRenderView.Viewport.GetHeight());
+		outViewUniform.ViewportDimensionsInv	= Vector2(1.0f / aRenderView.Viewport.GetWidth(), 1.0f / aRenderView.Viewport.GetHeight());
 
-		outViewUniform.FrameIndex				= m_Frame;
+		outViewUniform.FrameIndex				= aRenderView.FrameIndex;
 		outViewUniform.DeltaTime				= Time::GetDeltaTime();
 		outViewUniform.ElapsedTime				= Time::GetElapsedTime();
-		outViewUniform.RadianceMapIndex			= ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 
 		outViewUniform.NumInstances				= m_InstancesBuffer.Count;
 		outViewUniform.LightCount				= m_LightsBuffer.Count;
 		outViewUniform.EnvironmentIndex			= m_EnvironmentBuffer.pBuffer ? m_EnvironmentBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
-		outViewUniform.IrradianceMapIndex		= ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 		
 		outViewUniform.InstancesIndex			= m_InstancesBuffer.pBuffer ? m_InstancesBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 		outViewUniform.MeshesIndex				= m_MeshesBuffer.pBuffer ? m_MeshesBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 		outViewUniform.MaterialsIndex			= m_MaterialsBuffer.pBuffer ? m_MaterialsBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 		outViewUniform.LightsIndex				= m_LightsBuffer.pBuffer ? m_LightsBuffer.pBuffer->GetSRVIndex() : ShaderInterop::INVALID_DESCRIPTOR_INDEX;
-		
-		if (m_BRDFLutTextureHandle.IsValid())
-		{
-			Ref<Texture2D> pBRDFLUT = AssetManager::Get<Texture2D>(m_BRDFLutTextureHandle);
-			if (!pBRDFLUT->GetResource())
-				pBRDFLUT->CreateResource();
 
-			outViewUniform.BRDFfLutTextureIndex = pBRDFLUT->GetResource()->GetSRVIndex();
-		}
-		else
-			outViewUniform.BRDFfLutTextureIndex	= ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+		outViewUniform.SkyLightIndex			= GetSubsystem<SkyLightRenderSubsystem>()->GetRenderData()->GetSRVIndex();
+		outViewUniform.SkyBoxIndex				= GetSubsystem<SkyBoxRenderSubsystem>()->GetRenderData()->GetSRVIndex();
 	}
 
 	void Renderer::InitializePipelines()
@@ -494,7 +575,6 @@ namespace Relentless
 
 			m_pEntityIdPSO = m_pDevice->CreatePipeline(psoDesc);
 		}
-
 	}
 
 	void Renderer::UploadSceneData(CommandContext& commandContext) noexcept
@@ -524,10 +604,14 @@ namespace Relentless
 		
 		//Materials
 		{
+			const Texture* pDefaultBlack2D = GraphicsCommon::GetDefaultTexture(DefaultTextureType::Black2D);
+			const Texture* pDefaultWhite2D = GraphicsCommon::GetDefaultTexture(DefaultTextureType::White2D);
+			const Texture* pDefaultNormal = GraphicsCommon::GetDefaultTexture(DefaultTextureType::Normal2D);
+
 			std::vector<ShaderInterop::Material> materials;
 			materials.reserve(AssetManager::GetNumAssets<Material>());
 
-			auto&& ConditionallyCreateAndReturnTextureIndex = [&](ETextureType textureType, const Material& aMaterial) -> uint32
+			auto&& ConditionallyCreateAndReturnTextureIndex = [&](ETextureType textureType, const Material& aMaterial, const Texture* aFallbackTexture = nullptr) -> uint32
 				{
 					if (aMaterial.HasTexture(textureType))
 					{
@@ -538,7 +622,10 @@ namespace Relentless
 						return pTexture->GetResource()->GetSRVIndex();
 					}
 
-					return ShaderInterop::INVALID_DESCRIPTOR_INDEX;
+					if (aFallbackTexture)
+						return aFallbackTexture->GetSRVIndex();
+					else
+						return ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 				};
 
 			AssetManager::ForEachAsset<Material>([&](Material& aMaterial)
@@ -546,13 +633,13 @@ namespace Relentless
 					meshUIDToIndexMap[aMaterial.GetUUID()] = (uint32)materials.size();
 
 					ShaderInterop::Material& material = materials.emplace_back();
-					material.AlbedoIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Albedo, aMaterial);
-					material.NormalIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::NormalMap, aMaterial);
-					material.RoughnessIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Roughness, aMaterial);
-					material.MetalnessIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Metallic, aMaterial);
-					material.EmissiveIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Emission, aMaterial);
-					material.HeightMapIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::DisplacementMap, aMaterial);
-					material.AOIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::AmbientOcclusion, aMaterial);
+					material.AlbedoIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Albedo, aMaterial, pDefaultWhite2D);
+					material.NormalIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::NormalMap, aMaterial, pDefaultNormal);
+					material.RoughnessIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Roughness, aMaterial, pDefaultWhite2D);
+					material.MetalnessIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Metallic, aMaterial, pDefaultWhite2D);
+					material.EmissiveIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::Emission, aMaterial, pDefaultWhite2D);
+					material.HeightMapIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::DisplacementMap, aMaterial, pDefaultBlack2D);
+					material.AOIndex = ConditionallyCreateAndReturnTextureIndex(ETextureType::AmbientOcclusion, aMaterial, pDefaultWhite2D);
 					material.RoughnessMetalnessIndex = ShaderInterop::INVALID_DESCRIPTOR_INDEX;
 
 					material.BaseColorFactor = aMaterial.GetAlbedoColor();
@@ -606,8 +693,8 @@ namespace Relentless
 					const Ref<Material> pMaterial = AssetManager::Get<Material>(mrc.AssetHandle);
 					const Ref<Mesh> pMesh = AssetManager::Get<Mesh>(mc.AssetHandle);
 
-					const uint32 materialIndex = materialUIDToIndexMap[pMaterial->GetUUID()]/*  AssetManager::GetPhysicalIndex<Material>(mrc.AssetHandle)*/;
-					const uint32 meshIndex = meshUIDToIndexMap[pMesh->GetUUID()]; /*AssetManager::GetPhysicalIndex<Mesh>(mc.AssetHandle)*/;
+					const uint32 materialIndex = materialUIDToIndexMap[pMaterial->GetUUID()];
+					const uint32 meshIndex = meshUIDToIndexMap[pMesh->GetUUID()];;
 
 					auto&& GetBlendMode = [](EBlendMode renderMode) -> Batch::Blending
 						{
@@ -724,14 +811,6 @@ namespace Relentless
 
 			CopyBufferData((uint32)lights.size(), sizeof(ShaderInterop::Light), "Lights", lights.data(), m_LightsBuffer);
 		}
-
-		//Environment
-		{
-			ShaderInterop::Environment environment;
-			environment.BackgroundColor = Vector3(Colors::Black.x, Colors::Black.y, Colors::Black.z);
-			CopyBufferData(1u, sizeof(ShaderInterop::Environment), "Environment", &environment, m_EnvironmentBuffer);
-		}
-
 
 		batches.swap(m_Batches);
 	}

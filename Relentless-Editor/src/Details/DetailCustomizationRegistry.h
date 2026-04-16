@@ -28,7 +28,7 @@ namespace Relentless
 	template<typename T>
 	std::vector<UniquePtr<IDetailCustomization>> DetailCustomizationRegistry::GetCustomizations() const noexcept
 	{
-		const TypeIndex owningTypeIndex = getTypeIndex<T>();
+		constexpr TypeIndex owningTypeIndex = getTypeIndex<T>();
 
 		if (auto it = m_Customizations.find(owningTypeIndex); it != m_Customizations.end())
 			return Create(it->second);
@@ -39,8 +39,8 @@ namespace Relentless
 	template<typename T, typename U>
 	void DetailCustomizationRegistry::Register() noexcept
 	{
-		const TypeIndex owningTypeIndex = getTypeIndex<T>();
-		const TypeIndex customTypeIndex = getTypeIndex<U>();
+		constexpr TypeIndex owningTypeIndex = getTypeIndex<T>();
+		constexpr TypeIndex customTypeIndex = getTypeIndex<U>();
 
 		Entry& entry = m_Customizations[owningTypeIndex];
 		if (entry.OwningTypes.contains(customTypeIndex))

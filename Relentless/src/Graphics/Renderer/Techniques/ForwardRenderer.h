@@ -3,7 +3,6 @@
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/RHI.h"
 #include "Graphics/RHI/PipelineState.h"
-#include "Graphics/RHI/Texture.h"
 
 namespace Relentless
 {
@@ -18,7 +17,5 @@ namespace Relentless
 
 		Ref<PipelineState> m_pForwardSolidPSO = nullptr;
 		Ref<PipelineState> m_pForwardWireframePSO = nullptr;
-	
-		Ref<Texture> m_pColorTarget = nullptr;
 	};
 }

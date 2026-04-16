@@ -22,6 +22,11 @@ namespace Relentless
 		TypeIndex Type						= TypeIndex{};
 		uint64 ModificationDateAndTime		= 0u;
 		uint32 Flags						= 0u;
+
+		NO_DISCARD bool operator==(const AssetData& aOther) const noexcept
+		{
+			return Uuid == aOther.Uuid;
+		}
 	};
 
 	struct AssetKeys

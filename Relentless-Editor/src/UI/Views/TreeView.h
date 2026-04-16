@@ -208,18 +208,18 @@ namespace Relentless
 		{
 			this->m_pHeaderRow->OnRender();
 
-			ImGuiListClipper clipper;
-			clipper.Begin(m_LinearizedItems.size());
-
-			bool warmUp = true;
-			bool clipRangeDirty = false;
-			float lastRowY = 0.0f;
-
 			float clipStartPosY = FLT_MAX;
+			float lastRowY = 0.0f;
+			bool clipRangeDirty = false;
 			float clipItemsHeight = 0.0f;
 
 			if (this->m_ClippingActive)
 			{
+				ImGuiListClipper clipper;
+				clipper.Begin(m_LinearizedItems.size());
+
+				bool warmUp = true;
+
 				while (clipper.Step())
 				{
 					if (clipStartPosY == FLT_MAX)

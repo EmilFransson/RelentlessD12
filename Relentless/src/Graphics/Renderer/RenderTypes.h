@@ -58,7 +58,7 @@ namespace Relentless
 		float MinLogLuminance			= -4.0f;
 		float MinEV100					= -10.0f;
 		float MaxEV100					= 20.0f;
-		float ExposureCompensation		= 1.0f;
+		float ExposureCompensation		= 2.0f;
 	};
 
 	struct RenderView : public ViewTransform
@@ -66,6 +66,7 @@ namespace Relentless
 		Renderer* pRenderer = nullptr;
 		Scene* pScene		= nullptr;
 		Ref<Buffer> ViewCB	= nullptr;
+		uint32 FrameIndex = 0u;
 	};
 
 	struct Batch
@@ -86,6 +87,7 @@ namespace Relentless
 	{
 		Ref<Texture> pColorTarget = nullptr;
 		Ref<Texture> pDepthTarget = nullptr;
+		Ref<Texture> pEnvironmentTarget = nullptr;
 	};
 
 	struct SceneBuffer
@@ -106,4 +108,21 @@ namespace Relentless
 		static constexpr uint32 PerPass		= 1u;
 		static constexpr uint32 PerView		= 2u;
 	};
+
+	enum class DefaultTextureType
+	{
+		White2D,
+		Black2D,
+		Normal2D,
+		BlackCube,
+		WhiteCube,
+		Max,
+	};
+
+	namespace GraphicsCommon
+	{
+		void Create(GraphicsDevice* aGraphicsDevice) noexcept;
+		void Destroy() noexcept;
+		NO_DISCARD Texture* GetDefaultTexture(DefaultTextureType aDefaultTextureType) noexcept;
+	}
 }

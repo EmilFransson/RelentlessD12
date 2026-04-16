@@ -39,12 +39,18 @@ namespace Relentless
 			if (!m_CallbackFunc)
 			{
 				RLS_ASSERT(false, "[Callback]: No callback function set.");
-				if constexpr (!std::is_void_v<RetVal>) return {};
-				else return;
+
+				if constexpr (std::is_void_v<RetVal>)
+					return;
+				else
+					std::terminate();
 			}
 
 			if constexpr (std::is_void_v<RetVal>)
+			{
 				(*m_CallbackFunc)(std::forward<Args>(args)...);
+				return;
+			}
 			else
 				return (*m_CallbackFunc)(std::forward<Args>(args)...);
 		}

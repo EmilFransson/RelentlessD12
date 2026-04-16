@@ -49,7 +49,7 @@ namespace Relentless
 			HorizontalBox* pToolbarBox = pRoot->AddWidget(RLS_NEW HorizontalBox());
 			pToolbarBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 			pToolbarBox->SetVerticalSizePolicy(ESizePolicy::Fixed);
-			pToolbarBox->SetSize(Vector2(-1.0f, 30.0f));
+			pToolbarBox->SetSize(Vector2(-1.0f, 20.0f));
 			pToolbarBox->SetMargin(FloatRect(5.0f, 5.0f, 5.0f, 5.0f));
 
 			pToolbarBox->AddWidget(RLS_NEW Spacer())
@@ -58,9 +58,8 @@ namespace Relentless
 			pToolbarBox->AddWidget(RLS_NEW Button(ICON_FA_GEAR))
 				->OnClicked(this, &ViewportPanel::OnSettingsButtonClicked)
 				->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.75f))
-				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 				->SetBorderColor(Colors::Transparent)
-				->SetPadding(Vector2(6.0f, 0.0f))
+				->SetPadding(Vector2(4.0f, 1.0f))
 				->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		} 
 

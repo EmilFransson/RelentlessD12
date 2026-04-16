@@ -150,6 +150,4 @@ namespace Relentless
 		m_pBridgedScene->OnEntityDestroy.Connect(this, &EditorSceneBridgeSubsystem::OnEntityDestroy);
 		m_pBridgedScene->OnEntityAttached.Connect(this, &EditorSceneBridgeSubsystem::OnEntityAttached);
 	}
-
-
 }

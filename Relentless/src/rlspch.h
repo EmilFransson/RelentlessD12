@@ -28,10 +28,13 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <array>
 #include <atomic>
 #include <bitset>
+#include <cassert>
 #include <chrono>
 #include <concepts>
 #define _CRTDBG_MAP_ALLOC
 #include <crtdbg.h>
+#include <cstddef>
+#include <cstdint>
 #include <cwctype>
 #include <execution>
 #include <expected>
@@ -70,6 +73,7 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <shlobj.h>
 #include <wincodec.h>
 #include <wrl/client.h>
+
 #pragma warning(pop)
 
 //Relentless-specific files:

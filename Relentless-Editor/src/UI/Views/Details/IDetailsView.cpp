@@ -34,7 +34,6 @@ namespace Relentless
 		}
 
 		Ref<TreeView<Ref<DetailNode>>> pTreeView = RLS_NEW TreeView<Ref<DetailNode>>(pHeaderRow);
-		pTreeView->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
 		pTreeView->SetFlags(ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersH | ImGuiTableFlags_SizingStretchProp);
 		pTreeView->SetClippingActive(false);
 
@@ -66,6 +65,7 @@ namespace Relentless
 	{
 		const bool isExpanded = m_pDetailsTreeView->GetItemInfo(aItem).IsExpanded;
 		m_pDetailsTreeView->SetItemExpandedState(aItem, !isExpanded);
+		//m_ManualRefreshTriggered = true;
 	}
 
 	Ref<ITableRow> IDetailsView::OnGenerateRow(const Ref<DetailNode>& aItem) noexcept
@@ -75,6 +75,11 @@ namespace Relentless
 		Ref<ITableRow> pRow = aItem->RequestRowWidget(info);
 
 		if (DetailCategoryRow* pCastRow = dynamic_cast<DetailCategoryRow*>(pRow.Get()))
+		{
+			Button* pExpandButton = pCastRow->GetExpandButton();
+			pExpandButton->OnClicked(std::bind(&IDetailsView::OnExpandCollapseButtonClicked, this, pExpandButton, aItem));
+		}
+		else if (DetailGroupRow* pCastRow = dynamic_cast<DetailGroupRow*>(pRow.Get()))
 		{
 			Button* pExpandButton = pCastRow->GetExpandButton();
 			pExpandButton->OnClicked(std::bind(&IDetailsView::OnExpandCollapseButtonClicked, this, pExpandButton, aItem));

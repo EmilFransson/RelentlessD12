@@ -20,7 +20,6 @@ namespace Relentless
 				->SetActiveColor(Colors::Transparent)
 				->SetHoverColor(Colors::Transparent)
 				->SetBorderColor(Colors::Transparent)
-				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 				->SetAlpha(0.7f)
 				->SetTooltipText("Toggles the visibility of this item")
 				->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center)
@@ -39,13 +38,12 @@ namespace Relentless
 				->SetHoverColor(Colors::Transparent)
 				->SetBorderColor(Colors::Transparent)
 				->SetTextColor(Colors::Gray)
-				->SetFont(ImGui::GetIO().Fonts->Fonts[2])
 				->SetAlpha(createInfo.HasChildren ? 0.7f : 0.0f);
 
 			pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 			pButton->SetIsEnabled(createInfo.HasChildren);
 
-			pColumn1Box->AddWidget(new Label(createInfo.Icon, ImGui::GetIO().Fonts->Fonts[2]))
+			pColumn1Box->AddWidget(new Label(createInfo.Icon))
 				->SetTooltipText(createInfo.Name)
 				->SetAlpha(0.8f)
 				->SetTextColor(createInfo.IconColor)
@@ -54,7 +52,7 @@ namespace Relentless
 			WidgetSwitcher* pSwitcher = pColumn1Box->AddWidget(new WidgetSwitcher());
 			pSwitcher->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
-			Label* pDisplayNameLabel = pSwitcher->Add(RLS_NEW Label(createInfo.Name, ImGui::GetIO().Fonts->Fonts[2]));
+			Label* pDisplayNameLabel = pSwitcher->Add(RLS_NEW Label(createInfo.Name));
 			pDisplayNameLabel->SetTooltipText(createInfo.Name);
 			pDisplayNameLabel->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 
@@ -69,7 +67,7 @@ namespace Relentless
 		{
 			Ref<HorizontalBox> pColumn2Box = new HorizontalBox();
 
-			pColumn2Box->AddWidget(new Label(createInfo.Type, ImGui::GetIO().Fonts->Fonts[2]))
+			pColumn2Box->AddWidget(new Label(createInfo.Type))
 				->SetTooltipText(createInfo.Type)
 				->SetAlpha(0.7f);
 
@@ -113,7 +111,7 @@ namespace Relentless
 		if (m_Hovered && !m_ColumnWidgets[0]->IsHovered() && !(static_cast<HorizontalBox*>(m_ColumnWidgets[1].Get())->GetWidget<HorizontalBox>(0)->IsHovered()) && aColumn == 2)
 		{
 			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
-				m_OnDoubleClickedCallback.ExecuteIfSet();
+				m_OnDoubleClickedCallback.ExecuteIfSet(Mouse::CreatePointerInfo(), this);
 			else if (!m_Selected && ImGui::IsMouseClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
 				m_OnClickedCallback.ExecuteIfSet(Mouse::CreatePointerInfo());
 			else if (m_Selected && !Keyboard::IsKeyDown(RLS_Key::LCtrl) && ImGui::IsMouseReleased(ImGuiMouseButton_::ImGuiMouseButton_Left))
@@ -184,39 +182,4 @@ namespace Relentless
 	{
 		return m_ColumnWidgets[0]->GetWidget<Button>(0);
 	}
-
-	bool OutlinerTableRow::IsDragDropEligible() noexcept
-	{
-		return true;
-	}
-
-	Ref<DragDropOperation> OutlinerTableRow::OnDragDetected() noexcept
-	{
-		return m_OnDragDetectedCallback(this);
-	}
-
-	bool OutlinerTableRow::OnDragEnter(const Ref<DragDropOperation>& pDragDropOperation) noexcept
-	{
-		if (!pDragDropOperation->Is<OutlinerDragDropOperation>())
-			return false;
-
-		return m_OnDragEnterCallback(this, pDragDropOperation->As<OutlinerDragDropOperation>());
-	}
-
-	bool OutlinerTableRow::OnDragLeave(const Ref<DragDropOperation>& pDragDropOperation) noexcept
-	{
-		if (!pDragDropOperation->Is<OutlinerDragDropOperation>())
-			return false;
-
-		return true;
-	}
-
-	bool OutlinerTableRow::OnDrop(const Ref<DragDropOperation>& pDragDropOperation) noexcept
-	{
-		if (!pDragDropOperation->Is<OutlinerDragDropOperation>())
-			return false;
-
-		return  m_OnDropCallback(this, pDragDropOperation->As<OutlinerDragDropOperation>());
-	}
-
 }

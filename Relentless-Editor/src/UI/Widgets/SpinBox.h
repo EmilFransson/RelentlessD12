@@ -79,7 +79,6 @@ namespace Relentless
 
 		this->SetFrameRounding(6.0f);
 		this->SetBorderSize(2.0f);
-		this->SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	template<typename DataType>
@@ -136,9 +135,11 @@ namespace Relentless
 
 		if (m_MouseDelta != Vector2i::Zero())
 		{
-			value += (m_Delta * (DataType)m_MouseDelta.x);
-			value = Math::Max(value, m_MinValue);
-			value = Math::Min(value, m_MaxValue);
+			const double delta = static_cast<double>(m_Delta) * static_cast<double>(m_MouseDelta.x);
+			double newValue = static_cast<double>(value) + delta;
+			newValue = std::clamp(newValue, static_cast<double>(m_MinValue), static_cast<double>(m_MaxValue));
+			value = static_cast<DataType>(newValue);
+
 			m_MouseDelta = Vector2i::Zero();
 			isUsing = true;
 		}
@@ -146,7 +147,6 @@ namespace Relentless
 		if (this->m_IsHovered)
 			ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_ResizeEW);
 	
-
 		if (isUsing)
 		{
 			if (m_pPropertyHandle)

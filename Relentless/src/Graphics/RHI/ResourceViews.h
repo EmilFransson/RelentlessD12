@@ -135,18 +135,26 @@ namespace Relentless
 		bool Counter			= false;
 	};
 
+	enum class ETextureSRVViewType : uint8
+	{
+		Default,
+		Cube,
+		Array2D
+	};
+
 	struct TextureSRVDesc
 	{
-		TextureSRVDesc(uint8 mipLevel, uint8 numMipLevels) noexcept
-			: MipLevel{ mipLevel }, NumMipLevels{ numMipLevels }
+		TextureSRVDesc(uint8 mipLevel, uint8 numMipLevels, ETextureSRVViewType aViewType = ETextureSRVViewType::Default) noexcept
+			: MipLevel{ mipLevel }, NumMipLevels{ numMipLevels }, ViewType{ aViewType }
 		{}
 
-		uint8 MipLevel		= 0u;
-		uint8 NumMipLevels	= 0u;
+		uint8 MipLevel					= 0u;
+		uint8 NumMipLevels				= 0u;
+		ETextureSRVViewType ViewType	= ETextureSRVViewType::Default;
 		
 		bool operator==(const TextureSRVDesc& otherDesc) const
 		{
-			return MipLevel == otherDesc.MipLevel && NumMipLevels == otherDesc.NumMipLevels;
+			return MipLevel == otherDesc.MipLevel && NumMipLevels == otherDesc.NumMipLevels && ViewType == otherDesc.ViewType;
 		}
 	};
 

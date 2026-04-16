@@ -10,32 +10,35 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::VERTEX, "EditorGridShader.hlsl", "vs_main"));
 		Add(Shader::Create(ShaderType::PIXEL, "EditorGridShader.hlsl", "ps_main"));
 
-		Add(Shader::Create(ShaderType::VERTEX, "EvolvingShader.hlsl", "vs_main"));
-		Add(Shader::Create(ShaderType::PIXEL, "EvolvingShader.hlsl", "ps_main", {"RED_OUTPUT"}));
+		Add(Shader::Create(ShaderType::VERTEX, "ForwardShader.hlsl", "vs_main"));
+		Add(Shader::Create(ShaderType::PIXEL, "ForwardShader.hlsl", "ps_main", {"RED_OUTPUT"}));
 
 		Add(Shader::Create(ShaderType::VERTEX, "EntityOutputShader.hlsl", "vs_main"));
 		Add(Shader::Create(ShaderType::PIXEL, "EntityOutputShader.hlsl", "ps_main"));
 
 		Add(Shader::Create(ShaderType::Compute, "PostProcessShader.hlsl", "cs_main"));
-		Add(Shader::Create(ShaderType::Compute, "GaussianBlurSeparable.hlsl", "cs_main"));
-		Add(Shader::Create(ShaderType::Compute, "DownsampleColor.hlsl", "cs_main"));
-		Add(Shader::Create(ShaderType::Compute, "AverageLuminance.hlsl", "cs_main"));
-		Add(Shader::Create(ShaderType::Compute, "LuminanceHistogram.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "GaussianBlurSeparableShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "DownsampleColorShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "AverageLuminanceShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "LuminanceHistogramShader.hlsl", "cs_main"));
 
-		Add(Shader::Create(ShaderType::VERTEX, "EquirectangularToCubemapShader.hlsl", "vs_main"));
-		Add(Shader::Create(ShaderType::PIXEL, "EquirectangularToCubemapShader.hlsl", "ps_main"));
+		Add(Shader::Create(ShaderType::Compute, "EquirectangularToCubemapComputeShader.hlsl", "cs_main"));
 
-		//Add(Shader::Create(ShaderType::VERTEX, "FullScreenTriVertexShader.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "PickingPixelShader.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "PixelShaderOrangeOutput.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "GeometryAndPickingPixelShader.hlsl"));
-		//Add(Shader::Create(ShaderType::VERTEX, "PickingVertexShader.hlsl"));
-		//Add(Shader::Create(ShaderType::VERTEX, "EquirectangularToCubemapVertexShader.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "EquirectangularToCubemapPixelShader.hlsl"));
-		//Add(Shader::Create(ShaderType::VERTEX, "VertexShaderSkybox.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "PixelShaderSkybox.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "PixelShaderIrradianceConvolution.hlsl"));
-		//Add(Shader::Create(ShaderType::PIXEL, "PixelShaderRadianceConvolution.hlsl"));
+		Add(Shader::Create(ShaderType::VERTEX, "SkyboxShader.hlsl", "vs_main"));
+		Add(Shader::Create(ShaderType::PIXEL, "SkyboxShader.hlsl", "ps_main"));
+		Add(Shader::Create(ShaderType::PIXEL, "SkyboxShader.hlsl", "ps_main", {"BLEND_ENVIRONMENTS"}));
+
+		Add(Shader::Create(ShaderType::VERTEX, "IrradianceConvolutionShader.hlsl", "vs_main"));
+		Add(Shader::Create(ShaderType::PIXEL, "IrradianceConvolutionShader.hlsl", "ps_main"));
+		Add(Shader::Create(ShaderType::Compute, "IrradianceConvolutionComputeShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "IrradianceConvolutionComputeShader.hlsl", "cs_main", { "LOWER_HEMISPHERE_SOLID_COLOR" }));
+
+		Add(Shader::Create(ShaderType::Compute, "RadianceConvolutionShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "RadianceConvolutionShader.hlsl", "cs_main", { "LOWER_HEMISPHERE_SOLID_COLOR" }));
+
+		Add(Shader::Create(ShaderType::Compute, "CubeMipGenerationShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "CubemapResampleShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "CubeMapLowerHemisphereBlendShader.hlsl", "cs_main"));
 	}
 
 	void ShaderLibrary::Add(const std::shared_ptr<Shader>& pShader) noexcept

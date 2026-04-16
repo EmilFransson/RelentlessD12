@@ -13,19 +13,19 @@ namespace Relentless
 		LoadArchive archive(thumbnailPath, EArchiveFormat::Binary);
 		RLS_VERIFY(archive.IsValid(), "[AssetThumbnailPool::AssetThumbnailPool]: Default thumbnail file (default_thumbnail.rthumb) is missing or invalid.");
 
-		m_pDefaultThumbnail = new Thumbnail();
-		RLS_VERIFY(m_pDefaultThumbnail->Load(archive), "[AssetThumbnailPool::AssetThumbnailPool]: Failed to load default thumbnail file.");
+		m_pDefaultThumbnailTexture = CreateTextureFromArchive(archive);
+		RLS_VERIFY(m_pDefaultThumbnailTexture, "[AssetThumbnailPool::AssetThumbnailPool]: Failed to load default thumbnail file.");
 		
 		m_ResidentBytes += archive.ProcessedBytes();
 	}
 
-	Ref<Thumbnail> AssetThumbnailPool::GetAssetThumbnail(const AssetData& aAssetData) noexcept
+	Ref<Texture> AssetThumbnailPool::GetAssetThumbnail(const AssetData& aAssetData) noexcept
 	{
-		if (Ref<Thumbnail> pThumbnail = TryFindThumbnail(aAssetData))
-			return pThumbnail;
+		if (Ref<Texture> pThumbnailTexture = TryFindThumbnail(aAssetData))
+			return pThumbnailTexture;
 
-		if (Ref<Thumbnail> pThumbnail = TryLoadThumbnail(aAssetData))
-			return pThumbnail;
+		if (Ref<Texture> pThumbnailTexture = TryLoadThumbnail(aAssetData))
+			return pThumbnailTexture;
 
 		EnqueueRequest(aAssetData);
 
@@ -110,21 +110,56 @@ namespace Relentless
 			return;
 
 		const uint64 residentBytes = archive.ProcessedBytes();
-		Ref<Thumbnail> pThumbnail = RLS_NEW Thumbnail();
-		pThumbnail->SetResource(aTexture2D->GetResource());
-
-		Application::Get().SubmitToMainThread([this, aAssetData, pThumbnail, residentBytes, aGeneration]()
+		
+		Application::Get().SubmitToMainThread([this, aAssetData, pThumbnailTexture = aTexture2D->GetResource(), residentBytes, aGeneration]()
 			{
 				if (m_ThumbnailGenerations[aAssetData.Uuid] != aGeneration)
 					return;
 
-				CreateThumbnailEntry(aAssetData, pThumbnail, residentBytes); // Will naturally overwrite
-				ResolveThumbnailInfo(pThumbnail, aAssetData);
-				OnThumbnailRegenerated(aAssetData, pThumbnail);
+				CreateThumbnailEntry(aAssetData, pThumbnailTexture, residentBytes); // Will naturally overwrite
+				OnThumbnailRegenerated(aAssetData, pThumbnailTexture);
 			});
 	}
 
-	void AssetThumbnailPool::CreateThumbnailEntry(const AssetData& aAssetData, const Ref<Thumbnail>& aThumbnail, uint64 aResidentBytes) noexcept
+	Ref<Texture> AssetThumbnailPool::CreateTextureFromArchive(LoadArchive& aArchive)
+	{
+		DirectX::TexMetadata meta{};
+
+		aArchive.Process(meta.width);
+		aArchive.Process(meta.height);
+		aArchive.Process(meta.depth);
+		aArchive.Process(meta.arraySize);
+		aArchive.Process(meta.mipLevels);
+		aArchive.Process(meta.format);
+		aArchive.Process(meta.dimension);
+		aArchive.Process(meta.miscFlags);
+		aArchive.Process(meta.miscFlags2);
+
+		uint64 pixelByteSize = 0u;
+		aArchive.Process(pixelByteSize);
+
+		RLS_ASSERT(pixelByteSize != 0u, "[AssetThumbnailPool::CreateFromArchive]: Thumbnail texture content is missing.");
+
+		DirectX::ScratchImage scratchImage{};
+
+		if (FAILED(scratchImage.Initialize(meta)))
+			return nullptr;
+
+		uint8* pixels = scratchImage.GetPixels();
+		if (!pixels)
+			return nullptr;
+
+		if (!aArchive.ProcessRaw(pixels, static_cast<size_t>(pixelByteSize)))
+			return nullptr;
+
+		if (!aArchive.IsValid())
+			return nullptr;
+
+		const String name = FilepathUtils::ExtractFilenameWithoutExtension(aArchive.GetSourcePath()) + "_thumbnail";
+		return Application::Get().GetGraphicsDevice()->CreateTexture(TextureDesc::Create2D(meta.width, meta.height, D3D::ConvertFormat(meta.format), meta.mipLevels, TextureFlag::ShaderResource), name.c_str(), scratchImage);
+	}
+
+	void AssetThumbnailPool::CreateThumbnailEntry(const AssetData& aAssetData, const Ref<Texture>& aThumbnailTexture, uint64 aResidentBytes) noexcept
 	{
 		ThumbnailEntry& entry = m_Thumbnails[aAssetData.Uuid];
 
@@ -132,7 +167,7 @@ namespace Relentless
 		if (entry.ResidentBytes != 0)
 			m_ResidentBytes -= entry.ResidentBytes;
 
-		entry.Thumbnail = aThumbnail;
+		entry.Texture = aThumbnailTexture;
 		entry.ResidentBytes = aResidentBytes;
 
 		TouchLRU(aAssetData.Uuid, entry);
@@ -174,28 +209,22 @@ namespace Relentless
 		}
 	}
 
-	Ref<Thumbnail> AssetThumbnailPool::TryFindThumbnail(const AssetData& aAssetData) noexcept
+	Ref<Texture> AssetThumbnailPool::TryFindThumbnail(const AssetData& aAssetData) noexcept
 	{
 		if (auto it = m_Thumbnails.find(aAssetData.Uuid); it != m_Thumbnails.end())
 		{
 			TouchLRU(aAssetData.Uuid, it->second);
-			return it->second.Thumbnail;
+			return it->second.Texture;
 		}
 
 		return nullptr;
 	}
 
-	Ref<Thumbnail> AssetThumbnailPool::GenerateDefaultForAsset(const AssetData& aAssetData) noexcept
+	Ref<Texture> AssetThumbnailPool::GenerateDefaultForAsset(const AssetData& aAssetData) noexcept
 	{
 		//Default resource shared, hence don't increase resident bytes (already done once)
-
-		Ref<Thumbnail> pDefault = new Thumbnail();
-		pDefault->SetResource(m_pDefaultThumbnail->GetResource());
-
-		CreateThumbnailEntry(aAssetData, pDefault, 0u);
-		ResolveThumbnailInfo(pDefault, aAssetData);
-
-		return pDefault;
+		CreateThumbnailEntry(aAssetData, m_pDefaultThumbnailTexture, 0u);
+		return m_pDefaultThumbnailTexture;
 	}
 
 	Path AssetThumbnailPool::GenerateThumbnailPath(const AssetData& aAssetData) noexcept
@@ -204,18 +233,6 @@ namespace Relentless
 		const Path thumbnailPath = FilepathUtils::Combine(Project::GetThumbnailCacheDirectory(), file);
 
 		return thumbnailPath;
-	}
-
-	void AssetThumbnailPool::ResolveThumbnailInfo(const Ref<Thumbnail>& aThumbnail, const AssetData& aAssetData) noexcept
-	{
-		AssetDefinitionRegistry* pAssetDefinitionRegistry = Editor::Get()->GetSubsystem<AssetDefinitionRegistry>();
-		RLS_ASSERT(pAssetDefinitionRegistry, "[AssetThumbnailPool::ResolveThumbnailInfo]: Asset definition registry is invalid.");
-
-		const Ref<IAssetDefinition>& pAssetDefinition = pAssetDefinitionRegistry->GetDefinitionForAsset(aAssetData);
-		if (!pAssetDefinition)
-			return;
-
-		aThumbnail->SetInfo(pAssetDefinition->GetThumbnailInfo(aAssetData));
 	}
 
 	void AssetThumbnailPool::TouchLRU(const UUID& aUUID, ThumbnailEntry& aThumbnailEntry) noexcept
@@ -231,7 +248,7 @@ namespace Relentless
 			m_LRU.splice(m_LRU.begin(), m_LRU, aThumbnailEntry.LRUIterator);
 	}
 
-	Ref<Thumbnail> AssetThumbnailPool::TryLoadThumbnail(const AssetData& aAssetData) noexcept
+	Ref<Texture> AssetThumbnailPool::TryLoadThumbnail(const AssetData& aAssetData) noexcept
 	{
 		const Path path = GenerateThumbnailPath(aAssetData);
 
@@ -242,13 +259,12 @@ namespace Relentless
 		if (!archive.IsValid())
 			return nullptr;
 
-		Ref<Thumbnail> pThumbnail = RLS_NEW Thumbnail();
-		if (!pThumbnail->Load(archive))
+		Ref<Texture> pThumbnailTexture = CreateTextureFromArchive(archive);
+		if (!pThumbnailTexture)
 			return nullptr;
 
-		CreateThumbnailEntry(aAssetData, pThumbnail, archive.ProcessedBytes());
-		ResolveThumbnailInfo(pThumbnail, aAssetData);
+		CreateThumbnailEntry(aAssetData, pThumbnailTexture, archive.ProcessedBytes());
 
-		return pThumbnail;
+		return pThumbnailTexture;
 	}
 }

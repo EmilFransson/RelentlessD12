@@ -65,6 +65,12 @@ namespace Relentless
 			return m_Callbacks.contains(aID);
 		}
 
+		template<typename Object>
+		NO_DISCARD bool IsConnected(Object* aObject) const noexcept
+		{
+			return m_ObjectCallbacks.contains(static_cast<void*>(aObject));
+		}
+
 		template<typename T = ReturnValue>
 		auto operator()(Args... args) -> typename std::enable_if<std::is_same<T, void>::value>::type
 		{

@@ -171,6 +171,9 @@ namespace Relentless
 
 	void Application::Initialize_Internal() noexcept
 	{
+		void* pScratchMemory = ::operator new(FrameScratchSize);
+		g_FrameScratchArena.Init(pScratchMemory, FrameScratchSize);
+
 		m_ThreadPool = std::make_unique<ThreadPool>();
 		GraphicsDeviceOptions options;
 		RLS_DEBUG_ONLY(options.UseDebugDevice = true);
@@ -202,6 +205,8 @@ namespace Relentless
 		if (!m_IsRunning)
 			return;
 
+		g_FrameScratchArena.Reset();
+
 		Time::Tick();
 
 		ExecuteMainThreadQueue();
@@ -227,14 +232,11 @@ namespace Relentless
 			CommandContext* pCommandContext = m_pGraphicsDevice->AllocateCommandContext();
 			UIRenderBegin(pCommandContext);
 
-			//m_pImGuiLayer->BeginFrame(m_pSwapchain->GetBackBuffer(), pCommandContext);
-			
 			for (auto& pLayer : LayerStack::Get())
 				pLayer->OnImGuiRender();
 
 			UIRenderEnd(pCommandContext);
 			
-			//m_pImGuiLayer->EndFrame(pCommandContext);
 			pCommandContext->Execute();
 		}
 

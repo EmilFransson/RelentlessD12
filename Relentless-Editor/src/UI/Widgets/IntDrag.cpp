@@ -23,7 +23,6 @@ namespace Relentless
 
 		SetFrameRounding(6.0f);
 		SetBorderSize(2.0f);
-		SetFont(ImGui::GetIO().Fonts->Fonts[0]);
 	}
 
 	void IntDrag::OnRender() noexcept

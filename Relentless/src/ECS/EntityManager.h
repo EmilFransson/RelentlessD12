@@ -3,9 +3,13 @@
 #include <StaticTypeInfo/type_index.h>
 #include "../../vendor/includes/DenseHashMap/dense_hash_map.hpp"
 
+#include "Callback/Broadcaster.h"
+
 namespace Relentless
 {
 	using namespace static_type_info;
+
+	class EntityManager;
 
 	/*! @brief Top most base of sparse set, containing the sparse set array and dense set array. */
 	struct SparseSetBase
@@ -15,6 +19,9 @@ namespace Relentless
 
 		std::vector<entity> SparseArray;
 		std::vector<entity> DenseArray;
+
+		Broadcaster<void(EntityManager&, entity)> OnComponentAdded;
+		Broadcaster<void(EntityManager&, entity)> OnComponentRemove;
 
 		virtual void Release(const uint32_t entityIdentity) noexcept = 0;
 	};
@@ -293,6 +300,8 @@ namespace Relentless
 			{
 				if (pool && entityToDestroyIdentity < pool->SparseArray.size() && pool->SparseArray[entityToDestroyIdentity] != NULL_ENTITY)
 				{
+					pool->OnComponentRemove(*this, entityID);
+
 					const auto last = GetIdentity(pool->DenseArray.back());
 					const auto denseAndComponentArrayIndex = pool->SparseArray[entityToDestroyIdentity];
 					std::swap(pool->DenseArray.back(), pool->DenseArray[denseAndComponentArrayIndex]);
@@ -368,8 +377,19 @@ namespace Relentless
 			pool.SparseArray[entityIdentity] = sparseSetPosition;
 			pool.DenseArray.emplace_back(entityID);
 			pool.Components.emplace_back(std::forward<Args>(args)...);
+			pool.OnComponentAdded(*this, entityID);
 
-			return pool.Components.back();
+			ComponentType& component = pool.Components.back();
+			if constexpr (std::derived_from<ComponentType, ComponentBase<ComponentType>>)
+				component.EditorSelf = entityID;
+			if constexpr (std::derived_from<ComponentType, ManagedComponent<ComponentType>>)
+			{
+				component.m_Self = entityID;
+				component.m_EntityManager = this;
+				component.OnBound();
+			}
+
+			return component;
 		}
 
 		template<typename ComponentType, typename... Args>
@@ -399,6 +419,7 @@ namespace Relentless
 
 			pool.SparseArray[entityIdentity] = sparseSetPosition;
 			pool.DenseArray.emplace_back(entityID);
+			pool.OnComponentAdded(*this, entityID);
 		}
 
 		template<typename ComponentType, typename... Args>
@@ -444,7 +465,6 @@ namespace Relentless
 				Add<ComponentType>(entityID);
 		}
 
-
 		template<typename ComponentType, typename... ComponentTypes>
 			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
 		&& (sizeof...(ComponentTypes) == 0)
@@ -455,6 +475,8 @@ namespace Relentless
 
 			static constexpr TypeIndex ID = getTypeIndex<ComponentType>();
 			Pool<ComponentType>& pool = static_cast<Pool<ComponentType>&>(*m_Pools[ID].get());
+
+			pool.OnComponentRemove(*this, entityID);
 
 			const uint32_t entityIdentity = GetIdentity(entityID);
 
@@ -638,6 +660,20 @@ namespace Relentless
 		[[nodiscard]] Collection<ComponentType> Collect() noexcept
 		{
 			return Collection<ComponentType>(GetPool<ComponentType>());
+		}
+
+		template<typename ComponentType>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		[[nodiscard]] Broadcaster<void(EntityManager&, entity)>& OnCreated() noexcept
+		{
+			return GetPool<ComponentType>().OnComponentAdded;
+		}
+
+		template<typename ComponentType>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		[[nodiscard]] Broadcaster<void(EntityManager&, entity)>& OnRemove() noexcept
+		{
+			return GetPool<ComponentType>().OnComponentRemove;
 		}
 
 	private:

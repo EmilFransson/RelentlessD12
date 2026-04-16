@@ -109,7 +109,6 @@ namespace Relentless
 		pRevertButton->SetBorderColor(Colors::Transparent);
 		pRevertButton->SetHoverColor(Colors::Transparent);
 		pRevertButton->SetActiveColor(Colors::Transparent);
-		pRevertButton->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
 		pRevertButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 		pRevertButton->OnMouseEnter([](Button* aButton) 
 			{  
@@ -584,7 +583,6 @@ namespace Relentless
 					pButton->SetHoverColor(Colors::Transparent);
 					pButton->SetActiveColor(Colors::Transparent);
 					pButton->SetTextColor(Colors::Gray);
-					pButton->SetFont(ImGui::GetIO().Fonts->Fonts[2]);
 					pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
 					pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Colors::White); });
