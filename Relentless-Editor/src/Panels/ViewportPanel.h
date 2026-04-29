@@ -17,20 +17,22 @@ namespace Relentless
 	class ViewportPanel : public PanelBase
 	{
 	public:
-		ViewportPanel(uint32 aRenderViewIndex) noexcept;
+		ViewportPanel(const char* aTitle) noexcept;
 		virtual ~ViewportPanel() noexcept override;
 
 		NO_DISCARD virtual bool AcceptsMouseInput() const noexcept override;
 
-		NO_DISCARD Ref<VerticalBox> BuildWindowLayout() noexcept;
+		NO_DISCARD Ref<IBaseWidget> BuildDefaultCanvasWidget() noexcept;
+		NO_DISCARD Ref<VerticalBox> BuildDefaultWindowLayout() noexcept;
+		NO_DISCARD virtual ViewRenderDesc BuildRenderDescriptor() const noexcept = 0;
 
-		NO_DISCARD std::shared_ptr<PerspectiveCamera> GetCamera() const noexcept;
+		NO_DISCARD SharedPtr<PerspectiveCamera> GetCamera() const noexcept;
 		NO_DISCARD const UniquePtr<PerspectiveCameraController>& GetCameraController() const noexcept;
-		NO_DISCARD uint32 GetRenderViewIndex() const noexcept;
 
 		NO_DISCARD const Vector2i& GetViewportSize() const noexcept;
 		NO_DISCARD Vector2i GetClientHoverCoordinates() const noexcept;
 		NO_DISCARD const Vector2u& GetClientScreenPosition() const noexcept;
+		NO_DISCARD const UUID& GetUUID() const noexcept;
 
 		NO_DISCARD bool IsClientAreaHovered() const noexcept;
 		NO_DISCARD virtual bool IsViewportPanel() const noexcept override { return true; };
@@ -82,7 +84,10 @@ namespace Relentless
 
 		void RecomputeCameraValidScreenRect() noexcept;
 		void ResolveAndSetCameraMode() noexcept;
+	protected:
+		Ref<Texture> m_pRenderTarget = nullptr;
 	private:
+		UUID m_UUID;
 		IntRect m_CameraValidScreenRect;
 		PerspectiveCameraController::Input m_CameraInput;
 
@@ -94,7 +99,6 @@ namespace Relentless
 
 		std::shared_ptr<PerspectiveCamera> m_pCamera = nullptr;
 
-		uint32 m_RenderViewIndex = std::numeric_limits<uint32>::max();
 		bool m_ClientAreaHovered = false;
 		bool m_CameraIsActive = false;
 		bool m_CameraDeactivatedThisFrame = false;

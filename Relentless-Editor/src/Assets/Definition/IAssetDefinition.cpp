@@ -53,4 +53,9 @@ namespace Relentless
 		return false;
 	}
 
+	bool IAssetDefinition::SupportsAsset(MAYBE_UNUSED const AssetHandle& aAssetHandle) const noexcept
+	{
+		return false;
+	}
+
 }

@@ -51,6 +51,9 @@ namespace Relentless
 
 		Broadcaster<void(const Ref<DragDropOperationBase>& aDragDropOperation)> OnDragDropOperationBegin;
 		Broadcaster<void(const Ref<DragDropOperationBase>& aDragDropOperation)> OnDragDropOperationEnd;
+
+		Broadcaster<void(PanelBase*)> OnPanelOpen;
+		Broadcaster<void(PanelBase*)> OnPanelClose;
 	protected:
 		void OnLoad() override;
 	private:

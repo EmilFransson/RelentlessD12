@@ -4,7 +4,7 @@
 
 #include "Module/UIModule.h"
 
-#include "Panels/EnvironmentEditorPanel.h"
+#include "Panels/EnvironmentViewportPanel.h"
 
 namespace Relentless
 {
@@ -66,7 +66,8 @@ namespace Relentless
 
 	bool EnvironmentAssetDefinition::OpenAssets(const std::vector<Ref<IAsset>>& someAssets) noexcept
 	{
-		if (someAssets.empty())
+		//TODO: Think on this rule...
+		if (someAssets.size() != 1u)
 			return false;
 
 		std::vector<Ref<Environment>> environments;
@@ -79,7 +80,7 @@ namespace Relentless
 			environments.push_back(Ref<Environment>(static_cast<Environment*>(asset.Get())));
 		}
 
-		ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EnvironmentEditorPanel>(std::move(environments));
+		ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EnvironmentViewportPanel>(std::move(environments));
 
 		return true;
 	}
@@ -92,6 +93,11 @@ namespace Relentless
 	bool EnvironmentAssetDefinition::SupportsAsset(AssetData* aAssetData) const noexcept
 	{
 		return aAssetData->Type == Environment::StaticType();
+	}
+
+	bool EnvironmentAssetDefinition::SupportsAsset(const AssetHandle& aAssetHandle) const noexcept
+	{
+		return aAssetHandle.Type == Environment::StaticType();
 	}
 
 	bool EnvironmentAssetDefinition::SupportsCreateNew() const noexcept

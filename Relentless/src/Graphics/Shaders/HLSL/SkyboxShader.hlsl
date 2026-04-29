@@ -34,14 +34,6 @@ static const uint cubeIndices[36] =
     2, 7, 6,
 };
 
-struct SkyBoxPassData
-{
-    uint SkyboxTextureIndex;
-    float3 Padding;
-};
-
-ConstantBuffer<SkyBoxPassData> skyboxPassData : register(b0, space0);
-
 VS_OUT vs_main(uint vertexID : SV_VertexID)
 {
     VS_OUT vsOut = (VS_OUT)0;

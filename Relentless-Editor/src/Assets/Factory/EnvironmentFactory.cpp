@@ -17,7 +17,7 @@ namespace Relentless
 		return RLS_NEW EnvironmentFactory();
 	}
 
-	FactoryCreateResult EnvironmentFactory::CreateNew(const String& aName, const UUID& aUUID) noexcept
+	FactoryCreateResult EnvironmentFactory::CreateNew(MAYBE_UNUSED const TypeIndex& aType, const String& aName, const UUID& aUUID) noexcept
 	{
 		Ref<Environment> pEnvironment = RLS_NEW Environment(aUUID);
 		pEnvironment->SetName(aName);

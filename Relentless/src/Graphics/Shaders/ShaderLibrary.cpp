@@ -11,7 +11,7 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::PIXEL, "EditorGridShader.hlsl", "ps_main"));
 
 		Add(Shader::Create(ShaderType::VERTEX, "ForwardShader.hlsl", "vs_main"));
-		Add(Shader::Create(ShaderType::PIXEL, "ForwardShader.hlsl", "ps_main", {"RED_OUTPUT"}));
+		Add(Shader::Create(ShaderType::PIXEL, "ForwardShader.hlsl", "ps_main"));
 
 		Add(Shader::Create(ShaderType::VERTEX, "EntityOutputShader.hlsl", "vs_main"));
 		Add(Shader::Create(ShaderType::PIXEL, "EntityOutputShader.hlsl", "ps_main"));
@@ -39,6 +39,8 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::Compute, "CubeMipGenerationShader.hlsl", "cs_main"));
 		Add(Shader::Create(ShaderType::Compute, "CubemapResampleShader.hlsl", "cs_main"));
 		Add(Shader::Create(ShaderType::Compute, "CubeMapLowerHemisphereBlendShader.hlsl", "cs_main"));
+
+		Add(Shader::Create(ShaderType::Compute, "ResolveDepthShader.hlsl", "cs_main"));
 	}
 
 	void ShaderLibrary::Add(const std::shared_ptr<Shader>& pShader) noexcept

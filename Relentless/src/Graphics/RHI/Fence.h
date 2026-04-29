@@ -29,7 +29,7 @@ namespace Relentless
 		std::mutex m_FenceMutex;
 	};
 
-	class SyncPoint
+	class RLS_API SyncPoint
 	{
 	public:
 		SyncPoint() = default;

@@ -11,8 +11,27 @@
 
 namespace Relentless
 {
+	SkyLightComponentDetailCustomization::~SkyLightComponentDetailCustomization() noexcept
+	{
+		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnSkyLightComponentPropertyChangedCallbackID))
+			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnSkyLightComponentPropertyChangedCallbackID);
+	}
+
 	void SkyLightComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
+		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnSkyLightComponentPropertyChangedCallbackID))
+			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnSkyLightComponentPropertyChangedCallbackID);
+
+		m_OnSkyLightComponentPropertyChangedCallbackID = CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Connect([&aDetailLayoutBuilder]
+		(MAYBE_UNUSED entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty)
+			{
+				if (aComponentType != SkyLightComponent::StaticType())
+					return;
+
+				if (aProperty == "m_PrimaryEnvironmentHandle"_h || aProperty == "m_BlendEnvironmentHandle"_h)
+					aDetailLayoutBuilder.ForceRefreshDetails();
+			});
+
 		EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
 		const bool multiSelection = context.Entities.size() > 1u;
 

@@ -307,6 +307,7 @@ namespace Relentless
 		for (PanelBase* pPanel : m_PanelsToClose)
 		{
 			pPanel->OnClose(pPanel);
+			OnPanelClose(pPanel);
 
 			if (m_pHoveredPanel == pPanel)
 				m_pHoveredPanel = nullptr;
@@ -321,6 +322,9 @@ namespace Relentless
 
 	void UIModule::ResolveOpenRequests() noexcept
 	{
+		for (const auto& pPanel : m_PendingPanelsToOpen)
+			OnPanelOpen(pPanel.get());
+
 		m_PanelStack.insert(m_PanelStack.end(),
 			std::make_move_iterator(std::begin(m_PendingPanelsToOpen)),
 			std::make_move_iterator(std::end(m_PendingPanelsToOpen)));

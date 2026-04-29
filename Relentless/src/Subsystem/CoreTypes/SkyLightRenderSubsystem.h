@@ -52,6 +52,7 @@ namespace Relentless
 		NO_DISCARD const Buffer* GetRenderData() const;
 
 		NO_DISCARD bool OnLoad(ISystemManager* aSystemManager) noexcept override;
+		void OnUnload(ISystemManager* aSystemManager) noexcept override;
 
 		static bool ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept;
 
@@ -82,6 +83,8 @@ namespace Relentless
 		std::vector<PendingSkyLightRenderProxyUpdate> m_PendingRenderProxyUpdates;
 
 		uint32 m_ActiveSkyLightID = INVALID_SKYLIGHT_ID;
+		CallbackID m_OnFrameBeginCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_OnUploadCallbackID = INVALID_CALLBACK_ID;
 
 		GraphicsDevice* m_pGraphicsDevice = nullptr;
 		Ref<Buffer> m_pSkyLightDataBuffer = nullptr;

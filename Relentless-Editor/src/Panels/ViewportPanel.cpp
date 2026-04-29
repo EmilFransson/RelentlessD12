@@ -1,20 +1,20 @@
 #include "ViewportPanel.h"
 #include "Core/Editor.h"
 
+#include "Subsystem/EditorViewportSubsystem.h"
+#include "Subsystem/SelectionSubsystem.h"
+
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/HorizontalBox.h"
 #include "UI/Widgets/Spacer.h"
 #include "UI/Widgets/VerticalBox.h"
 #include "UI/Views/Details/ViewportDetailsView.h"
 
-#include "Subsystem/EditorViewportSubsystem.h"
-#include "Subsystem/SelectionSubsystem.h"
-
 namespace Relentless
 {
-	ViewportPanel::ViewportPanel(uint32 aRenderViewIndex) noexcept
-		:PanelBase(std::format("Scene Viewport {}", aRenderViewIndex + 1).c_str(), ImGuiWindowFlags_None),
-		 m_RenderViewIndex{aRenderViewIndex}
+	ViewportPanel::ViewportPanel(const char* aTitle) noexcept
+		:PanelBase(aTitle, ImGuiWindowFlags_None),
+		 m_UUID{ CreateUUID() }
 	{
 		m_pCamera = PerspectiveCamera::Create();
 
@@ -29,8 +29,10 @@ namespace Relentless
 		m_pCameraController = MakeUnique<PerspectiveCameraController>(m_pCamera.get());
 		m_pTransformController = MakeUnique<TransformGizmoController>();
 
-		SetRoot(BuildWindowLayout());
 		SetPadding(Vector2(0.0f, 0.0f));
+
+		//Create a starting 1x1 render target:
+		m_pRenderTarget = Application::Get().GetGraphicsDevice()->CreateTexture(TextureDesc::Create2D(1u, 1u, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Canvas Render Target");
 	}
 
 	ViewportPanel::~ViewportPanel() noexcept = default;
@@ -40,7 +42,26 @@ namespace Relentless
 		return IsCameraValidClientAreaHovered();
 	}
 
-	Ref<VerticalBox> ViewportPanel::BuildWindowLayout() noexcept
+	Ref<IBaseWidget> ViewportPanel::BuildDefaultCanvasWidget() noexcept
+	{
+		HorizontalBox* pCanvasBox = RLS_NEW HorizontalBox();
+		pCanvasBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pCanvasBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
+
+		m_pCanvas = pCanvasBox->AddWidget(RLS_NEW Canvas());
+		m_pCanvas
+			->Target(this, &ViewportPanel::OnCanvasTargetRequest)
+			->OnHoverStateChanged(this, &ViewportPanel::OnCanvasHoverStateChanged)
+			->OnResize(this, &ViewportPanel::OnCanvasResize)
+			->OnRenderEnd.Connect(this, &ViewportPanel::OnCanvasRenderEnd);
+
+		m_pCanvas->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		m_pCanvas->SetVerticalSizePolicy(ESizePolicy::Stretch);
+
+		return pCanvasBox;
+	}
+
+	Ref<VerticalBox> ViewportPanel::BuildDefaultWindowLayout() noexcept
 	{
 		Ref<VerticalBox> pRoot = new VerticalBox();
 
@@ -69,19 +90,7 @@ namespace Relentless
 
 		//Canvas box:
 		{
-			HorizontalBox* pCanvasBox = pCanvasAndSettingsBox->AddWidget(RLS_NEW HorizontalBox());
-			pCanvasBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-			pCanvasBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
-
-			m_pCanvas = pCanvasBox->AddWidget(RLS_NEW Canvas());
-			m_pCanvas
-				->Target(this, &ViewportPanel::OnCanvasTargetRequest)
-				->OnHoverStateChanged(this, &ViewportPanel::OnCanvasHoverStateChanged)
-				->OnResize(this, &ViewportPanel::OnCanvasResize)
-				->OnRenderEnd.Connect(this, &ViewportPanel::OnCanvasRenderEnd);
-
-			m_pCanvas->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-			m_pCanvas->SetVerticalSizePolicy(ESizePolicy::Stretch);
+			pCanvasAndSettingsBox->AddWidget(BuildDefaultCanvasWidget());
 		}
 		//Viewport Settings box:
 		{
@@ -99,7 +108,7 @@ namespace Relentless
 		return pRoot;
 	}
 
-    std::shared_ptr<PerspectiveCamera> ViewportPanel::GetCamera() const noexcept
+    SharedPtr<PerspectiveCamera> ViewportPanel::GetCamera() const noexcept
 	{
 		return m_pCamera;
 	}
@@ -107,11 +116,6 @@ namespace Relentless
 	const UniquePtr<PerspectiveCameraController>& ViewportPanel::GetCameraController() const noexcept
 	{
 		return m_pCameraController;
-	}
-
-	uint32 ViewportPanel::GetRenderViewIndex() const noexcept
-	{
-		return m_RenderViewIndex;
 	}
 
 	const Vector2i& ViewportPanel::GetViewportSize() const noexcept
@@ -138,6 +142,11 @@ namespace Relentless
 	const Vector2u& ViewportPanel::GetClientScreenPosition() const noexcept
 	{
 		return m_ScreenPosition;
+	}
+
+	const UUID& ViewportPanel::GetUUID() const noexcept
+	{
+		return m_UUID;
 	}
 
 	bool ViewportPanel::IsClientAreaHovered() const noexcept
@@ -219,11 +228,13 @@ namespace Relentless
 
 		m_ViewportSize = Vector2i(static_cast<int32>(width), static_cast<int32>(height));
 		m_pCameraController->SetViewport(FloatRect(0.0f, 0.0f, width, height));
+
+		m_pRenderTarget = Application::Get().GetGraphicsDevice()->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Canvas Render Target");
 	}
 
 	Texture* ViewportPanel::OnCanvasTargetRequest() const noexcept
 	{
-		return Editor::Get()->GetSubsystem<EditorViewportSubsystem>()->GetRenderView(m_RenderViewIndex).pTarget.Get();
+		return m_pRenderTarget.Get(); //Editor::Get()->GetSubsystem<EditorViewportSubsystem>()->GetRenderView(m_RenderViewIndex).pTarget.Get();
 	}
 
 	void ViewportPanel::OnCanvasRenderEnd() noexcept
@@ -446,6 +457,8 @@ namespace Relentless
 
 		m_ViewportSize = Vector2i((int32)width, (int32)height);
 		m_pCameraController->SetViewport(FloatRect(0.0f, 0.0f, width, height));
+
+		m_pRenderTarget = Application::Get().GetGraphicsDevice()->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Canvas Render Target");
 	}
 
 	void ViewportPanel::RecomputeCameraValidScreenRect() noexcept

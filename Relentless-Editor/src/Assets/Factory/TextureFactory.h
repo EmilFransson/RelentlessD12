@@ -16,7 +16,7 @@ namespace Relentless
 		NO_DISCARD bool CanImport(const Path& aPath) const noexcept override;
 		virtual Ref<IFactory> Clone() noexcept override;
 
-		virtual FactoryCreateResult CreateNew(const String& aName, const UUID& aUUID = CreateUUID()) noexcept override;
+		virtual FactoryCreateResult CreateNew(const TypeIndex& aType, const String& aName, const UUID& aUUID = CreateUUID()) noexcept override;
 
 		NO_DISCARD bool DoesSupportAsset(IAsset* aAsset) const noexcept override;
 

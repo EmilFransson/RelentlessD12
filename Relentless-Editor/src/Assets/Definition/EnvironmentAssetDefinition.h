@@ -19,6 +19,7 @@ namespace Relentless
 		
 		NO_DISCARD virtual bool SupportsAsset(IAsset* aAsset) const noexcept override final;
 		NO_DISCARD virtual bool SupportsAsset(AssetData* aAssetData) const noexcept override final;
+		NO_DISCARD virtual bool SupportsAsset(const AssetHandle& aAssetHandle) const noexcept override final;
 		NO_DISCARD virtual bool SupportsCreateNew() const noexcept override final;
 	private:
 		Ref<Texture2D> m_pThumbnail = nullptr;

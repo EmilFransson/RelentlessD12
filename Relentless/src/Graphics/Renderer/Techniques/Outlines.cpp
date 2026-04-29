@@ -1,10 +1,9 @@
 #include "Outlines.h"
 
-#include "Assets/CoreTypes/Mesh.h"
-
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
+#include "Graphics/RHI/PipelineState.h"
 
 #include "Scene/Scene.h"
 
@@ -12,24 +11,9 @@ namespace Relentless
 {
 	constexpr uint32 RADIUS = 3u;
 	
-	Outlines::Outlines(GraphicsDevice* pDevice) noexcept
-		: m_pDevice{pDevice}
+	Outlines::Outlines(GraphicsDevice* aGraphicsDevice) noexcept
+		: m_pDevice{ aGraphicsDevice }
 	{
-		PipelineStateInitializer psoDesc{};
-		psoDesc.SetBlendMode(BlendMode::Replace);
-		psoDesc.SetDepthEnabled(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
-		psoDesc.SetDepthWrite(true);
-		psoDesc.SetVertexShader("EntityOutputShader", "vs_main");
-		psoDesc.SetPixelShader("EntityOutputShader", "ps_main");
-		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
-		psoDesc.SetRenderTargetFormats(ResourceFormat::R32_FLOAT, ResourceFormat::D32_FLOAT, 1);
-
-		psoDesc.SetName("Outlines - Solid");
-
-		m_pSolidPSO = m_pDevice->CreatePipeline(psoDesc);
-		m_pGaussianBlurPSO = m_pDevice->CreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "GaussianBlurSeparableShader", "cs_main");
-
 		constexpr float sigma = static_cast<float>(RADIUS) / 2.0f;
 		float sum = 0.0f;
 
@@ -43,71 +27,52 @@ namespace Relentless
 
 		// Normalize
 		for (int i = 0; i < int(kWeightCount); ++i) 
-		{
 			m_CBData.Weights[i].value /= sum;
-		}
 	}
 
-	void Outlines::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept
+	void Outlines::Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures) noexcept
 	{
-		const uint32 width = sceneTextures.pColorTarget->GetWidth();
-		const uint32 height = sceneTextures.pColorTarget->GetHeight();
-		const ResourceFormat colorFormat = ResourceFormat::R32_FLOAT;
-
-		if (!m_pSolidOutput || m_pSolidOutput->GetWidth() != width || m_pSolidOutput->GetHeight() != height)
-		{
-			const TextureDesc colorTargetDesc = TextureDesc::Create2D(
-				width,
-				height,
-				colorFormat,
-				1u,
-				TextureFlag::RenderTarget | TextureFlag::ShaderResource,
-				ClearBinding(Colors::Black),
-				sceneTextures.pColorTarget->GetSampleCount());
-		
-			m_pSolidOutput = m_pDevice->CreateTexture(colorTargetDesc, "Color Target");
-		}
-
-		commandContext.InsertResourceBarrier(m_pSolidOutput, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-		if (!m_pDepthTarget || m_pDepthTarget->GetWidth() != width || m_pDepthTarget->GetHeight() != height)
-		{
-			const TextureDesc depthTargetDesc = TextureDesc::Create2D(
-				width,
-				height,
-				sceneTextures.pDepthTarget->GetFormat(),
-				1u,
-				TextureFlag::DepthStencil,
-				ClearBinding(1.0f, 1u),
-				sceneTextures.pDepthTarget->GetSampleCount());
-
-			m_pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
-		}
+		aCommandContext.InsertResourceBarrier(aSceneTextures.pOutlinesSolidTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		RenderPassInfo info;
-		info.RenderTargets[0].pTarget = m_pSolidOutput;
+		info.RenderTargets[0].pTarget = aSceneTextures.pOutlinesSolidTarget;
 		info.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Clear;
 		info.RenderTargets[0].EndAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargetCount++;
 		
-		info.DepthStencilTarget.pTarget = m_pDepthTarget;
+		info.DepthStencilTarget.pTarget = aSceneTextures.pOutlinesDepthTarget;
 		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ClearDepth;
 		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::None;
 		
-		commandContext.BeginRenderPass(info);
+		aCommandContext.BeginRenderPass(info);
 		
-		commandContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		aCommandContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		
-		commandContext.SetGraphicsRootSignature(m_pDevice->GetGlobalRootSignature());
-		commandContext.SetPipelineState(m_pSolidPSO);
+		aCommandContext.SetGraphicsRootSignature(m_pDevice->GetGlobalRootSignature());
+
+		PipelineStateInitializer psoDesc{};
+		psoDesc.SetName("Outlines - Solid");
+		psoDesc.SetBlendMode(BlendMode::Replace);
+		psoDesc.SetDepthEnabled(true);
+		psoDesc.SetDepthWrite(true);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetVertexShader("EntityOutputShader", "vs_main");
+		psoDesc.SetPixelShader("EntityOutputShader", "ps_main");
+		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
+		psoDesc.SetRenderTargetFormats(ResourceFormat::R32_FLOAT, ResourceFormat::D32_FLOAT, 1);
+
+		aCommandContext.SetPipelineState(m_pDevice->GetOrCreatePipeline(psoDesc));
 		
-		Renderer::BindViewData(commandContext, renderView);
+		Renderer::BindViewData(aCommandContext, aRenderView);
 		
-		EntityManager& entityManager = renderView.pScene->GetEntityManager();
+		EntityManager& entityManager = aRenderView.pScene->GetEntityManager();
 		
-		auto batches = renderView.pRenderer->GetBatches();
+		auto batches = aRenderView.pRenderScene->GetBatches();
 		for (const Batch& batch : batches)
 		{
+			if (!entityManager.Exists(batch.EntityID)) //TODO, decouple from game thread...
+				continue;
+
 			if (entityManager.Has<SelectedInEditorComponent>(batch.EntityID))
 			{
 				struct
@@ -119,44 +84,22 @@ namespace Relentless
 				params.InstanceIndex = batch.InstanceID;
 				params.EntityID = entityManager.GetIdentity(batch.EntityID) + 1;
 		
-				commandContext.BindRootCBV(BindingSlot::PerInstance, (const void*)&params, sizeof(params));
-		
-				const uint32 numIndices = static_cast<uint32>(batch.pMesh->GetIndexBuffer()->GetNrOfElements());
-				commandContext.Draw(0u, numIndices, 0u, 1u);
+				aCommandContext.BindRootCBV(BindingSlot::PerInstance, (const void*)&params, sizeof(params));
+				aCommandContext.Draw(0u, batch.NumIndices, 0u, 1u);
 			}
 		}
 		
-		commandContext.EndRenderPass();
+		aCommandContext.EndRenderPass();
 
-		commandContext.InsertResourceBarrier(m_pSolidOutput, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		aCommandContext.InsertResourceBarrier(aSceneTextures.pOutlinesSolidTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
 
-		const TextureDesc blurredColorTargetDesc = TextureDesc::Create2D(
-			width,
-			height,
-			colorFormat,
-			1u,
-			TextureFlag::UnorderedAccess | TextureFlag::ShaderResource,
-			ClearBinding(Colors::Black),
-			m_pSolidOutput->GetSampleCount());
+		aCommandContext.InsertResourceBarrier(aSceneTextures.pOutlinesIntermediateBlurTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		aCommandContext.InsertResourceBarrier(aSceneTextures.pOutlinesBlurTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-		if (!m_pIntermediateBlurOutput || m_pIntermediateBlurOutput->GetWidth() != width || m_pIntermediateBlurOutput->GetHeight() != height)
-		{
-			m_pIntermediateBlurOutput = m_pDevice->CreateTexture(blurredColorTargetDesc, "Blurred Intermediate Color Target");
-		}
-
-		commandContext.InsertResourceBarrier(m_pIntermediateBlurOutput, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-		if (!m_pBlurredOutput || m_pBlurredOutput->GetWidth() != width || m_pBlurredOutput->GetHeight() != height)
-		{
-			m_pBlurredOutput = m_pDevice->CreateTexture(blurredColorTargetDesc, "Blurred Color Target");
-		}
-
-		commandContext.InsertResourceBarrier(m_pBlurredOutput, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-		commandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());
-		commandContext.SetPipelineState(m_pGaussianBlurPSO);
+		aCommandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());
+		aCommandContext.SetPipelineState(m_pDevice->GetOrCreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "GaussianBlurSeparableShader", "cs_main"));
 
 		struct
 		{
@@ -166,39 +109,28 @@ namespace Relentless
 			uint32 IsHorizontal;
 		} params;
 
-		params.SourceIndex = m_pSolidOutput->GetSRVIndex();
-		params.TargetIndex = m_pIntermediateBlurOutput->GetUAVIndex();
+		params.SourceIndex = aSceneTextures.pOutlinesSolidTarget->GetSRVIndex();
+		params.TargetIndex = aSceneTextures.pOutlinesIntermediateBlurTarget->GetUAVIndex();
 		params.Radius = RADIUS;
 		params.IsHorizontal = 1u;
 
-		commandContext.BindRootCBV(BindingSlot::PerInstance, &m_CBData, sizeof(GaussianBlurCB));
-		commandContext.BindRootCBV(BindingSlot::PerPass, &params, sizeof(params));
-		Renderer::BindViewData(commandContext, renderView);
+		aCommandContext.BindRootCBV(BindingSlot::PerInstance, &m_CBData, sizeof(GaussianBlurCB));
+		aCommandContext.BindRootCBV(BindingSlot::PerPass, &params, sizeof(params));
+		Renderer::BindViewData(aCommandContext, aRenderView);
 
-		commandContext.Dispatch(ComputeUtils::GetNumThreadGroups(m_pBlurredOutput->GetWidth(), 16, m_pBlurredOutput->GetHeight(), 16));
+		aCommandContext.Dispatch(ComputeUtils::GetNumThreadGroups(aSceneTextures.pOutlinesBlurTarget->GetWidth(), 16, aSceneTextures.pOutlinesBlurTarget->GetHeight(), 16));
 	
-		commandContext.InsertUAVBarrier();
-		commandContext.InsertResourceBarrier(m_pIntermediateBlurOutput, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		aCommandContext.InsertUAVBarrier();
+		aCommandContext.InsertResourceBarrier(aSceneTextures.pOutlinesIntermediateBlurTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-		params.SourceIndex = m_pIntermediateBlurOutput->GetSRVIndex();
-		params.TargetIndex = m_pBlurredOutput->GetUAVIndex();
+		params.SourceIndex = aSceneTextures.pOutlinesIntermediateBlurTarget->GetSRVIndex();
+		params.TargetIndex = aSceneTextures.pOutlinesBlurTarget->GetUAVIndex();
 		params.IsHorizontal = 0;
 		
-		commandContext.BindRootCBV(BindingSlot::PerPass, &params, sizeof(params));
+		aCommandContext.BindRootCBV(BindingSlot::PerPass, &params, sizeof(params));
 
-		commandContext.Dispatch(ComputeUtils::GetNumThreadGroups(m_pBlurredOutput->GetWidth(), 16, m_pBlurredOutput->GetHeight(), 16));
+		aCommandContext.Dispatch(ComputeUtils::GetNumThreadGroups(aSceneTextures.pOutlinesBlurTarget->GetWidth(), 16, aSceneTextures.pOutlinesBlurTarget->GetHeight(), 16));
 
 		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
 	}
-
-	Ref<Texture> Outlines::GetSelectedEntityIDOutput() const noexcept
-	{
-		return m_pSolidOutput;
-	}
-
-	Ref<Texture> Outlines::GetBlurredOutput() const noexcept
-	{
-		return m_pBlurredOutput;
-	}
-
 }

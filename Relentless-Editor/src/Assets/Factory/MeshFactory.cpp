@@ -17,7 +17,7 @@ namespace Relentless
 		return RLS_NEW MeshFactory();
 	}
 
-	FactoryCreateResult MeshFactory::CreateNew(const String& aName, const UUID& aUUID) noexcept
+	FactoryCreateResult MeshFactory::CreateNew(MAYBE_UNUSED const TypeIndex& aType, const String& aName, const UUID& aUUID) noexcept
 	{
 		Ref<Mesh> pNewMesh = RLS_NEW Mesh(aUUID);
 		pNewMesh->SetName(aName);

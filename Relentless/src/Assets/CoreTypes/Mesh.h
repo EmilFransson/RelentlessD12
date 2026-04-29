@@ -10,18 +10,19 @@
 
 namespace Relentless
 {
+	class Material;
+
 	class RLS_API Mesh : public AssetBase<Mesh>
 	{
 	public:
 		Mesh() noexcept;
 		explicit Mesh(const UUID& aUUID) noexcept;
-		Mesh(Ref<Buffer> pVertexBuffer, Ref<Buffer> pIndexBuffer, const std::string& name = "Unnamed") noexcept;
+		Mesh(Ref<Buffer> aVertexBuffer, Ref<Buffer> aIndexBuffer, const String& aName = "Unnamed") noexcept;
 		virtual ~Mesh() noexcept override;
 		
-		void SetOffsetTransform(const Matrix& transform) noexcept;
-		NO_DISCARD const Matrix& GetOffsetTransform() const noexcept;
-
+		NO_DISCARD Ref<Material> GetDefaultMaterial() noexcept;
 		NO_DISCARD const AssetHandle& GetDefaultMaterialHandle() noexcept;
+		NO_DISCARD const Matrix& GetOffsetTransform() const noexcept;
 		NO_DISCARD Buffer* GetVertexBuffer() const noexcept;
 		NO_DISCARD Buffer* GetIndexBuffer() const noexcept;
 
@@ -31,16 +32,16 @@ namespace Relentless
 			return uid;
 		}
 
-		void SetDefaultMaterial(const AssetHandle& handle) noexcept;
+		void SetDefaultMaterial(const AssetHandle& aMaterialHandle) noexcept;
+		void SetOffsetTransform(const Matrix& aOffsetTransform) noexcept;
 		bool SerializeCore(IArchive& aArchive) noexcept override;
 		bool SerializeBulk(IArchive& aArchive) noexcept override;
 	private:
-		Matrix m_OffsetTransform{};
+		Matrix m_OffsetTransform = Matrix::Identity;
+		BoundingBox m_Bounds;
+		AssetHandle m_DefaultMaterialHandle = AssetHandle::INVALID;
+		
 		Ref<Buffer> m_pVertexBuffer = nullptr;
 		Ref<Buffer> m_pIndexBuffer = nullptr;
-
-		BoundingBox m_Bounds;
-
-		AssetHandle m_DefaultMaterialHandle = AssetHandle::INVALID;
 	};
 }

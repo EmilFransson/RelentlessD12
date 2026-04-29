@@ -5,7 +5,7 @@
 
 namespace Relentless
 {
-	RingBufferAllocator::RingBufferAllocator(GraphicsDevice* pDevice, uint32 size) noexcept
+	RingBufferAllocator::RingBufferAllocator(GraphicsDevice* pDevice, uint64 size) noexcept
 		: DeviceObject(pDevice), m_pQueue(pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY)), m_Size(size), m_ConsumeOffset(0), m_ProduceOffset(0)
 	{
 		m_pBuffer = pDevice->CreateBuffer(BufferDesc{ .Size = size, .Flags = BufferFlag::Upload }, "RingBuffer");
@@ -18,7 +18,7 @@ namespace Relentless
 		m_ProduceOffset = 0;
 	}
 
-	bool RingBufferAllocator::Allocate(uint32 size, RingBufferAllocation& allocation) noexcept
+	bool RingBufferAllocator::Allocate(uint64 size, RingBufferAllocation& allocation) noexcept
 	{
 		std::lock_guard lock(m_Lock);
 
@@ -31,8 +31,8 @@ namespace Relentless
 			m_RetiredAllocations.pop();
 		}
 
-		constexpr uint32 InvalidOffset = 0xFFFFFFFF;
-		uint32 offset = InvalidOffset;
+		constexpr uint64 InvalidOffset = 0xFFFFFFFFFFFFFFFF;
+		uint64 offset = InvalidOffset;
 
 		if (size > m_Size)
 			return false;

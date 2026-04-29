@@ -10,11 +10,13 @@ namespace Relentless
 	public:
 		NO_DISCARD entity GetHoveredEntity() const noexcept;
 
-		void OnEntityReadbackDone(uint32 aEntityID) noexcept;
+		void OnEntityReadbackDone(uint32 aEntityID, const UUID& aSceneUUID) noexcept;
 		NO_DISCARD bool OnLoad(ISystemManager* aSystemManager) noexcept override;
 		NO_DISCARD AssetHandle OnRequestBRDFLut() noexcept;
 		
 		static bool ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept;
+	private:
+		void OnActiveSceneChanged(Scene* aNewScene) noexcept;
 	private:
 		AssetHandle m_BRDFLutTextureHandle = AssetHandle::INVALID;
 		entity m_HoveredEntity = NULL_ENTITY;

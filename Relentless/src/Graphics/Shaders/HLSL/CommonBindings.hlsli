@@ -95,6 +95,23 @@ Vertex LoadVertex(MeshData meshData, uint vertexID)
     return vertices[indices[vertexID]];
 }
 
+float AdjustRoughnessForSpecularAA(float aRoughness, float3 aWorldNormal)
+{
+    // Estimate normal variance within pixel footprint
+    const float3 dndu = ddx(aWorldNormal);
+    const float3 dndv = ddy(aWorldNormal);
+    
+    // Variance of the normal distribution
+    const float variance = dot(dndu, dndu) + dot(dndv, dndv);
+    
+    // Convert to roughness adjustment (in alpha = roughness^2 space)
+    const float kernelRoughness2 = min(2.0f * variance, 0.18f); // clamp prevents over-blurring
+    
+    // Combine with existing roughness (add in alpha^2 space)
+    const float adjustedAlpha = sqrt(aRoughness * aRoughness + kernelRoughness2);
+    return adjustedAlpha;
+}
+
 float4 EvaluateAlbedo(Material aMaterial, float2 aUV)
 {
     Texture2D albedoTexture = ResourceDescriptorHeap[aMaterial.AlbedoIndex];
@@ -170,6 +187,7 @@ MaterialSurface EvaluateMaterial(Material aMaterial, MaterialEvaluationInputs aE
     surface.AmbientOcclusion    = EvaluateAmbientOcclusion(aMaterial, aEvaluationInputs.UV);
     surface.EmissiveColor       = EvaluateEmission(aMaterial, aEvaluationInputs.UV);
     surface.Normal              = EvaluateNormal(aMaterial, aEvaluationInputs);
+    surface.Roughness           = AdjustRoughnessForSpecularAA(surface.Roughness, surface.Normal);
     
     return surface;
 }

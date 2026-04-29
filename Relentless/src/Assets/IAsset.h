@@ -1,15 +1,18 @@
 #pragma once
+#include "Assets/AssetMeta.h"
+
+#include "Callback/CoreBroadcasters.h"
 #include "Core/DLLExport.h"
-#include "Utility/Common.h"
-#include <StaticTypeInfo/type_index.h>
+#include "Core/StaticTypeInfo.h"
+
+#include "Property/PropertyUtils.h"
 
 #include "Serialization/Archive.h"
 
+#include "Utility/Common.h"
+
 namespace Relentless
 {
-	using namespace static_type_info;
-	using TypeIndex = static_type_info::TypeIndex;
-
 	class RLS_API IAsset : public RefCounted<IAsset>
 	{
 	public:
@@ -26,14 +29,17 @@ namespace Relentless
 		virtual const TypeIndex& GetStaticType() const noexcept = 0;
 	private:
 		String m_Name;
-		UUID m_UUID;
+		UUID m_UUID = NULL_UUID;
 	};
 
-	template<typename T>
+	template<typename AssetType>
 	class AssetBase : public IAsset
 	{
 	public:
-		virtual ~AssetBase() noexcept override = default;
+		virtual ~AssetBase() noexcept override
+		{
+			OnDestroy(this);
+		}
 
 		AssetBase(const UUID& aUUID = CreateUUID()) noexcept
 			: IAsset(aUUID)
@@ -47,12 +53,18 @@ namespace Relentless
 
 		virtual const UUID& GetPersistentType() const noexcept override final
 		{
-			return T::PersistentType();
+			return AssetType::PersistentType();
+		}
+
+		void BroadcastPropertyChanged(uint64 aProperty) noexcept
+		{
+			OnPropertyChanged(this, aProperty);
+			CoreObjectBroadcasters::OnAssetPropertyChanged(this, AssetType::StaticType(), aProperty);
 		}
 		
 		static constexpr const TypeIndex& StaticType()
 		{
-			static constexpr TypeIndex typeIndex = getTypeIndex<T>();
+			static constexpr TypeIndex typeIndex = getTypeIndex<AssetType>();
 			return typeIndex;
 		}
 
@@ -61,5 +73,8 @@ namespace Relentless
 			static constexpr UUID uid = UUID{ 0, 0, 0, {0} };
 			return uid;
 		}
+
+		Broadcaster<void(IAsset* aAsset)> OnDestroy;
+		Broadcaster<void(IAsset* aAsset, uint64 aProperty)> OnPropertyChanged;
 	};
 }

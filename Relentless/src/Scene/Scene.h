@@ -15,7 +15,7 @@
 
 namespace Relentless
 {
-	enum class ELightType : uint8 { Directional = 0, Point, Spot };
+	enum class ELightType : uint8;
 
 	class RLS_API Scene : public AssetBase<Scene>, public ISystemManager
 	{

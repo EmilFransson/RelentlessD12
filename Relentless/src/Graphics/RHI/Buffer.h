@@ -60,7 +60,7 @@ namespace Relentless
 		}
 	};
 
-	class Buffer : public DeviceResource
+	class RLS_API Buffer : public DeviceResource
 	{
 	public:
 		Buffer(GraphicsDevice* pParent, const BufferDesc& desc, ID3D12Resource2* pResource) noexcept;

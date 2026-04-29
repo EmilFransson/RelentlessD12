@@ -15,22 +15,6 @@ namespace Relentless
 	EditorGrid::EditorGrid(GraphicsDevice* pDevice) noexcept
 		: m_pDevice{ pDevice }
 	{
-
-		PipelineStateInitializer psoDesc{};
-		psoDesc.SetBlendMode(BlendMode::Alpha);
-		psoDesc.SetAlphaToCoverageEnable(false);
-		psoDesc.SetName("Editor Grid");
-		psoDesc.SetVertexShader("EditorGridShader", "vs_main");
-		psoDesc.SetPixelShader("EditorGridShader", "ps_main");
-		psoDesc.SetDepthWrite(false);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
-		psoDesc.SetDepthEnabled(true);
-		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
-		psoDesc.SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE);
-		psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, 1);
-
-		m_pGridPSO = m_pDevice->CreatePipeline(psoDesc);
-
 		struct InstanceData
 		{
 			DirectX::XMFLOAT3 Position;
@@ -41,7 +25,7 @@ namespace Relentless
 				float G;
 				float B;
 			} Color;
-			float padding2;
+			float padding;
 		};
 
 		std::vector<InstanceData> instances;
@@ -75,8 +59,8 @@ namespace Relentless
 		info.RenderTargetCount++;
 
 		info.DepthStencilTarget.pTarget = sceneTextures.pDepthTarget;
-		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ReadOnlyDepth;
-		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::None;
+		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::Preserve;
+		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::Preserve;
 
 		commandContext.InsertResourceBarrier(sceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		commandContext.InsertResourceBarrier(sceneTextures.pDepthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
@@ -85,7 +69,21 @@ namespace Relentless
 
 		commandContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 		commandContext.SetGraphicsRootSignature(m_pDevice->GetGlobalRootSignature());
-		commandContext.SetPipelineState(m_pGridPSO);
+
+		PipelineStateInitializer psoDesc{};
+		psoDesc.SetBlendMode(BlendMode::Alpha);
+		psoDesc.SetAlphaToCoverageEnable(false);
+		psoDesc.SetName("Editor Grid");
+		psoDesc.SetVertexShader("EditorGridShader", "vs_main");
+		psoDesc.SetPixelShader("EditorGridShader", "ps_main");
+		psoDesc.SetDepthEnabled(true);
+		psoDesc.SetDepthWrite(false);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
+		psoDesc.SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE);
+		psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, 1);
+
+		commandContext.SetPipelineState(m_pDevice->GetOrCreatePipeline(psoDesc));
 
 		Renderer::BindViewData(commandContext, renderView);
 

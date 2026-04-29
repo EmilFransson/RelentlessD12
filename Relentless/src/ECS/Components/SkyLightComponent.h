@@ -6,6 +6,7 @@
 namespace Relentless
 {
 	class Environment;
+	class IAsset;
 
 	enum class ESkyLightCaptureMode : uint8 { Static = 0u, Realtime };
 	enum class ESkyLightLowerHemisphereMode : uint8 { Environment = 0u, SolidColor };
@@ -13,6 +14,11 @@ namespace Relentless
 	struct RLS_API SkyLightComponent : public ManagedComponent<SkyLightComponent>
 	{
 	public:
+		SkyLightComponent() = default;
+		SkyLightComponent(SkyLightComponent&&) noexcept = default;
+		SkyLightComponent& operator=(SkyLightComponent&&) noexcept = default;
+		virtual ~SkyLightComponent() noexcept override;
+
 		struct DirtyRenderState{};
 
 		inline static constexpr uint32 MIN_RADIANCE_MAP_SIZE = 8u;
@@ -51,6 +57,16 @@ namespace Relentless
 		void SetRadianceMapSize(uint32 aSize) noexcept;
 		void SetRealtimeMipsPerFrame(uint32 aNumMips) noexcept;
 		void SetTintColor(const Color& aTintColor) noexcept;
+	private:
+		void ConnectBlendEnvironment() noexcept;
+		void ConnectPrimaryEnvironment() noexcept;
+
+		void DetachBlendEnvironment() noexcept;
+		void DetachPrimaryEnvironment() noexcept;
+
+		void OnBlendEnvironmentAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept;
+		void OnPrimaryEnvironmentAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept;
+		void OnEnvironmentAssetPropertyChanged(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty) noexcept;
 	private:
 		AssetHandle m_PrimaryEnvironmentHandle = AssetHandle::INVALID;
 		AssetHandle m_BlendEnvironmentHandle = AssetHandle::INVALID;

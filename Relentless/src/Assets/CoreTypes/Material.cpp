@@ -76,7 +76,11 @@ namespace Relentless
 
 	void Material::RemoveTexture(ETextureType aTextureType) noexcept
 	{
+		if (m_Textures[(size_t)aTextureType].TextureHandle == NULL_HANDLE)
+			return;
+
 		m_Textures[(size_t)aTextureType].TextureHandle = NULL_HANDLE;
+		NOTIFY_PROPERTY_CHANGED(m_Textures);
 	}
 
 	bool Material::SerializeCore(IArchive& aArchive) noexcept
@@ -98,76 +102,136 @@ namespace Relentless
 
 	void Material::SetAlbedoColor(const Vector4& aColor) noexcept
 	{
+		if (m_AlbedoColor == aColor)
+			return;
+
 		m_AlbedoColor = aColor;
+		NOTIFY_PROPERTY_CHANGED(m_AlbedoColor);
 	}
 
 	void Material::SetAlbedoColor(const Color& aColor) noexcept
 	{
+		if (m_AlbedoColor == aColor)
+			return;
+
 		m_AlbedoColor = aColor;
+		NOTIFY_PROPERTY_CHANGED(m_AlbedoColor);
 	}
 
 	void Material::SetAmbientOcclusionIntensity(float aAmbientOcclusionIntensity) noexcept
 	{
+		if (Math::AreValuesClose(m_AmbientOcclusionIntensity, aAmbientOcclusionIntensity))
+			return;
+
 		m_AmbientOcclusionIntensity = aAmbientOcclusionIntensity;
+		NOTIFY_PROPERTY_CHANGED(m_AmbientOcclusionIntensity);
 	}
 
 	void Material::SetBlendMode(EBlendMode aBlendMode) noexcept
 	{
+		if (m_BlendMode == aBlendMode)
+			return;
+
 		m_BlendMode = aBlendMode;
+		NOTIFY_PROPERTY_CHANGED(m_BlendMode);
 	}
 
 	void Material::SetDisplacementIntensity(float aDisplacementIntensity) noexcept
 	{
+		if (Math::AreValuesClose(m_DisplacementIntensity, aDisplacementIntensity))
+			return;
+
 		m_DisplacementIntensity = aDisplacementIntensity;
+		NOTIFY_PROPERTY_CHANGED(m_DisplacementIntensity);
 	}
 
 	void Material::SetEmissiveColor(const Vector4& aColor) noexcept
 	{
+		if (m_EmissiveColor == aColor)
+			return;
+
 		m_EmissiveColor = aColor;
+		NOTIFY_PROPERTY_CHANGED(m_EmissiveColor);
 	}
 
 	void Material::SetEmissiveColor(const Color& aColor) noexcept
 	{
+		if (m_EmissiveColor == aColor)
+			return;
+
 		m_EmissiveColor = aColor;
+		NOTIFY_PROPERTY_CHANGED(m_EmissiveColor);
 	}
 
 	void Material::SetEmissiveIntensity(float aEmissiveIntensity) noexcept
 	{
+		if (Math::AreValuesClose(m_EmissionIntensity, aEmissiveIntensity))
+			return;
+
 		m_EmissionIntensity = aEmissiveIntensity;
+		NOTIFY_PROPERTY_CHANGED(m_EmissionIntensity);
 	}
 
 	void Material::SetGlobalOffset(const Vector2& aOffset) noexcept
 	{
+		if (m_GlobalUVTransform.Offset == aOffset)
+			return;
+
 		m_GlobalUVTransform.Offset = aOffset;
+		NOTIFY_PROPERTY_CHANGED(m_GlobalUVTransform.Offset);
 	}
 
 	void Material::SetGlobalTilingFactor(const Vector2& aTilingFactor) noexcept
 	{
+		if (m_GlobalUVTransform.TilingFactor == aTilingFactor)
+			return;
+
 		m_GlobalUVTransform.TilingFactor = aTilingFactor;
+		NOTIFY_PROPERTY_CHANGED(m_GlobalUVTransform.TilingFactor);
 	}
 
 	void Material::SetIsTwoSided(bool aIsTwoSided) noexcept
 	{
+		if (m_IsTwoSided == aIsTwoSided)
+			return;
+
 		m_IsTwoSided = aIsTwoSided;
+		NOTIFY_PROPERTY_CHANGED(m_IsTwoSided);
 	}
 
 	void Material::SetMetalness(float aMetalness) noexcept
 	{
+		if (Math::AreValuesClose(m_Metallic, aMetalness))
+			return;
+
 		m_Metallic = aMetalness;
+		NOTIFY_PROPERTY_CHANGED(m_Metallic);
 	}
 
 	void Material::SetRoughness(float aRoughness) noexcept
 	{
+		if (Math::AreValuesClose(m_Roughness, aRoughness))
+			return;
+
 		m_Roughness = aRoughness;
+		NOTIFY_PROPERTY_CHANGED(m_Roughness);
 	}
 
 	void Material::SetTexture(ETextureType aTextureType, const AssetHandle& aTextureHandle) noexcept
 	{
+		if (m_Textures[(size_t)aTextureType].TextureHandle == aTextureHandle)
+			return;
+
 		m_Textures[(size_t)aTextureType].TextureHandle = aTextureHandle;
+		NOTIFY_PROPERTY_CHANGED(m_Textures);
 	}
 
 	void Material::SetTextureEnabled(ETextureType aTextureType, bool aEnable) noexcept
 	{
+		if (m_Textures[(size_t)aTextureType].IsEnabled == aEnable)
+			return;
+
 		m_Textures[(size_t)aTextureType].IsEnabled = aEnable;
+		NOTIFY_PROPERTY_CHANGED(m_Textures);
 	}
 }

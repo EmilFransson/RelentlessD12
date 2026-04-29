@@ -1,8 +1,6 @@
 #pragma once
 #include "Graphics/Renderer/RenderTypes.h"
-#include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/RHI.h"
-#include "Graphics/RHI/PipelineState.h"
 
 namespace Relentless
 {
@@ -10,12 +8,9 @@ namespace Relentless
 	{
 	public:
 		ForwardRenderer(GraphicsDevice* pDevice) noexcept;
-		~ForwardRenderer() noexcept = default;
-		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures, RenderModeEx renderMode) noexcept;
+		
+		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept;
 	private:
 		GraphicsDevice* m_pDevice = nullptr;
-
-		Ref<PipelineState> m_pForwardSolidPSO = nullptr;
-		Ref<PipelineState> m_pForwardWireframePSO = nullptr;
 	};
 }

@@ -4,6 +4,8 @@
 #include "D3D.h"
 #include "RootSignature.h"
 
+#include "Utility/StringUtils.h"
+
 namespace Relentless
 {
 	PipelineState::PipelineState(GraphicsDevice* pDevice, const PipelineStateInitializer& pipelineStateInitializer) noexcept
@@ -138,6 +140,34 @@ namespace Relentless
 		m_Stream.SampleMask = 0xFFFFFFFF;
 		m_Stream.PrimitiveTopology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		m_Stream.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+	}
+
+	uint64 PipelineStateInitializer::ComputeHash() const noexcept
+	{
+		uint64 hash = 1469598103934665603ull;
+
+		for (const ShaderDesc& shader : m_ShaderInfo)
+		{
+			hash = fnv1a_combine(hash, fnv1a_hash(shader.Name.c_str(), shader.Name.size()));
+			hash = fnv1a_combine(hash, fnv1a_hash(shader.EntryPoint.c_str(), shader.EntryPoint.size()));
+			for (const String& define : shader.Defines)
+				hash = fnv1a_combine(hash, fnv1a_hash(define.c_str(), define.size()));
+		}
+
+		auto& stream = const_cast<ObjectStream&>(m_Stream);
+		hash = fnv1a_combine(hash, reinterpret_cast<uint64>((ID3D12RootSignature*)stream.pRootSignature));
+
+		const auto& s = m_Stream;
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.RTFormats, sizeof(s.RTFormats)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.DSVFormat, sizeof(s.DSVFormat)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.DepthStencil, sizeof(s.DepthStencil)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.Rasterizer, sizeof(s.Rasterizer)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.Blend, sizeof(s.Blend)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.PrimitiveTopology, sizeof(s.PrimitiveTopology)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.SampleDesc, sizeof(s.SampleDesc)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.SampleMask, sizeof(s.SampleMask)));
+
+		return hash;
 	}
 
 	void PipelineStateInitializer::SetName(const char* pName) noexcept

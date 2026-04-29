@@ -38,7 +38,7 @@ namespace Relentless
 
 	void HBAOPlus::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept
 	{
-		#if defined(RLS_DEBUG)
+		//#if defined(RLS_DEBUG) || defined(RLS_RELWITHDEBINFO)
 		// HBAO+ internally waits on fence value 0 on first frame — suppress known 3rd party warning
 		Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
 		bool hasInfoQueue = SUCCEEDED(m_pDevice->GetDevice()->QueryInterface(IID_PPV_ARGS(&infoQueue)));
@@ -48,7 +48,7 @@ namespace Relentless
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, FALSE);
 			infoQueue->SetMuteDebugOutput(true);
 		}
-		#endif
+		//#endif
 
 		GFSDK_SSAO_InputData_D3D12 inputData = {};
 		inputData.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;
@@ -83,15 +83,16 @@ namespace Relentless
 		const uint32 width = sceneTextures.pColorTarget->GetWidth();
 		const uint32 height = sceneTextures.pColorTarget->GetHeight();
 
-		commandContext.InsertResourceBarrier(sceneTextures.pDepthTarget, sceneTextures.pDepthTarget->GetResourceState(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		sceneTextures.pDepthTarget->SetResourceState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		commandContext.InsertResourceBarrier(sceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		commandContext.InsertResourceBarrier(sceneTextures.pDepthTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		commandContext.FlushResourceBarriers();
 
 		commandContext.SetViewport(FloatRect(0, 0, (float)width, (float)height), 0.0f, 1.0f);
 
 		const GFSDK_SSAO_Status status = m_pSSAOContext->RenderAO(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue(), commandContext.GetCommandList(), inputData, parameters, output, renderMask);
 		RLS_VERIFY(status == GFSDK_SSAO_OK, "Failed To Issue HBAOPlus Render Command.");
 
-		#if defined(RLS_DEBUG)
+		//#if defined(RLS_DEBUG)|| defined(RLS_RELWITHDEBINFO)
 		if (hasInfoQueue && !m_FirstFrameDone)
 		{
 			// Restore breaks first, then pop filter
@@ -100,7 +101,7 @@ namespace Relentless
 			infoQueue->SetMuteDebugOutput(false);
 			m_FirstFrameDone = true;
 		}
-		#endif
+		//#endif
 	}
 }
 

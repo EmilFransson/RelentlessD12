@@ -6,10 +6,16 @@
 namespace Relentless
 {
 	class Environment;
+	class IAsset;
 
 	struct RLS_API SkyBoxComponent : public ManagedComponent<SkyBoxComponent>
 	{
 	public:
+		SkyBoxComponent() = default;
+		SkyBoxComponent(SkyBoxComponent&&) noexcept = default;
+		SkyBoxComponent& operator=(SkyBoxComponent&&) noexcept = default;
+		virtual ~SkyBoxComponent() noexcept override;
+
 		struct DirtyRenderState{};
 
 		virtual void CopyFrom(const SkyBoxComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager) override final;
@@ -28,12 +34,25 @@ namespace Relentless
 
 		void OnBound() noexcept override final;
 
+		void RemoveBlendEnvironment() noexcept;
+		void RemovePrimaryEnvironment() noexcept;
+
 		void SetBlendEnvironment(const AssetHandle& aHandle) noexcept;
 		void SetBlendFactor(float aBlendFraction) noexcept;
 		void SetIntensity(float aIntensity) noexcept;
 		void SetLODBias(float aLODBias) noexcept;
 		void SetPrimaryEnvironment(const AssetHandle& aHandle) noexcept;
 		void SetTintColor(const Color& aColor) noexcept;
+	private:
+		void ConnectBlendEnvironment() noexcept;
+		void ConnectPrimaryEnvironment() noexcept;
+
+		void DetachBlendEnvironment() noexcept;
+		void DetachPrimaryEnvironment() noexcept;
+
+		void OnBlendEnvironmentAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept;
+		void OnPrimaryEnvironmentAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept;
+		void OnEnvironmentAssetPropertyChanged(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty) noexcept;
 	private:
 		AssetHandle m_PrimaryEnvironmentHandle = AssetHandle::INVALID;
 		AssetHandle m_BlendEnvironmentHandle = AssetHandle::INVALID;

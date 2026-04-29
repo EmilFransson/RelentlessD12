@@ -336,7 +336,7 @@ namespace Relentless
 		auto& metaData = image.GetMetadata();
 		const std::string fileName = FilepathUtils::ExtractFilename(absolutePath);
 
-		Ref<Texture2D> pNewTexture = new Texture2D(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), std::move(image));  //m_pDevice->CreateTexture(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), fileName.c_str(), initData);
+		Ref<Texture2D> pNewTexture = new Texture2D(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), std::move(image));
 		pNewTexture->SetName(fileName);
 		
 		pOutTexture = pNewTexture;

@@ -6,17 +6,14 @@
 
 namespace Relentless
 {
-	TextureCube::TextureCube(const TextureDesc& aTextureDesc, DirectX::ScratchImage&& aImage) noexcept
-		:m_Desc(aTextureDesc),
-		m_ScratchImage(std::move(aImage))
+	TextureCube::TextureCube(Ref<Texture> aBackingTexture, const TextureDesc& aTextureDesc, DirectX::ScratchImage&& aImage) noexcept
+		:m_pGPUResource(aBackingTexture),
+		 m_Desc(aTextureDesc),
+		 m_ScratchImage(std::move(aImage))
 	{}
 
 	TextureCube::TextureCube(const UUID& aUUID) noexcept
 		: AssetBase<TextureCube>(aUUID)
-	{}
-
-	TextureCube::TextureCube(Ref<Texture> aBackingTexture) noexcept
-		: m_pGPUResource{aBackingTexture}
 	{}
 
 	void TextureCube::CreateResource() noexcept
@@ -105,6 +102,8 @@ namespace Relentless
 
 			if (!aArchive.ProcessRaw(pixels, static_cast<size_t>(pixelByteSize)))
 				return false;
+
+			CreateResource();
 		}
 
 		return aArchive.IsValid();

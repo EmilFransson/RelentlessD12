@@ -12,18 +12,18 @@ namespace Relentless
 		CommandContext* pContext = nullptr;
 		Ref<Buffer> pBackingResource = nullptr;
 		D3D12_GPU_VIRTUAL_ADDRESS GpuHandle{ 0 };
-		uint32 Offset = 0;
-		uint32 Size = 0;
+		uint64 Offset = 0;
+		uint64 Size = 0;
 		void* pMappedMemory = nullptr;
 	};
 
 	class RingBufferAllocator : public DeviceObject
 	{
 	public:
-		RingBufferAllocator(GraphicsDevice* pDevice, uint32 size) noexcept;
+		RingBufferAllocator(GraphicsDevice* pDevice, uint64 size) noexcept;
 		virtual ~RingBufferAllocator() noexcept override;
 
-		bool Allocate(uint32 size, RingBufferAllocation& allocation) noexcept;
+		bool Allocate(uint64 size, RingBufferAllocation& allocation) noexcept;
 		void Free(RingBufferAllocation& allocation) noexcept;
 		void Sync() noexcept;
 
@@ -31,16 +31,16 @@ namespace Relentless
 		struct RetiredAllocation
 		{
 			SyncPoint Sync;
-			uint32 Offset = 0u;
-			uint32 Size = 0u;
+			uint64 Offset = 0u;
+			uint64 Size = 0u;
 		};
 		std::queue<RetiredAllocation> m_RetiredAllocations;
 
 		CommandQueue* m_pQueue = nullptr;
 		std::mutex m_Lock;
-		uint32 m_Size = 0u;
-		uint32 m_ConsumeOffset = 0u;
-		uint32 m_ProduceOffset = 0u;
+		uint64 m_Size = 0u;
+		uint64 m_ConsumeOffset = 0u;
+		uint64 m_ProduceOffset = 0u;
 
 		SyncPoint m_LastSync;
 		Ref<Buffer> m_pBuffer = nullptr;

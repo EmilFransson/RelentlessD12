@@ -3,9 +3,8 @@
 
 namespace Relentless
 {
-	class TransformRenderDispatchSystem : public ISystem
+	class MeshFilterCleanupSystem : public ISystem
 	{
-	public:
 		void Execute(SceneState& aSceneState) noexcept override final;
 	};
 }

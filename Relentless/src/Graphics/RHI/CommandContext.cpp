@@ -68,6 +68,17 @@ namespace Relentless
 		m_pCommandList->ClearUnorderedAccessViewUint(pBuffer->GetUAV()->GetGPUHandle(), pBuffer->GetUAV()->GetCPUOpaqueHandle(), pBuffer->GetResource(), values, 0, nullptr);
 	}
 
+	void CommandContext::ClearRenderTarget(const Texture* aTexture) noexcept
+	{
+		RLS_ASSERT(aTexture, "[CommandContext::ClearRenderTarget]: Texture is invalid.");
+
+		FlushResourceBarriers();
+
+		const ClearBinding& clearBinding = aTexture->GetClearBinding();
+		float clearColor[4] = { clearBinding.Color.R(), clearBinding.Color.G(), clearBinding.Color.B(), clearBinding.Color.A() };
+		m_pCommandList->ClearRenderTargetView(aTexture->GetRTV(0)->GetDescriptorHandle().CPUHandle, clearColor, 0, nullptr);
+	}
+
 	void CommandContext::BeginRenderPass(const RenderPassInfo& renderPassInfo) noexcept
 	{
 		RLS_ASSERT(!m_InRenderPass, "[CommandContext::BeginRenderPass] Already In Render Pass.");
@@ -93,8 +104,8 @@ namespace Relentless
 
 				rtvIndex = renderTargetInfo.MipLevel;
 
-				if (!renderTargetInfo.pTarget->HasRTV(rtvIndex))
-					renderTargetInfo.pTarget->SetRTV(GetParent()->CreateRTV(renderTargetInfo.pTarget, TextureRTVDesc(renderTargetInfo.MipLevel, 0u, 1u, 0u)), rtvIndex);
+				//if (!renderTargetInfo.pTarget->HasRTV(rtvIndex))
+				//	renderTargetInfo.pTarget->SetRTV(GetParent()->CreateRTV(renderTargetInfo.pTarget, TextureRTVDesc(renderTargetInfo.MipLevel, 0u, 1u, 0u)), rtvIndex);
 				
 				break;
 			}
@@ -105,8 +116,8 @@ namespace Relentless
 
 				rtvIndex = uint32(renderTargetInfo.ArrayIndex) * uint32(desc.Mips) + uint32(renderTargetInfo.MipLevel);
 
-				if (!renderTargetInfo.pTarget->HasRTV(rtvIndex))
-					renderTargetInfo.pTarget->SetRTV(GetParent()->CreateRTV(renderTargetInfo.pTarget, TextureRTVDesc(renderTargetInfo.MipLevel, renderTargetInfo.ArrayIndex, 1u, 0u)), rtvIndex);
+				//if (!renderTargetInfo.pTarget->HasRTV(rtvIndex))
+				//	renderTargetInfo.pTarget->SetRTV(GetParent()->CreateRTV(renderTargetInfo.pTarget, TextureRTVDesc(renderTargetInfo.MipLevel, renderTargetInfo.ArrayIndex, 1u, 0u)), rtvIndex);
 
 				break;
 			}
@@ -147,12 +158,11 @@ namespace Relentless
 				resolveParams.ResolveMode = D3D12_RESOLVE_MODE_AVERAGE;
 				resolveParams.SubresourceCount = 1;
 				
-				D3D12_RENDER_PASS_ENDING_ACCESS_RESOLVE_SUBRESOURCE_PARAMETERS resolveSubresParams = {};
-				resolveSubresParams.SrcSubresource = 0; 
-				resolveSubresParams.DstSubresource = 0; 
-				resolveSubresParams.SrcRect = { 0, 0, static_cast<long>(renderTargetInfo.pTarget->GetWidth()), static_cast<long>(renderTargetInfo.pTarget->GetHeight())};
-				resolveSubresParams.DstX = resolveSubresParams.DstY = 0;
-				resolveParams.pSubresourceParameters = &resolveSubresParams;
+				m_ColorResolveParams.SrcSubresource = 0; 
+				m_ColorResolveParams.DstSubresource = 0;
+				m_ColorResolveParams.SrcRect = { 0, 0, static_cast<long>(renderTargetInfo.pTarget->GetWidth()), static_cast<long>(renderTargetInfo.pTarget->GetHeight()) };
+				m_ColorResolveParams.DstX = m_ColorResolveParams.DstY = 0;
+				resolveParams.pSubresourceParameters = &m_ColorResolveParams;
 			}
 			else if (EnumHasAnyFlags(renderTargetInfo.EndAccessFlags, RenderTargetAccessFlags::None))
 				renderTargetDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS;
@@ -166,34 +176,28 @@ namespace Relentless
 				renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[2] = clearBinding.Color.B();
 				renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[3] = clearBinding.Color.A();
 			}
-
 		}
 
 		D3D12_RENDER_PASS_FLAGS flags = D3D12_RENDER_PASS_FLAG_NONE;
 
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* pDepthStencilDesc = nullptr;
-		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthStencilDesc;
+		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthStencilDesc = {};
 		if (renderPassInfo.DepthStencilTarget.pTarget)
 		{
 			const RenderPassInfo::DepthTargetInfo& depthStencilTarget = renderPassInfo.DepthStencilTarget;
 
 			const TextureDesc& desc = depthStencilTarget.pTarget->GetDesc();
-
+			uint32 dsvIndex = 0u;
 			switch (desc.Type)
 			{
 			case TextureType::Texture2D:
 			{
-				for (uint8 mip = 0u; mip < desc.Mips; ++mip)
-					depthStencilTarget.pTarget->SetDSV(GetParent()->CreateDSV(depthStencilTarget.pTarget, TextureDSVDesc(depthStencilTarget.BeginAccessFlags, mip)), mip);
+				dsvIndex = 0u;
 				break;
 			}
 			case TextureType::TextureCube:
 			{
-				for (uint8 face = 0u; face < 6; ++face)
-				{
-					for (uint8 mip = 0u; mip < desc.Mips; ++mip)
-						depthStencilTarget.pTarget->SetDSV(GetParent()->CreateDSV(depthStencilTarget.pTarget, depthStencilTarget.BeginAccessFlags));
-				}
+				dsvIndex = 0u;
 				break;
 			}
 			default:
@@ -201,39 +205,68 @@ namespace Relentless
 				break;
 			}
 
-			depthStencilDesc.cpuDescriptor = depthStencilTarget.pTarget->GetDSV()->GetDescriptorHandle().CPUHandle;
+			depthStencilDesc.cpuDescriptor = depthStencilTarget.pTarget->GetWritableDSV(dsvIndex)->GetDescriptorHandle().CPUHandle;
 
 			if (EnumHasAnyFlags(depthStencilTarget.BeginAccessFlags, DepthTargetAccessFlags::ClearDepth))
 			{
 				const ClearBinding& clearBinding = depthStencilTarget.pTarget->GetClearBinding();
 				depthStencilDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-				depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.Format = D3D::ConvertFormat(depthStencilTarget.pTarget->GetFormat());
+				depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.Format = DXGI_FORMAT_D32_FLOAT;//D3D::ConvertFormat(depthStencilTarget.pTarget->GetFormat());
 				depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth = clearBinding.DepthStencil.Depth;
 			}
 			else if (EnumHasAnyFlags(depthStencilTarget.BeginAccessFlags, DepthTargetAccessFlags::ReadOnlyDepth))
 			{
-				depthStencilDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
-				flags = D3D12_RENDER_PASS_FLAG_BIND_READ_ONLY_DEPTH;
-			}
-			
-			if (EnumHasAnyFlags(depthStencilTarget.BeginAccessFlags, DepthTargetAccessFlags::ClearStencil))
-			{ 
-				const ClearBinding& clearBinding = depthStencilTarget.pTarget->GetClearBinding();
-				depthStencilDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-				depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.Format = D3D::ConvertFormat(depthStencilTarget.pTarget->GetFormat());
-				depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Stencil = clearBinding.DepthStencil.Stencil;
-			}
-			else if (EnumHasAnyFlags(depthStencilTarget.BeginAccessFlags, DepthTargetAccessFlags::ReadOnlyStencil))
-				depthStencilDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+				depthStencilDesc.cpuDescriptor = depthStencilTarget.pTarget->GetReadOnlyDSV(dsvIndex)->GetDescriptorHandle().CPUHandle;
 
-			depthStencilDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+				depthStencilDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+				flags |= D3D12_RENDER_PASS_FLAG_BIND_READ_ONLY_DEPTH;
+			}
+			else
+				depthStencilDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+			
+			//if (EnumHasAnyFlags(depthStencilTarget.BeginAccessFlags, DepthTargetAccessFlags::ClearStencil))
+			//{ 
+			//	const ClearBinding& clearBinding = depthStencilTarget.pTarget->GetClearBinding();
+			//	depthStencilDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+			//	depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.Format = D3D::ConvertFormat(depthStencilTarget.pTarget->GetFormat());
+			//	depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Stencil = clearBinding.DepthStencil.Stencil;
+			//}
+			//else if (EnumHasAnyFlags(depthStencilTarget.BeginAccessFlags, DepthTargetAccessFlags::ReadOnlyStencil))
+			//	depthStencilDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+
+			if (EnumHasAnyFlags(depthStencilTarget.EndAccessFlags, DepthTargetAccessFlags::Preserve))
+				depthStencilDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+			//else if (EnumHasAnyFlags(depthStencilTarget.EndAccessFlags, DepthTargetAccessFlags::Resolve))
+			//{
+			//	RLS_ASSERT(depthStencilTarget.pResolveTarget, "Resolve target is null.");
+			//	RLS_ASSERT(depthStencilTarget.pTarget->GetSampleCount() > 1, "Source is not MSAA.");
+			//	RLS_ASSERT(depthStencilTarget.pResolveTarget->GetSampleCount() == 1, "Resolve target must be single sample.");
+			//
+			//	depthStencilDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_RESOLVE;
+			//
+			//	auto& resolveParams = depthStencilDesc.DepthEndingAccess.Resolve;
+			//	resolveParams.pSrcResource = depthStencilTarget.pTarget->GetResource();
+			//	resolveParams.pDstResource = depthStencilTarget.pResolveTarget->GetResource();
+			//	resolveParams.Format = DXGI_FORMAT_R32_FLOAT;
+			//	resolveParams.ResolveMode = D3D12_RESOLVE_MODE_MIN;
+			//	resolveParams.SubresourceCount = 1;
+			//
+			//	m_DepthResolveParams.SrcSubresource = 0;
+			//	m_DepthResolveParams.DstSubresource = 0;
+			//	m_DepthResolveParams.SrcRect = { 0, 0, (long)depthStencilTarget.pTarget->GetWidth(), (long)depthStencilTarget.pTarget->GetHeight() };
+			//	m_DepthResolveParams.DstX = m_DepthResolveParams.DstY = 0;
+			//	resolveParams.pSubresourceParameters = &m_DepthResolveParams;
+			//}
+			else
+				depthStencilDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+			
 			depthStencilDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS;
 			depthStencilDesc.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS;
 
 			pDepthStencilDesc = &depthStencilDesc;
 		}
 
-		m_pCommandList->BeginRenderPass(renderPassInfo.RenderTargetCount, renderTargets.data(), pDepthStencilDesc, flags);
+		m_pCommandList->BeginRenderPass(renderPassInfo.RenderTargetCount, renderTargets.data(), &depthStencilDesc, flags);
 
 		Texture* pTargetTexture = renderPassInfo.DepthStencilTarget.pTarget ? renderPassInfo.DepthStencilTarget.pTarget : renderPassInfo.RenderTargets[0].pTarget;
 		SetViewport(FloatRect(0, 0, (float)pTargetTexture->GetWidth(), (float)pTargetTexture->GetHeight()), 0, 1);
@@ -283,7 +316,7 @@ namespace Relentless
 		RLS_ASSERT(destinationOffset % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT == 0, "[CommandContext::CopyTexture] Destination offset must be aligned.");
 
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT textureFootprint;
-		textureFootprint.Offset = 0;
+		textureFootprint.Offset = destinationOffset;
 		textureFootprint.Footprint.Width = sourceRegion.right - sourceRegion.left;
 		textureFootprint.Footprint.Depth = sourceRegion.back - sourceRegion.front;
 		textureFootprint.Footprint.Height = sourceRegion.bottom - sourceRegion.top;
@@ -293,7 +326,7 @@ namespace Relentless
 		CD3DX12_TEXTURE_COPY_LOCATION srcLocation(pSource->GetResource(), sourceSubresource);
 		CD3DX12_TEXTURE_COPY_LOCATION dstLocation(pTarget->GetResource(), textureFootprint);
 		FlushResourceBarriers();
-		m_pCommandList->CopyTextureRegion(&dstLocation, destinationOffset, 0, 0, &srcLocation, &sourceRegion);
+		m_pCommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, &sourceRegion);
 	}
 
 	void CommandContext::CopyTexture(const Texture* pSource, const Texture* pTarget, const D3D12_BOX& sourceRegion, const D3D12_BOX& destinationRegion, uint32 sourceSubresource, uint32 destinationSubresource) noexcept

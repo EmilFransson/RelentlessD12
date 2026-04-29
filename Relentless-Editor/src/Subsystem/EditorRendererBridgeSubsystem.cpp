@@ -11,7 +11,7 @@ namespace Relentless
 		return m_HoveredEntity;
 	}
 
-	void EditorRendererBridgeSubsystem::OnEntityReadbackDone(uint32 aEntityID) noexcept
+	void EditorRendererBridgeSubsystem::OnEntityReadbackDone(uint32 aEntityID, const UUID& aSceneUUID) noexcept
 	{
 		/*
 		 An id of 0 is considered a sentinel value for the read back results.
@@ -34,6 +34,8 @@ namespace Relentless
 	bool EditorRendererBridgeSubsystem::OnLoad(ISystemManager* aSystemManager) noexcept
 	{
 		m_pEditor = static_cast<Editor*>(aSystemManager);
+
+		m_pEditor->OnSceneChanged.Connect(this, &EditorRendererBridgeSubsystem::OnActiveSceneChanged);
 
 		RelentlessEditor& app = static_cast<RelentlessEditor&>(Application::Get());
 
@@ -68,6 +70,18 @@ namespace Relentless
 	bool EditorRendererBridgeSubsystem::ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept
 	{
 		return dynamic_cast<Editor*>(aSystemManager) != nullptr;
+	}
+
+	void EditorRendererBridgeSubsystem::OnActiveSceneChanged(Scene* aNewScene) noexcept
+	{
+		if (!aNewScene)
+			return;
+
+		Renderer::Dispatch([uid = aNewScene->GetUUID()](Renderer* aRenderer)
+			{
+				if (!aRenderer->ExistRenderScene(uid))
+					aRenderer->CreateRenderScene(uid);
+			});
 	}
 
 }

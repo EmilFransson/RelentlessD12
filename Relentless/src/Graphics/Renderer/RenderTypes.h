@@ -2,6 +2,8 @@
 
 #include "ECS/ECSCommon.h"
 
+#include "Graphics/Renderer/RenderFeatures.h"
+#include "Graphics/Renderer/RenderQualitySettings.h"
 #include "Graphics/RHI/Buffer.h"
 #include "Graphics/RHI/DescriptorHeap.h"
 #include "Graphics/RHI/Texture.h"
@@ -11,13 +13,8 @@ namespace Relentless
 {
 	class Mesh;
 	class Renderer;
+	class RenderScene;
 	class Scene;
-
-	enum class RenderModeEx : uint8
-	{
-		Solid,
-		Wireframe
-	};
 
 	struct ViewTransform
 	{
@@ -43,30 +40,35 @@ namespace Relentless
 		BoundingFrustum PerspectiveFrustum;
 		OrientedBoundingBox OrthographicFrustum;
 
-		bool IsInFrustum(const BoundingBox& bb) const
+		NO_DISCARD bool IsInFrustum(const BoundingBox& aBoundingBox) const
 		{
-			return IsPerspective ? PerspectiveFrustum.Contains(bb) : OrthographicFrustum.Contains(bb);
+			return IsPerspective ? PerspectiveFrustum.Contains(aBoundingBox) : OrthographicFrustum.Contains(aBoundingBox);
 		}
-	};
-
-	struct ViewportRenderView : public ViewTransform
-	{
-		Vector2i MouseHoverCoordinates	= Vector2i(-1, -1);
-		Ref<Texture> pTarget			= nullptr;
-		bool DrawGrid					= true;
-		RenderModeEx RenderMode			= RenderModeEx::Solid;
-		float MinLogLuminance			= -4.0f;
-		float MinEV100					= -10.0f;
-		float MaxEV100					= 20.0f;
-		float ExposureCompensation		= 2.0f;
 	};
 
 	struct RenderView : public ViewTransform
 	{
-		Renderer* pRenderer = nullptr;
-		Scene* pScene		= nullptr;
-		Ref<Buffer> ViewCB	= nullptr;
-		uint32 FrameIndex = 0u;
+		RenderFeatures RenderFeatures				= {};
+		RenderQualitySettings RenderQualitySettings	= {};
+		UUID ViewID									= {};
+		Vector2i MouseHoverCoordinates				= Vector2i(-1, -1);
+		Renderer* pRenderer							= nullptr;
+		RenderScene* pRenderScene					= nullptr;
+		Scene* pScene								= nullptr;
+		Ref<Buffer> ViewCB							= nullptr;
+		uint32 FrameIndex							= 0u;
+	};
+
+	struct ViewRenderDesc
+	{
+		ViewTransform ViewTransform					= {};
+		UUID SceneID								= {};
+		UUID ViewID									= {};
+		RenderFeatures RenderFeatures				= {};
+		RenderQualitySettings RenderQualitySettings = {};
+		Vector2i MouseHoverCoordinates				= Vector2i(-1, -1);
+		Ref<Texture> RenderTarget					= nullptr;
+		Scene* Scene								= nullptr;
 	};
 
 	struct Batch
@@ -75,19 +77,42 @@ namespace Relentless
 
 		Vector3 Location = Vector3::Zero;
 		uint32 InstanceID = std::numeric_limits<uint32>::max();
+		uint32 BaseInstanceOffset = 0u;
 		Blending BlendMode = Blending::Opaque;
-		Mesh* pMesh = nullptr;
-		uint32 MaterialIndex = DescriptorHeap::INVALID_DESCRIPTOR_INDEX;
-		uint32 MeshIndex = DescriptorHeap::INVALID_DESCRIPTOR_INDEX;
+		uint32 NumIndices = 0u;
+		uint32 InstanceCount = 0u;
 		entity EntityID = NULL_ENTITY;
 	};
 	DECLARE_BITMASK_TYPE(Batch::Blending)
 
+	struct SceneTextureResources
+	{
+		Ref<Texture> pColorTarget			= nullptr;
+		Ref<Texture> pDepthTarget			= nullptr;
+		
+		Ref<Texture> pMSAAColorTarget		= nullptr;
+		Ref<Texture> pMSAADepthTarget		= nullptr;
+	};
+
 	struct SceneTextures
 	{
-		Ref<Texture> pColorTarget = nullptr;
-		Ref<Texture> pDepthTarget = nullptr;
-		Ref<Texture> pEnvironmentTarget = nullptr;
+		Ref<Texture> pColorTarget						= nullptr;
+		Ref<Texture> pColorResolveTarget				= nullptr;
+		Ref<Texture> pDepthTarget						= nullptr;
+		Ref<Texture> pDepthResolveTarget				= nullptr;
+		Ref<Texture> pDepthIntermediateResolveTarget	= nullptr;
+
+		Ref<Texture> pEnvironmentTarget					= nullptr;
+
+		Ref<Texture> pEntityIDTarget					= nullptr;
+		Ref<Texture> pEntityDepthTarget					= nullptr;
+
+		Ref<Texture> pOutlinesSolidTarget				= nullptr;
+		Ref<Texture> pOutlinesDepthTarget				= nullptr;
+		Ref<Texture> pOutlinesIntermediateBlurTarget	= nullptr;
+		Ref<Texture> pOutlinesBlurTarget				= nullptr;
+
+		Ref<Texture> pAutoExposureDownscaleTarget		= nullptr;
 	};
 
 	struct SceneBuffer
@@ -96,10 +121,11 @@ namespace Relentless
 		uint32 Count = 0u;
 	};
 
-	struct GraphicsOptions
+	struct SceneBuffers
 	{
-		uint32 SampleCount		= 1u;
-		bool HBAOPlusEnabled	= true;
+		SceneBuffer EntityIDReadbackBuffer;
+		SceneBuffer AverageLuminanceBuffer;
+		SceneBuffer LuminanceHistogramBuffer;
 	};
 
 	struct BindingSlot

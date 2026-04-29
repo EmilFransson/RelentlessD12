@@ -2,6 +2,8 @@
 
 #include "Assets/CoreTypes/TextureCube.h"
 
+#include "ECS/Components/TransformComponent.h"
+
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RenderProxy/SkyLightRenderProxy.h"
 
@@ -67,7 +69,9 @@ namespace Relentless
 				renderProxy.PrimaryEnvironmentMap = pBackingPrimaryEnvironment->HasValidEnvironmentMap() ? pBackingPrimaryEnvironment->GetEnvironmentMap()->GetResource() : nullptr;
 				renderProxy.PrimaryEnvironmentSourceType = pBackingPrimaryEnvironment->GetSourceType();
 				renderProxy.PrimaryEnvironmentColor = pBackingPrimaryEnvironment->GetSolidColor();
-				renderProxy.Intensity *= pBackingPrimaryEnvironment->GetIntensity();
+
+				if (renderProxy.BlendFactor < 1.0f || !hasValidBlendEnvironment)
+					renderProxy.Intensity *= pBackingPrimaryEnvironment->GetIntensity();
 			}
 			if (hasValidBlendEnvironment)
 			{
@@ -75,16 +79,19 @@ namespace Relentless
 				renderProxy.BlendEnvironmentMap = pBackingBlendEnvironment->HasValidEnvironmentMap() ? pBackingBlendEnvironment->GetEnvironmentMap()->GetResource() : nullptr;
 				renderProxy.BlendEnvironmentSourceType = pBackingBlendEnvironment->GetSourceType();
 				renderProxy.BlendEnvironmentColor = pBackingBlendEnvironment->GetSolidColor();
-				renderProxy.Intensity *= pBackingBlendEnvironment->GetIntensity();
+
+				if (renderProxy.BlendFactor > 0.0f || !hasValidPrimaryEnvironment)
+					renderProxy.Intensity *= pBackingBlendEnvironment->GetIntensity();
 			}
 
 			if (aSceneState.EntityManager.Has<SkyLightComponent::DirtyRenderState>(aEntity))
 				aSceneState.EntityManager.Remove<SkyLightComponent::DirtyRenderState>(aEntity);
 		}
 
-		Renderer::Dispatch([renderProxies = std::move(skyLightRenderProxies)](Renderer* aRenderer)
+		Renderer::Dispatch([renderProxies = std::move(skyLightRenderProxies), uid = aSceneState.Scene.GetUUID()](Renderer* aRenderer)
 			{
-				SkyLightRenderSubsystem* pSkyLightRenderSubsystem = aRenderer->GetSubsystem<SkyLightRenderSubsystem>();
+				RenderScene* pRenderScene = aRenderer->GetRenderScene(uid);
+				SkyLightRenderSubsystem* pSkyLightRenderSubsystem = pRenderScene->GetSubsystem<SkyLightRenderSubsystem>();
 				pSkyLightRenderSubsystem->Patch(std::move(renderProxies));
 			});
 	}

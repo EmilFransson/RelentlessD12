@@ -7,7 +7,7 @@ namespace Relentless
 		SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		SetVerticalSizePolicy(ESizePolicy::Stretch);
 
-		m_DetailsContext.Environments = someEnvironments;
+		m_DetailsContext.Environment = someEnvironments.front();
 
 		SetContext(&m_DetailsContext);
 		Rebuild<EnvironmentDetailsContext>();

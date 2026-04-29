@@ -1,21 +1,29 @@
 ﻿#include "Editor.h"
 #include "RelentlessEditorApp.h"
 
-#include <Assets/Factory/EnvironmentFactory.h>
-#include <Assets/Factory/MaterialFactory.h>
-#include <Assets/Factory/MeshFactory.h>
-#include <Assets/Factory/ModelFactory.h>
-#include <Assets/Factory/TextureFactory.h>
-#include <Module/ContentBrowserModule.h>
-#include <Module/DetailsModule.h>
-#include <Module/UIModule.h>
-#include <UI/Views/Outliner/EntityOutlinerView.h>
+#include "Assets/Factory/EnvironmentFactory.h"
+#include "Assets/Factory/MaterialFactory.h"
+#include "Assets/Factory/MeshFactory.h"
+#include "Assets/Factory/ModelFactory.h"
+#include "Assets/Factory/TextureFactory.h"
 
-#include <Subsystem/SelectionSubsystem.h>
-#include <Subsystem/EntityFoldersSubsystem.h>
-#include <Subsystem/EditorSceneBridgeSubsystem.h>
-#include <Subsystem/EditorRendererBridgeSubsystem.h>
-#include <Subsystem/EditorViewportSubsystem.h>
+#include "ECS/Components/MeshFilterComponent.h"
+#include "ECS/Components/MeshRendererComponent.h"
+
+#include "Module/ContentBrowserModule.h"
+#include "Module/DetailsModule.h"
+#include "Module/UIModule.h"
+
+#include "Panels/EditorViewportPanel.h"
+#include "Panels/OutlinerPanel.h"
+
+#include "Subsystem/SelectionSubsystem.h"
+#include "Subsystem/EntityFoldersSubsystem.h"
+#include "Subsystem/EditorSceneBridgeSubsystem.h"
+#include "Subsystem/EditorRendererBridgeSubsystem.h"
+#include "Subsystem/EditorViewportSubsystem.h"
+
+#include "UI/Views/Outliner/EntityOutlinerView.h"
 
 namespace Relentless
 {
@@ -29,7 +37,6 @@ namespace Relentless
 		GetSubsystem<EntityFoldersSubsystem>();
 		GetSubsystem<EditorSceneBridgeSubsystem>();
 		GetSubsystem<EditorRendererBridgeSubsystem>();
-		GetSubsystem<EditorViewportSubsystem>();
 	}
 
 	const Ref<EntityOutlinerView> Editor::GetEntityOutlinerView() const noexcept
@@ -87,7 +94,7 @@ namespace Relentless
 		ImGui::Begin("Spawn");
 		
 		if (ImGui::Button("Spawn viewport"))
-			GetSubsystem<EditorViewportSubsystem>()->CreateViewportPanel();
+			ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EditorViewportPanel>();
 
 		static int counter = 0;
 		if (ImGui::Button("Spawn Entity"))
@@ -126,82 +133,11 @@ namespace Relentless
 
 	void Editor::OnCreate() noexcept
 	{
+		GetSubsystem<EditorViewportSubsystem>();
 		LoadModules();
 		Project::Load("D:\\UntitledRelentlessProject\\UntitledRelentlessProject.rproject");
 		CreateSubsystems();
 		CreateStartScene();
-
-		AssetManager::RegisterStorage<TextureCube>();
-
-		std::vector<AssetImportTask> importTasks;
-		{
-			Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
-			pTextureFactory->SetGenerateMipmaps(false);
-			pTextureFactory->SetImportAsSRGB(false);
-			pTextureFactory->SetImportAsCubemap(true);
-			pTextureFactory->SetMaxTextureSize(4096u);
-
-			AssetImportTask& importTask = importTasks.emplace_back();
-			importTask.FilePath = "C:\\Users\\emilf\\Desktop\\pure_sky.hdr";
-			importTask.DestinationPath = "Assets/Textures/";
-			importTask.pFactory = pTextureFactory;
-		}
-		{
-			Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
-			pTextureFactory->SetGenerateMipmaps(false);
-			pTextureFactory->SetImportAsSRGB(false);
-			pTextureFactory->SetImportAsCubemap(true);
-			pTextureFactory->SetMaxTextureSize(4096u);
-
-			AssetImportTask& importTask = importTasks.emplace_back();
-			importTask.FilePath = "C:\\Users\\emilf\\Desktop\\overcast.hdr";
-			importTask.DestinationPath = "Assets/Textures/";
-			importTask.pFactory = pTextureFactory;
-		}
-
-		const entity skyBoxAndLightEntity = m_pActiveScene->CreateEntity("SkyBoxAndLight");
-		m_pActiveScene->GetEntityManager().Add<SkyLightComponent>(skyBoxAndLightEntity);
-		m_pActiveScene->GetEntityManager().Add<SkyBoxComponent>(skyBoxAndLightEntity);
-		
-		AssetToolsModule& toolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
-
-		toolsModule.ImportAsync(importTasks, [this, skyBoxAndLightEntity](const std::vector<AssetImportResult>& someImportResults)
-			{
-				if (someImportResults.size() < 2)
-					return;
-
-				SkyLightComponent& slc = m_pActiveScene->GetEntityManager().Get<SkyLightComponent>(skyBoxAndLightEntity);
-				SkyBoxComponent& sbc = m_pActiveScene->GetEntityManager().Get<SkyBoxComponent>(skyBoxAndLightEntity);
-
-				AssetHandle pureSkyHandle = AssetManager::LoadAsset("Assets/Environments/PureSky/PureSkyEnvironment");
-				sbc.SetPrimaryEnvironment(pureSkyHandle);
-				slc.SetPrimaryEnvironment(pureSkyHandle);
-
-				AssetHandle overcastHandle = AssetManager::LoadAsset("Assets/Environments/Overcast/OvercastEnvironment");
-				
-				Ref<Environment> pSkyEnvironment = AssetManager::Get<Environment>(pureSkyHandle);
-				pSkyEnvironment->SetIntensity(1.0f);
-				
-				Ref<Environment> pOvercastEnvironment = AssetManager::Get<Environment>(overcastHandle);
-				pOvercastEnvironment->SetSourceType(EEnvironmentSourceType::Cubemap);
-				sbc.SetBlendEnvironment(overcastHandle);
-				slc.SetBlendEnvironment(overcastHandle);
-
-				for (int i = 0; i < someImportResults.size(); ++i)
-				{
-					if (someImportResults[i].FilePath == "C:\\Users\\emilf\\Desktop\\pure_sky.hdr")
-					{
-						pSkyEnvironment->SetEnvironmentMapHandle(someImportResults[i].Handle);
-					}
-					else if (someImportResults[i].FilePath == "C:\\Users\\emilf\\Desktop\\overcast.hdr")
-					{
-						pOvercastEnvironment->SetEnvironmentMapHandle(someImportResults[i].Handle);
-					}
-				}
-
-				m_pActiveScene->SetActiveSkyLight(skyBoxAndLightEntity);
-				m_pActiveScene->SetActiveSkyBox(skyBoxAndLightEntity);
-			});
 	}
 
 	void Editor::OnDestroy() noexcept
@@ -220,7 +156,6 @@ namespace Relentless
 
 	void Editor::OnRender() noexcept
 	{
-		//...
 	}
 
 	CallbackID Editor::RegisterEventCallback(Callback<bool(IEvent&)> aEventCallback) noexcept
@@ -342,14 +277,58 @@ namespace Relentless
 		pOffWhiteMaterial->SetRoughness(0.2f);
 		pOffWhiteMaterial->SetMetalness(0.9f);
 
-		entity cubeEntity = m_pActiveScene->CreateEntity("Cube");
+		//m_pActiveScene->GetEntityManager().Get<TransformComponent>(cubeEntity).SetWorldLocation(Vector3(0.0f, 40.0f, 0.0f));
 
 		AssetHandle meshHandle = AssetManager::LoadAsset("Assets/Meshes/Cube");
-		entityManager.Add<MeshFilterComponent>(cubeEntity).AssetHandle = meshHandle;
-		entityManager.Add<MeshRendererComponent>(cubeEntity).AssetHandle = offWhiteMaterialHandle;
+
+		for (uint32 i = 0u; i < 10u; ++i)
+		{
+			entity cubeEntity = m_pActiveScene->CreateEntity(std::format("Cube_{}", i).c_str());
+			entityManager.Add<MeshFilterComponent>(cubeEntity).SetMesh(meshHandle);
+			entityManager.Add<MeshRendererComponent>(cubeEntity).SetMaterial(offWhiteMaterialHandle);
+			entityManager.Get<TransformComponent>(cubeEntity).AddWorldOffset(Vector3((float)i, 0.0f, 0.0f));
+		}
 
 		const entity postProcessEntity = m_pActiveScene->CreateEntity("Post Process");
 		entityManager.Add<PostProcessVolumeComponent>(postProcessEntity);
+
+		const entity skyBoxAndLightEntity = m_pActiveScene->CreateEntity("SkyBoxAndLight");
+		SkyLightComponent& slc = m_pActiveScene->GetEntityManager().Add<SkyLightComponent>(skyBoxAndLightEntity);
+		SkyBoxComponent& sbc = m_pActiveScene->GetEntityManager().Add<SkyBoxComponent>(skyBoxAndLightEntity);
+
+		m_pActiveScene->SetActiveSkyLight(skyBoxAndLightEntity);
+		m_pActiveScene->SetActiveSkyBox(skyBoxAndLightEntity);
+
+		ThreadPool& threadPool = Application::Get().GetThreadPool();
+
+		AssetHandle pureSkyEnvironmentHandle = AssetManager::LoadAsset("Assets/Environments/PureSky/PureSkyEnvironment");
+		Ref<Environment> pPureSkyEnvironment = AssetManager::Get<Environment>(pureSkyEnvironmentHandle);
+		pPureSkyEnvironment->SetIntensity(1.0f);
+
+		AssetHandle overcastEnvironmentHandle = AssetManager::LoadAsset("Assets/Environments/Overcast/OvercastEnvironment");
+		Ref<Environment> pOvercastEnvironment = AssetManager::Get<Environment>(overcastEnvironmentHandle);
+		pOvercastEnvironment->SetSourceType(EEnvironmentSourceType::Cubemap);
+
+		slc.SetPrimaryEnvironment(pureSkyEnvironmentHandle);
+		slc.SetBlendEnvironment(overcastEnvironmentHandle);
+
+		sbc.SetPrimaryEnvironment(pureSkyEnvironmentHandle);
+		sbc.SetBlendEnvironment(overcastEnvironmentHandle);
+
+		threadPool.Submit([pureSkyEnvironmentHandle, overcastEnvironmentHandle]()
+			{
+				AssetHandle pureSkyTextureCubeHandle = AssetManager::LoadAsset("Assets/Textures/pure_sky");
+				AssetHandle overcastTextureCubeHandle = AssetManager::LoadAsset("Assets/Textures/overcast");
+
+				Application::Get().SubmitToMainThread([pureSkyEnvironmentHandle, pureSkyTextureCubeHandle, overcastEnvironmentHandle, overcastTextureCubeHandle]()
+					{
+						Ref<Environment> pPureSkyEnvironment = AssetManager::Get<Environment>(pureSkyEnvironmentHandle);
+						pPureSkyEnvironment->SetEnvironmentMapHandle(pureSkyTextureCubeHandle);
+
+						Ref<Environment> pOvercastEnvironment = AssetManager::Get<Environment>(overcastEnvironmentHandle);
+						pOvercastEnvironment->SetEnvironmentMapHandle(overcastTextureCubeHandle);
+					});
+			});
 	}
 
 	void Editor::UI_DrawMainMenuBar() noexcept
@@ -405,11 +384,12 @@ namespace Relentless
 		assetTools.RegisterFactory<Material>(RLS_NEW MaterialFactory());
 		assetTools.RegisterFactory<Mesh>(RLS_NEW MeshFactory());
 		assetTools.RegisterFactory<Texture2D>(RLS_NEW TextureFactory());
+		assetTools.RegisterFactory<TextureCube>(RLS_NEW TextureFactory());
 		assetTools.RegisterFactory<Environment>(RLS_NEW EnvironmentFactory());
 		assetTools.RegisterCompositeFactory<ModelFactory>(RLS_NEW ModelFactory());
 
 		ModuleManager::LoadModuleChecked<DetailsModule>();
-		ModuleManager::LoadModuleChecked<UIModule>();
+		ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EditorViewportPanel>();
 		ModuleManager::LoadModuleChecked<ContentBrowserModule>();
 		ModuleManager::LoadModuleChecked<AssetRegistryModule>();
 		ModuleManager::LoadModuleChecked<RenderModule>();

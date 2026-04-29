@@ -2,6 +2,8 @@
 
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RHI/CommandContext.h"
+#include "Graphics/RHI/Device.h"
+#include "Graphics/Scene/RenderScene.h"
 
 namespace Relentless
 {
@@ -13,18 +15,32 @@ namespace Relentless
 
 	bool SkyBoxRenderSubsystem::OnLoad(ISystemManager* aSystemManager) noexcept
 	{
-		Renderer* pRenderer = static_cast<Renderer*>(aSystemManager);
-		pRenderer->RegisterOnFrameRenderBeginCallback(Callback<void()>::Bind(this, &SkyBoxRenderSubsystem::OnRenderFrameBegin));
-		pRenderer->RegisterOnUploadCallback(Callback<void(CommandContext&)>::Bind(this, &SkyBoxRenderSubsystem::OnUpload));
+		RenderScene* pRenderScene = static_cast<RenderScene*>(aSystemManager);
+
+		Renderer* pRenderer = pRenderScene->GetRenderer();
+		m_OnFrameBeginCallbackID = pRenderer->RegisterOnFrameRenderBeginCallback(Callback<void()>::Bind(this, &SkyBoxRenderSubsystem::OnRenderFrameBegin));
+		m_OnUploadCallbackID = pRenderer->RegisterOnUploadCallback(Callback<void(CommandContext&)>::Bind(this, &SkyBoxRenderSubsystem::OnUpload));
 
 		m_pGraphicsDevice = pRenderer->GetDevice();
 
 		return true;
 	}
 
+	void SkyBoxRenderSubsystem::OnUnload(ISystemManager* aSystemManager) noexcept
+	{
+		RenderScene* pRenderScene = static_cast<RenderScene*>(aSystemManager);
+
+		Renderer* pRenderer = pRenderScene->GetRenderer();
+		pRenderer->UnregisterOnFrameRenderBeginCallback(m_OnFrameBeginCallbackID);
+		pRenderer->UnregisterOnUploadCallback(m_OnUploadCallbackID);
+
+		m_OnFrameBeginCallbackID = INVALID_CALLBACK_ID;
+		m_OnUploadCallbackID = INVALID_CALLBACK_ID;
+	}
+
 	bool SkyBoxRenderSubsystem::ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept
 	{
-		return dynamic_cast<Renderer*>(aSystemManager) != nullptr;
+		return dynamic_cast<RenderScene*>(aSystemManager) != nullptr;
 	}
 
 	void SkyBoxRenderSubsystem::Patch(std::vector<SkyBoxRenderProxy> someRenderProxyUpdates) noexcept

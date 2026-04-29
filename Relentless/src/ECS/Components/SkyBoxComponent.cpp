@@ -9,14 +9,26 @@
 
 namespace Relentless
 {
+	SkyBoxComponent::~SkyBoxComponent() noexcept
+	{
+		DetachPrimaryEnvironment();
+		DetachBlendEnvironment();
+	}
+
 	void SkyBoxComponent::CopyFrom(const SkyBoxComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
+		DetachPrimaryEnvironment();
+		DetachBlendEnvironment();
+
 		m_PrimaryEnvironmentHandle = aOtherComponent.m_PrimaryEnvironmentHandle;
 		m_BlendEnvironmentHandle = aOtherComponent.m_BlendEnvironmentHandle;
 		m_TintColor = aOtherComponent.m_TintColor;
 		m_Intensity = aOtherComponent.m_Intensity;
 		m_LodBias = aOtherComponent.m_LodBias;
 		m_BlendFactor = aOtherComponent.m_BlendFactor;
+
+		ConnectPrimaryEnvironment();
+		ConnectBlendEnvironment();
 
 		m_Self = aThisEntity;
 		m_EntityManager = &aEntityManager;
@@ -80,6 +92,30 @@ namespace Relentless
 		m_EntityManager->AddOrReplace<SkyBoxComponent::DirtyRenderState>(m_Self);
 	}
 
+	void SkyBoxComponent::RemoveBlendEnvironment() noexcept
+	{
+		if (!m_BlendEnvironmentHandle.IsValid())
+			return;
+
+		DetachBlendEnvironment();
+		m_BlendEnvironmentHandle = NULL_HANDLE;
+
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_BlendEnvironmentHandle);
+	}
+
+	void SkyBoxComponent::RemovePrimaryEnvironment() noexcept
+	{
+		if (!m_PrimaryEnvironmentHandle.IsValid())
+			return;
+
+		DetachPrimaryEnvironment();
+		m_PrimaryEnvironmentHandle = NULL_HANDLE;
+
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_PrimaryEnvironmentHandle);
+	}
+
 	void SkyBoxComponent::SetBlendEnvironment(const AssetHandle& aHandle) noexcept
 	{
 		RLS_ASSERT(aHandle.Type == Environment::StaticType(), "[SkyBoxComponent::SetBlendEnvironment]: Invalid asset type.");
@@ -87,9 +123,12 @@ namespace Relentless
 		if (m_BlendEnvironmentHandle == aHandle)
 			return;
 
+		DetachBlendEnvironment();
 		m_BlendEnvironmentHandle = aHandle;
+		ConnectBlendEnvironment();
+
 		m_EntityManager->AddOrReplace<SkyBoxComponent::DirtyRenderState>(m_Self);
-		BroadcastPropertyChanged("m_BlendEnvironmentHandle"_h);
+		NOTIFY_PROPERTY_CHANGED(m_BlendEnvironmentHandle);
 	}
 
 	void SkyBoxComponent::SetBlendFactor(float aBlendFactor) noexcept
@@ -99,7 +138,7 @@ namespace Relentless
 
 		m_BlendFactor = aBlendFactor;
 		m_EntityManager->AddOrReplace<SkyBoxComponent::DirtyRenderState>(m_Self);
-		BroadcastPropertyChanged("m_BlendFactor"_h);
+		NOTIFY_PROPERTY_CHANGED(m_BlendFactor);
 	}
 
 	void SkyBoxComponent::SetIntensity(float aIntensity) noexcept
@@ -109,7 +148,7 @@ namespace Relentless
 
 		m_Intensity = aIntensity;
 		m_EntityManager->AddOrReplace<SkyBoxComponent::DirtyRenderState>(m_Self);
-		BroadcastPropertyChanged("m_Intensity"_h);
+		NOTIFY_PROPERTY_CHANGED(m_Intensity);
 	}
 
 	void SkyBoxComponent::SetLODBias(float aLODBias) noexcept
@@ -119,7 +158,7 @@ namespace Relentless
 
 		m_LodBias = aLODBias;
 		m_EntityManager->AddOrReplace<SkyBoxComponent::DirtyRenderState>(m_Self);
-		BroadcastPropertyChanged("m_LodBias"_h);
+		NOTIFY_PROPERTY_CHANGED(m_LodBias);
 	}
 
 	void SkyBoxComponent::SetPrimaryEnvironment(const AssetHandle& aHandle) noexcept
@@ -129,9 +168,12 @@ namespace Relentless
 		if (m_PrimaryEnvironmentHandle == aHandle)
 			return;
 
+		DetachPrimaryEnvironment();
 		m_PrimaryEnvironmentHandle = aHandle;
+		ConnectPrimaryEnvironment();
+
 		m_EntityManager->AddOrReplace<SkyBoxComponent::DirtyRenderState>(m_Self);
-		BroadcastPropertyChanged("m_PrimaryEnvironmentHandle"_h);
+		NOTIFY_PROPERTY_CHANGED(m_PrimaryEnvironmentHandle);
 	}
 
 	void SkyBoxComponent::SetTintColor(const Color& aColor) noexcept
@@ -141,6 +183,61 @@ namespace Relentless
 
 		m_TintColor = aColor;
 		m_EntityManager->AddOrReplace<SkyBoxComponent::DirtyRenderState>(m_Self);
-		BroadcastPropertyChanged("m_TintColor"_h);
+		NOTIFY_PROPERTY_CHANGED(m_TintColor);
+	}
+
+	void SkyBoxComponent::ConnectBlendEnvironment() noexcept
+	{
+		if (!m_BlendEnvironmentHandle.IsValid())
+			return;
+
+		Ref<Environment> pBlendEnvironment = AssetManager::Get<Environment>(m_BlendEnvironmentHandle);
+		pBlendEnvironment->OnDestroy.Connect(this, &SkyBoxComponent::OnBlendEnvironmentAssetDestroy);
+		pBlendEnvironment->OnPropertyChanged.Connect(this, &SkyBoxComponent::OnEnvironmentAssetPropertyChanged);
+	}
+
+	void SkyBoxComponent::ConnectPrimaryEnvironment() noexcept
+	{
+		if (!m_PrimaryEnvironmentHandle.IsValid())
+			return;
+
+		Ref<Environment> pPrimaryEnvironment = AssetManager::Get<Environment>(m_PrimaryEnvironmentHandle);
+		pPrimaryEnvironment->OnDestroy.Connect(this, &SkyBoxComponent::OnPrimaryEnvironmentAssetDestroy);
+		pPrimaryEnvironment->OnPropertyChanged.Connect(this, &SkyBoxComponent::OnEnvironmentAssetPropertyChanged);
+	}
+
+	void SkyBoxComponent::DetachBlendEnvironment() noexcept
+	{
+		if (!m_BlendEnvironmentHandle.IsValid())
+			return;
+
+		Ref<Environment> pBlendEnvironment = AssetManager::Get<Environment>(m_BlendEnvironmentHandle);
+		pBlendEnvironment->OnDestroy.Detach(this);
+		pBlendEnvironment->OnPropertyChanged.Detach(this);
+	}
+
+	void SkyBoxComponent::DetachPrimaryEnvironment() noexcept
+	{
+		if (!m_PrimaryEnvironmentHandle.IsValid())
+			return;
+
+		Ref<Environment> pPrimaryEnvironment = AssetManager::Get<Environment>(m_PrimaryEnvironmentHandle);
+		pPrimaryEnvironment->OnDestroy.Detach(this);
+		pPrimaryEnvironment->OnPropertyChanged.Detach(this);
+	}
+
+	void SkyBoxComponent::OnBlendEnvironmentAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept
+	{
+		RemoveBlendEnvironment();
+	}
+
+	void SkyBoxComponent::OnPrimaryEnvironmentAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept
+	{
+		RemovePrimaryEnvironment();
+	}
+
+	void SkyBoxComponent::OnEnvironmentAssetPropertyChanged(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty) noexcept
+	{
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 }

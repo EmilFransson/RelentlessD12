@@ -61,7 +61,7 @@ using float4x4 = Matrix;
 		uint ID;
 		uint MaterialIndex;
 		uint MeshDataIndex;
-		uint Padding;
+		uint EntityID;
 	};
 
 	struct SkyboxData

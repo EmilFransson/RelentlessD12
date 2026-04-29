@@ -75,17 +75,30 @@ namespace Relentless
 		return new TextureFactory();
 	}
 
-	FactoryCreateResult TextureFactory::CreateNew(const String& aName, const UUID& aUUID ) noexcept
+	FactoryCreateResult TextureFactory::CreateNew(const TypeIndex& aType, const String& aName, const UUID& aUUID ) noexcept
 	{
-		Ref<Texture2D> pNewTexture = new Texture2D(aUUID);
-		pNewTexture->SetName(aName);
-
-		return pNewTexture;
+		if (aType == Texture2D::StaticType())
+		{
+			Ref<Texture2D> pNewTexture = RLS_NEW Texture2D(aUUID);
+			pNewTexture->SetName(aName);
+			return pNewTexture;
+		}
+		else if (aType == TextureCube::StaticType())
+		{
+			Ref<TextureCube> pNewTexture = RLS_NEW TextureCube(aUUID);
+			pNewTexture->SetName(aName);
+			return pNewTexture;
+		}
+		else
+		{
+			RLS_ASSERT(false, "[TextureFactory::CreateNew]: Texture Factory does not support given asset type.");
+			return {};
+		}
 	}
 
 	bool TextureFactory::DoesSupportAsset(IAsset* aAsset) const noexcept
 	{
-		return aAsset->GetStaticType() == Texture2D::StaticType();
+		return aAsset->GetStaticType() == Texture2D::StaticType() || aAsset->GetStaticType() == TextureCube::StaticType();
 	}
 
 	std::vector<String> TextureFactory::GetSupportedFileExtensions() const noexcept
@@ -203,28 +216,100 @@ namespace Relentless
 		auto& metaData = image.GetMetadata();
 		const std::string fileName = FilepathUtils::ExtractFilename(m_SrcPath);
 
-		Ref<Texture2D> pNewTexture = new Texture2D(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), std::move(image));
-		pNewTexture->SetName(fileName);
-
 		if (m_ImportAsCubemap)
 		{
-			pNewTexture->CreateResource();
-
 			RenderModule& renderModule = ModuleManager::LoadModuleChecked<RenderModule>();
+			GraphicsDevice* pDevice = Application::Get().GetGraphicsDevice();
 
 			EquirectangularToCubemapSpecification spec;
 			spec.CubeFaceDimension = (m_MaxSize == -1) ? Math::Max(metaData.width, metaData.height) : m_MaxSize;
-			spec.EquirectangularTexture = pNewTexture->GetResource();
+			spec.EquirectangularTexture = pDevice->CreateTexture(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), fileName.c_str(), image); //pNewTexture->GetResource();
 
 			Ref<Texture> pOutCubemap = nullptr;
 			RenderJobHandle renderJobHandle = renderModule.GetRenderBakeService()->RequestEquirectangularToCubemapConversion(spec, pOutCubemap);
 			renderJobHandle.Wait();
 			
-			Ref<TextureCube> pNewCubeMap = RLS_NEW TextureCube(pOutCubemap);
+			//Read back content:
+			const uint32 faceCount = 6;                     
+			const uint32 mipLevels = pOutCubemap->GetMipLevels();
+			const uint32 totalSubresources = faceCount * mipLevels;
+			D3D12_RESOURCE_DESC resourceDesc = pOutCubemap->GetResource()->GetDesc();
+
+			std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(totalSubresources);
+			uint64 totalSize = 0;
+
+			for (uint32 subresource = 0; subresource < totalSubresources; subresource++)
+			{
+				uint64 subresourceSize = 0;
+				pDevice->GetDevice()->GetCopyableFootprints(&resourceDesc, subresource, 1, Math::AlignUp(totalSize, (uint64)D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT), &footprints[subresource], nullptr, nullptr, &subresourceSize);
+				totalSize = footprints[subresource].Offset + subresourceSize;
+			}
+
+			Ref<Buffer> pReadBackBuffer = pDevice->CreateBuffer(BufferDesc::CreateReadback(totalSize), "Cubemap Readback Buffer");
+
+			CommandContext* pContext = pDevice->AllocateCommandContext();
+			pContext->InsertResourceBarrier(pOutCubemap, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+			for (uint32 face = 0; face < faceCount; face++)
+			{
+				for (uint32 mip = 0; mip < mipLevels; mip++)
+				{
+					const uint32 subresource = mip + face * mipLevels;
+					const uint32 mipWidth = Math::Max(1u, pOutCubemap->GetWidth() >> mip);
+					const uint32 mipHeight = Math::Max(1u, pOutCubemap->GetHeight() >> mip);
+					D3D12_BOX sourceRegion{ 0, 0, 0, mipWidth, mipHeight, 1 };
+
+					pContext->CopyTexture(pOutCubemap, pReadBackBuffer, sourceRegion, subresource, (uint32)footprints[subresource].Offset);
+				}
+			}
+
+			SyncPoint fence = pContext->Execute();
+			fence.Wait();
+
+			DirectX::TexMetadata meta{};
+			meta.width = pOutCubemap->GetWidth();
+			meta.height = pOutCubemap->GetHeight();
+			meta.depth = 1;
+			meta.arraySize = faceCount;
+			meta.mipLevels = mipLevels;
+			meta.format = D3D::ConvertFormat(pOutCubemap->GetFormat());
+			meta.dimension = DirectX::TEX_DIMENSION_TEXTURE2D;
+			meta.miscFlags = DirectX::TEX_MISC_TEXTURECUBE;
+
+			DirectX::ScratchImage result;
+			result.Initialize(meta);
+
+			char* pBase = (char*)pReadBackBuffer->GetMappedData();
+
+			for (uint32 face = 0; face < faceCount; face++)
+			{
+				for (uint32 mip = 0; mip < mipLevels; mip++)
+				{
+					const uint32 subresource = mip + face * mipLevels;
+					const uint32 mipHeight = Math::Max(1u, pOutCubemap->GetHeight() >> mip);
+
+					const DirectX::Image* pImage = result.GetImage(mip, face, 0);
+					char* pSubresourceData = pBase + footprints[subresource].Offset;
+
+					for (uint32 row = 0; row < mipHeight; row++)
+					{
+						memcpy(pImage->pixels + row * pImage->rowPitch, pSubresourceData + row * footprints[subresource].Footprint.RowPitch, pImage->rowPitch);                                   
+					}
+				}
+			}
+
+			Ref<TextureCube> pNewCubeMap = RLS_NEW TextureCube(pOutCubemap, TextureDesc::CreateCube(meta.width, meta.height, D3D::ConvertFormat(meta.format), meta.mipLevels, TextureFlag::ShaderResource), std::move(result));
+			pNewCubeMap->SetName(fileName);
+
 			m_ImportedAsset = AssetManager::RegisterAsset<TextureCube>(pNewCubeMap);
 		}
 		else
+		{
+			Ref<Texture2D> pNewTexture = new Texture2D(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), std::move(image));
+			pNewTexture->SetName(fileName);
+
 			m_ImportedAsset = AssetManager::RegisterAsset<Texture2D>(pNewTexture);
+		}
 
 		return true;
 	}

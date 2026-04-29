@@ -26,5 +26,6 @@ namespace Relentless
 		NO_DISCARD virtual bool SupportsCreateNew() const noexcept;
 		NO_DISCARD virtual bool SupportsAsset(MAYBE_UNUSED IAsset* aAsset) const noexcept;
 		NO_DISCARD virtual bool SupportsAsset(MAYBE_UNUSED AssetData* aAssetData) const noexcept;
+		NO_DISCARD virtual bool SupportsAsset(MAYBE_UNUSED const AssetHandle& aAssetHandle) const noexcept;
 	};
 }

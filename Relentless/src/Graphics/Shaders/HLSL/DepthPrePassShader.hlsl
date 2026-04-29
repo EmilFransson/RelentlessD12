@@ -15,11 +15,12 @@ struct VS_OUT
 #endif
 };
 
-VS_OUT vs_main(uint vertexID : SV_VertexID)
+VS_OUT vs_main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
 {
     VS_OUT vsOut = (VS_OUT)0;
     
-    const InstanceData instanceData = GetInstance(perDrawData.InstanceIndex);
+    const uint instanceIndex = perDrawData.InstanceIndex + instanceID;
+    const InstanceData instanceData = GetInstance(instanceIndex /*perDrawData.InstanceIndex*/);
     const MeshData meshData = GetMesh(instanceData.MeshDataIndex);
     const Material material = GetMaterial(instanceData.MaterialIndex);
     const Vertex vertex = LoadVertex(meshData, vertexID);

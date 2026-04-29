@@ -3,6 +3,7 @@
 #include "Core/Editor.h"
 
 #include "Module/ModuleManager.h"
+#include "Module/UIModule.h"
 
 #include "Subsystem/EditorRendererBridgeSubsystem.h"
 #include "Subsystem/EditorSceneBridgeSubsystem.h"
@@ -10,38 +11,14 @@
 
 namespace Relentless
 {
-	ViewportPanel* EditorViewportSubsystem::CreateViewportPanel() noexcept
-	{
-		UIModule& uiModule = ModuleManager::LoadModuleChecked<UIModule>();
-		ViewportPanel* pViewport = uiModule.OpenPanel<ViewportPanel>(m_EditorViewports.size());
-		pViewport->OnClickedOnViewport.Connect(this, &EditorViewportSubsystem::OnViewportClicked);
-		pViewport->OnHotkeyPressed.Connect(this, &EditorViewportSubsystem::OnViewportHotkeyPressed);
-
-		m_EditorViewports.push_back(pViewport);
-		m_RenderViews.push_back(ViewportRenderView());
-
-		return pViewport;
-	}
-
-	ViewportRenderView& EditorViewportSubsystem::GetRenderView(uint32 aRenderViewIndex) noexcept
-	{
-		RLS_ASSERT(m_RenderViews.size() > aRenderViewIndex, "[EditorViewportSubsystem::GetRenderView] Index Out Of Bounds Error.");
-		return m_RenderViews[aRenderViewIndex];
-	}
-
-	std::vector<ViewportRenderView>& EditorViewportSubsystem::GetRenderViews() noexcept
-	{
-		return m_RenderViews;
-	}
-
 	bool EditorViewportSubsystem::OnLoad(ISystemManager* aSystemManager) noexcept
 	{
-		Editor* pEditor = static_cast<Editor*>(aSystemManager);
-		m_pEditor = pEditor;
-
-		m_OnUpdateCallbackID = pEditor->RegisterUpdateCallback(Callback<void(float)>::Bind(this, &EditorViewportSubsystem::OnUpdate));
+		m_pEditor = static_cast<Editor*>(aSystemManager);
+		m_OnUpdateCallbackID = m_pEditor->RegisterUpdateCallback(Callback<void(float)>::Bind(this, &EditorViewportSubsystem::OnUpdate));
 		
-		CreateViewportPanel();
+		UIModule& uiModule = ModuleManager::LoadModuleChecked<UIModule>();
+		uiModule.OnPanelOpen.Connect(this, &EditorViewportSubsystem::OnPanelOpen);
+		uiModule.OnPanelClose.Connect(this, &EditorViewportSubsystem::OnPanelClose);
 
 		return true;
 	}
@@ -51,41 +28,39 @@ namespace Relentless
 		return dynamic_cast<Editor*>(aSystemManager) != nullptr;
 	}
 
+	void EditorViewportSubsystem::OnPanelClose(PanelBase* aPanel) noexcept
+	{
+		if (ViewportPanel* pViewportPanel = dynamic_cast<ViewportPanel*>(aPanel))
+		{
+			pViewportPanel->OnClickedOnViewport.Detach(this);
+			pViewportPanel->OnHotkeyPressed.Detach(this);
+			std::erase_if(m_EditorViewports, [pViewportPanel](ViewportPanel* aViewportPanel) { return aViewportPanel == pViewportPanel; });
+		}
+	}
+
+	void EditorViewportSubsystem::OnPanelOpen(PanelBase* aPanel) noexcept
+	{
+		if (ViewportPanel* pViewportPanel = dynamic_cast<ViewportPanel*>(aPanel))
+		{
+			pViewportPanel->OnClickedOnViewport.Connect(this, &EditorViewportSubsystem::OnViewportClicked);
+			pViewportPanel->OnHotkeyPressed.Connect(this, &EditorViewportSubsystem::OnViewportHotkeyPressed);
+			m_EditorViewports.push_back(pViewportPanel);
+		}
+	}
+
 	void EditorViewportSubsystem::OnUpdate(MAYBE_UNUSED float aDeltaTime) noexcept
 	{
+		std::vector<ViewRenderDesc> viewRenderDescs(m_EditorViewports.size());
 		for (size_t i = 0; i < m_EditorViewports.size(); ++i)
-		{
-			ViewportPanel* pViewportPanel = m_EditorViewports[i];
+			viewRenderDescs[i] = m_EditorViewports[i]->BuildRenderDescriptor();
 
-			const Vector2i& region = pViewportPanel->GetViewportSize();
-			m_RenderViews[i].Viewport = FloatRect(0.0f, 0.0f, Math::Max(1.0f, (float)region.x), Math::Max(1.0f, (float)region.y));
+		if (viewRenderDescs.empty())
+			return;
 
-			const ViewTransform& cameraViewTransform = pViewportPanel->GetCamera()->GetViewTransform();
-			ViewportRenderView& renderView = m_RenderViews[i];
-
-			renderView.Location = cameraViewTransform.Location;
-			renderView.Viewport = cameraViewTransform.Viewport;
-			renderView.IsPerspective = true;
-			renderView.PerspectiveFrustum = cameraViewTransform.PerspectiveFrustum;
-			renderView.OrthographicFrustum = cameraViewTransform.OrthographicFrustum;
-
-			renderView.WorldToView = cameraViewTransform.WorldToView;
-			renderView.WorldToClip = cameraViewTransform.WorldToClip;
-			renderView.ViewToWorld = cameraViewTransform.ViewToWorld;
-			renderView.ViewToClip = cameraViewTransform.ViewToClip;
-			renderView.ClipToView = cameraViewTransform.ClipToView;
-
-			renderView.FoV = cameraViewTransform.FoV;
-			renderView.NearPlane = cameraViewTransform.NearPlane;
-			renderView.FarPlane = cameraViewTransform.FarPlane;
-
-			renderView.MouseHoverCoordinates = pViewportPanel->IsClientAreaHovered() ? pViewportPanel->GetClientHoverCoordinates() : Vector2i(-1, -1);
-
-			renderView.MinLogLuminance = m_MinLogLuminance;
-			renderView.MinEV100 = m_MinEV100;
-			renderView.MaxEV100 = m_MaxEV100;
-			renderView.ExposureCompensation = m_ExposureCompensation;
-		}
+		Renderer::Dispatch([renderDescs = std::move(viewRenderDescs)](Renderer* aRenderer) 
+			{ 
+				aRenderer->RenderViews(renderDescs); 
+			});
 	}
 
 	void EditorViewportSubsystem::OnViewportClicked(MAYBE_UNUSED ViewportPanel* aPanel, MAYBE_UNUSED Vector2u aRelativeMouseCoords) noexcept

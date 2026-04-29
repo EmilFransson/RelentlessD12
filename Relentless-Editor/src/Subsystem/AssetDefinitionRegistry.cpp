@@ -1,9 +1,11 @@
 #include "AssetDefinitionRegistry.h"
-#include "../Assets/Definition/EnvironmentAssetDefinition.h"
-#include "../Assets/Definition/MaterialAssetDefinition.h"
-#include "../Assets/Definition/MeshAssetDefinition.h"
-#include "../Assets/Definition/Texture2DAssetDefinition.h"
-#include "../Core/Editor.h"
+#include "Assets/Definition/EnvironmentAssetDefinition.h"
+#include "Assets/Definition/MaterialAssetDefinition.h"
+#include "Assets/Definition/MeshAssetDefinition.h"
+#include "Assets/Definition/Texture2DAssetDefinition.h"
+#include "Assets/Definition/TextureCubeAssetDefinition.h"
+
+#include "Core/Editor.h"
 
 namespace Relentless
 {
@@ -43,6 +45,7 @@ namespace Relentless
 		RegisterAssetDefinition(RLS_NEW MaterialAssetDefinition());
 		RegisterAssetDefinition(RLS_NEW MeshAssetDefinition());
 		RegisterAssetDefinition(RLS_NEW Texture2DAssetDefinition());
+		RegisterAssetDefinition(RLS_NEW TextureCubeAssetDefinition());
 		RegisterAssetDefinition(RLS_NEW EnvironmentAssetDefinition());
 
 		return true;

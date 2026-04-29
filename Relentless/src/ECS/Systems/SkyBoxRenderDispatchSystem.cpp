@@ -2,6 +2,8 @@
 
 #include "Assets/CoreTypes/TextureCube.h"
 
+#include "ECS/Components/TransformComponent.h"
+
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RenderProxy/SkyBoxRenderProxy.h"
 
@@ -37,8 +39,6 @@ namespace Relentless
 			const bool hasValidBlendEnvironment = skyBoxComponent.HasAssignedBlendEnvironment() && skyBoxComponent.GetBlendEnvironment()->HasValidEnvironmentMap();
 
 			SkyBoxRenderProxy& renderProxy = skyBoxRenderProxies.emplace_back();
-			renderProxy.EnvironmentMapA = hasValidPrimaryEnvironment ? skyBoxComponent.GetPrimaryEnvironment()->GetEnvironmentMap()->GetResource() : nullptr;
-			renderProxy.EnvironmentMapB = hasValidBlendEnvironment ? skyBoxComponent.GetBlendEnvironment()->GetEnvironmentMap()->GetResource() : nullptr;
 			renderProxy.WorldRotation = transformComponent.GetWorldRotation();
 			renderProxy.TintColor = skyBoxComponent.GetTintColor();
 			renderProxy.ID = aEntity;
@@ -46,14 +46,32 @@ namespace Relentless
 			renderProxy.LodBias = skyBoxComponent.GetLODBias();
 			renderProxy.BlendFactor = skyBoxComponent.GetBlendFactor();
 			renderProxy.IsActive = aSceneState.Scene.GetActiveSkyBox() == aEntity && (hasValidPrimaryEnvironment || hasValidBlendEnvironment) && aSceneState.Scene.IsEntityVisible(aEntity);
+			
+			if (hasValidPrimaryEnvironment)
+			{
+				Ref<Environment> pPrimaryEnvironment = skyBoxComponent.GetPrimaryEnvironment();
+				renderProxy.EnvironmentMapA = pPrimaryEnvironment->GetEnvironmentMap()->GetResource();
+
+				if (renderProxy.BlendFactor < 1.0f || !hasValidBlendEnvironment)
+					renderProxy.Intensity *= pPrimaryEnvironment->GetIntensity();
+			}
+			if (hasValidBlendEnvironment)
+			{
+				Ref<Environment> pBlendEnvironment = skyBoxComponent.GetBlendEnvironment();
+				renderProxy.EnvironmentMapB = pBlendEnvironment->GetEnvironmentMap()->GetResource();
+
+				if (renderProxy.BlendFactor > 0.0f || !hasValidPrimaryEnvironment)
+					renderProxy.Intensity *= pBlendEnvironment->GetIntensity();
+			}
 
 			if (aSceneState.EntityManager.Has<SkyBoxComponent::DirtyRenderState>(aEntity))
 				aSceneState.EntityManager.Remove<SkyBoxComponent::DirtyRenderState>(aEntity);
 		}
 
-		Renderer::Dispatch([renderProxies = std::move(skyBoxRenderProxies)](Renderer* aRenderer)
+		Renderer::Dispatch([renderProxies = std::move(skyBoxRenderProxies), uid = aSceneState.Scene.GetUUID()](Renderer* aRenderer)
 			{
-				SkyBoxRenderSubsystem* pSkyBoxRenderSubsystem = aRenderer->GetSubsystem<SkyBoxRenderSubsystem>();
+				RenderScene* pRenderScene = aRenderer->GetRenderScene(uid);
+				SkyBoxRenderSubsystem* pSkyBoxRenderSubsystem = pRenderScene->GetSubsystem<SkyBoxRenderSubsystem>();
 				pSkyBoxRenderSubsystem->Patch(std::move(renderProxies));
 			});
 	}

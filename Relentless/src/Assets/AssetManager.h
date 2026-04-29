@@ -37,8 +37,11 @@ namespace Relentless
 
 		__forceinline void Add(const Ref<IAsset>& aAsset) noexcept
 		{
-			std::unique_lock<std::shared_mutex> lock(m_Mutex);
-			m_AssetsMap.emplace(aAsset->GetUUID(), aAsset);
+			{
+				std::unique_lock<std::shared_mutex> lock(m_Mutex);
+				m_AssetsMap.emplace(aAsset->GetUUID(), aAsset);
+			}
+			OnAssetCreated(AssetHandle(m_RuntimeType, aAsset->GetUUID()));
 		}
 
 		__forceinline void Destroy(const AssetHandle& handle) noexcept
@@ -75,9 +78,9 @@ namespace Relentless
 			return m_RuntimeType;
 		}
 
+		Broadcaster<void(const AssetHandle&)> OnAssetCreated;
 	private:
 		friend class AssetManager;
-
 		std::unordered_map<UUID, Ref<IAsset>> m_AssetsMap;
 		UUID m_PersistentType = NULL_UUID;
 		TypeIndex m_RuntimeType = INVALID_TYPE::StaticType();
@@ -107,9 +110,29 @@ namespace Relentless
 		}
 
 		template<typename AssetType>
+		static void ForEachAsset(MAYBE_UNUSED std::unique_lock<std::shared_mutex>& aLock, const Callback<bool(AssetType&)>& aOperation) noexcept
+		{
+			AssetStorage& assetStorage = GetStorage<AssetType>();
+			RLS_ASSERT(aLock.mutex() == &assetStorage.m_Mutex && aLock.owns_lock());
+
+			for (const auto& [id, asset] : assetStorage.m_AssetsMap)
+			{
+				if (!aOperation(static_cast<AssetType&>(*asset)))
+					break;
+			}
+		}
+
+		template<typename AssetType>
 		NO_DISCARD static uint32 GetNumAssets() noexcept
 		{
 			return GetStorage<AssetType>().GetNumAssets();
+		}
+
+		template<typename AssetType>
+		static std::unique_lock<std::shared_mutex> LockStorage() noexcept
+		{
+			AssetStorage& storage = GetStorage<AssetType>();
+			return std::unique_lock<std::shared_mutex>(storage.m_Mutex);
 		}
 
 		static void Shutdown() noexcept;
@@ -136,6 +159,30 @@ namespace Relentless
 		NO_DISCARD static AssetHandle LoadAsset(const String& aFilepath) noexcept;
 		NO_DISCARD static AssetHandle LoadAsset(const AssetData& aAssetData) noexcept;
 		static void LoadAssetAsync(const String& aFilepath, AssetDoneLoadingCallback&& aCallback) noexcept;
+
+		template<typename AssetType, typename InstanceType>
+		static void ConnectOnAssetCreated(InstanceType* aType, void(InstanceType::*aMethod)(const AssetHandle&)) noexcept
+		{
+			AssetStorage& storage = GetStorage<AssetType>();
+			std::unique_lock<std::shared_mutex> guard(storage.m_Mutex);
+			storage.OnAssetCreated.Connect(aType, aMethod);
+		}
+
+		template<typename AssetType, typename InstanceType>
+		static void ConnectOnAssetCreated(MAYBE_UNUSED std::unique_lock<std::shared_mutex>& aLock, InstanceType* aType, void(InstanceType::* aMethod)(const AssetHandle&)) noexcept
+		{
+			AssetStorage& storage = GetStorage<AssetType>();
+			RLS_ASSERT(aLock.mutex() == &storage.m_Mutex && aLock.owns_lock());
+			storage.OnAssetCreated.Connect(aType, aMethod);
+		}
+
+		template<typename AssetType, typename InstanceType>
+		static void DetachOnAssetCreated(InstanceType* aType) noexcept
+		{
+			AssetStorage& storage = GetStorage<AssetType>();
+			std::unique_lock<std::shared_mutex> guard(storage.m_Mutex);
+			storage.OnAssetCreated.Detach(aType);
+		}
 
 		template<typename TAsset>
 		static AssetHandle RegisterAsset(const Ref<IAsset>& aAsset) noexcept

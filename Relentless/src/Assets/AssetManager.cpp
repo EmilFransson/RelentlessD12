@@ -47,7 +47,7 @@ namespace Relentless
 		if (!pFactory || !pFactory->CanCreateNew())
 			return AssetHandle::INVALID;
 
-		FactoryCreateResult result = pFactory->CreateNew(pAssetData->Name, pAssetData->Uuid);
+		FactoryCreateResult result = pFactory->CreateNew(pAssetData->Type, pAssetData->Name, pAssetData->Uuid);
 		if (!result)
 			return AssetHandle::INVALID;
 
@@ -90,7 +90,7 @@ namespace Relentless
 		if (!pFactory || !pFactory->CanCreateNew())
 			return AssetHandle::INVALID;
 
-		FactoryCreateResult result = pFactory->CreateNew(aAssetData.Name, aAssetData.Uuid);
+		FactoryCreateResult result = pFactory->CreateNew(aAssetData.Type, aAssetData.Name, aAssetData.Uuid);
 		if (!result)
 			return AssetHandle::INVALID;
 

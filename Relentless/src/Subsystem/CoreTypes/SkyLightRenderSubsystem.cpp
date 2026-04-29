@@ -3,13 +3,13 @@
 #include "Assets/CoreTypes/Environment.h"
 
 #include "Callback/Callback.h"
-#include "Core/Application.h"
 
 #include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/Renderer/RenderTypes.h"
 #include "Graphics/Renderer/Service/IBLGenerationService.h"
+#include "Graphics/Scene/RenderScene.h"
 
 #include "Module/ModuleManager.h"
 #include "Module/RenderModule.h"
@@ -26,11 +26,13 @@ namespace Relentless
 
 	bool SkyLightRenderSubsystem::OnLoad(ISystemManager* aSystemManager) noexcept
 	{
-		Renderer* pRenderer = static_cast<Renderer*>(aSystemManager);
-		pRenderer->RegisterOnFrameRenderBeginCallback(Callback<void()>::Bind(this, &SkyLightRenderSubsystem::OnRenderFrameBegin));
-		pRenderer->RegisterOnUploadCallback(Callback<void(CommandContext&)>::Bind(this, &SkyLightRenderSubsystem::OnUpload));
+		RenderScene* pRenderScene = static_cast<RenderScene*>(aSystemManager);
 
-		m_pGraphicsDevice = Application::Get().GetGraphicsDevice();
+		Renderer* pRenderer = pRenderScene->GetRenderer();
+		m_OnFrameBeginCallbackID = pRenderer->RegisterOnFrameRenderBeginCallback(Callback<void()>::Bind(this, &SkyLightRenderSubsystem::OnRenderFrameBegin));
+		m_OnUploadCallbackID = pRenderer->RegisterOnUploadCallback(Callback<void(CommandContext&)>::Bind(this, &SkyLightRenderSubsystem::OnUpload));
+
+		m_pGraphicsDevice = pRenderer->GetDevice();
 
 		RenderModule& renderModule = ModuleManager::LoadModuleChecked<RenderModule>();
 		m_pIBLGenerationService = renderModule.GetIBLGenerationService().get();
@@ -38,9 +40,21 @@ namespace Relentless
 		return true;
 	}
 
+	void SkyLightRenderSubsystem::OnUnload(ISystemManager* aSystemManager) noexcept
+	{
+		RenderScene* pRenderScene = static_cast<RenderScene*>(aSystemManager);
+
+		Renderer* pRenderer = pRenderScene->GetRenderer();
+		pRenderer->UnregisterOnFrameRenderBeginCallback(m_OnFrameBeginCallbackID);
+		pRenderer->UnregisterOnUploadCallback(m_OnUploadCallbackID);
+
+		m_OnFrameBeginCallbackID = INVALID_CALLBACK_ID;
+		m_OnUploadCallbackID = INVALID_CALLBACK_ID;
+	}
+
 	bool SkyLightRenderSubsystem::ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept
 	{
-		return dynamic_cast<Renderer*>(aSystemManager) != nullptr;
+		return dynamic_cast<RenderScene*>(aSystemManager) != nullptr;
 	}
 
 	void SkyLightRenderSubsystem::Patch(std::vector<SkyLightRenderProxy> someRenderProxyUpdates) noexcept

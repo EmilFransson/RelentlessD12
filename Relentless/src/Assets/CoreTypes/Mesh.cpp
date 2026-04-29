@@ -1,5 +1,8 @@
 #include "Mesh.h"
 
+#include "Assets/AssetManager.h"
+#include "Assets/CoreTypes/Material.h"
+
 #include "Core/Application.h"
 
 #include "Graphics/RHI/Buffer.h"
@@ -8,10 +11,10 @@
 
 namespace Relentless
 {
-	Mesh::Mesh(Ref<Buffer> pVertexBuffer, Ref<Buffer> pIndexBuffer, const std::string& name) noexcept
-		: m_pVertexBuffer{ pVertexBuffer }, m_pIndexBuffer{ pIndexBuffer }
+	Mesh::Mesh(Ref<Buffer> aVertexBuffer, Ref<Buffer> aIndexBuffer, const String& aName) noexcept
+		: m_pVertexBuffer{ aVertexBuffer }, m_pIndexBuffer{ aIndexBuffer }
 	{
-		SetName(name);
+		SetName(aName);
 	}
 
 	Mesh::Mesh(const UUID& aUUID) noexcept
@@ -26,9 +29,10 @@ namespace Relentless
 
 	Mesh::~Mesh() noexcept = default;
 
-	void Mesh::SetOffsetTransform(const Matrix& transform) noexcept
+	Ref<Material> Mesh::GetDefaultMaterial() noexcept
 	{
-		m_OffsetTransform = transform;
+		RLS_ASSERT(m_DefaultMaterialHandle.IsValid(), "[Mesh::GetDefaultMaterial]: Default material handle is invalid.");
+		return AssetManager::Get<Material>(m_DefaultMaterialHandle);
 	}
 
 	const Matrix& Mesh::GetOffsetTransform() const noexcept
@@ -53,9 +57,24 @@ namespace Relentless
 		return m_pIndexBuffer;
 	}
 
-	void Mesh::SetDefaultMaterial(const AssetHandle& handle) noexcept
+	void Mesh::SetDefaultMaterial(const AssetHandle& aMaterialHandle) noexcept
 	{
-		m_DefaultMaterialHandle = handle;
+		RLS_ASSERT(aMaterialHandle.Type == Material::StaticType(), "[Mesh::SetDefaultMaterial]: Asset handle is not of material type.");
+
+		if (m_DefaultMaterialHandle == aMaterialHandle)
+			return;
+
+		m_DefaultMaterialHandle = aMaterialHandle;
+		NOTIFY_PROPERTY_CHANGED(m_DefaultMaterialHandle);
+	}
+
+	void Mesh::SetOffsetTransform(const Matrix& aOffsetTransform) noexcept
+	{
+		if (m_OffsetTransform == aOffsetTransform)
+			return;
+
+		m_OffsetTransform = aOffsetTransform;
+		NOTIFY_PROPERTY_CHANGED(m_OffsetTransform);
 	}
 
 	bool Mesh::SerializeCore(IArchive& aArchive) noexcept
@@ -169,5 +188,4 @@ namespace Relentless
 			return (m_pVertexBuffer != nullptr) && (m_pIndexBuffer != nullptr);
 		}
 	}
-
 }

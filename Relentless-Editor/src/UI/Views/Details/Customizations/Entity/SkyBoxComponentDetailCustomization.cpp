@@ -13,22 +13,22 @@ namespace Relentless
 {
 	SkyBoxComponentDetailCustomization::~SkyBoxComponentDetailCustomization() noexcept
 	{
-		if (CoreObjectBroadcasters::OnComponentPropertyChanged.IsConnected(m_OnSkyBoxComponentPropertyChangedCallbackID))
-			CoreObjectBroadcasters::OnComponentPropertyChanged.Detach(m_OnSkyBoxComponentPropertyChangedCallbackID);
+		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnSkyBoxComponentPropertyChangedCallbackID))
+			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnSkyBoxComponentPropertyChangedCallbackID);
 	}
 
 	void SkyBoxComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
-		if (CoreObjectBroadcasters::OnComponentPropertyChanged.IsConnected(m_OnSkyBoxComponentPropertyChangedCallbackID))
-			CoreObjectBroadcasters::OnComponentPropertyChanged.Detach(m_OnSkyBoxComponentPropertyChangedCallbackID);
+		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnSkyBoxComponentPropertyChangedCallbackID))
+			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnSkyBoxComponentPropertyChangedCallbackID);
 
-		m_OnSkyBoxComponentPropertyChangedCallbackID = CoreObjectBroadcasters::OnComponentPropertyChanged.Connect([&aDetailLayoutBuilder]
+		m_OnSkyBoxComponentPropertyChangedCallbackID = CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Connect([&aDetailLayoutBuilder]
 		(MAYBE_UNUSED entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty)
 			{
 				if (aComponentType != SkyBoxComponent::StaticType())
 					return;
 
-				if (aProperty == "m_PrimaryEnvironmentHandle"_h || aProperty == "m_BlendEnvironmentHandle"_h)
+				if (aProperty ==  "m_PrimaryEnvironmentHandle"_h || aProperty == "m_BlendEnvironmentHandle"_h)
 					aDetailLayoutBuilder.ForceRefreshDetails();
 			});
 

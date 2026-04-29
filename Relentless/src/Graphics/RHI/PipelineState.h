@@ -32,6 +32,8 @@ namespace Relentless
 
 		PipelineStateInitializer() noexcept;
 
+		NO_DISCARD uint64 ComputeHash() const noexcept;
+
 		void SetName(const char* pName) noexcept;
 		void SetDepthOnlyTarget(ResourceFormat dsvFormat, uint32 msaa) noexcept;
 		void SetRenderTargetFormats(Span<ResourceFormat> rtvFormats, ResourceFormat dsvFormat, uint32 msaa) noexcept;

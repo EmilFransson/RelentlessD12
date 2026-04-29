@@ -69,6 +69,7 @@ namespace Relentless
 		std::unordered_map<uint32, Ref<AsyncAssetImportResult>> m_PendingImportBatches;
 		uint32 m_NextImportBatchID = 0;
 		std::mutex m_PendingImportBatchesMutex;
+		mutable std::mutex m_FactoryMutex;
 	};
 
 	template<typename AssetType>
@@ -101,7 +102,7 @@ namespace Relentless
 			return AssetHandle::INVALID;
 		}
 
-		FactoryCreateResult result = pFactory->CreateNew(aName);
+		FactoryCreateResult result = pFactory->CreateNew(AssetType::StaticType(), aName);
 		if (!result)
 		{
 			RLS_CORE_INFO("Failed to create asset '{0}' of type '{1}' with error:\n'{2}'", aName, TypeName::GetPrettyTypeName<AssetType>(), result.error());
@@ -139,6 +140,8 @@ namespace Relentless
 	template<typename SupportedAssetType>
 	Ref<IFactory> AssetToolsModule::GetSupportingFactory() const noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_FactoryMutex);
+
 		static constexpr TypeIndex ID = getTypeIndex<SupportedAssetType>();
 
 		if (!m_RegisteredFactories.contains(ID))
@@ -150,6 +153,8 @@ namespace Relentless
 	template<typename SupportedAssetType>
 	void AssetToolsModule::RegisterFactory(const Ref<IFactory>& aFactory) noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_FactoryMutex);
+
 		static constexpr TypeIndex ID = getTypeIndex<SupportedAssetType>();
 		if (m_RegisteredFactories.contains(ID))
 			return;
@@ -162,6 +167,8 @@ namespace Relentless
 	template<typename FactoryType>
 	void AssetToolsModule::RegisterCompositeFactory(const Ref<IFactory>& aFactory) noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_FactoryMutex);
+
 		static constexpr TypeIndex ID = getTypeIndex<FactoryType>();
 		if (m_RegisteredFactories.contains(ID))
 			return;

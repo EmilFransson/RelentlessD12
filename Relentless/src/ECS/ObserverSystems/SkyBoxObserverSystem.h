@@ -10,6 +10,6 @@ namespace Relentless
 	private:
 		void OnActiveSkyBoxChange(Scene& aScene, entity aCurrentSkybox, entity aNewSkyBox) noexcept;
 		void OnEntityVisibilityChanged(EntityManager& aEntityManager, entity aEntity) noexcept;
-		void OnSkyBoxComponentRemoved(MAYBE_UNUSED EntityManager& aEntityManager, entity aEntity) noexcept;
+		void OnSkyBoxComponentRemoved(entity aEntity, const UUID& aUUID) noexcept;
 	};
 }

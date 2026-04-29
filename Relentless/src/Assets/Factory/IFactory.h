@@ -20,7 +20,7 @@ namespace Relentless
 		NO_DISCARD virtual bool CanCreateNew() const noexcept = 0;
 		NO_DISCARD virtual bool CanImport(const Path& aPath) const noexcept = 0;
 		NO_DISCARD virtual Ref<IFactory> Clone() noexcept = 0;
-		virtual FactoryCreateResult CreateNew(const String&, const UUID& aUUID = CreateUUID()) noexcept;
+		virtual FactoryCreateResult CreateNew(MAYBE_UNUSED const TypeIndex& aTypeIndex, const String&, const UUID& aUUID = CreateUUID()) noexcept;
 
 		NO_DISCARD virtual bool DoesSupportAsset(IAsset* aAsset) const noexcept = 0;
 

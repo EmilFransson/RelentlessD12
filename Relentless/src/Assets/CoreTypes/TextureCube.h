@@ -16,7 +16,7 @@ namespace Relentless
 	public:
 		TextureCube(const UUID& aUUID) noexcept;
 		TextureCube(const TextureDesc& aTextureDesc, DirectX::ScratchImage&& aImage) noexcept;
-		TextureCube(Ref<Texture> aBackingTexture) noexcept;
+		TextureCube(Ref<Texture> aBackingTexture, const TextureDesc& aTextureDesc, DirectX::ScratchImage&& aImage) noexcept;
 
 		void CreateResource() noexcept;
 

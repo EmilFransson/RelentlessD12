@@ -5,6 +5,6 @@ namespace Relentless
 {
 	struct EnvironmentDetailsContext
 	{
-		std::vector<Ref<Environment>> Environments;
+		Ref<Environment> Environment = nullptr;
 	};
 }

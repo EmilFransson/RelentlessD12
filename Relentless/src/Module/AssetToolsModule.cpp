@@ -144,10 +144,10 @@ namespace Relentless
 				continue;
 			}
 
-			importTasks.Add(threadPool.Submit([pFactory, task, pAsyncImportResult, TryFinish]()
+			importTasks.Add(threadPool.Submit([this, pFactory, task, pAsyncImportResult, TryFinish]()
 				{
 					std::vector<FactoryResult> importResults;
-					importResults.push_back(pFactory->ImportFromFile(task.FilePath, "TODO", task.FilePath.stem().string()));
+					importResults.push_back(pFactory->ImportFromFile(task.FilePath, task.DestinationPath, task.FilePath.stem().string()));
 
 					const std::vector<FactoryResult>& additionalImportedAssets = pFactory->GetAdditionalImportedAssets();
 					importResults.insert(importResults.end(), additionalImportedAssets.begin(), additionalImportedAssets.end());
@@ -157,7 +157,22 @@ namespace Relentless
 						for (const FactoryResult& importResult : importResults)
 						{
 							if (importResult)
+							{
+								Ref<IAsset> pAsset = AssetManager::Get(importResult.value());
+								Path destinationPath = task.DestinationPath;
+								if (destinationPath.empty())
+									destinationPath = task.FilePath;
+								else
+								{
+									Path fullDestination = FilepathUtils::Combine(Project::GetProjectDirectory(), destinationPath);
+									destinationPath = FilepathUtils::Combine(fullDestination, pAsset->GetName());
+								}
+
+								if (!SerializeAsset(pAsset, destinationPath, Time::GetCurrentTimePoint()))
+									continue;
+
 								pAsyncImportResult->ImportResults.push_back({ importResult.value(), task.FilePath });
+							}
 							else
 							{
 								RLS_CORE_WARN("Failed to import asset from file '{0}' with error: '{1}'", task.FilePath.string(), importResult.error());
@@ -174,6 +189,8 @@ namespace Relentless
 
 	Ref<IFactory> AssetToolsModule::GetSupportingFactory(const Path& aPath) const noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_FactoryMutex);
+
 		for (const auto& [id, pFactory] : m_RegisteredFactories)
 		{
 			if (pFactory->CanImport(aPath))
@@ -185,6 +202,8 @@ namespace Relentless
 
 	Ref<IFactory> AssetToolsModule::GetSupportingFactory(const TypeIndex& aType) const noexcept
 	{
+		std::lock_guard<std::mutex> guard(m_FactoryMutex);
+
 		if (!m_RegisteredFactories.contains(aType))
 			return nullptr;
 

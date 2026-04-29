@@ -2,67 +2,46 @@
 
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RHI/CommandContext.h"
+#include "Graphics/RHI/Device.h"
+#include "Graphics/RHI/PipelineState.h"
 
 namespace Relentless
 {
 	DepthPrePass::DepthPrePass(GraphicsDevice* pDevice) noexcept
 		: m_pDevice{ pDevice }
 	{
-		PipelineStateInitializer psoDesc{};
-		psoDesc.SetDepthWrite(true);
-		psoDesc.SetDepthEnabled(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
-		psoDesc.SetDepthOnlyTarget(ResourceFormat::D32_FLOAT, 1);
-		psoDesc.SetName("Depth Prepass - Opaque");
-		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
-		psoDesc.SetVertexShader("DepthPrePassShader", "vs_main");
-
-		m_pOpaquePSO = m_pDevice->CreatePipeline(psoDesc);
 	}
 
-	void DepthPrePass::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept
+	void DepthPrePass::Render(CommandContext& commandContext, const RenderView& aRenderView, SceneTextures& sceneTextures) noexcept
 	{
-		if (!m_pDepthTarget ||
-			m_pDepthTarget->GetWidth() != sceneTextures.pDepthTarget->GetWidth() ||
-			m_pDepthTarget->GetHeight() != sceneTextures.pDepthTarget->GetHeight() ||
-			m_pDepthTarget->GetSampleCount() != sceneTextures.pDepthTarget->GetSampleCount())
-		{
-			const uint32 width = sceneTextures.pDepthTarget->GetWidth();
-			const uint32 height = sceneTextures.pDepthTarget->GetHeight();
-
-			const TextureDesc depthTargetDesc = TextureDesc::Create2D(
-				width,
-				height,
-				sceneTextures.pDepthTarget->GetFormat(),
-				1u,
-				TextureFlag::DepthStencil | TextureFlag::ShaderResource,
-				ClearBinding(1.0f, 1u),
-				sceneTextures.pDepthTarget->GetSampleCount());
-
-			m_pDepthTarget = m_pDevice->CreateTexture(depthTargetDesc, "Depth Target");
-		}
-
 		RenderPassInfo info{};
-		info.DepthStencilTarget.pTarget = m_pDepthTarget;
 		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ClearDepth;
-		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::None;
+		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::Preserve;
+		info.DepthStencilTarget.pTarget = sceneTextures.pDepthTarget;
 
+		commandContext.InsertResourceBarrier(info.DepthStencilTarget.pTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 		commandContext.BeginRenderPass(info);
 
 		commandContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		commandContext.SetGraphicsRootSignature(m_pDevice->GetGlobalRootSignature());
 
-		Renderer::BindViewData(commandContext, renderView);
+		Renderer::BindViewData(commandContext, aRenderView);
 
 		//Opaque
 		{
-			commandContext.SetPipelineState(m_pOpaquePSO);
-			Renderer::DrawScene(commandContext, renderView, Batch::Blending::Opaque);
+			PipelineStateInitializer psoDesc{};
+			psoDesc.SetName("Depth Prepass - Opaque");
+			psoDesc.SetDepthWrite(true);
+			psoDesc.SetDepthEnabled(true);
+			psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+			psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
+			psoDesc.SetVertexShader("DepthPrePassShader", "vs_main");
+			psoDesc.SetDepthOnlyTarget(ResourceFormat::D32_FLOAT, static_cast<uint32>(aRenderView.RenderQualitySettings.MSAASampleCount));
+
+			commandContext.SetPipelineState(m_pDevice->GetOrCreatePipeline(psoDesc));
+			Renderer::DrawScene(commandContext, aRenderView, Batch::Blending::Opaque);
 		}
 
 		commandContext.EndRenderPass();
-
-		sceneTextures.pDepthTarget = m_pDepthTarget;
 	}
-
 }

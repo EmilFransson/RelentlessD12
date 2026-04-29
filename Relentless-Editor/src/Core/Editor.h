@@ -1,14 +1,13 @@
 #pragma once
 #include <Relentless.h>
-#include "Panels/OutlinerPanel.h"
-#include "Panels/ViewportPanel.h"
-#include "Panels/TestLayoutPanel.h"
 
 namespace Relentless
 {
 	enum class ESceneState : uint8 { Edit = 0u, Play, Simulate };
 
 	class EntityFolder;
+	class EntityOutlinerView;
+	class OutlinerPanel;
 
 	class Editor : public ISystemManager
 	{
@@ -71,9 +70,6 @@ namespace Relentless
 			float AccumulatedTime = 0.0f;
 			bool Alive = false;
 		};
-
-		std::vector<ViewportRenderView> m_RenderViews;
-		std::vector<ViewportPanel*> m_EditorViewports;
 
 		std::vector<UpdateCallbackContext> m_UpdateCallbacks;
 		std::queue<CallbackID> m_UpdateCallbacksFreeList;

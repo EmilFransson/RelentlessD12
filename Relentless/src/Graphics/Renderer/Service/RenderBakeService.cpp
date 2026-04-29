@@ -4,6 +4,7 @@
 
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RHI/CommandContext.h"
+#include "Graphics/RHI/Device.h"
 #include "Graphics/Shaders/Interop/ShaderInterop.h"
 
 namespace Relentless
@@ -25,7 +26,7 @@ namespace Relentless
 				const uint32 dimension = aSpecification.CubeFaceDimension;
 				const uint32 numMips = static_cast<uint32>(std::floor(Math::Log2f(static_cast<float>(dimension)) + 1.0f));
 
-				Ref<Texture> pTextureCube = m_pGraphicsDevice->CreateTexture(TextureDesc::CreateCube(dimension, dimension, ResourceFormat::RGBA32_FLOAT, numMips, TextureFlag::UnorderedAccess | TextureFlag::ShaderResource), name.c_str());
+				Ref<Texture> pTextureCube = m_pGraphicsDevice->CreateTexture(TextureDesc::CreateCube(dimension, dimension, ResourceFormat::RGBA16_FLOAT, numMips, TextureFlag::UnorderedAccess | TextureFlag::ShaderResource), name.c_str());
 				
 				aCommandContext.InsertResourceBarrier(pTextureCube, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 				aCommandContext.InsertResourceBarrier(aSpecification.EquirectangularTexture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

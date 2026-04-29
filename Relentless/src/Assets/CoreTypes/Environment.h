@@ -23,6 +23,7 @@ namespace Relentless
 		}
 
 		NO_DISCARD Ref<TextureCube> GetEnvironmentMap() const noexcept;
+		NO_DISCARD const AssetHandle& GetEnvironmentMapHandle() const noexcept;
 		NO_DISCARD float GetIntensity() const noexcept;
 		NO_DISCARD const Color& GetSolidColor() const noexcept;
 		NO_DISCARD EEnvironmentSourceType GetSourceType() const noexcept;

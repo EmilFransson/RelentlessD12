@@ -119,7 +119,7 @@ namespace Relentless
 		uint32			Height				: 14	= 1;
 		uint32			DepthOrArraySize	: 10	= 1;
 		uint32			Mips				: 5		= 1;
-		uint32			SampleCount			: 3		= 1;
+		uint32			SampleCount			: 4		= 1;
 		TextureType		Type						= TextureType::Texture2D;
 		TextureFlag		Flags						= TextureFlag::None;
 		ResourceFormat	Format						= ResourceFormat::Unknown;
@@ -227,6 +227,11 @@ namespace Relentless
 		NO_DISCARD DepthStencilView* GetDSV(uint32 subResourceIndex = 0) const noexcept;
 		NO_DISCARD uint32 GetDSVIndex(uint32 subResourceIndex = 0) const noexcept;
 
+		NO_DISCARD DepthStencilView* GetReadOnlyDSV(uint32 subResourceIndex = 0) const noexcept;
+		NO_DISCARD uint32 GetReadOnlyDSVIndex(uint32 subResourceIndex = 0) const noexcept;
+		NO_DISCARD uint32 GetWritableDSVIndex(uint32 subResourceIndex = 0) const noexcept;
+		NO_DISCARD DepthStencilView* GetWritableDSV(uint32 subResourceIndex = 0) const noexcept;
+
 		NO_DISCARD ShaderResourceView* GetSRV() const noexcept;
 		NO_DISCARD uint32 GetSRVIndex() const noexcept;
 		NO_DISCARD uint32 GetArraySRVIndex(uint32 aMip) const noexcept;
@@ -237,7 +242,11 @@ namespace Relentless
 		NO_DISCARD RenderTargetView* GetRTV(uint32 subResourceIndex = 0) const noexcept;
 		NO_DISCARD uint32 GetRTVIndex(uint32 subResourceIndex = 0) const noexcept;
 
+		NO_DISCARD bool HasDSV(uint32 subResourceIndex = 0) const noexcept;
 		NO_DISCARD bool HasRTV(uint32 subResourceIndex = 0) const noexcept;
+
+		void SetReadOnlyDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex = 0u) noexcept;
+		void SetWritableDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex = 0u) noexcept;
 
 		void SetDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex = 0u) noexcept;
 		void SetSRV(Ref<ShaderResourceView> pSRV) noexcept;
@@ -252,6 +261,9 @@ namespace Relentless
 		std::vector<Ref<ShaderResourceView>> m_PerMipSRVs;
 		std::vector<Ref<UnorderedAccessView>> m_UAVs;
 		std::vector<Ref<RenderTargetView>> m_RTVs;
+		
 		std::vector<Ref<DepthStencilView>> m_DSVs;
+		std::vector<Ref<DepthStencilView>> m_WritableDSVs;
+		std::vector<Ref<DepthStencilView>> m_ReadOnlyDSVs;
 	};
 }

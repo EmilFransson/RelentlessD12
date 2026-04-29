@@ -58,6 +58,7 @@
 #include <src/Graphics/RHI/CommandContext.h>
 #include <src/Graphics/RHI/Swapchain.h>
 #include <src/Graphics/Renderer/Service/RenderBakeService.h>
+#include <src/Graphics/Renderer/RenderQualitySettings.h>
 
 //Assets:
 #include <src/Assets/AssetManager.h>
@@ -89,8 +90,10 @@
 #include <src/ECS/EntityManager.h>
 #include <src/ECS/ECSCommon.h>
 #include <src/ECS/ISystem.h>
+#include <src/ECS/Components/LightComponent.h>
 #include <src/ECS/Components/SkyBoxComponent.h>
 #include <src/ECS/Components/SkyLightComponent.h>
+#include <src/ECS/Components/TransformComponent.h>
 #include <src/Scene/Scene.h>
 
 //Serialization
@@ -107,3 +110,6 @@
 #include <src/Memory/ArenaAllocator.h>
 #include <src/Memory/ArenaVector.h>
 #include <src/Memory/SharedFromThis.h>
+
+//Property:
+#include <Property/PropertyUtils.h>

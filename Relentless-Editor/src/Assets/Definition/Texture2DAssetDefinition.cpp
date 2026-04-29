@@ -26,4 +26,10 @@ namespace Relentless
 	{
 		return aAssetData->Type == Texture2D::StaticType();
 	}
+
+	bool Texture2DAssetDefinition::SupportsAsset(const AssetHandle& aAssetHandle) const noexcept
+	{
+		return aAssetHandle.Type == Texture2D::StaticType();
+	}
+
 }

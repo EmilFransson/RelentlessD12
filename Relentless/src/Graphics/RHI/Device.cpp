@@ -179,7 +179,7 @@ namespace Relentless
 		const uint64 scratchAllocatorPageSize = 256 * Math::KilobytesToBytes;
 		m_pScratchAllocationManager = new ScratchAllocationManager(this, scratchAllocatorPageSize);
 
-		const uint32 ringBufferSize = 512 * Math::MegaBytesToBytes;
+		const uint64 ringBufferSize = 4000ull * (uint64)Math::MegaBytesToBytes; //4GB
 		m_pRingBufferAllocator = new RingBufferAllocator(this, ringBufferSize);
 
 		m_CommandQueues[D3D12_COMMAND_LIST_TYPE_DIRECT] = new CommandQueue(this, D3D12_COMMAND_LIST_TYPE_DIRECT);
@@ -296,6 +296,8 @@ namespace Relentless
 			pBuffer->SetUAV(CreateUAV(pBuffer, BufferUAVDesc(desc.Format, isRaw, withCounter)));
 		}
 
+		//TEMP: Required because of issues when loading assets in parallel:
+		std::lock_guard<std::mutex> guard(m_GlobalMutex);
 		if (pInitData)
 		{
 			if (EnumHasAllFlags(desc.Flags, BufferFlag::Upload))
@@ -305,7 +307,7 @@ namespace Relentless
 			else
 			{
 				RingBufferAllocation allocation;
-				m_pRingBufferAllocator->Allocate((uint32)desc.Size, allocation);
+				m_pRingBufferAllocator->Allocate(desc.Size, allocation);
 				memcpy((char*)allocation.pMappedMemory, pInitData, desc.Size);
 				allocation.pContext->CopyBuffer(allocation.pBackingResource, pBuffer, desc.Size, allocation.Offset, 0);
 				m_pRingBufferAllocator->Free(allocation);
@@ -388,48 +390,56 @@ namespace Relentless
 		pTexture->SetName(pName);
 		pTexture->SetResourceState(resourceState);
 
-		if (initData.GetSize() > 0)
 		{
-			RLS_ASSERT(initData.GetSize() == desc.DepthOrArraySize * desc.Mips, "[GraphicsDevice::CreateTexture] Size Mismatch.");
+			//TEMP: Required because of issues when loading assets in parallel:
+			std::lock_guard<std::mutex> guard(m_GlobalMutex);
 
-			uint64 requiredSize = 0;
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT layouts[16];
-			uint32 numRows[16];
-			uint64 rowSizes[16];
-			m_pDevice->GetCopyableFootprints(&resourceDesc, 0, initData.GetSize(), 0, layouts, numRows, rowSizes, &requiredSize);
-			RingBufferAllocation allocation;
-			RLS_VERIFY(m_pRingBufferAllocator->Allocate((uint32)requiredSize, allocation), "FAILED TO ALLOCATE");
-
-			for (uint32 subResource = 0; subResource < initData.GetSize(); ++subResource)
+			if (initData.GetSize() > 0)
 			{
-				const D3D12_SUBRESOURCE_DATA& srcData = initData[subResource];
-				D3D12_PLACED_SUBRESOURCE_FOOTPRINT& dstLayout = layouts[subResource];
+				RLS_ASSERT(initData.GetSize() == desc.DepthOrArraySize * desc.Mips, "[GraphicsDevice::CreateTexture] Size Mismatch.");
 
-				D3D12_MEMCPY_DEST dest =
-				{
-					.pData = (char*)allocation.pMappedMemory + dstLayout.Offset,
-					.RowPitch = dstLayout.Footprint.RowPitch,
-					.SlicePitch = (uint64)dstLayout.Footprint.RowPitch * numRows[subResource]
-				};
+				const uint32 subresourceCount = initData.GetSize();
 
-				for (uint32 z = 0; z < dstLayout.Footprint.Depth; ++z)
+				uint64 requiredSize = 0;
+				std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(subresourceCount);
+				std::vector<uint32> numRows(subresourceCount);
+				std::vector<uint64> rowSizes(subresourceCount);
+
+				m_pDevice->GetCopyableFootprints(&resourceDesc, 0, subresourceCount, 0, layouts.data(), numRows.data(), rowSizes.data(), &requiredSize);
+
+				RingBufferAllocation allocation;
+				RLS_VERIFY(m_pRingBufferAllocator->Allocate(requiredSize, allocation), "FAILED TO ALLOCATE");
+
+				for (uint32 subResource = 0; subResource < initData.GetSize(); ++subResource)
 				{
-					char* pDest = (char*)dest.pData + dest.SlicePitch * z;
-					const char* pSrc = (char*)srcData.pData + srcData.SlicePitch * z;
-					for (uint32 y = 0; y < numRows[subResource]; ++y)
+					const D3D12_SUBRESOURCE_DATA& srcData = initData[subResource];
+					D3D12_PLACED_SUBRESOURCE_FOOTPRINT& dstLayout = layouts[subResource];
+
+					D3D12_MEMCPY_DEST dest =
 					{
-						memcpy(pDest + y * dest.RowPitch, pSrc + y * srcData.RowPitch, rowSizes[subResource]);
+						.pData = (char*)allocation.pMappedMemory + dstLayout.Offset,
+						.RowPitch = dstLayout.Footprint.RowPitch,
+						.SlicePitch = (uint64)dstLayout.Footprint.RowPitch * numRows[subResource]
+					};
+
+					for (uint32 z = 0; z < dstLayout.Footprint.Depth; ++z)
+					{
+						char* pDest = (char*)dest.pData + dest.SlicePitch * z;
+						const char* pSrc = (char*)srcData.pData + srcData.SlicePitch * z;
+						for (uint32 y = 0; y < numRows[subResource]; ++y)
+						{
+							memcpy(pDest + y * dest.RowPitch, pSrc + y * srcData.RowPitch, rowSizes[subResource]);
+						}
 					}
+
+					dstLayout.Offset += allocation.Offset;
+
+					const CD3DX12_TEXTURE_COPY_LOCATION dst(pTexture->GetResource(), subResource);
+					const CD3DX12_TEXTURE_COPY_LOCATION src(allocation.pBackingResource->GetResource(), dstLayout);
+					allocation.pContext->GetCommandList()->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 				}
-
-				dstLayout.Offset += allocation.Offset;
-
-				const CD3DX12_TEXTURE_COPY_LOCATION dst(pTexture->GetResource(), subResource);
-				const CD3DX12_TEXTURE_COPY_LOCATION src(allocation.pBackingResource->GetResource(), dstLayout);
-				allocation.pContext->GetCommandList()->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+				m_pRingBufferAllocator->Free(allocation);
 			}
-
-			m_pRingBufferAllocator->Free(allocation);
 		}
 
 		if (EnumHasAnyFlags(desc.Flags, TextureFlag::ShaderResource))
@@ -449,13 +459,35 @@ namespace Relentless
 			for (uint8 mip = 0; mip < desc.Mips; ++mip)
 				pTexture->SetUAV(CreateUAV(pTexture, TextureUAVDesc(mip)), mip);
 		}
+
+		const uint32 numSlices = desc.Type == TextureType::TextureCube ? 6u : 1u;
+
 		if (EnumHasAnyFlags(desc.Flags, TextureFlag::RenderTarget))
 		{
 			pTexture->SetStateTracking(true);
+
+			for (uint32 slice = 0; slice < numSlices; ++slice)
+			{
+				for (uint32 mip = 0; mip < desc.Mips; ++mip)
+				{
+					const uint32 viewIndex = slice * desc.Mips + mip;
+					pTexture->SetRTV(CreateRTV(pTexture, TextureRTVDesc(mip, slice, 1u, 0u)), viewIndex);
+				}
+			}
 		}
 		else if (EnumHasAnyFlags(desc.Flags, TextureFlag::DepthStencil))
 		{
 			pTexture->SetStateTracking(true);
+
+			for (uint32 slice = 0; slice < numSlices; ++slice)
+			{
+				for (uint32 mip = 0; mip < desc.Mips; ++mip)
+				{
+					const uint32 viewIndex = slice * desc.Mips + mip;
+					pTexture->SetReadOnlyDSV(CreateDSV(pTexture, TextureDSVDesc(DepthTargetAccessFlags::ReadOnlyDepth, mip, slice)), viewIndex);
+					pTexture->SetWritableDSV(CreateDSV(pTexture, TextureDSVDesc(DepthTargetAccessFlags::None, slice)), viewIndex);
+				}
+			}
 		}
 
 		return pTexture;
@@ -603,11 +635,16 @@ namespace Relentless
 		{
 		case TextureType::Texture2D:
 		{
-			srvDesc.ViewDimension = desc.SampleCount > 1 ? D3D12_SRV_DIMENSION_TEXTURE2DMS : D3D12_SRV_DIMENSION_TEXTURE2D;
-			srvDesc.Texture2D.MipLevels = textureSRVDesc.NumMipLevels;
-			srvDesc.Texture2D.MostDetailedMip = textureSRVDesc.MipLevel;
-			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-			srvDesc.Texture2D.PlaneSlice = 0u;
+			if (desc.SampleCount > 1)
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+			else
+			{
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srvDesc.Texture2D.MipLevels = textureSRVDesc.NumMipLevels;
+				srvDesc.Texture2D.MostDetailedMip = textureSRVDesc.MipLevel;
+				srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+				srvDesc.Texture2D.PlaneSlice = 0u;
+			}
 			break;
 		}
 		case TextureType::TextureCube:
@@ -627,7 +664,7 @@ namespace Relentless
 				srvDesc.Texture2DArray.MostDetailedMip = textureSRVDesc.MipLevel;
 				srvDesc.Texture2DArray.MipLevels = textureSRVDesc.NumMipLevels;
 				srvDesc.Texture2DArray.FirstArraySlice = 0;
-				srvDesc.Texture2DArray.ArraySize = desc.DepthOrArraySize/* * 6*/;
+				srvDesc.Texture2DArray.ArraySize = desc.DepthOrArraySize;
 				srvDesc.Texture2DArray.PlaneSlice = 0;
 				srvDesc.Texture2DArray.ResourceMinLODClamp = 0.0f;
 			}
@@ -794,6 +831,37 @@ namespace Relentless
 	RootSignature* GraphicsDevice::GetGlobalRootSignature() const noexcept
 	{
 		return m_pGlobalRootSignature;
+	}
+
+	PipelineState* GraphicsDevice::GetOrCreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName, const char* pEntryPoint, Span<String> someDefines) noexcept
+	{
+		PipelineStateInitializer pipelineStateInitializer;
+		pipelineStateInitializer.SetRootSignature(pRootSignature);
+		pipelineStateInitializer.SetComputeShader(pShaderName, pEntryPoint, someDefines);
+		pipelineStateInitializer.SetName(std::format("Compute PSO: {0}", pShaderName).c_str());
+
+		const uint64 psoHash = pipelineStateInitializer.ComputeHash();
+
+		std::lock_guard<std::mutex> guard(m_PSOMutex);
+		if (auto it = m_PSOs.find(psoHash); it != m_PSOs.end())
+			return it->second;
+
+		Ref<PipelineState> pPSO = CreatePipeline(pipelineStateInitializer);
+		m_PSOs[psoHash] = pPSO;
+		return pPSO;
+	}
+
+	PipelineState* GraphicsDevice::GetOrCreatePipeline(const PipelineStateInitializer& aPipelineStateInitializer) noexcept
+	{
+		const uint64 psoHash = aPipelineStateInitializer.ComputeHash();
+		
+		std::lock_guard<std::mutex> guard(m_PSOMutex);
+		if (auto it = m_PSOs.find(psoHash); it != m_PSOs.end())
+			return it->second;
+
+		Ref<PipelineState> pPSO = CreatePipeline(aPipelineStateInitializer);
+		m_PSOs[psoHash] = pPSO;
+		return pPSO;
 	}
 
 	DescriptorHeap* GraphicsDevice::GetRenderTargetViewDescriptorHeap() const noexcept

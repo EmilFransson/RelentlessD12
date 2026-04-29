@@ -54,6 +54,8 @@ namespace Relentless
 		NO_DISCARD DescriptorHeap* GetGlobalShaderBindableHeap() const noexcept;
 		NO_DISCARD DescriptorHeap* GetGlobalSamplerHeap() const noexcept;
 		NO_DISCARD RootSignature* GetGlobalRootSignature() const noexcept;
+		NO_DISCARD PipelineState* GetOrCreateComputePipeline(RootSignature* pRootSignature, const char* pShaderName, const char* pEntryPoint, Span<String> someDefines = {}) noexcept;
+		NO_DISCARD PipelineState* GetOrCreatePipeline(const PipelineStateInitializer& aPipelineStateInitializer) noexcept;
 		NO_DISCARD DescriptorHeap* GetRenderTargetViewDescriptorHeap() const noexcept;
 		NO_DISCARD RingBufferAllocator* GetRingBuffer() const noexcept;
 		NO_DISCARD ShaderLibrary* GetShaderLibrary() const noexcept;
@@ -71,6 +73,7 @@ namespace Relentless
 
 		uint64 m_FrameIndex = 0u;
 
+		std::unordered_map<uint64, Ref<PipelineState>> m_PSOs;
 		std::array<uint64, NUM_BUFFERS> m_FrameFenceValues{};
 		Ref<Fence> m_pFrameFence = nullptr;
 
@@ -107,6 +110,8 @@ namespace Relentless
 		Ref<RingBufferAllocator> m_pRingBufferAllocator = nullptr;
 
 		std::mutex m_CommandContextAllocationMutex;
+		mutable std::mutex m_GlobalMutex;
+		std::mutex m_PSOMutex;
 
 		Ref<RootSignature> m_pGlobalRootSignature = nullptr;
 	};

@@ -70,6 +70,28 @@ namespace Relentless
 		return m_DSVs[subResourceIndex]->GetDescriptorIndex();
 	}
 
+	DepthStencilView* Texture::GetReadOnlyDSV(uint32 subResourceIndex /*= 0*/) const noexcept
+	{
+		RLS_ASSERT(m_ReadOnlyDSVs.size() > subResourceIndex, "[Texture] Index Out Of Bounds Error.");
+		return m_ReadOnlyDSVs[subResourceIndex];
+	}
+
+	uint32 Texture::GetReadOnlyDSVIndex(uint32 subResourceIndex /*= 0*/) const noexcept
+	{
+		return m_ReadOnlyDSVs[subResourceIndex]->GetDescriptorIndex();
+	}
+
+	uint32 Texture::GetWritableDSVIndex(uint32 subResourceIndex /*= 0*/) const noexcept
+	{
+		return m_WritableDSVs[subResourceIndex]->GetDescriptorIndex();
+	}
+
+	DepthStencilView* Texture::GetWritableDSV(uint32 subResourceIndex /*= 0*/) const noexcept
+	{
+		RLS_ASSERT(m_WritableDSVs.size() > subResourceIndex, "[Texture] Index Out Of Bounds Error.");
+		return m_WritableDSVs[subResourceIndex];
+	}
+
 	ShaderResourceView* Texture::GetSRV() const noexcept
 	{
 		return m_pSRV;
@@ -111,9 +133,30 @@ namespace Relentless
 		return m_RTVs[subResourceIndex]->GetDescriptorIndex();
 	}
 
+	bool Texture::HasDSV(uint32 subResourceIndex) const noexcept
+	{
+		return subResourceIndex < m_DSVs.size();
+	}
+
 	bool Texture::HasRTV(uint32 subResourceIndex /*= 0*/) const noexcept
 	{
 		return subResourceIndex < m_RTVs.size();
+	}
+
+	void Texture::SetReadOnlyDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex /*= 0u*/) noexcept
+	{
+		if (subResourceIndex >= m_ReadOnlyDSVs.size())
+			m_ReadOnlyDSVs.resize(subResourceIndex + 1);
+		
+		m_ReadOnlyDSVs[subResourceIndex] = pDSV;
+	}
+
+	void Texture::SetWritableDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex /*= 0u*/) noexcept
+	{
+		if (subResourceIndex >= m_WritableDSVs.size())
+			m_WritableDSVs.resize(subResourceIndex + 1);
+
+		m_WritableDSVs[subResourceIndex] = pDSV;
 	}
 
 	void Texture::SetDSV(Ref<DepthStencilView> pDSV, uint32 subResourceIndex) noexcept

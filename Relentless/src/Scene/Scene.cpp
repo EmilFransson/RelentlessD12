@@ -4,14 +4,31 @@
 #include "Assets/CoreTypes/Material.h"
 
 #include "ECS/Component.h"
+#include "ECS/Components/LightComponent.h"
+#include "ECS/Components/MeshFilterComponent.h"
+#include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/SkyBoxComponent.h"
 #include "ECS/Components/SkyLightComponent.h"
-#include "ECS/Systems/DeferredEntityDeletionSystem.h"
-#include "ECS/Systems/SkyBoxRenderDispatchSystem.h"
-#include "ECS/Systems/SkyLightRenderDispatchSystem.h"
-#include "ECS/Systems/TransformRenderDispatchSystem.h"
+#include "ECS/Components/TransformComponent.h"
+
+#include "ECS/ObserverSystems/LightObserverSystem.h"
+#include "ECS/ObserverSystems/PrimitiveObserverSystem.h"
 #include "ECS/ObserverSystems/SkyBoxObserverSystem.h"
 #include "ECS/ObserverSystems/SkyLightObserverSystem.h"
+
+#include "ECS/Systems/DeferredEntityDeletionSystem.h"
+#include "ECS/Systems/MeshFilterCleanupSystem.h"
+#include "ECS/Systems/MeshRendererCleanupSystem.h"
+#include "ECS/Systems/SkyBoxRenderDispatchSystem.h"
+#include "ECS/Systems/SkyLightRenderDispatchSystem.h"
+#include "ECS/Systems/DirectionalLightRenderDispatchSystem.h"
+#include "ECS/Systems/PointLightRenderDispatchSystem.h"
+#include "ECS/Systems/PrimitiveRenderDispatchSystem.h"
+#include "ECS/Systems/SpotLightRenderDispatchSystem.h"
+#include "ECS/Systems/TransformCleanupSystem.h"
+
+#include "Subsystem/CoreTypes/MaterialSceneSubsystem.h"
+#include "Subsystem/CoreTypes/MeshSceneSubsystem.h"
 
 namespace Relentless
 {
@@ -19,20 +36,34 @@ namespace Relentless
 		:m_UUID{ CreateUUID() },
 		 m_Name{ aName }
 	{
+		//Default subsystem initialization:
+		GetSubsystem<MaterialSceneSubsystem>();
+		GetSubsystem<MeshSceneSubsystem>();
+
 		//ECS-Systems (Order must be preserved!):
 		RegisterSystem<SkyBoxRenderDispatchSystem>();
 		RegisterSystem<SkyLightRenderDispatchSystem>();
-		RegisterSystem<TransformRenderDispatchSystem>();
+		RegisterSystem<DirectionalLightRenderDispatchSystem>();
+		RegisterSystem<PointLightRenderDispatchSystem>();
+		RegisterSystem<SpotLightRenderDispatchSystem>();
+		RegisterSystem<PrimitiveRenderDispatchSystem>();
+		
+		RegisterSystem<MeshFilterCleanupSystem>();
+		RegisterSystem<MeshRendererCleanupSystem>();
+		RegisterSystem<TransformCleanupSystem>();
+		
 		RegisterSystem<DeferredEntityDeletionSystem>();
 
 		//ECS-Observer-Systems:
+		RegisterObserverSystem<LightObserverSystem>();
 		RegisterObserverSystem<SkyBoxObserverSystem>();
 		RegisterObserverSystem<SkyLightObserverSystem>();
+		RegisterObserverSystem<PrimitiveObserverSystem>();
 	}
 
-	bool Scene::AnyEntityHasName(const char* pName) const noexcept
+	bool Scene::AnyEntityHasName(const char* aName) const noexcept
 	{
-		const std::string name(pName);
+		const String name(aName);
 
 		const std::vector<NameComponent>& components = m_EntityManager.Collect<NameComponent>().GetComponents();
 		for (const auto& component : components)
@@ -101,7 +132,7 @@ namespace Relentless
 
 		CopyComponentIfExists<TransformComponent>(entityToCopy, newEntity);
 		auto& tc = m_EntityManager.Get<TransformComponent>(newEntity);
-		tc.Scene = this;
+		tc.m_Scene = this;
 
 		CopyComponentIfExists<MeshFilterComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<MeshRendererComponent>(entityToCopy, newEntity);
@@ -124,7 +155,7 @@ namespace Relentless
 		const entity newEntity = m_EntityManager.CreateEntity();
 
 		auto& tc = m_EntityManager.Add<TransformComponent>(newEntity);
-		tc.Scene = this;
+		tc.m_Scene = this;
 
 		m_EntityManager.Add<NameComponent>(newEntity, name);
 		m_EntityManager.Add<IDComponent>(newEntity, aUUID);
@@ -165,30 +196,10 @@ namespace Relentless
 
 	void Scene::OnRuntimeStart() noexcept
 	{
-
 	}
-
 
 	void Scene::OnRuntimeStop() noexcept
 	{
-		SetPaused(false);
-
-		//Here we make sure the copy-created assets are removed (they are duplicates):
-		std::unordered_map<UUID, AssetHandle> assetsToRemove;
-
-		//Materials:
-		m_EntityManager.Collect<MeshRendererComponent>().Do([&assetsToRemove](MeshRendererComponent& mrc)
-			{
-				if (!assetsToRemove.contains(mrc.AssetHandle.Uuid))
-				{
-					assetsToRemove[mrc.AssetHandle.Uuid] = mrc.AssetHandle;
-				}
-			});
-
-		for (auto& [uuid, handle] : assetsToRemove)
-		{
-			AssetManager::Destroy<Material>(handle);
-		}
 	}
 
 	entity Scene::CreateCamera(const char* name) noexcept

@@ -2,7 +2,7 @@
 
 namespace Relentless
 {
-	FactoryCreateResult IFactory::CreateNew(MAYBE_UNUSED const String&, MAYBE_UNUSED const UUID& aUUID) noexcept
+	FactoryCreateResult IFactory::CreateNew(MAYBE_UNUSED const TypeIndex& aTypeIndex, MAYBE_UNUSED const String&, MAYBE_UNUSED const UUID& aUUID) noexcept
 	{
 		return nullptr;
 	}

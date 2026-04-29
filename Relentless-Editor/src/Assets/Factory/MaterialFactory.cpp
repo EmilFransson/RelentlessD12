@@ -17,7 +17,7 @@ namespace Relentless
 		return new MaterialFactory();
 	}
 
-	FactoryCreateResult MaterialFactory::CreateNew(const String& aName, const UUID& aUUID) noexcept
+	FactoryCreateResult MaterialFactory::CreateNew(MAYBE_UNUSED const TypeIndex& aType, const String& aName, const UUID& aUUID) noexcept
 	{
 		Ref<Material> pMaterial = new Material(aUUID);
 		pMaterial->SetName(aName);
