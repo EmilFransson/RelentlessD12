@@ -20,6 +20,9 @@ namespace Relentless
 		float DisplacementIntensity			= 0.0f;
 		float AmbientOcclusionIntensity		= 0.0f;
 		EBlendMode BlendMode				= EBlendMode::Opaque;
+		float AlphaCutOff					= 0.5f;
+		float IOR							= 1.5f;
+		float RefractionStrength			= 0.0f;
 		bool IsTwoSided						= false;
 
 		Ref<Texture> AlbedoMap				= nullptr;
@@ -29,5 +32,6 @@ namespace Relentless
 		Ref<Texture> MetalnessMap			= nullptr;
 		Ref<Texture> EmissionMap			= nullptr;
 		Ref<Texture> AmbientOcclusionMap	= nullptr;
+		Ref<Texture> OpacityMap				= nullptr;
 	};
 }

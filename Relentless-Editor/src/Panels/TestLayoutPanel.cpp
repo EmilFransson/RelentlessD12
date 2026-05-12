@@ -122,4 +122,14 @@ namespace Relentless
 
 		SetRoot(pRoot);
 	}
+
+	String TestLayoutPanel::GetDisplayName() const noexcept
+	{
+		return "Test Layout";
+	}
+
+	String TestLayoutPanel::GetPersistKey() const noexcept
+	{
+		return "Test Layout";
+	}
 }

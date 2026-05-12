@@ -59,6 +59,8 @@ namespace Relentless
 
 		bool Serialize(IArchive& archive);
 
+		NO_DISCARD String ToString() const noexcept;
+
 		TypeIndex Type = INVALID_TYPE::StaticType();
 		UUID Uuid = NULL_UUID;
 

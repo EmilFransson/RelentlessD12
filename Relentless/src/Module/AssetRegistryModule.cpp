@@ -220,23 +220,40 @@ namespace Relentless
 
 	AssetKeys AssetRegistryModule::BuildKeys(const AssetData& aAssetData) const
 	{
-		const Path assetsBase = Project::GetProjectDirectory();
+		const AssetRoot* pRoot = FindRootFor(aAssetData.PackagePath);
+		RLS_ASSERT(pRoot, "[AssetRegistryModule::BuildKeys]: Asset path doesn't belong to any registered root.");
+
 		const Path absFull = std::filesystem::absolute(aAssetData.PackagePath).lexically_normal();
-		const Path absAssets = std::filesystem::absolute(assetsBase).lexically_normal();
-		const Path relative = std::filesystem::relative(absFull, absAssets);
+		const Path absRoot = std::filesystem::absolute(pRoot->BaseDirectory).lexically_normal();
+		const Path relative = std::filesystem::relative(absFull, absRoot);
 
 		String folder = relative.string() + "/";
 		StringUtils::ReplaceCharacters(folder, '\\', '/');
 
-		const AssetKeys keys
-		{
-			.FolderKey	= folder,
-			.FileKey	= folder + aAssetData.Name + ".rasset",
-			.Type		= aAssetData.Type,
-			.Uuid		= aAssetData.Uuid
-		};
+		const String prefix = (pRoot->SourceType == EAssetSourceType::Engine) ? "Engine/" : "Game/";
 
-		return keys;
+		return AssetKeys
+		{
+			.FolderKey = prefix + folder,
+			.FileKey = prefix + folder + aAssetData.Name + ".rasset",
+			.Type = aAssetData.Type,
+			.Uuid = aAssetData.Uuid
+		};
+	}
+
+	const AssetRoot* AssetRegistryModule::FindRootFor(const Path& aAbsoluteAssetPath) const
+	{
+		const Path normalized = std::filesystem::absolute(aAbsoluteAssetPath).lexically_normal();
+		for (const auto& root : m_Roots)
+		{
+			const Path absRoot = std::filesystem::absolute(root.BaseDirectory).lexically_normal();
+			// Check if normalized starts with absRoot
+			auto rel = std::filesystem::relative(normalized, absRoot);
+			if (!rel.empty() && rel.native()[0] != '.') // didn't traverse upward
+				return &root;
+		}
+		
+		return nullptr;
 	}
 
 	void AssetRegistryModule::IndexAdd(AssetIndex aIndex, const AssetKeys& aAssetKeys) noexcept
@@ -337,28 +354,58 @@ namespace Relentless
 		assetData.ModificationDateAndTime = content.ModificationDateAndTime;
 		assetData.Flags = 0;
 
+		const AssetRoot* root = FindRootFor(aPath);
+		assetData.Source = root ? root->SourceType : EAssetSourceType::Project;
+
 		AssetCreated(std::move(assetData));
 	}
 
 	void AssetRegistryModule::ProcessDirectory(const Path& aPath) noexcept
 	{
-		const Path assetsBase = Project::GetProjectDirectory();
+		const AssetRoot* pRoot = FindRootFor(aPath);
+		if (!pRoot)
+		{
+			RLS_CORE_WARN("[AssetRegistryModule::ProcessDirectory]: Directory doesn't belong to any registered root: '{}'", aPath.string());
+			return;
+		}
+
 		const Path absFull = std::filesystem::absolute(aPath).lexically_normal();
-		const Path absAssets = std::filesystem::absolute(assetsBase).lexically_normal();
-		const Path relative = std::filesystem::relative(absFull, absAssets);
+		const Path absRoot = std::filesystem::absolute(pRoot->BaseDirectory).lexically_normal();
+		const Path relative = std::filesystem::relative(absFull, absRoot);
 
 		String pathString = relative.string();
 		StringUtils::ReplaceCharacters(pathString, '\\', '/');
 
+		const String prefix = (pRoot->SourceType == EAssetSourceType::Engine) ? "Engine/" : "Game/";
+
+		// Tokenize and build parent path + child folder
 		const std::vector<String> tokens = StringUtils::Split(pathString, '/');
-		String path = tokens[0] + "/";
-		for (size_t i = 1; i < tokens.size() - 1; ++i)
-			path += (tokens[i] + "/");
+		if (tokens.empty())
+			return;
+
+		String parentPath = prefix;
+		for (size_t i = 0; i + 1 < tokens.size(); ++i)
+			parentPath += (tokens[i] + "/");
 
 		std::unique_lock<std::shared_mutex> lock(m_Mutex);
-		std::unordered_set<String>& folders = m_PathToFolders[path];
+		m_PathToFolders[parentPath].insert(tokens.back());
+	}
 
-		if (tokens.size() > 1)
-			folders.insert(tokens.back());
+	void AssetRegistryModule::RegisterRoot(const Path& aBaseDirectory, EAssetSourceType aSourceType) noexcept
+	{
+		std::unique_lock<std::shared_mutex> lock(m_Mutex);
+
+		const Path normalized = std::filesystem::absolute(aBaseDirectory).lexically_normal();
+
+		for (const auto& root : m_Roots)
+		{
+			if (root.BaseDirectory == normalized)
+			{
+				RLS_CORE_WARN("[AssetRegistryModule::RegisterRoot]: Already registered: '{}'", normalized.string());
+				return;
+			}
+		}
+
+		m_Roots.push_back(AssetRoot{ .BaseDirectory = normalized, .SourceType = aSourceType });
 	}
 }

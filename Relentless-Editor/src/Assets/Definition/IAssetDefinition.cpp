@@ -28,7 +28,7 @@ namespace Relentless
 		return nullptr;
 	}
 
-	bool IAssetDefinition::OpenAssets(MAYBE_UNUSED const std::vector<Ref<IAsset>>& someAssets) noexcept
+	bool IAssetDefinition::OpenAssets(MAYBE_UNUSED const std::vector<AssetHandle>& someAssets) noexcept
 	{
 		return false;
 	}

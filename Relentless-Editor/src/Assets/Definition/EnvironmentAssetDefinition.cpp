@@ -4,7 +4,7 @@
 
 #include "Module/UIModule.h"
 
-#include "Panels/EnvironmentViewportPanel.h"
+#include "Panels/EnvironmentEditorPanel.h"
 
 namespace Relentless
 {
@@ -64,23 +64,19 @@ namespace Relentless
 		return pThumbnailInfo;
 	}
 
-	bool EnvironmentAssetDefinition::OpenAssets(const std::vector<Ref<IAsset>>& someAssets) noexcept
+	bool EnvironmentAssetDefinition::OpenAssets(const std::vector<AssetHandle>& someAssets) noexcept
 	{
 		//TODO: Think on this rule...
 		if (someAssets.size() != 1u)
 			return false;
 
-		std::vector<Ref<Environment>> environments;
-		environments.reserve(someAssets.size());
-		for (const Ref<IAsset>& asset : someAssets)
+		for (const AssetHandle& assetHandle : someAssets)
 		{
-			if (!SupportsAsset(asset))
+			if (!SupportsAsset(assetHandle))
 				return false;
-
-			environments.push_back(Ref<Environment>(static_cast<Environment*>(asset.Get())));
 		}
 
-		ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EnvironmentViewportPanel>(std::move(environments));
+		ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EnvironmentEditorPanel>(std::move(someAssets));
 
 		return true;
 	}

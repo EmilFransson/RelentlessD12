@@ -45,7 +45,17 @@ namespace Relentless
 
 	void MeshSceneSubsystem::OnUnload(ISystemManager* aSystemManager) noexcept
 	{
-		AssetManager::DetachOnAssetCreated<Mesh>(this);
+		auto lock = AssetManager::LockStorage<Mesh>();
+
+		AssetManager::DetachOnAssetCreated<Mesh>(lock, this);
+
+		AssetManager::ForEachAsset<Mesh>(lock, [this](Mesh& aMesh)
+			{
+				aMesh.OnPropertyChanged.Detach(this);
+				aMesh.OnDestroy.Detach(this);
+
+				return true;
+			});
 	}
 
 	bool MeshSceneSubsystem::ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept
@@ -66,6 +76,8 @@ namespace Relentless
 	void MeshSceneSubsystem::OnMeshAssetCreated(const AssetHandle& aMeshHandle) noexcept
 	{
 		Ref<Mesh> pMesh = AssetManager::Get<Mesh>(aMeshHandle);
+		pMesh->OnPropertyChanged.Connect(this, &MeshSceneSubsystem::OnMeshAssetEdited);
+		pMesh->OnDestroy.Connect(this, &MeshSceneSubsystem::OnMeshAssetDestroy);
 
 		std::vector<MeshRenderProxy> renderProxies;
 		renderProxies.push_back(CreateRenderProxy(*pMesh));

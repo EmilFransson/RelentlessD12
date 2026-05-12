@@ -8,7 +8,7 @@ namespace Relentless
 	{
 	public:
 		AutoExposure(GraphicsDevice* pDevice) noexcept;
-		void Render(CommandContext& commandContext, MAYBE_UNUSED const RenderView& aRenderView, SceneTextures& aSceneTextures, SceneBuffers& aSceneBuffers, float aMinLogLuminance, float aMinEV100, float aMaxEV100, float aExposureCompensation) noexcept;
+		void Render(CommandContext& commandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures, SceneBuffers& aSceneBuffers) noexcept;
 	private:
 		GraphicsDevice* m_pDevice = nullptr;
 	};

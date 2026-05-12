@@ -10,6 +10,9 @@ namespace Relentless
 	public:
 		ContentBrowserPanel() noexcept;
 		virtual ~ContentBrowserPanel() noexcept;
+		
+		NO_DISCARD virtual String GetDisplayName() const noexcept override;
+		NO_DISCARD virtual String GetPersistKey() const noexcept override;
 	private:
 		Ref<AssetView> m_pAssetsView = nullptr;
 	};

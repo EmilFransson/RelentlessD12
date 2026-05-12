@@ -19,12 +19,15 @@ namespace Relentless
 			uint32 SourceIndex;
 			uint32 TargetIndex;
 			uint32 Size[2];
+			uint32 NumSamples;
+			uint32 Padding[3];
 		} params;
 
 		params.SourceIndex = aSceneTextures.pDepthTarget->GetSRVIndex();
 		params.TargetIndex = aSceneTextures.pDepthIntermediateResolveTarget->GetUAVIndex();
 		params.Size[0] = aSceneTextures.pDepthIntermediateResolveTarget->GetWidth();
 		params.Size[1] = aSceneTextures.pDepthIntermediateResolveTarget->GetHeight();
+		params.NumSamples = static_cast<uint32>(aRenderView.RenderQualitySettings.MSAASampleCount);
 
 		aCommandContext.InsertResourceBarrier(aSceneTextures.pDepthTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		aCommandContext.InsertResourceBarrier(aSceneTextures.pDepthIntermediateResolveTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

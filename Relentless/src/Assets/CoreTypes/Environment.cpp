@@ -93,4 +93,11 @@ namespace Relentless
 		m_SourceType = aSourceType;
 		NOTIFY_PROPERTY_CHANGED(m_SourceType);
 	}
+
+	void Environment::PostLoad()
+	{
+		if (m_EnvironmentMapHandle.IsValid())
+			AssetManager::LoadAsset(m_EnvironmentMapHandle);
+	}
+
 }

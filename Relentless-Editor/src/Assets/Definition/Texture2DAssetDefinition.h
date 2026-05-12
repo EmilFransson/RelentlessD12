@@ -11,6 +11,8 @@ namespace Relentless
 		NO_DISCARD virtual String GetAssetDisplayName() const noexcept override;
 		NO_DISCARD virtual TypeIndex GetSupportedAssetType() const noexcept override;
 		
+		NO_DISCARD virtual bool RequestGenerateThumbnail(const AssetData& aAssetData, const Callback<void(const Ref<Texture2D>&)>& aOnThumbnailGeneratedCallback) noexcept override;
+
 		NO_DISCARD virtual bool SupportsAsset(IAsset* aAsset) const noexcept override;
 		NO_DISCARD virtual bool SupportsAsset(AssetData* aAssetData) const noexcept override;
 		NO_DISCARD virtual bool SupportsAsset(const AssetHandle& aAssetHandle) const noexcept;

@@ -24,6 +24,11 @@ namespace Relentless
 		return false;
 	}
 
+	String AssetHandle::ToString() const noexcept
+	{
+		return ConvertUUIDToString(Uuid);
+	}
+
 	bool AssetHandle::OnLoad(IArchive& archive) noexcept
 	{
 		UUID persistentType = NULL_UUID;

@@ -1,11 +1,11 @@
 #include "LightObserverSystem.h"
-#include "Scene/Scene.h"
 
 #include "ECS/Components/LightComponent.h"
 
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/Scene/RenderScene.h"
 
+#include "Scene/Scene.h"
 #include "Subsystem/CoreTypes/LightRenderSubsystem.h"
 
 namespace Relentless

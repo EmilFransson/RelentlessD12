@@ -20,7 +20,7 @@ namespace Relentless
 		const bool isBlending = aRenderView.pRenderScene->GetSubsystem<SkyBoxRenderSubsystem>()->ShouldBlendEnvironments();
 
 		RenderPassInfo info{};
-		info.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Clear;
+		info.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargets[0].EndAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargets[0].pTarget = aSceneTextures.pColorTarget;
 		info.RenderTargetCount++;
@@ -29,7 +29,6 @@ namespace Relentless
 		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ReadOnlyDepth;
 		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::Preserve;
 
-		aCommandContext.InsertResourceBarrier(aSceneTextures.pEnvironmentTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		aCommandContext.InsertResourceBarrier(info.RenderTargets[0].pTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		aCommandContext.InsertResourceBarrier(info.DepthStencilTarget.pTarget, D3D12_RESOURCE_STATE_DEPTH_READ);
 
@@ -60,7 +59,5 @@ namespace Relentless
 		aCommandContext.Draw(0u, 36u, 0u, 1u);
 
 		aCommandContext.EndRenderPass();
-
-		aCommandContext.InsertResourceBarrier(aSceneTextures.pEnvironmentTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	}
 }

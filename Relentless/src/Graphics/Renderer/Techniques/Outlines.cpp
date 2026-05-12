@@ -5,7 +5,9 @@
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/PipelineState.h"
 
-#include "Scene/Scene.h"
+#include "Subsystem/CoreTypes/MeshRenderSubsystem.h"
+#include "Subsystem/CoreTypes/PrimitiveRenderSubsystem.h"
+#include "Subsystem/CoreTypes/SelectionRenderSubsystem.h"
 
 namespace Relentless
 {
@@ -65,28 +67,38 @@ namespace Relentless
 		
 		Renderer::BindViewData(aCommandContext, aRenderView);
 		
-		EntityManager& entityManager = aRenderView.pScene->GetEntityManager();
+		SelectionRenderSubsystem* pSelectionRenderSubsystem = aRenderView.pRenderScene->GetSubsystem<SelectionRenderSubsystem>();
+		PrimitiveRenderSubsystem* pPrimitiveRenderSubsystem = aRenderView.pRenderScene->GetSubsystem<PrimitiveRenderSubsystem>();
+		MeshRenderSubsystem* pMeshRenderSubsystem = aRenderView.pRenderScene->GetSubsystem<MeshRenderSubsystem>();
 		
-		auto batches = aRenderView.pRenderScene->GetBatches();
-		for (const Batch& batch : batches)
+		const uint32 numSelectedEntities = pSelectionRenderSubsystem->GetNumSelectedEntities();
+		const std::vector<ShaderInterop::InstanceData>& instanceCache = pPrimitiveRenderSubsystem->GetInstanceCache();
+
+		uint32 numEntitiesDrawn = 0u;
+		for (const ShaderInterop::InstanceData& instanceData : instanceCache)
 		{
-			if (!entityManager.Exists(batch.EntityID)) //TODO, decouple from game thread...
+			if (numEntitiesDrawn == numSelectedEntities)
+				break;
+
+			if (!pSelectionRenderSubsystem->IsSelected(instanceData.EntityID))
 				continue;
 
-			if (entityManager.Has<SelectedInEditorComponent>(batch.EntityID))
+			const PrimitiveRenderProxy& primitiveRenderProxy = pPrimitiveRenderSubsystem->GetProxy(instanceData.EntityID);
+			const MeshRenderProxy& meshRenderProxy = pMeshRenderSubsystem->GetProxy(primitiveRenderProxy.MeshUUID);
+
+			struct
 			{
-				struct
-				{
-					uint32 InstanceIndex;
-					uint32 EntityID;
-				} params;
-		
-				params.InstanceIndex = batch.InstanceID;
-				params.EntityID = entityManager.GetIdentity(batch.EntityID) + 1;
-		
-				aCommandContext.BindRootCBV(BindingSlot::PerInstance, (const void*)&params, sizeof(params));
-				aCommandContext.Draw(0u, batch.NumIndices, 0u, 1u);
-			}
+				uint32 InstanceIndex;
+				uint32 EntityID;
+			} params;
+
+			params.InstanceIndex = instanceData.ID;
+			params.EntityID = (instanceData.EntityID >> 12) + 1;
+
+			aCommandContext.BindRootCBV(BindingSlot::PerInstance, (const void*)&params, sizeof(params));
+			aCommandContext.Draw(0u, meshRenderProxy.IndexBuffer->GetNrOfElements(), 0u, 1u);
+			
+			++numEntitiesDrawn;
 		}
 		
 		aCommandContext.EndRenderPass();

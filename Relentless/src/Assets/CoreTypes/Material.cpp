@@ -14,6 +14,11 @@ namespace Relentless
 		return m_AlbedoColor;
 	}
 
+	float Material::GetAlphaCutOff() const noexcept
+	{
+		return m_AlphaCutOff;
+	}
+
 	float Material::GetAmbientOcclusionIntensity() const noexcept
 	{
 		return m_AmbientOcclusionIntensity;
@@ -49,9 +54,19 @@ namespace Relentless
 		return m_GlobalUVTransform.TilingFactor;
 	}
 
+	float Material::GetIOR() const noexcept
+	{
+		return m_IOR;
+	}
+
 	float Material::GetMetalness() const noexcept
 	{
 		return m_Metallic;
+	}
+
+	float Material::GetRefractionStrength() const noexcept
+	{
+		return m_RefractionStrength;
 	}
 
 	float Material::GetRoughness() const noexcept
@@ -62,6 +77,11 @@ namespace Relentless
 	Ref<Texture2D> Material::GetTexture(ETextureType aTextureType) const noexcept
 	{
 		return AssetManager::Get<Texture2D>(m_Textures[(size_t)aTextureType].TextureHandle);
+	}
+
+	const AssetHandle& Material::GetTextureHandle(ETextureType aTextureType) const noexcept
+	{
+		return m_Textures[(size_t)aTextureType].TextureHandle;
 	}
 
 	bool Material::HasTexture(ETextureType aTextureType) const noexcept
@@ -96,6 +116,9 @@ namespace Relentless
 		aArchive.Process(m_Roughness) &&
 		aArchive.Process(m_DisplacementIntensity) &&
 		aArchive.Process(m_AmbientOcclusionIntensity) &&
+		aArchive.Process(m_AlphaCutOff) &&
+		aArchive.Process(m_IOR) &&
+		aArchive.Process(m_RefractionStrength) &&
 		aArchive.Process(m_IsTwoSided) &&
 		aArchive.IsValid();
 	}
@@ -116,6 +139,15 @@ namespace Relentless
 
 		m_AlbedoColor = aColor;
 		NOTIFY_PROPERTY_CHANGED(m_AlbedoColor);
+	}
+
+	void Material::SetAlphaCutOff(float aAlphaCutOff) noexcept
+	{
+		if (Math::AreValuesClose(m_AlphaCutOff, aAlphaCutOff))
+			return;
+
+		m_AlphaCutOff = aAlphaCutOff;
+		NOTIFY_PROPERTY_CHANGED(m_AlphaCutOff);
 	}
 
 	void Material::SetAmbientOcclusionIntensity(float aAmbientOcclusionIntensity) noexcept
@@ -190,6 +222,15 @@ namespace Relentless
 		NOTIFY_PROPERTY_CHANGED(m_GlobalUVTransform.TilingFactor);
 	}
 
+	void Material::SetIOR(float aIOR) noexcept
+	{
+		if (Math::AreValuesClose(m_IOR, aIOR))
+			return;
+
+		m_IOR = aIOR;
+		NOTIFY_PROPERTY_CHANGED(m_IOR);
+	}
+
 	void Material::SetIsTwoSided(bool aIsTwoSided) noexcept
 	{
 		if (m_IsTwoSided == aIsTwoSided)
@@ -206,6 +247,15 @@ namespace Relentless
 
 		m_Metallic = aMetalness;
 		NOTIFY_PROPERTY_CHANGED(m_Metallic);
+	}
+
+	void Material::SetRefractionStrength(float aRefractionStrength) noexcept
+	{
+		if (Math::AreValuesClose(m_RefractionStrength, aRefractionStrength))
+			return;
+
+		m_RefractionStrength = aRefractionStrength;
+		NOTIFY_PROPERTY_CHANGED(m_RefractionStrength);
 	}
 
 	void Material::SetRoughness(float aRoughness) noexcept
@@ -233,5 +283,14 @@ namespace Relentless
 
 		m_Textures[(size_t)aTextureType].IsEnabled = aEnable;
 		NOTIFY_PROPERTY_CHANGED(m_Textures);
+	}
+
+	void Material::PostLoad()
+	{
+		for (auto& textureEntry : m_Textures)
+		{
+			if (textureEntry.TextureHandle.IsValid())
+				AssetManager::LoadAsset(textureEntry.TextureHandle);
+		}
 	}
 }

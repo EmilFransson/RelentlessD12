@@ -18,4 +18,15 @@ namespace Relentless
 
 		SetRoot(pRoot);
 	}
+
+	String EntityDetailsPanel::GetDisplayName() const noexcept
+	{
+		return String(ICON_FA_LINES_LEANING " Details");
+	}
+
+	String EntityDetailsPanel::GetPersistKey() const noexcept
+	{
+		return "Details";
+	}
+
 }

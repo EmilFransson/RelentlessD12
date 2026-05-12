@@ -2,16 +2,17 @@
 
 struct PerDrawData
 {
-    uint InstanceIndex;
+    uint BaseInstanceIndex;
 };
 
 ConstantBuffer<PerDrawData> perDrawData : register(b0, space0);
 
 struct VS_OUT
 {
-    float4 PositionCS   : SV_Position;
+    float4 PositionCS               : SV_Position;
 #ifdef ALPHA_MASK
-    float2 TexCoords    : TEXCOORDS;
+    float2 TexCoords                : TEXCOORDS;
+    nointerpolation uint InstanceID : INSTANCEID;
 #endif
 };
 
@@ -19,8 +20,8 @@ VS_OUT vs_main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
 {
     VS_OUT vsOut = (VS_OUT)0;
     
-    const uint instanceIndex = perDrawData.InstanceIndex + instanceID;
-    const InstanceData instanceData = GetInstance(instanceIndex /*perDrawData.InstanceIndex*/);
+    const uint instanceIndex = perDrawData.BaseInstanceIndex + instanceID;
+    const InstanceData instanceData = GetInstance(instanceIndex);
     const MeshData meshData = GetMesh(instanceData.MeshDataIndex);
     const Material material = GetMaterial(instanceData.MaterialIndex);
     const Vertex vertex = LoadVertex(meshData, vertexID);
@@ -42,12 +43,12 @@ VS_OUT vs_main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
 void ps_main(VS_OUT psIn)
 {
 #ifdef ALPHA_MASK
-    const InstanceData instanceData = GetInstance(perDrawData.InstanceIndex);
+    const InstanceData instanceData = GetInstance(psIn.InstanceID);
     const Material material = GetMaterial(instanceData.MaterialIndex);
     
     Texture2D albedoTexture = ResourceDescriptorHeap[material.AlbedoIndex];
     const float4 albedoColor = albedoTexture.Sample(sAnisoWrap, psIn.TexCoords) * material.BaseColorFactor;
     
-    clip(albedoColor.a < 0.1f ? -1 : 1);
+    clip(albedoColor.a < material.AlphaCutOff ? -1 : 1);
 #endif
 }

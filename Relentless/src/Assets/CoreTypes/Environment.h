@@ -36,6 +36,8 @@ namespace Relentless
 		void SetSolidColor(const Color& aColor) noexcept;
 		void SetSourceType(EEnvironmentSourceType aSourceType) noexcept;
 	private:
+		virtual void PostLoad() override;
+	private:
 		AssetHandle m_EnvironmentMapHandle = AssetHandle::INVALID;
 		Color m_SolidColor = Colors::Black;
 		float m_Intensity = 1.0f;

@@ -15,7 +15,7 @@ namespace Relentless
 		NO_DISCARD virtual TypeIndex GetSupportedAssetType() const noexcept override final;
 		NO_DISCARD virtual Ref<ThumbnailInfo> GetThumbnailInfo(const AssetData& aAssetData) const noexcept override final;
 
-		NO_DISCARD bool OpenAssets(const std::vector<Ref<IAsset>>& someAssets) noexcept override;
+		NO_DISCARD bool OpenAssets(const std::vector<AssetHandle>& someAssets) noexcept override;
 		
 		NO_DISCARD virtual bool SupportsAsset(IAsset* aAsset) const noexcept override final;
 		NO_DISCARD virtual bool SupportsAsset(AssetData* aAssetData) const noexcept override final;

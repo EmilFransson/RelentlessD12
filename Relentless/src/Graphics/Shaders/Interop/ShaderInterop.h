@@ -19,6 +19,7 @@ using float4x4 = Matrix;
 #define CONCAT_IMPL( x, y ) x##y
 #define MACRO_CONCAT( x, y ) CONCAT_IMPL( x, y )
 #define PAD uint MACRO_CONCAT(padding, __COUNTER__)
+
 	struct Material
 	{
 		uint AlbedoIndex;
@@ -31,6 +32,9 @@ using float4x4 = Matrix;
 		uint AOIndex;
 		uint RoughnessMetalnessIndex;
 
+		uint OpacityIndex;
+		float3 Padding0;
+
 		float4 BaseColorFactor;
 		float4 EmissiveFactor;
 
@@ -40,7 +44,9 @@ using float4x4 = Matrix;
 		float HeightFactor;
 
 		float EmissionIntensity;
-		float3 padding;
+		float AlphaCutOff;
+		float IOR;
+		float RefractionStrength;
 
 		float2 TilingFactor;
 		float2 Offset;
@@ -66,8 +72,11 @@ using float4x4 = Matrix;
 
 	struct SkyboxData
 	{
-		float3 BackgroundColor;
+		float3 EnvironmentATintColor;
 		float Intensity;
+
+		float3 EnvironmentBTintColor;
+		float Padding;
 
 		float4x4 WorldRotation;
 
@@ -130,7 +139,7 @@ using float4x4 = Matrix;
 		float4x4 ClipToWorld;
 
 		float3 ViewLocation;
-		float Padding0;
+		uint SceneColorCopyIndex;
 
 		float2 ViewportDimensions;
 		float2 ViewportDimensionsInv;

@@ -209,7 +209,7 @@ namespace Relentless
 
 		Time::Tick();
 
-		ExecuteMainThreadQueue();
+		FlushMainThreadQueue();
 
 		{
 			PROFILE_SCOPE("Application::Update_Internal::OnLayersUpdate");
@@ -264,7 +264,7 @@ namespace Relentless
 		AssetManager::Shutdown();
 	}
 
-	void Application::ExecuteMainThreadQueue() noexcept
+	void Application::FlushMainThreadQueue() noexcept
 	{
 		std::scoped_lock lock(m_MainThreadFunctionQueueMutex);
 

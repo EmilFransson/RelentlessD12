@@ -15,6 +15,8 @@ namespace Relentless
 	public:
 		virtual ~UIModule() override = default;
 
+		NO_DISCARD uint32 AcquireSlot(const String& aPersistKey) noexcept;
+
 		template<typename PanelType, typename... Args>
 		PanelType* OpenPanel(Args&&... someArgs) noexcept
 		{
@@ -23,6 +25,8 @@ namespace Relentless
 			pNewPanel->OnLostFocus.Connect(this, &UIModule::OnPanelLostFocus);
 			pNewPanel->OnMouseEnter.Connect(this, &UIModule::OnMouseEnterPanel);
 			pNewPanel->OnMouseExit.Connect(this, &UIModule::OnMouseExitPanel);
+
+			pNewPanel->InitializeIdentity(AcquireSlot(pNewPanel->GetPersistKey()));
 
 			m_PendingPanelsToOpen.push_back(std::move(pNewPanel));
 
@@ -72,6 +76,7 @@ namespace Relentless
 		std::vector<UniquePtr<PanelBase>> m_PanelStack;
 		std::vector<PanelBase*> m_PanelsToClose;
 		std::vector<UniquePtr<PanelBase>> m_PendingPanelsToOpen;
+		std::unordered_map<String, std::vector<bool>> m_Slots;
 
 		PanelBase* m_pHoveredPanel			= nullptr;
 		PanelBase* m_pFocusedPanel			= nullptr;

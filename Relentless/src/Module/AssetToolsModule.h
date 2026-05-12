@@ -90,7 +90,7 @@ namespace Relentless
 
 		const Path fullPackagePath = FilepathUtils::Combine(Project::GetAssetDirectory(), aPackagePath);
 		const Path assetFilePath = FilepathUtils::Combine(fullPackagePath, aName + ".rasset");
-		if (File::Exists(assetFilePath))
+		if (aShouldSave && File::Exists(assetFilePath))
 		{
 			RLS_CORE_WARN("File with name '{0}' already exists at path '{1}'", aName, fullPackagePath.string());
 			return AssetHandle::INVALID;
@@ -118,7 +118,10 @@ namespace Relentless
 			return AssetHandle::INVALID;
 		}
 
-		return CreateAndRegisterAssetData<AssetType>(pCreatedAsset, aPackagePath, timeStamp);
+		if (aShouldSave)
+			return CreateAndRegisterAssetData<AssetType>(pCreatedAsset, fullPackagePath, timeStamp);
+		else
+			return AssetManager::RegisterAsset<AssetType>(pCreatedAsset);
 	}
 
 	template<typename AssetType>

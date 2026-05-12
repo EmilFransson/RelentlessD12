@@ -51,8 +51,7 @@ namespace Relentless
 				renderProxy.Color *= vTempColor;
 			}
 
-			if (aSceneState.EntityManager.Has<LightBaseComponent<DirectionalLightComponent>::DirtyRenderState>(aEntity))
-				aSceneState.EntityManager.Remove<LightBaseComponent<DirectionalLightComponent>::DirtyRenderState>(aEntity);
+			aSceneState.EntityManager.RemoveIfExists<LightBaseComponent<DirectionalLightComponent>::DirtyRenderState>(aEntity);
 		}
 
 		Renderer::Dispatch([renderProxies = std::move(lightRenderProxies), uid = aSceneState.Scene.GetUUID()](Renderer* aRenderer)

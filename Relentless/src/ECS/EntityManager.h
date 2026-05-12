@@ -502,6 +502,24 @@ namespace Relentless
 			Remove<ComponentTypes...>(entityID);
 		}
 
+		template<typename ComponentType, typename... ComponentTypes>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (sizeof...(ComponentTypes) == 0)
+			void RemoveIfExists(const entity entityID) noexcept
+		{
+			if (Has<ComponentType>(entityID))
+				Remove<ComponentType>(entityID);
+		}
+
+		template<typename ComponentType, typename... ComponentTypes>
+			requires std::is_same_v<ComponentType, std::decay_t<ComponentType>>
+		&& (sizeof...(ComponentTypes) > 0)
+			void RemoveIfExists(const entity entityID) noexcept
+		{
+			RemoveIfExists<ComponentType>(entityID);
+			RemoveIfExists<ComponentTypes...>(entityID);
+		}
+
 		/**
 		 * @brief Checks whether an entity has a certain component type.
 		 * @param entity The entity ID to verify component type existence for.

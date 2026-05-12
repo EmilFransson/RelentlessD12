@@ -7,9 +7,13 @@ namespace Relentless
 	class DepthPrePass
 	{
 	public:
-		DepthPrePass(GraphicsDevice* pDevice) noexcept;
-		void Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept;
+		DepthPrePass(GraphicsDevice* aGraphicsDevice) noexcept;
+		void Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures) noexcept;
 	private:
-		GraphicsDevice* m_pDevice = nullptr;
+		void RenderAlphaMasked(CommandContext& aCommandContext, const RenderView& aRenderView) noexcept;
+		void RenderOpaque(CommandContext& aCommandContext, const RenderView& aRenderView) noexcept;
+		void RenderOpaqueTwoSided(CommandContext& aCommandContext, const RenderView& aRenderView) noexcept;
+	private:
+		GraphicsDevice* m_pGraphicsDevice = nullptr;
 	};
 }

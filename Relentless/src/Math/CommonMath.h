@@ -90,6 +90,18 @@ namespace Relentless
 			return (nominator + denominator - 1) / denominator;
 		}
 
+		template<typename T, typename U = float>
+		constexpr inline static T Lerp(const T& a, const T& b, U t)
+		{
+			return a * (U(1) - t) + b * t;
+		}
+
+		template<>
+		inline static Color Lerp(const Color& a, const Color& b, float t) noexcept
+		{
+			return Color::Lerp(a, b, t);
+		}
+
 		template<typename T>
 		constexpr T Max(const T& a, const T& b) noexcept
 		{
@@ -101,7 +113,6 @@ namespace Relentless
 		{
 			return a < b ? a : b;
 		}
-
 
 		NO_DISCARD inline static float RadToDeg(float radians) noexcept
 		{
@@ -143,6 +154,12 @@ namespace Relentless
 		NO_DISCARD inline static int RandomRange(int min, int max) noexcept
 		{
 			return min + rand() % (max - min + 1);
+		}
+
+		template<typename T>
+		NO_DISCARD inline constexpr static T Sign(T aValue)  noexcept
+		{ 
+			return T((T(0) < aValue) - (aValue < T(0)));
 		}
 
 		NO_DISCARD inline constexpr static float DegToRad(float degrees) noexcept

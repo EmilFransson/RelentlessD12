@@ -128,4 +128,15 @@ namespace Relentless
 
 		SetRoot(pRootBox);
 	}
+
+	String WidgetShowcasePanel::GetDisplayName() const noexcept
+	{
+		return "Widget Showcase";
+	}
+
+	String WidgetShowcasePanel::GetPersistKey() const noexcept
+	{
+		return "Widget Showcase";
+	}
+
 }

@@ -77,15 +77,15 @@ namespace Relentless
 	void SkyBoxRenderSubsystem::BuildSkyBoxData(ShaderInterop::SkyboxData& outData) const noexcept
 	{
 		Texture* pBlackCube = GraphicsCommon::GetDefaultTexture(DefaultTextureType::BlackCube);
+		Texture* pWhiteCube = GraphicsCommon::GetDefaultTexture(DefaultTextureType::WhiteCube);
 
 		if (m_ActiveID == INVALID_ID)
 		{
 			outData.EnvironmentMapAIndex = pBlackCube->GetSRVIndex();
 			outData.EnvironmentMapBIndex = pBlackCube->GetSRVIndex();
-			outData.BackgroundColor = Vector3::Zero;
 			outData.Intensity = 1.0f;
 			outData.LODBias = 0.0f;
-			outData.BackgroundColor = Vector3::One;
+			outData.EnvironmentATintColor = Vector3::One;
 			outData.WorldRotation = Matrix::Identity;
 			outData.BlendFactor = 0.0f;
 			return;
@@ -95,22 +95,65 @@ namespace Relentless
 
 		outData.EnvironmentMapAIndex = pBlackCube->GetSRVIndex();
 		outData.EnvironmentMapBIndex = pBlackCube->GetSRVIndex();
-
-		if (renderProxy.BlendFactor == 0.0f)
-			outData.EnvironmentMapAIndex = renderProxy.EnvironmentMapA ? renderProxy.EnvironmentMapA->GetSRVIndex() : renderProxy.EnvironmentMapB ? renderProxy.EnvironmentMapB->GetSRVIndex() : pBlackCube->GetSRVIndex();
-		else if (renderProxy.BlendFactor == 1.0f)
-			outData.EnvironmentMapAIndex = renderProxy.EnvironmentMapB ? renderProxy.EnvironmentMapB->GetSRVIndex() : renderProxy.EnvironmentMapA ? renderProxy.EnvironmentMapA->GetSRVIndex() : pBlackCube->GetSRVIndex();
-		else if (renderProxy.BlendFactor > 0.0f && renderProxy.BlendFactor < 1.0f)
-		{
-			outData.EnvironmentMapAIndex = renderProxy.EnvironmentMapA ? renderProxy.EnvironmentMapA->GetSRVIndex() : renderProxy.EnvironmentMapB ? renderProxy.EnvironmentMapB->GetSRVIndex() : pBlackCube->GetSRVIndex();
-			outData.EnvironmentMapBIndex = renderProxy.EnvironmentMapB ? renderProxy.EnvironmentMapB->GetSRVIndex() : pBlackCube->GetSRVIndex();
-		}
-
-		outData.BackgroundColor = renderProxy.TintColor.ToVector3();
 		outData.Intensity = renderProxy.Intensity;
 		outData.LODBias = renderProxy.LodBias;
 		outData.WorldRotation = Matrix::CreateFromQuaternion(renderProxy.WorldRotation);
 		outData.BlendFactor = renderProxy.BlendFactor;
+		outData.EnvironmentATintColor = renderProxy.TintColor.ToVector3();
+		outData.EnvironmentBTintColor = renderProxy.TintColor.ToVector3();
+
+		if (renderProxy.BlendFactor <= 0.0f)
+		{
+			if (renderProxy.EnvironmentASourceType == EEnvironmentSourceType::Cubemap)
+				outData.EnvironmentMapAIndex = renderProxy.EnvironmentMapA ? renderProxy.EnvironmentMapA->GetSRVIndex() : renderProxy.EnvironmentMapB ? renderProxy.EnvironmentMapB->GetSRVIndex() : pBlackCube->GetSRVIndex();
+			else //Solid Color
+			{
+				outData.EnvironmentMapAIndex = pWhiteCube->GetSRVIndex();
+				outData.EnvironmentATintColor = renderProxy.EnvironmentASolidColor.ToVector3();
+			}
+		}
+		else if (renderProxy.BlendFactor >= 1.0f)
+		{
+			if (renderProxy.EnvironmentBSourceType == EEnvironmentSourceType::Cubemap)
+				outData.EnvironmentMapAIndex = renderProxy.EnvironmentMapB ? renderProxy.EnvironmentMapB->GetSRVIndex() : renderProxy.EnvironmentMapA ? renderProxy.EnvironmentMapA->GetSRVIndex() : pBlackCube->GetSRVIndex();
+			else //Solid Color
+			{
+				outData.EnvironmentMapAIndex = pWhiteCube->GetSRVIndex();
+				outData.EnvironmentATintColor = renderProxy.EnvironmentBSolidColor.ToVector3();
+			}
+		}
+		else
+		{
+			if (renderProxy.EnvironmentASourceType == EEnvironmentSourceType::Cubemap)
+			{
+				if (renderProxy.EnvironmentMapA)
+					outData.EnvironmentMapAIndex = renderProxy.EnvironmentMapA->GetSRVIndex();
+				else if (renderProxy.EnvironmentMapB)
+					outData.EnvironmentMapAIndex = renderProxy.EnvironmentMapB->GetSRVIndex();
+				else
+					outData.EnvironmentMapAIndex = pBlackCube->GetSRVIndex();
+			}
+			else //Solid Color
+			{
+				outData.EnvironmentMapAIndex = pWhiteCube->GetSRVIndex();
+				outData.EnvironmentATintColor = renderProxy.EnvironmentASolidColor.ToVector3();
+			}
+
+			if (renderProxy.EnvironmentBSourceType == EEnvironmentSourceType::Cubemap)
+			{
+				if (renderProxy.EnvironmentMapB)
+					outData.EnvironmentMapBIndex = renderProxy.EnvironmentMapB->GetSRVIndex();
+				else if (renderProxy.EnvironmentMapA)
+					outData.EnvironmentMapBIndex = renderProxy.EnvironmentMapA->GetSRVIndex();
+				else
+					outData.EnvironmentMapBIndex = pBlackCube->GetSRVIndex();
+			}
+			else // Solid Color
+			{
+				outData.EnvironmentMapBIndex = pWhiteCube->GetSRVIndex();
+				outData.EnvironmentBTintColor = renderProxy.EnvironmentBSolidColor.ToVector3();
+			}
+		}
 	}
 
 	void SkyBoxRenderSubsystem::FlushPendingProxyUpdates() noexcept

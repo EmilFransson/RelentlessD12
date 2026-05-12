@@ -5,9 +5,11 @@
 #include "Subsystem/CoreTypes/LightRenderSubsystem.h"
 #include "Subsystem/CoreTypes/MaterialRenderSubsystem.h"
 #include "Subsystem/CoreTypes/MeshRenderSubsystem.h"
+#include "Subsystem/CoreTypes/PostProcessRenderSubsystem.h"
 #include "Subsystem/CoreTypes/PrimitiveRenderSubsystem.h"
 #include "Subsystem/CoreTypes/SkyBoxRenderSubsystem.h"
 #include "Subsystem/CoreTypes/SkyLightRenderSubsystem.h"
+#include "Subsystem/CoreTypes/SelectionRenderSubsystem.h"
 
 namespace Relentless
 {
@@ -22,6 +24,8 @@ namespace Relentless
 		GetSubsystem<LightRenderSubsystem>();
 		GetSubsystem<SkyBoxRenderSubsystem>();
 		GetSubsystem<SkyLightRenderSubsystem>();
+		GetSubsystem<SelectionRenderSubsystem>();
+		GetSubsystem<PostProcessRenderSubsystem>();
 	}
 
 	Span<const Batch> RenderScene::GetBatches() const noexcept
@@ -79,6 +83,7 @@ namespace Relentless
 			batch.NumIndices = meshProxy.IndexBuffer->GetNrOfElements();
 			batch.BlendMode = GetBlendMode(baseMaterialProxy.BlendMode);
 			batch.Location = primitiveProxy.LocalToWorld.Translation(); //Purely relevant here for transparent meshes which are rendered one by one. (1 per batch)
+			batch.IsTwoSided = baseMaterialProxy.IsTwoSided;
 
 			while (batchIndex < instances.size())
 			{
@@ -95,7 +100,13 @@ namespace Relentless
 				if (instanceData.MeshDataIndex != baseInstanceData.MeshDataIndex)
 					break;
 
-				if (materialProxy.BlendMode != baseMaterialProxy.BlendMode)
+				if (materialProxy.BlendMode != baseMaterialProxy.BlendMode || materialProxy.BlendMode == EBlendMode::AlphaBlend)
+					break;
+
+				if (materialProxy.IsTwoSided != baseMaterialProxy.IsTwoSided)
+					break;
+
+				if (materialProxy.IsTwoSided && materialProxy.BlendMode == EBlendMode::AlphaMask)
 					break;
 			}
 		}
@@ -107,8 +118,18 @@ namespace Relentless
 	{
 		auto&& CompareSort = [&aViewRenderDesc](const Batch& a, const Batch& b)
 			{
+				if (a.BlendMode != b.BlendMode)
+					return (int)a.BlendMode < (int)b.BlendMode;
+
+				if (a.IsTwoSided != b.IsTwoSided)
+					return (int)a.IsTwoSided < (int)b.IsTwoSided;
+
 				const float aDist = Vector3::DistanceSquared(a.Location, aViewRenderDesc.ViewTransform.Location);
 				const float bDist = Vector3::DistanceSquared(b.Location, aViewRenderDesc.ViewTransform.Location);
+
+				if (a.BlendMode == Batch::Blending::AlphaBlend || a.BlendMode == Batch::Blending::AlphaMask)
+					return aDist > bDist;
+
 				return aDist < bDist;
 			};
 		std::sort(m_Batches.begin(), m_Batches.end(), CompareSort);

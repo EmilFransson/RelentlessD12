@@ -103,10 +103,6 @@ namespace Relentless
 				RLS_ASSERT(renderTargetInfo.MipLevel < desc.Mips, "MipLevel out of range.");
 
 				rtvIndex = renderTargetInfo.MipLevel;
-
-				//if (!renderTargetInfo.pTarget->HasRTV(rtvIndex))
-				//	renderTargetInfo.pTarget->SetRTV(GetParent()->CreateRTV(renderTargetInfo.pTarget, TextureRTVDesc(renderTargetInfo.MipLevel, 0u, 1u, 0u)), rtvIndex);
-				
 				break;
 			}
 			case TextureType::TextureCube:
@@ -115,10 +111,6 @@ namespace Relentless
 				RLS_ASSERT(renderTargetInfo.MipLevel < desc.Mips, "MipLevel out of range.");
 
 				rtvIndex = uint32(renderTargetInfo.ArrayIndex) * uint32(desc.Mips) + uint32(renderTargetInfo.MipLevel);
-
-				//if (!renderTargetInfo.pTarget->HasRTV(rtvIndex))
-				//	renderTargetInfo.pTarget->SetRTV(GetParent()->CreateRTV(renderTargetInfo.pTarget, TextureRTVDesc(renderTargetInfo.MipLevel, renderTargetInfo.ArrayIndex, 1u, 0u)), rtvIndex);
-
 				break;
 			}
 			default:
@@ -148,9 +140,9 @@ namespace Relentless
 				RLS_ASSERT(renderTargetInfo.pTarget->GetFormat() == renderTargetInfo.pResolveTarget->GetFormat(), "[CommandContext::BeginRenderPass] Src & Resolve Dst Format Mismatch.");
 				RLS_ASSERT(renderTargetInfo.pTarget->GetSampleCount() > 1, "[CommandContext::BeginRenderPass] Resolve Src Is Not MultiSample Compatible.");
 				RLS_ASSERT(renderTargetInfo.pResolveTarget->GetSampleCount() == 1, "[CommandContext::BeginRenderPass] Resolve Target Sample Count Exceeds 1.");
-
+			
 				renderTargetDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_RESOLVE;
-
+			
 				auto& resolveParams = renderTargetDesc.EndingAccess.Resolve;
 				resolveParams.pSrcResource = renderTargetInfo.pTarget->GetResource();
 				resolveParams.pDstResource = renderTargetInfo.pResolveTarget->GetResource();
@@ -236,27 +228,6 @@ namespace Relentless
 
 			if (EnumHasAnyFlags(depthStencilTarget.EndAccessFlags, DepthTargetAccessFlags::Preserve))
 				depthStencilDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
-			//else if (EnumHasAnyFlags(depthStencilTarget.EndAccessFlags, DepthTargetAccessFlags::Resolve))
-			//{
-			//	RLS_ASSERT(depthStencilTarget.pResolveTarget, "Resolve target is null.");
-			//	RLS_ASSERT(depthStencilTarget.pTarget->GetSampleCount() > 1, "Source is not MSAA.");
-			//	RLS_ASSERT(depthStencilTarget.pResolveTarget->GetSampleCount() == 1, "Resolve target must be single sample.");
-			//
-			//	depthStencilDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_RESOLVE;
-			//
-			//	auto& resolveParams = depthStencilDesc.DepthEndingAccess.Resolve;
-			//	resolveParams.pSrcResource = depthStencilTarget.pTarget->GetResource();
-			//	resolveParams.pDstResource = depthStencilTarget.pResolveTarget->GetResource();
-			//	resolveParams.Format = DXGI_FORMAT_R32_FLOAT;
-			//	resolveParams.ResolveMode = D3D12_RESOLVE_MODE_MIN;
-			//	resolveParams.SubresourceCount = 1;
-			//
-			//	m_DepthResolveParams.SrcSubresource = 0;
-			//	m_DepthResolveParams.DstSubresource = 0;
-			//	m_DepthResolveParams.SrcRect = { 0, 0, (long)depthStencilTarget.pTarget->GetWidth(), (long)depthStencilTarget.pTarget->GetHeight() };
-			//	m_DepthResolveParams.DstX = m_DepthResolveParams.DstY = 0;
-			//	resolveParams.pSubresourceParameters = &m_DepthResolveParams;
-			//}
 			else
 				depthStencilDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 			
@@ -266,7 +237,7 @@ namespace Relentless
 			pDepthStencilDesc = &depthStencilDesc;
 		}
 
-		m_pCommandList->BeginRenderPass(renderPassInfo.RenderTargetCount, renderTargets.data(), &depthStencilDesc, flags);
+		m_pCommandList->BeginRenderPass(renderPassInfo.RenderTargetCount, renderTargets.data(), pDepthStencilDesc, flags);
 
 		Texture* pTargetTexture = renderPassInfo.DepthStencilTarget.pTarget ? renderPassInfo.DepthStencilTarget.pTarget : renderPassInfo.RenderTargets[0].pTarget;
 		SetViewport(FloatRect(0, 0, (float)pTargetTexture->GetWidth(), (float)pTargetTexture->GetHeight()), 0, 1);

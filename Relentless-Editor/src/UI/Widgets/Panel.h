@@ -17,6 +17,10 @@ namespace Relentless
 		virtual void Update() noexcept {};
 		virtual bool OnEvent(IEvent&) noexcept;
 	protected:
+		NO_DISCARD virtual Vector2 GetDefaultSize() const noexcept { return { 800.0f, 600.0f }; }
+		NO_DISCARD virtual String GetDisplayName() const noexcept = 0;
+		NO_DISCARD virtual String GetPersistKey() const noexcept { return ""; }
+
 		NO_DISCARD virtual bool OnKeyPressedEvent(KeyPressedEvent&) noexcept { return false; };
 		NO_DISCARD virtual bool OnKeyReleasedEvent(KeyReleasedEvent&) noexcept { return false; };
 		NO_DISCARD virtual bool OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent&) noexcept { return false; };
@@ -48,12 +52,14 @@ namespace Relentless
 		NO_DISCARD const Vector2u& GetSize() const noexcept;
 		NO_DISCARD const String& GetName() const noexcept;
 
+		void InitializeIdentity(uint32 aSlot) noexcept;
 		NO_DISCARD bool IsDocked() const noexcept;
 		NO_DISCARD bool IsFocused() const noexcept;
 		NO_DISCARD bool IsHovered() const noexcept;
 		NO_DISCARD bool IsVisible() const noexcept;
 		NO_DISCARD virtual bool IsViewportPanel() const noexcept { return false; };
 	
+		void RebuildName() noexcept;
 		virtual void Render() noexcept override final;
 
 		void SetPadding(const Vector2& aPadding);
@@ -103,6 +109,7 @@ namespace Relentless
 
 		ImGuiWindowFlags m_Flags	= ImGuiWindowFlags_None;
 		uint32 m_LastFrameFocused	= std::numeric_limits<uint32>::max();
+		uint32 m_Slot				= std::numeric_limits<uint32>::max();
 
 		bool m_IsDocked		= false;
 		bool m_IsFocused	= false;

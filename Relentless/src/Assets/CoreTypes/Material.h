@@ -8,7 +8,7 @@
 namespace Relentless
 {
 	enum class EBlendMode	: uint8 { Opaque = 0u, AlphaMask, AlphaBlend };
-	enum class ETextureType : uint8 { Albedo = 0u, Metallic, Roughness, NormalMap, DisplacementMap, AmbientOcclusion, Emission, Count };
+	enum class ETextureType : uint8 { Albedo = 0u, Metallic, Roughness, NormalMap, DisplacementMap, AmbientOcclusion, Emission, Opacity, Count };
 
 	struct UVTransform
 	{
@@ -31,6 +31,7 @@ namespace Relentless
 	};
 
 	class Texture2D;
+
 	class RLS_API Material : public AssetBase<Material>
 	{
 	public:
@@ -38,6 +39,7 @@ namespace Relentless
 		Material() noexcept = default;
 
 		NO_DISCARD const Vector4& GetAlbedoColor() const noexcept;
+		NO_DISCARD float GetAlphaCutOff() const noexcept;
 		NO_DISCARD float GetAmbientOcclusionIntensity() const noexcept;
 		NO_DISCARD EBlendMode GetBlendMode() const noexcept;
 		NO_DISCARD float GetDisplacementIntensity() const noexcept;
@@ -45,9 +47,12 @@ namespace Relentless
 		NO_DISCARD float GetEmissiveIntensity() const noexcept;
 		NO_DISCARD const Vector2& GetGlobalOffset() const noexcept;
 		NO_DISCARD const Vector2& GetGlobalTilingFactor() const noexcept;
+		NO_DISCARD float GetIOR() const noexcept;
 		NO_DISCARD float GetMetalness() const noexcept;
+		NO_DISCARD float GetRefractionStrength() const noexcept;
 		NO_DISCARD float GetRoughness() const noexcept;
 		NO_DISCARD Ref<Texture2D> GetTexture(ETextureType aTextureType) const noexcept;
+		NO_DISCARD const AssetHandle& GetTextureHandle(ETextureType aTextureType) const noexcept;
 
 		NO_DISCARD bool HasTexture(ETextureType aTextureType) const noexcept;
 
@@ -64,6 +69,7 @@ namespace Relentless
 		virtual bool SerializeCore(IArchive& aArchive) noexcept override;
 		void SetAlbedoColor(const Vector4& aColor) noexcept;
 		void SetAlbedoColor(const Color& aColor) noexcept;
+		void SetAlphaCutOff(float aAlphaCutOff) noexcept;
 		void SetAmbientOcclusionIntensity(float aAmbientOcclusionIntensity) noexcept;
 		void SetBlendMode(const EBlendMode aBlendMode) noexcept;
 		void SetDisplacementIntensity(float aDisplacementIntensity) noexcept;
@@ -72,11 +78,15 @@ namespace Relentless
 		void SetEmissiveIntensity(float aEmissiveIntensity) noexcept;
 		void SetGlobalOffset(const Vector2& aOffset) noexcept;
 		void SetGlobalTilingFactor(const Vector2& aTilingFactor) noexcept;
+		void SetIOR(float aIOR) noexcept;
 		void SetIsTwoSided(bool aIsTwoSided) noexcept;
 		void SetMetalness(float aMetalness) noexcept;
+		void SetRefractionStrength(float aRefractionStrength) noexcept;
 		void SetRoughness(float aRoughness) noexcept;
 		void SetTexture(ETextureType aTextureType, const AssetHandle& aTextureHandle) noexcept;
 		void SetTextureEnabled(ETextureType aTextureType, bool aEnable) noexcept;
+
+		void PostLoad() override;
 	private:
 		std::array<MaterialTextureEntry, (size_t)ETextureType::Count> m_Textures;
 
@@ -91,6 +101,9 @@ namespace Relentless
 		float m_Roughness					= 0.5f;
 		float m_DisplacementIntensity		= 1.0f;
 		float m_AmbientOcclusionIntensity	= 1.0f;
+		float m_AlphaCutOff					= 0.5f;
+		float m_IOR							= 1.5f;
+		float m_RefractionStrength			= 0.0f;
 		bool m_IsTwoSided					= false;
 	};
 }

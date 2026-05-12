@@ -7,6 +7,8 @@
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/PipelineState.h"
 
+#include "Subsystem/CoreTypes/PostProcessRenderSubsystem.h"
+
 namespace Relentless
 {
 	AutoExposure::AutoExposure(GraphicsDevice* pDevice) noexcept
@@ -14,9 +16,13 @@ namespace Relentless
 	{
 	}
 
-	void AutoExposure::Render(CommandContext& aCommandContext, MAYBE_UNUSED const RenderView& aRenderView, SceneTextures& aSceneTextures, SceneBuffers& aSceneBuffers, float aMinLogLuminance, float aMinEV100, float aMaxEV100, float aExposureCompensation) noexcept
+	void AutoExposure::Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures, SceneBuffers& aSceneBuffers) noexcept
 	{
 		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
+
+		PostProcessRenderSubsystem* pPostProcessRenderSubsystem = aRenderView.pRenderScene->GetSubsystem<PostProcessRenderSubsystem>();
+		const PostProcessRenderProxy& renderProxy = pPostProcessRenderSubsystem->GetRenderProxy();
+		const ExposureRenderProxySettings& exposureSettings = renderProxy.ExposureRenderProxySettings;
 
 		aCommandContext.InsertResourceBarrier(aSceneTextures.pAutoExposureDownscaleTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		aCommandContext.InsertResourceBarrier(aSceneTextures.pColorTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -69,8 +75,8 @@ namespace Relentless
 
 			parameters.Width = aSceneTextures.pAutoExposureDownscaleTarget->GetWidth();
 			parameters.Height = aSceneTextures.pAutoExposureDownscaleTarget->GetHeight();
-			parameters.MinLogLuminance = aMinLogLuminance;
-			parameters.OneOverLogLuminanceRange = 1.0f / (20.0f - aMinLogLuminance);
+			parameters.MinLogLuminance = exposureSettings.HistogramMinEV100;//aMinLogLuminance;
+			parameters.OneOverLogLuminanceRange = 1.0f / (exposureSettings.HistogramMaxEV100 - exposureSettings.HistogramMinEV100); //(20.0f - aMinLogLuminance);
 			parameters.HDRTextureIndex = aSceneTextures.pAutoExposureDownscaleTarget->GetSRVIndex();
 			parameters.LuminanceHistogramIndex = aSceneBuffers.LuminanceHistogramBuffer.pBuffer->GetUAVIndex();
 			aCommandContext.BindRootCBV(BindingSlot::PerInstance, &parameters, sizeof(parameters));
@@ -108,16 +114,16 @@ namespace Relentless
 			} parameters;
 
 			parameters.PixelCount = aSceneTextures.pAutoExposureDownscaleTarget->GetWidth() * aSceneTextures.pAutoExposureDownscaleTarget->GetHeight();
-			parameters.MinLogLuminance = aMinLogLuminance;
-			parameters.LogLuminanceRange = 20.0f - aMinLogLuminance;
+			parameters.MinLogLuminance = exposureSettings.HistogramMinEV100; //aMinLogLuminance;
+			parameters.LogLuminanceRange = exposureSettings.HistogramMaxEV100 - exposureSettings.HistogramMinEV100;//20.0f - aMinLogLuminance;
 			parameters.TimeDelta = Time::GetDeltaTime();
-			parameters.SpeedUp = 6.0f;
-			parameters.SpeedDown = 5.0f;
-			parameters.ExposureCompensation = aExposureCompensation;
-			parameters.MinEV100 = aMinEV100;
-			parameters.MaxEV100 = aMaxEV100;
-			parameters.LowPercent = 0.1f;
-			parameters.HighPercent = 0.90f;
+			parameters.SpeedUp = exposureSettings.SpeedUp; //6.0f;
+			parameters.SpeedDown = exposureSettings.SpeedDown; //5.0f;
+			parameters.ExposureCompensation = exposureSettings.Compensation; //aExposureCompensation;
+			parameters.MinEV100 = exposureSettings.MinEV100; //aMinEV100;
+			parameters.MaxEV100 = exposureSettings.MaxEV100; //aMaxEV100;
+			parameters.LowPercent = exposureSettings.LowPercent; //0.1f;
+			parameters.HighPercent = exposureSettings.HighPercent; //0.90f;
 			parameters.LuminanceHistogramIndex = aSceneBuffers.LuminanceHistogramBuffer.pBuffer->GetSRVIndex();
 			parameters.LuminanceOutputIndex = aSceneBuffers.AverageLuminanceBuffer.pBuffer->GetUAVIndex();
 

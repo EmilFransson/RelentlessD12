@@ -57,13 +57,13 @@ float4 ps_main(VS_OUT psIn) : SV_Target
     const SkyboxData skyBoxData = GetSkyBox();
     
     TextureCube skyboxTextureA = ResourceDescriptorHeap[skyBoxData.EnvironmentMapAIndex];
-    float4 color = skyboxTextureA.SampleLevel(sLinearWrap, psIn.TexCoord, skyBoxData.LODBias);
+    float4 color = skyboxTextureA.SampleLevel(sLinearWrap, psIn.TexCoord, skyBoxData.LODBias) * float4(skyBoxData.EnvironmentATintColor, 1.0f);
     
     #ifdef BLEND_ENVIRONMENTS
     TextureCube skyboxTextureB = ResourceDescriptorHeap[skyBoxData.EnvironmentMapBIndex];
-    const float4 colorB = skyboxTextureB.SampleLevel(sLinearWrap, psIn.TexCoord, skyBoxData.LODBias);
+    const float4 colorB = skyboxTextureB.SampleLevel(sLinearWrap, psIn.TexCoord, skyBoxData.LODBias) * float4(skyBoxData.EnvironmentBTintColor, 1.0f);
     color = lerp(color, colorB, skyBoxData.BlendFactor);
     #endif
     
-    return color * float4(skyBoxData.BackgroundColor, 1.0f) * skyBoxData.Intensity;
+    return color * /*float4(skyBoxData.BackgroundColor, 1.0f) * */skyBoxData.Intensity;
 }

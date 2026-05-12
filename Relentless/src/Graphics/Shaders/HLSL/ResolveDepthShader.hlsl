@@ -4,6 +4,8 @@ struct PassData
     uint SourceIndex;
     uint TargetIndex;
     uint2 TextureSize;
+    uint NumSamples;
+    uint3 Padding;
 };
 
 ConstantBuffer<PassData> passData : register(b1, space0);
@@ -20,11 +22,9 @@ void cs_main(uint3 aDispatchID : SV_DispatchThreadID)
     
     float minDepth = 1.0f;
     
-    [unroll]
-    for (int sample = 0; sample < 8; ++sample)
-    {
+    [loop]
+    for (int sample = 0; sample < passData.NumSamples; ++sample)
         minDepth = min(minDepth, msaaDepth.Load(texel, sample));
-    }
     
     resolvedDepth[texel] = minDepth;
 }

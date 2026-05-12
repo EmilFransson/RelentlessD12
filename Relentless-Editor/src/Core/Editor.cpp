@@ -22,6 +22,7 @@
 #include "Subsystem/EditorSceneBridgeSubsystem.h"
 #include "Subsystem/EditorRendererBridgeSubsystem.h"
 #include "Subsystem/EditorViewportSubsystem.h"
+#include "Subsystem/EngineContentSubsystem.h"
 
 #include "UI/Views/Outliner/EntityOutlinerView.h"
 
@@ -32,7 +33,15 @@ namespace Relentless
 	//Lazy loads at fetch time:
 	void Editor::CreateSubsystems() noexcept
 	{
+		Application& app = Application::Get();
+
 		//Note: Load order should be preserved:
+		EngineContentSubsystem* pContentSubsystem = GetSubsystem<EngineContentSubsystem>();
+		while (pContentSubsystem->IsLoading())
+		{
+			app.FlushMainThreadQueue();
+		}
+
 		GetSubsystem<SelectionSubsystem>();
 		GetSubsystem<EntityFoldersSubsystem>();
 		GetSubsystem<EditorSceneBridgeSubsystem>();
@@ -54,34 +63,6 @@ namespace Relentless
 				if (callBack(event))
 					return;
 			}
-		}
-
-		switch (event.GetEventType())
-		{
-		case EventType::KeyPressedEvent:
-		{
-			const bool isNavigatingScene = false/* = m_HoveringSceneViewport && Mouse::IsButtonDown(RLS_Button::Right)*/;
-			if (!isNavigatingScene)
-			{
-				const RLS_Key key = EVENT(KeyPressedEvent).key;
-				switch (key)
-				{
-				case RLS_Key::I:
-				{
-					if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
-						m_ImmersiveModeEnabled = !m_ImmersiveModeEnabled;
-
-					break;
-				}
-				default:
-					break;
-				}
-			}
-			event.StopPropagation();
-			break;
-		}
-		default:
-			break;
 		}
 	}
 
@@ -150,7 +131,9 @@ namespace Relentless
 	{
 		PROFILE_SCOPE("Editor::OnUpdate");
 
-		m_pActiveScene->OnUpdate(aDeltaTime);
+		if (m_pActiveScene)
+			m_pActiveScene->OnUpdate(aDeltaTime);
+		
 		UpdateSubsystems(aDeltaTime);
 	}
 
@@ -251,36 +234,28 @@ namespace Relentless
 
 	void Editor::CreateStartScene() noexcept
 	{
-		SetActiveScene(new Scene());
+		SetActiveScene(RLS_NEW Scene());
 
 		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		while (assetRegistry.IsLoadingAssets()) {}
 
-		while (assetRegistry.IsLoadingAssets()){}
-
+		EngineContentSubsystem* pContentSubsystem = GetSubsystem<EngineContentSubsystem>();
 		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
-		
+
 		{
-			entity dirEntity = m_pActiveScene->CreateLight("Directional Light", ELightType::Directional);
+			entity dirEntity = m_pActiveScene->CreateLight("Point Light", ELightType::Directional);
 			auto& dlc = entityManager.Get<DirectionalLightComponent>(dirEntity);
 			dlc.SetColor(Math::MakeFromColorTemperature(5'900.0f));
-			dlc.SetIntensityLux(100'000.0f);
+			dlc.SetIntensityLux(2'000.0f);
 
 			auto& tc = entityManager.Get<TransformComponent>(dirEntity);
 			tc.SetWorldRotationEulerDegrees(Vector3(-90.0f, 0.0f, 0.0f));
 		}
 
-		AssetHandle offWhiteMaterialHandle = AssetManager::LoadAsset("Assets/Materials/M_OffWhite");
+		AssetHandle offWhiteMaterialHandle = AssetManager::LoadAsset("Game/Materials/OffWhite");
+		AssetHandle meshHandle = pContentSubsystem->GetCubeMeshHandle();
 
-		Ref<Material> pOffWhiteMaterial = AssetManager::Get<Material>(offWhiteMaterialHandle);
-		pOffWhiteMaterial->SetBlendMode(EBlendMode::Opaque);
-		pOffWhiteMaterial->SetAlbedoColor(Vector4(0.5f, 0.5f, 0.5f, 1.0f));
-		pOffWhiteMaterial->SetRoughness(0.2f);
-		pOffWhiteMaterial->SetMetalness(0.9f);
-
-		//m_pActiveScene->GetEntityManager().Get<TransformComponent>(cubeEntity).SetWorldLocation(Vector3(0.0f, 40.0f, 0.0f));
-
-		AssetHandle meshHandle = AssetManager::LoadAsset("Assets/Meshes/Cube");
-
+		//Opaque stuff:
 		for (uint32 i = 0u; i < 10u; ++i)
 		{
 			entity cubeEntity = m_pActiveScene->CreateEntity(std::format("Cube_{}", i).c_str());
@@ -289,45 +264,40 @@ namespace Relentless
 			entityManager.Get<TransformComponent>(cubeEntity).AddWorldOffset(Vector3((float)i, 0.0f, 0.0f));
 		}
 
+		AssetHandle groundMaterialHandle = AssetManager::LoadAsset("Game/Materials/Ground");
+		AssetHandle sphereMeshHandle = pContentSubsystem->GetSphereMeshHandle();
+
+		//Transparent stuff:
+		for (uint32 i = 10; i < 20u; ++i)
+		{
+			entity cubeEntity = m_pActiveScene->CreateEntity(std::format("Cube_{}", i).c_str());
+			entityManager.Add<MeshFilterComponent>(cubeEntity).SetMesh(sphereMeshHandle);
+			entityManager.Add<MeshRendererComponent>(cubeEntity).SetMaterial(groundMaterialHandle);
+			entityManager.Get<TransformComponent>(cubeEntity).AddWorldOffset(Vector3((float)i, 0.0f, 0.0f));
+		}
+
 		const entity postProcessEntity = m_pActiveScene->CreateEntity("Post Process");
 		entityManager.Add<PostProcessVolumeComponent>(postProcessEntity);
 
 		const entity skyBoxAndLightEntity = m_pActiveScene->CreateEntity("SkyBoxAndLight");
-		SkyLightComponent& slc = m_pActiveScene->GetEntityManager().Add<SkyLightComponent>(skyBoxAndLightEntity);
-		SkyBoxComponent& sbc = m_pActiveScene->GetEntityManager().Add<SkyBoxComponent>(skyBoxAndLightEntity);
+		m_pActiveScene->GetEntityManager().Add<SkyLightComponent>(skyBoxAndLightEntity);
+		m_pActiveScene->GetEntityManager().Add<SkyBoxComponent>(skyBoxAndLightEntity);
 
 		m_pActiveScene->SetActiveSkyLight(skyBoxAndLightEntity);
 		m_pActiveScene->SetActiveSkyBox(skyBoxAndLightEntity);
 
-		ThreadPool& threadPool = Application::Get().GetThreadPool();
-
-		AssetHandle pureSkyEnvironmentHandle = AssetManager::LoadAsset("Assets/Environments/PureSky/PureSkyEnvironment");
-		Ref<Environment> pPureSkyEnvironment = AssetManager::Get<Environment>(pureSkyEnvironmentHandle);
-		pPureSkyEnvironment->SetIntensity(1.0f);
-
-		AssetHandle overcastEnvironmentHandle = AssetManager::LoadAsset("Assets/Environments/Overcast/OvercastEnvironment");
-		Ref<Environment> pOvercastEnvironment = AssetManager::Get<Environment>(overcastEnvironmentHandle);
-		pOvercastEnvironment->SetSourceType(EEnvironmentSourceType::Cubemap);
-
-		slc.SetPrimaryEnvironment(pureSkyEnvironmentHandle);
-		slc.SetBlendEnvironment(overcastEnvironmentHandle);
-
-		sbc.SetPrimaryEnvironment(pureSkyEnvironmentHandle);
-		sbc.SetBlendEnvironment(overcastEnvironmentHandle);
-
-		threadPool.Submit([pureSkyEnvironmentHandle, overcastEnvironmentHandle]()
+		AssetManager::LoadAssetAsync("Game/Environments/PureSky/PureSkyEnvironment", [this, skyBoxAndLightEntity](const AssetHandle& aHandle)
 			{
-				AssetHandle pureSkyTextureCubeHandle = AssetManager::LoadAsset("Assets/Textures/pure_sky");
-				AssetHandle overcastTextureCubeHandle = AssetManager::LoadAsset("Assets/Textures/overcast");
+				RLS_ASSERT(aHandle.IsValid(), "PureSky environment is invalid.");
+				m_pActiveScene->GetEntityManager().Get<SkyLightComponent>(skyBoxAndLightEntity).SetPrimaryEnvironment(aHandle);
+				m_pActiveScene->GetEntityManager().Get<SkyBoxComponent>(skyBoxAndLightEntity).SetPrimaryEnvironment(aHandle);
+			});
 
-				Application::Get().SubmitToMainThread([pureSkyEnvironmentHandle, pureSkyTextureCubeHandle, overcastEnvironmentHandle, overcastTextureCubeHandle]()
-					{
-						Ref<Environment> pPureSkyEnvironment = AssetManager::Get<Environment>(pureSkyEnvironmentHandle);
-						pPureSkyEnvironment->SetEnvironmentMapHandle(pureSkyTextureCubeHandle);
-
-						Ref<Environment> pOvercastEnvironment = AssetManager::Get<Environment>(overcastEnvironmentHandle);
-						pOvercastEnvironment->SetEnvironmentMapHandle(overcastTextureCubeHandle);
-					});
+		AssetManager::LoadAssetAsync("Game/Environments/Overcast/OvercastEnvironment", [this, skyBoxAndLightEntity](const AssetHandle& aHandle)
+			{
+				RLS_ASSERT(aHandle.IsValid(), "Overcast environment is invalid.");
+				m_pActiveScene->GetEntityManager().Get<SkyLightComponent>(skyBoxAndLightEntity).SetBlendEnvironment(aHandle);
+				m_pActiveScene->GetEntityManager().Get<SkyBoxComponent>(skyBoxAndLightEntity).SetBlendEnvironment(aHandle);
 			});
 	}
 
@@ -391,7 +361,13 @@ namespace Relentless
 		ModuleManager::LoadModuleChecked<DetailsModule>();
 		ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EditorViewportPanel>();
 		ModuleManager::LoadModuleChecked<ContentBrowserModule>();
-		ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		
+		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		assetRegistryModule.RegisterRoot(SystemPaths::GetEditorAssetsDirectory(), EAssetSourceType::Engine);
+		assetRegistryModule.ScanForAssets(SystemPaths::GetEditorAssetsDirectory());
+		
+		while (assetRegistryModule.IsLoadingAssets()) {}
+
 		ModuleManager::LoadModuleChecked<RenderModule>();
 	}
 

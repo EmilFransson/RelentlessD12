@@ -65,8 +65,9 @@ namespace Relentless
 		FilepathUtils::CreateDirectoryTree(GetAssetDirectory());
 		FilepathUtils::CreateDirectoryTree(GetThumbnailCacheDirectory());
 
-		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-		assetRegistry.ScanForAssets(GetAssetDirectory());
+		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		assetRegistryModule.RegisterRoot(GetAssetDirectory(), EAssetSourceType::Project);
+		assetRegistryModule.ScanForAssets(GetAssetDirectory());
 
 		return s_ActiveProject;
 	}

@@ -1,8 +1,9 @@
 #pragma once
+#include "Core/DLLExport.h"
 
 namespace Relentless
 {
-	class SystemPaths
+	class RLS_API SystemPaths
 	{
 	public:
 		static void Initialize() noexcept;

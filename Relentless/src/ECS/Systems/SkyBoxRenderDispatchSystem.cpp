@@ -3,6 +3,7 @@
 #include "Assets/CoreTypes/TextureCube.h"
 
 #include "ECS/Components/TransformComponent.h"
+#include "ECS/Components/SkyBoxComponent.h"
 
 #include "Graphics/Renderer/Renderer.h"
 #include "Graphics/RenderProxy/SkyBoxRenderProxy.h"
@@ -46,11 +47,13 @@ namespace Relentless
 			renderProxy.LodBias = skyBoxComponent.GetLODBias();
 			renderProxy.BlendFactor = skyBoxComponent.GetBlendFactor();
 			renderProxy.IsActive = aSceneState.Scene.GetActiveSkyBox() == aEntity && (hasValidPrimaryEnvironment || hasValidBlendEnvironment) && aSceneState.Scene.IsEntityVisible(aEntity);
-			
+
 			if (hasValidPrimaryEnvironment)
 			{
 				Ref<Environment> pPrimaryEnvironment = skyBoxComponent.GetPrimaryEnvironment();
 				renderProxy.EnvironmentMapA = pPrimaryEnvironment->GetEnvironmentMap()->GetResource();
+				renderProxy.EnvironmentASolidColor = pPrimaryEnvironment->GetSolidColor();
+				renderProxy.EnvironmentASourceType = pPrimaryEnvironment->GetSourceType();
 
 				if (renderProxy.BlendFactor < 1.0f || !hasValidBlendEnvironment)
 					renderProxy.Intensity *= pPrimaryEnvironment->GetIntensity();
@@ -59,13 +62,14 @@ namespace Relentless
 			{
 				Ref<Environment> pBlendEnvironment = skyBoxComponent.GetBlendEnvironment();
 				renderProxy.EnvironmentMapB = pBlendEnvironment->GetEnvironmentMap()->GetResource();
+				renderProxy.EnvironmentBSolidColor = pBlendEnvironment->GetSolidColor();
+				renderProxy.EnvironmentBSourceType = pBlendEnvironment->GetSourceType();
 
 				if (renderProxy.BlendFactor > 0.0f || !hasValidPrimaryEnvironment)
 					renderProxy.Intensity *= pBlendEnvironment->GetIntensity();
 			}
 
-			if (aSceneState.EntityManager.Has<SkyBoxComponent::DirtyRenderState>(aEntity))
-				aSceneState.EntityManager.Remove<SkyBoxComponent::DirtyRenderState>(aEntity);
+			aSceneState.EntityManager.RemoveIfExists<SkyBoxComponent::DirtyRenderState>(aEntity);
 		}
 
 		Renderer::Dispatch([renderProxies = std::move(skyBoxRenderProxies), uid = aSceneState.Scene.GetUUID()](Renderer* aRenderer)

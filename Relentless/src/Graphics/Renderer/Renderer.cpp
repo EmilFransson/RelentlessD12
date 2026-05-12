@@ -9,7 +9,8 @@
 #include "Graphics/Renderer/Techniques/AutoExposure.h"
 #include "Graphics/Renderer/Techniques/DepthPrePass.h"
 #include "Graphics/Renderer/Techniques/EditorGrid.h"
-#include "Graphics/Renderer/Techniques/ForwardRenderer.h"
+#include "Graphics/Renderer/Techniques/ForwardAlphaBlend.h"
+#include "Graphics/Renderer/Techniques/ForwardOpaqueAlphaMask.h"
 #include "Graphics/Renderer/Techniques/HBAOPlus.h"
 #include "Graphics/Renderer/Techniques/Outlines.h"
 #include "Graphics/Renderer/Techniques/Picking.h"
@@ -36,7 +37,8 @@ namespace Relentless
 	{
 		GraphicsCommon::Create(m_pDevice);
 
-		m_pForwardRenderer			= MakeUnique<ForwardRenderer>(pDevice);
+		m_pForwardOpaqueAlphaMask	= MakeUnique<ForwardOpaqueAlphaMask>(pDevice);
+		m_pForwardAlphaBlend		= MakeUnique<ForwardAlphaBlend>(pDevice);
 		m_pEditorGrid				= MakeUnique<EditorGrid>(pDevice);
 		m_pPostProcessing			= MakeUnique<PostProcessing>(pDevice);
 		m_pDepthPrePass				= MakeUnique<DepthPrePass>(pDevice);
@@ -126,6 +128,18 @@ namespace Relentless
 	void Renderer::RenderViews(const std::vector<ViewRenderDesc>& someRenderDescs) noexcept
 	{
 		m_PendingViews = someRenderDescs;
+	}
+
+	void Renderer::SubmitBatch(CommandContext& aCommandContext, const Batch& aBatch) noexcept
+	{
+		struct
+		{
+			uint32 BaseInstanceOffset = 0xFFFFFFFF;
+		} params;
+
+		params.BaseInstanceOffset = aBatch.BaseInstanceOffset;
+		aCommandContext.BindRootCBV(BindingSlot::PerInstance, (const void*)&params, sizeof(params));
+		aCommandContext.Draw(0u, aBatch.NumIndices, 0u, aBatch.InstanceCount);
 	}
 
 	RenderJobHandle Renderer::SubmitComputeJob(Callback<void(CommandContext&)>&& aCallback) noexcept
@@ -243,6 +257,10 @@ namespace Relentless
 		if (!sceneTextures.pAutoExposureDownscaleTarget || sceneTextures.pAutoExposureDownscaleTarget->GetWidth() != downscaleWidth || sceneTextures.pAutoExposureDownscaleTarget->GetHeight() != downscaleHeight)
 			sceneTextures.pAutoExposureDownscaleTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(downscaleWidth, downscaleHeight, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::UnorderedAccess | TextureFlag::ShaderResource), "Autoexposure Downscale Target");
 
+		//Color + Alpha Masked Color Target Copy
+		if (!sceneTextures.pOpaqueAlphaMaskedColorTargetCopy || sceneTextures.pOpaqueAlphaMaskedColorTargetCopy->GetWidth() != width || sceneTextures.pOpaqueAlphaMaskedColorTargetCopy->GetHeight() != height)
+			sceneTextures.pOpaqueAlphaMaskedColorTargetCopy = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource), "Opaque & Alpha Masked Color Target Copy");
+
 		sceneTextures.pEnvironmentTarget = GraphicsCommon::GetDefaultTexture(DefaultTextureType::BlackCube);
 
 		return sceneTextures;
@@ -277,17 +295,8 @@ namespace Relentless
 
 		for (const Batch& batch : batches)
 		{
-			if (EnumHasAllFlags(batch.BlendMode, blendMode))
-			{
-				struct  
-				{
-					uint32 InstanceID = 0xFFFFFFFF;
-				} params;
-
-				params.InstanceID = batch.BaseInstanceOffset;//batch.InstanceID;
-				context.BindRootCBV(BindingSlot::PerInstance, (const void*)&params, sizeof(params));
-				context.Draw(0u, batch.NumIndices, 0u, batch.InstanceCount);
-			}
+			if (batch.BlendMode == blendMode)
+				SubmitBatch(context, batch);
 		}
 	}
 
@@ -349,7 +358,6 @@ namespace Relentless
 		renderView.OrthographicFrustum = aViewRenderDesc.ViewTransform.OrthographicFrustum;
 
 		renderView.pRenderer = this;
-		renderView.pScene = aViewRenderDesc.Scene;
 		renderView.pRenderScene = GetRenderScene(aViewRenderDesc.SceneID);
 		renderView.FrameIndex = GetFrameIndex();
 		renderView.MouseHoverCoordinates = aViewRenderDesc.MouseHoverCoordinates;
@@ -436,6 +444,9 @@ namespace Relentless
 
 		outViewUniform.SkyLightIndex			= pSkyLightRenderSubsystem->GetRenderData()->GetSRVIndex();
 		outViewUniform.SkyBoxIndex				= pSkyBoxRenderSubsystem->GetRenderData()->GetSRVIndex();
+
+		//TODO: Consider how this is made available:
+		outViewUniform.SceneColorCopyIndex		= m_ViewTextures.at(aRenderView.ViewID).pOpaqueAlphaMaskedColorTargetCopy->GetSRVIndex();
 	}
 
 	void Renderer::InvokeDispatchRequests() noexcept
@@ -580,14 +591,47 @@ namespace Relentless
 			commandContexts.push_back(pCommandContext);
 		}
 
-		//Forward
+		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
+		
+		//Forward Opaque + Alpha Masked
 		{
-			PROFILE_SCOPE("Renderer::Render::Forward");
-			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
-
+			PROFILE_SCOPE("Renderer::Render::ForwardOpaqueAlphaMask");
+		
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			m_pForwardRenderer->Render(*pCommandContext, aRenderView, aSceneTextures);
+			m_pForwardOpaqueAlphaMask->Render(*pCommandContext, aRenderView, aSceneTextures);
 			
+			commandContexts.push_back(pCommandContext);
+		}
+
+		//Copy/Resolve scene color (referenced in alpha blend pass)
+		{
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			if (aRenderView.RenderQualitySettings.MSAASampleCount != EMSAASampleCount::None)
+			{
+				PROFILE_SCOPE("Renderer::Render::PreAlphaBlendColorResolve");
+				
+				pCommandContext->InsertResourceBarrier(aSceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+				pCommandContext->InsertResourceBarrier(aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+				pCommandContext->ResolveResource(aSceneTextures.pColorTarget, 0u, aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy, 0u, aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy->GetFormat());
+			}
+			else
+			{
+				PROFILE_SCOPE("Renderer::Render::PreAlphaBlendColorCopy");
+				
+				pCommandContext->InsertResourceBarrier(aSceneTextures.pColorTarget, D3D12_RESOURCE_STATE_COPY_SOURCE);
+				pCommandContext->InsertResourceBarrier(aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy, D3D12_RESOURCE_STATE_COPY_DEST);
+				pCommandContext->CopyResource(aSceneTextures.pColorTarget, aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy);
+			}
+			commandContexts.push_back(pCommandContext);
+		}
+
+		//Forward Alpha Blend
+		{
+			PROFILE_SCOPE("Renderer::Render::ForwardAlphaBlend");
+		
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			m_pForwardAlphaBlend->Render(*pCommandContext, aRenderView, aSceneTextures);
+		
 			commandContexts.push_back(pCommandContext);
 		}
 
@@ -613,6 +657,7 @@ namespace Relentless
 		}
 
 		CommandContext::Execute(commandContexts);
+		commandContexts.clear();
 
 		//Entity ID Picking
 		if (aRenderView.RenderFeatures.IsEnabled(ERenderFeature::EntityPicking))
@@ -623,8 +668,6 @@ namespace Relentless
 			SyncPoint s = pCommandContext->Execute();
 			m_EntityIDSyncDatas.push({ .Sync = s, .RenderSceneUUID = aRenderView.pRenderScene->GetUUID(), .ViewUUID = aRenderView.ViewID });
 		}
-
-		commandContexts.clear();
 
 		//Outlines
 		{
@@ -637,13 +680,9 @@ namespace Relentless
 		//Auto Exposure:
 		{
 			PROFILE_SCOPE("Renderer::Render::AutoExposure");
-			float minLogLuminance = -4.0f;
-			float minEV100 = -10.0f;
-			float maxEV100 = 20.0f;
-			float exposureCompensation = 1.0f;
 
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			m_pAutoExposure->Render(*pCommandContext, aRenderView, aSceneTextures, aSceneBuffers, minLogLuminance, minEV100, maxEV100, exposureCompensation);
+			m_pAutoExposure->Render(*pCommandContext, aRenderView, aSceneTextures, aSceneBuffers);
 			commandContexts.push_back(pCommandContext);
 		}
 

@@ -28,7 +28,7 @@ namespace Relentless
 
 	const PrimitiveRenderProxy& PrimitiveRenderSubsystem::GetProxy(uint32 aEntityID) const
 	{
-		RLS_ASSERT(m_RenderData.contains(aEntityID), "[PrimitiveRenderSubsystem::GetProxy]: Proxy does not exist for instance ID.");
+		RLS_ASSERT(m_RenderData.contains(aEntityID), "[PrimitiveRenderSubsystem::GetProxy]: Proxy does not exist for aEntityID.");
 		return m_RenderData.at(aEntityID);
 	}
 
@@ -111,6 +111,9 @@ namespace Relentless
 
 				if (materialProxyA.BlendMode != materialProxyB.BlendMode)
 					return (int)materialProxyA.BlendMode < (int)materialProxyB.BlendMode;
+
+				if (materialProxyA.IsTwoSided != materialProxyB.IsTwoSided)
+					return (int)materialProxyA.IsTwoSided < (int)materialProxyB.IsTwoSided;
 
 				return a.MeshDataIndex < b.MeshDataIndex;
 			};

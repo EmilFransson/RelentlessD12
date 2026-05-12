@@ -6,8 +6,8 @@
 
 namespace Relentless
 {
-	PanelBase::PanelBase(const char* pName, ImGuiWindowFlags flags) noexcept
-		: m_Name{ std::format("{}###{}", pName, (const void*)this) }, m_Flags{ flags }
+	PanelBase::PanelBase(const char* pName, ImGuiWindowFlags aFlags) noexcept
+		: m_Name{ std::format("{}###{}", pName, (const void*)this) }, m_Flags{ aFlags }
 	{
 	}
 
@@ -40,13 +40,20 @@ namespace Relentless
 		}
 	}
 
+	void PanelBase::RebuildName() noexcept
+	{
+		m_Name = std::format("{}###{}_{}", GetDisplayName(), GetPersistKey(), m_Slot);
+	}
+
 	void PanelBase::Render() noexcept
 	{
-		bool open = true;
-		
+		const Vector2 defaultSize = GetDefaultSize();
+		ImGui::SetNextWindowSize(ImVec2(defaultSize.x, defaultSize.y), ImGuiCond_FirstUseEver);
+
 		for (const auto& [style, value] : m_Styles)
 			ImGui::PushStyleVar(style, value);
 
+		bool open = true;
 		ImGui::Begin(m_Name.c_str(), &open, m_Flags);
 		ImGui::PopStyleVar(m_Styles.size());
 
@@ -134,6 +141,12 @@ namespace Relentless
 	const std::string& PanelBase::GetName() const noexcept
 	{
 		return m_Name;
+	}
+
+	void PanelBase::InitializeIdentity(uint32 aSlot) noexcept
+	{
+		m_Slot = aSlot;
+		RebuildName();
 	}
 
 	bool PanelBase::IsDocked() const noexcept

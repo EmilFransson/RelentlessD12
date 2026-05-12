@@ -15,7 +15,7 @@ namespace Relentless
 	{
 	public:
 		IDetailLayoutBuilder(IDetailsView* pDetailView) noexcept;
-		virtual ~IDetailLayoutBuilder() noexcept = default;
+		virtual ~IDetailLayoutBuilder() noexcept;
 
 		template<typename InspectedType>
 		std::vector<Ref<DetailNode>> Build() noexcept;

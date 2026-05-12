@@ -8,7 +8,10 @@ namespace Relentless
 	{
 	public:
 		WidgetShowcasePanel() noexcept;
-	protected:
+		
+		NO_DISCARD virtual String GetDisplayName() const noexcept override;
+		NO_DISCARD virtual String GetPersistKey() const noexcept override;
+
 		virtual void OnRender() noexcept override {}
 	};
 }

@@ -6,12 +6,17 @@ namespace Relentless
 	void ShaderLibrary::Initialize() noexcept
 	{
 		Add(Shader::Create(ShaderType::VERTEX, "DepthPrePassShader.hlsl", "vs_main"));
+		Add(Shader::Create(ShaderType::VERTEX, "DepthPrePassShader.hlsl", "vs_main", { "ALPHA_MASK" }));
+		Add(Shader::Create(ShaderType::PIXEL, "DepthPrePassShader.hlsl", "ps_main", { "ALPHA_MASK" }));
 
 		Add(Shader::Create(ShaderType::VERTEX, "EditorGridShader.hlsl", "vs_main"));
 		Add(Shader::Create(ShaderType::PIXEL, "EditorGridShader.hlsl", "ps_main"));
 
 		Add(Shader::Create(ShaderType::VERTEX, "ForwardShader.hlsl", "vs_main"));
 		Add(Shader::Create(ShaderType::PIXEL, "ForwardShader.hlsl", "ps_main"));
+		Add(Shader::Create(ShaderType::PIXEL, "ForwardShader.hlsl", "ps_main", { "ALPHA_MASK" }));
+		Add(Shader::Create(ShaderType::VERTEX, "ForwardShader.hlsl", "vs_main", { "ALPHA_BLEND"}));
+		Add(Shader::Create(ShaderType::PIXEL, "ForwardShader.hlsl", "ps_main", { "ALPHA_BLEND" }));
 
 		Add(Shader::Create(ShaderType::VERTEX, "EntityOutputShader.hlsl", "vs_main"));
 		Add(Shader::Create(ShaderType::PIXEL, "EntityOutputShader.hlsl", "ps_main"));

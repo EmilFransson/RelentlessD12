@@ -74,6 +74,7 @@ namespace Relentless
 		outMaterialData.EmissiveIndex = aRenderProxy.EmissionMap ? aRenderProxy.EmissionMap->GetSRVIndex() : GraphicsCommon::GetDefaultTexture(DefaultTextureType::White2D)->GetSRVIndex();
 		outMaterialData.HeightMapIndex = aRenderProxy.DisplacementMap ? aRenderProxy.DisplacementMap->GetSRVIndex() : GraphicsCommon::GetDefaultTexture(DefaultTextureType::Black2D)->GetSRVIndex();
 		outMaterialData.AOIndex = aRenderProxy.AmbientOcclusionMap ? aRenderProxy.AmbientOcclusionMap->GetSRVIndex() : GraphicsCommon::GetDefaultTexture(DefaultTextureType::White2D)->GetSRVIndex();
+		outMaterialData.OpacityIndex = aRenderProxy.OpacityMap ? aRenderProxy.OpacityMap->GetSRVIndex() : GraphicsCommon::GetDefaultTexture(DefaultTextureType::White2D)->GetSRVIndex();
 		outMaterialData.RoughnessMetalnessIndex = ShaderInterop::INVALID_DESCRIPTOR_INDEX; //Consider this for future.
 
 		outMaterialData.BaseColorFactor = aRenderProxy.AlbedoColor;
@@ -83,6 +84,9 @@ namespace Relentless
 		outMaterialData.AOFactor = aRenderProxy.AmbientOcclusionIntensity;
 		outMaterialData.HeightFactor = aRenderProxy.DisplacementIntensity;
 		outMaterialData.EmissionIntensity = aRenderProxy.EmissionIntensity;
+		outMaterialData.AlphaCutOff = aRenderProxy.AlphaCutOff;
+		outMaterialData.IOR = aRenderProxy.IOR;
+		outMaterialData.RefractionStrength = aRenderProxy.RefractionStrength;
 
 		outMaterialData.TilingFactor = aRenderProxy.TilingFactor;
 		outMaterialData.Offset = aRenderProxy.Offset;

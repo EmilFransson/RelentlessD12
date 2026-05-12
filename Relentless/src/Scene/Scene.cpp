@@ -12,7 +12,9 @@
 #include "ECS/Components/TransformComponent.h"
 
 #include "ECS/ObserverSystems/LightObserverSystem.h"
+#include "ECS/ObserverSystems/PostProcessObserverSystem.h"
 #include "ECS/ObserverSystems/PrimitiveObserverSystem.h"
+#include "ECS/ObserverSystems/SelectionObserverSystem.h"
 #include "ECS/ObserverSystems/SkyBoxObserverSystem.h"
 #include "ECS/ObserverSystems/SkyLightObserverSystem.h"
 
@@ -23,19 +25,28 @@
 #include "ECS/Systems/SkyLightRenderDispatchSystem.h"
 #include "ECS/Systems/DirectionalLightRenderDispatchSystem.h"
 #include "ECS/Systems/PointLightRenderDispatchSystem.h"
+#include "ECS/Systems/PostProcessRenderDispatchSystem.h"
 #include "ECS/Systems/PrimitiveRenderDispatchSystem.h"
 #include "ECS/Systems/SpotLightRenderDispatchSystem.h"
 #include "ECS/Systems/TransformCleanupSystem.h"
+
+#include "Graphics/Renderer/Renderer.h"
 
 #include "Subsystem/CoreTypes/MaterialSceneSubsystem.h"
 #include "Subsystem/CoreTypes/MeshSceneSubsystem.h"
 
 namespace Relentless
 {
-	Scene::Scene(const char* aName) noexcept
-		:m_UUID{ CreateUUID() },
+	Scene::Scene(const char* aName, const UUID& aUUID) noexcept
+		:m_UUID{ aUUID },
 		 m_Name{ aName }
 	{
+		//Render Scene create dispatch must always appear first:
+		Renderer::Dispatch([aUUID](Renderer* aRenderer)
+			{
+				aRenderer->CreateRenderScene(aUUID);
+			});
+
 		//Default subsystem initialization:
 		GetSubsystem<MaterialSceneSubsystem>();
 		GetSubsystem<MeshSceneSubsystem>();
@@ -46,6 +57,7 @@ namespace Relentless
 		RegisterSystem<DirectionalLightRenderDispatchSystem>();
 		RegisterSystem<PointLightRenderDispatchSystem>();
 		RegisterSystem<SpotLightRenderDispatchSystem>();
+		RegisterSystem<PostProcessRenderDispatchSystem>();
 		RegisterSystem<PrimitiveRenderDispatchSystem>();
 		
 		RegisterSystem<MeshFilterCleanupSystem>();
@@ -59,6 +71,16 @@ namespace Relentless
 		RegisterObserverSystem<SkyBoxObserverSystem>();
 		RegisterObserverSystem<SkyLightObserverSystem>();
 		RegisterObserverSystem<PrimitiveObserverSystem>();
+		RegisterObserverSystem<SelectionObserverSystem>();
+		RegisterObserverSystem<PostProcessObserverSystem>();
+	}
+
+	Scene::~Scene() noexcept
+	{
+		Renderer::Dispatch([uuid = GetUUID()](Renderer* aRenderer)
+			{
+				aRenderer->DestroyRenderScene(uuid);
+			});
 	}
 
 	bool Scene::AnyEntityHasName(const char* aName) const noexcept

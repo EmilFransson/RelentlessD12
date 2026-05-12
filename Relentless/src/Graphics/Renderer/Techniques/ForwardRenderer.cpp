@@ -51,10 +51,93 @@ namespace Relentless
 			psoDesc.SetDepthEnabled(true);
 			psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_EQUAL);
 			psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
-			psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, static_cast<uint32>(aRenderView.RenderQualitySettings.MSAASampleCount));
+			psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, numSamples);
 
 			aCommandContext.SetPipelineState(m_pDevice->GetOrCreatePipeline(psoDesc));
 			Renderer::DrawScene(aCommandContext, aRenderView, Batch::Blending::Opaque);
+		}
+
+		//Alpha-mask:
+		{
+			PipelineStateInitializer psoDesc{};
+			psoDesc.SetBlendMode(BlendMode::Replace);
+			psoDesc.SetAlphaToCoverageEnable(numSamples > 1);
+			psoDesc.SetName("Forward - Alpha Mask");
+			psoDesc.SetVertexShader("ForwardShader", "vs_main");
+			psoDesc.SetPixelShader("ForwardShader", "ps_main", { "ALPHA_MASK" });
+			psoDesc.SetDepthWrite(true);
+			psoDesc.SetDepthEnabled(true);
+			psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_EQUAL);
+			psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
+			psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, numSamples);
+			PipelineState* pAlphaMaskFrontFace = m_pDevice->GetOrCreatePipeline(psoDesc);
+
+			psoDesc.SetName("Forward - Alpha Mask - TwoSided - Cull Front");
+			psoDesc.SetCullMode(D3D12_CULL_MODE_FRONT);
+			psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+			PipelineState* pAlphaMaskBack = m_pDevice->GetOrCreatePipeline(psoDesc);
+
+			psoDesc.SetName("Forward - Alpha Mask - TwoSided - Cull Back");
+			psoDesc.SetCullMode(D3D12_CULL_MODE_BACK);
+			psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+			PipelineState* pAlphaMaskFront = m_pDevice->GetOrCreatePipeline(psoDesc);
+
+			for (const Batch& batch : aRenderView.pRenderScene->GetBatches())
+			{
+				if (batch.BlendMode != Batch::Blending::AlphaMask)
+					continue;
+
+				if (batch.IsTwoSided)
+				{
+					aCommandContext.SetPipelineState(pAlphaMaskBack);
+					Renderer::SubmitBatch(aCommandContext, batch);
+					aCommandContext.SetPipelineState(pAlphaMaskFront);
+					Renderer::SubmitBatch(aCommandContext, batch);
+				}
+				else
+				{
+					aCommandContext.SetPipelineState(pAlphaMaskFrontFace);
+					Renderer::SubmitBatch(aCommandContext, batch);
+				}
+			}
+		}
+
+		//Transparent
+		{
+			PipelineStateInitializer psoDesc{};
+			psoDesc.SetBlendMode(BlendMode::Alpha);
+			psoDesc.SetAlphaToCoverageEnable(false);
+			psoDesc.SetCullMode(D3D12_CULL_MODE_FRONT);
+			psoDesc.SetName("Forward - Transparent - BackFace");
+			psoDesc.SetVertexShader("ForwardShader", "vs_main");
+			psoDesc.SetPixelShader("ForwardShader", "ps_main");
+			psoDesc.SetDepthWrite(false);
+			psoDesc.SetDepthEnabled(true);
+			psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+			psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
+			psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, numSamples);
+
+			PipelineState* pTransparentBackFacePSO = m_pDevice->GetOrCreatePipeline(psoDesc);
+
+			psoDesc.SetCullMode(D3D12_CULL_MODE_BACK);
+			psoDesc.SetName("Forward - Transparent - FrontFace");
+
+			PipelineState* pTransparentFrontFacePSO = m_pDevice->GetOrCreatePipeline(psoDesc);
+
+			for (const Batch& batch : aRenderView.pRenderScene->GetBatches())
+			{
+				if (batch.BlendMode != Batch::Blending::AlphaBlend)
+					continue;
+
+				if (batch.IsTwoSided)
+				{
+					aCommandContext.SetPipelineState(pTransparentBackFacePSO);
+					Renderer::SubmitBatch(aCommandContext, batch);
+				}
+				
+				aCommandContext.SetPipelineState(pTransparentFrontFacePSO);
+				Renderer::SubmitBatch(aCommandContext, batch);
+			}
 		}
 
 		aCommandContext.EndRenderPass();

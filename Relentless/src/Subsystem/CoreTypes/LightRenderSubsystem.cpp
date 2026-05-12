@@ -60,7 +60,7 @@ namespace Relentless
 		outLightData.Color = aRenderProxy.Color;
 		outLightData.Position = aRenderProxy.Position;
 		outLightData.Direction = aRenderProxy.Direction;
-		outLightData.Intensity = aRenderProxy.Intensity;
+		outLightData.Intensity = aRenderProxy.LightType == ELightType::Directional ? (aRenderProxy.Intensity / Math::PI) : aRenderProxy.Intensity;
 		outLightData.IsDirectional = aRenderProxy.LightType == ELightType::Directional;
 		outLightData.IsPoint = aRenderProxy.LightType == ELightType::Point;
 		outLightData.IsSpot = aRenderProxy.LightType == ELightType::Spot;

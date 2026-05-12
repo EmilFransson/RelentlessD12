@@ -191,7 +191,7 @@ namespace Relentless
 
 		while (evicted < MaxEvictPerTick && m_ResidentBytes > targetBudget && !m_LRU.empty())
 		{
-			const UUID& toEvict = m_LRU.back();
+			const UUID toEvict = m_LRU.back();
 			
 			auto it = m_Thumbnails.find(toEvict);
 			if (it == m_Thumbnails.end())

@@ -65,7 +65,6 @@ namespace Relentless
 	{
 		const bool isExpanded = m_pDetailsTreeView->GetItemInfo(aItem).IsExpanded;
 		m_pDetailsTreeView->SetItemExpandedState(aItem, !isExpanded);
-		//m_ManualRefreshTriggered = true;
 	}
 
 	Ref<ITableRow> IDetailsView::OnGenerateRow(const Ref<DetailNode>& aItem) noexcept

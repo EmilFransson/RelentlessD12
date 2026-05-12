@@ -2,6 +2,10 @@
 
 #include "Assets/Factory/TextureFactory.h"
 
+#include "Module/UIModule.h"
+
+#include "Panels/MaterialEditorPanel.h"
+
 namespace Relentless
 {
 	bool MaterialAssetDefinition::RequestGenerateThumbnail(MAYBE_UNUSED const AssetData& aAssetData, const Callback<void(const Ref<Texture2D>&)>& aOnThumbnailGeneratedCallback) noexcept
@@ -60,6 +64,22 @@ namespace Relentless
 		return pThumbnailInfo;
 	}
 
+	bool MaterialAssetDefinition::OpenAssets(const std::vector<AssetHandle>& someAssets) noexcept
+	{
+		if (someAssets.size() != 1u)
+			return false;
+
+		for (const AssetHandle& assetHandle : someAssets)
+		{
+			if (!SupportsAsset(assetHandle))
+				return false;
+		}
+
+		ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<MaterialEditorPanel>(std::move(someAssets));
+
+		return true;
+	}
+
 	bool MaterialAssetDefinition::SupportsAsset(IAsset* aAsset) const noexcept
 	{
 		return aAsset->GetStaticType() == Material::StaticType();
@@ -68,6 +88,11 @@ namespace Relentless
 	bool MaterialAssetDefinition::SupportsAsset(AssetData* aAssetData) const noexcept
 	{
 		return aAssetData->Type == Material::StaticType();
+	}
+
+	bool MaterialAssetDefinition::SupportsAsset(const AssetHandle& aAssetHandle) const noexcept
+	{
+		return aAssetHandle.Type == Material::StaticType();
 	}
 
 	bool MaterialAssetDefinition::SupportsCreateNew() const noexcept

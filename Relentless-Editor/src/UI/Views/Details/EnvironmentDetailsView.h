@@ -7,7 +7,10 @@ namespace Relentless
 	class EnvironmentDetailsView : public IDetailsView
 	{
 	public:
-		explicit EnvironmentDetailsView(const std::vector<Ref<Environment>>& someEnvironments) noexcept;
+		explicit EnvironmentDetailsView(const AssetHandle& aEnvironmentHandle) noexcept;
+		virtual ~EnvironmentDetailsView() noexcept;
+		
+		void SetEnvironment(const AssetHandle& aEnvironmentHandle) noexcept;
 	private:
 		EnvironmentDetailsContext m_DetailsContext;
 	};

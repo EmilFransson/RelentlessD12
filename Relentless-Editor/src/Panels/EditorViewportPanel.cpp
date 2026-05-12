@@ -12,7 +12,7 @@ namespace Relentless
 		:ViewportPanel("Scene Viewport")
 	{
 		SetRoot(BuildDefaultWindowLayout());
-
+		
 		Renderer::Dispatch([viewID = GetUUID()](Renderer* aRenderer)
 			{
 				aRenderer->CreateView(viewID);
@@ -32,6 +32,8 @@ namespace Relentless
 		const SharedPtr<PerspectiveCamera> pCamera = GetCamera();
 		Editor* pEditor = Editor::Get();
 
+		RenderFeatures renderFeatures;
+
 		RenderQualitySettings renderQualitySettings;
 		renderQualitySettings.MSAASampleCount = EMSAASampleCount::x8;
 
@@ -40,11 +42,10 @@ namespace Relentless
 			.ViewTransform = pCamera->GetViewTransform(),
 			.SceneID = pEditor->GetActiveScene()->GetUUID(),
 			.ViewID = GetUUID(),
-			.RenderFeatures = RenderFeatures(),
+			.RenderFeatures = renderFeatures,
 			.RenderQualitySettings = renderQualitySettings,
 			.MouseHoverCoordinates = IsClientAreaHovered() ? GetClientHoverCoordinates() : Vector2i(-1, -1),
-			.RenderTarget = m_pRenderTarget,
-			.Scene = pEditor->GetActiveScene()
+			.RenderTarget = m_pRenderTarget
 		};
 
 		const Vector2i& region = GetViewportSize();
@@ -52,4 +53,15 @@ namespace Relentless
 
 		return renderDesc;
 	}
+
+	String EditorViewportPanel::GetDisplayName() const noexcept
+	{
+		return "Scene Viewport";
+	}
+
+	String EditorViewportPanel::GetPersistKey() const noexcept
+	{
+		return "Scene Viewport";
+	}
+
 }

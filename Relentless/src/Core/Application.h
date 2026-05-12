@@ -27,6 +27,8 @@ namespace Relentless
 		Application(const ApplicationSpecification& applicationSpecification) noexcept;
 		virtual ~Application() noexcept;
 
+		void FlushMainThreadQueue() noexcept;
+		
 		NO_DISCARD GraphicsDevice* GetGraphicsDevice() const noexcept;
 		NO_DISCARD const UniquePtr<Window>& GetWindow() const noexcept;
 
@@ -50,7 +52,6 @@ namespace Relentless
 		void Update_Internal() noexcept;
 		void ShutDown_Internal() noexcept;
 
-		void ExecuteMainThreadQueue() noexcept;
 
 		void OnWindowClosedOrDestroyed() noexcept;
 		void OnMouseInput(uint32 keyCode, bool isPressed) noexcept;

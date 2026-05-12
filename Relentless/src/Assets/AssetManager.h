@@ -141,6 +141,8 @@ namespace Relentless
 		NO_DISCARD static Ref<AssetType> Get(const AssetHandle& aAssetHandle) noexcept
 		{
 			RLS_ASSERT(aAssetHandle != AssetHandle::INVALID, "Asset handle is invalid.");
+			RLS_ASSERT(aAssetHandle.Type == AssetType::StaticType(), "[AssetManager::Get]: Asset handle type mismatch.");
+
 			return GetStorage<AssetType>().template GetAsset<AssetType>(aAssetHandle);
 		}
 
@@ -156,6 +158,7 @@ namespace Relentless
 			GetStorage<AssetType>().Destroy(aHandle);
 		}
 
+		static bool LoadAsset(const AssetHandle& aAssetHandle) noexcept;
 		NO_DISCARD static AssetHandle LoadAsset(const String& aFilepath) noexcept;
 		NO_DISCARD static AssetHandle LoadAsset(const AssetData& aAssetData) noexcept;
 		static void LoadAssetAsync(const String& aFilepath, AssetDoneLoadingCallback&& aCallback) noexcept;
@@ -181,6 +184,14 @@ namespace Relentless
 		{
 			AssetStorage& storage = GetStorage<AssetType>();
 			std::unique_lock<std::shared_mutex> guard(storage.m_Mutex);
+			storage.OnAssetCreated.Detach(aType);
+		}
+
+		template<typename AssetType, typename InstanceType>
+		static void DetachOnAssetCreated(MAYBE_UNUSED std::unique_lock<std::shared_mutex>& aLock, InstanceType* aType) noexcept
+		{
+			AssetStorage& storage = GetStorage<AssetType>();
+			RLS_ASSERT(aLock.mutex() == &storage.m_Mutex && aLock.owns_lock());
 			storage.OnAssetCreated.Detach(aType);
 		}
 

@@ -40,11 +40,33 @@ namespace Relentless
 		Broadcaster<void(ViewportPanel* pPanel, RLS_Key pressedKey)> OnHotkeyPressed;
 		Broadcaster<void(ViewportPanel* pPanel, Vector2u relativeMouseCoords)> OnClickedOnViewport;
 	protected:
+		//Events:
+		NO_DISCARD bool OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept override;
+		NO_DISCARD bool OnKeyReleasedEvent(KeyReleasedEvent& aEvent) noexcept override;
+
+		NO_DISCARD bool OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent& aEvent) noexcept override;
+		NO_DISCARD bool OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent& aEvent) noexcept override;
+
+		NO_DISCARD bool OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent& aEvent) noexcept override;
+		NO_DISCARD bool OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent& aEvent) noexcept override;
+
+		NO_DISCARD bool OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent& aEvent) noexcept override;
+		NO_DISCARD bool OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent& aEvent) noexcept override;
+
+		NO_DISCARD bool OnMouseBeginDragEvent(MAYBE_UNUSED MouseBeginDragEvent& aEvent) noexcept override;
+		NO_DISCARD bool OnMouseDragEvent(MouseDragEvent& aEvent) noexcept override;
+		NO_DISCARD bool OnMouseEndDragEvent(MAYBE_UNUSED MouseEndDragEvent& aEvent) noexcept override;
+
+		NO_DISCARD bool OnMouseWheelScrolledEvent(MouseWheelScrolledEvent& aEvent) noexcept override;
+
+		virtual void ResolveAndSetCameraMode() noexcept;
+
 		virtual void PreRender() noexcept override;
 		void OnRender() noexcept override{};
 		virtual void PostRender() noexcept override;
 
 		virtual void Update() noexcept override;
+
 	private:
 		void ConfineAndHideMouseAtCursorPosition() noexcept;
 
@@ -58,34 +80,13 @@ namespace Relentless
 		void OnCanvasResize(const Vector2i& newSize) noexcept;
 		NO_DISCARD Texture* OnCanvasTargetRequest() const noexcept;
 		void OnCanvasRenderEnd() noexcept;
-
-		//Events:
-		NO_DISCARD bool OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept override;
-		NO_DISCARD bool OnKeyReleasedEvent(KeyReleasedEvent& aEvent) noexcept override;
-		
-		NO_DISCARD bool OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent& aEvent) noexcept override;
-		NO_DISCARD bool OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent& aEvent) noexcept override;
-		
-		NO_DISCARD bool OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent& aEvent) noexcept override;
-		NO_DISCARD bool OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent& aEvent) noexcept override;
-
-		NO_DISCARD bool OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent& aEvent) noexcept override;
-		NO_DISCARD bool OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent& aEvent) noexcept override;
-
-		NO_DISCARD bool OnMouseBeginDragEvent(MAYBE_UNUSED MouseBeginDragEvent& aEvent) noexcept override;
-		NO_DISCARD bool OnMouseDragEvent(MouseDragEvent& aEvent) noexcept override;
-		NO_DISCARD bool OnMouseEndDragEvent(MAYBE_UNUSED MouseEndDragEvent& aEvent) noexcept override;
-
-		NO_DISCARD bool OnMouseWheelScrolledEvent(MouseWheelScrolledEvent& aEvent) noexcept override;
-
 		void OnSettingsButtonClicked();
-
 		void OnViewportResize(const Vector2i& newSize);
 
 		void RecomputeCameraValidScreenRect() noexcept;
-		void ResolveAndSetCameraMode() noexcept;
 	protected:
 		Ref<Texture> m_pRenderTarget = nullptr;
+		Canvas* m_pCanvas = nullptr;
 	private:
 		UUID m_UUID;
 		IntRect m_CameraValidScreenRect;
@@ -107,6 +108,5 @@ namespace Relentless
 
 		Ref<HorizontalBox> m_pToolbarBox = nullptr;
 		VerticalBox* m_pSettingsBox = nullptr;
-		Canvas* m_pCanvas = nullptr;
 	};
 }

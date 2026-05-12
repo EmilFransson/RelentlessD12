@@ -39,6 +39,7 @@ namespace Relentless
 	void Camera::SetRotation(const Quaternion& rotation) noexcept
 	{
 		m_Rotation = rotation;
+		m_Rotation.Normalize();
 	}
 
 	void Camera::SetViewport(const FloatRect& viewport) noexcept

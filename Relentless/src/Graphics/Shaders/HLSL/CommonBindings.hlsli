@@ -77,6 +77,7 @@ struct MaterialSurface
     float Roughness;
     float Metalness;
     float AmbientOcclusion;
+    float IOR;
 };
 
 struct MaterialEvaluationInputs
@@ -117,6 +118,13 @@ float4 EvaluateAlbedo(Material aMaterial, float2 aUV)
     Texture2D albedoTexture = ResourceDescriptorHeap[aMaterial.AlbedoIndex];
     const float4 albedoColor = albedoTexture.Sample(sAnisoWrap, aUV) * aMaterial.BaseColorFactor;
     return albedoColor;
+}
+
+float EvaluateOpacity(Material aMaterial, float aAlbedoAlpha, float2 aUV)
+{
+    Texture2D opacityTexture = ResourceDescriptorHeap[aMaterial.OpacityIndex];
+    const float opacity = opacityTexture.Sample(sAnisoWrap, aUV).r * aAlbedoAlpha;
+    return opacity;
 }
 
 float EvaluateRoughness(Material aMaterial, float2 aUV)
@@ -170,16 +178,35 @@ float3 EvaluateNormal(Material aMaterial, MaterialEvaluationInputs aEvaluationIn
     return normal;
 }
 
+float3 EvaluateRefraction(MaterialSurface aSurface, float aRefractionScale, float2 aScreenUV)
+{
+    // 1. Compute view-space normal (refraction works in view space)
+    const float3 viewSpaceNormal = mul((float3x3)cView.WorldToView, aSurface.Normal);
+
+    // 2. Compute refraction offset based on view-space normal XY
+    // Normal pointing away from camera in XY direction = larger offset
+    const float refractionStrength = (aSurface.IOR - 1.0f) * aRefractionScale;
+    const float2 refractionOffset = viewSpaceNormal.xy * refractionStrength;
+
+    // 4. Sample scene color at clamped offset UV
+    float2 refractedUV = aScreenUV + refractionOffset;
+    refractedUV = saturate(refractedUV);
+
+    Texture2D sceneColorCopy = ResourceDescriptorHeap[cView.SceneColorCopyIndex];
+    const float3 refractedBackground = sceneColorCopy.Sample(sLinearClamp, refractedUV).rgb;
+    return refractedBackground;
+}
+
 MaterialSurface EvaluateMaterial(Material aMaterial, MaterialEvaluationInputs aEvaluationInputs)
 {
     MaterialSurface surface = (MaterialSurface)0;
     
     const float4 albedo         = EvaluateAlbedo(aMaterial, aEvaluationInputs.UV);
     surface.AlbedoColor         = albedo.xyz;
-    surface.Alpha               = albedo.w;
+    surface.Alpha               = EvaluateOpacity(aMaterial, albedo.w, aEvaluationInputs.UV);
     
     #ifdef ALPHA_MASK
-        clip(sample.Alpha < 0.1f ? -1 : 1);
+        clip(surface.Alpha < aMaterial.AlphaCutOff ? -1 : 1);
     #endif
     
     surface.Roughness           = EvaluateRoughness(aMaterial, aEvaluationInputs.UV);
@@ -188,6 +215,7 @@ MaterialSurface EvaluateMaterial(Material aMaterial, MaterialEvaluationInputs aE
     surface.EmissiveColor       = EvaluateEmission(aMaterial, aEvaluationInputs.UV);
     surface.Normal              = EvaluateNormal(aMaterial, aEvaluationInputs);
     surface.Roughness           = AdjustRoughnessForSpecularAA(surface.Roughness, surface.Normal);
+    surface.IOR                 = aMaterial.IOR;
     
     return surface;
 }

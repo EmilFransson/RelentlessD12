@@ -190,7 +190,6 @@ namespace Relentless
 		ScratchAllocator m_ScratchAllocator;
 
 		D3D12_RENDER_PASS_ENDING_ACCESS_RESOLVE_SUBRESOURCE_PARAMETERS m_ColorResolveParams;
-		D3D12_RENDER_PASS_ENDING_ACCESS_RESOLVE_SUBRESOURCE_PARAMETERS m_DepthResolveParams;
 	};
 
 	namespace ComputeUtils

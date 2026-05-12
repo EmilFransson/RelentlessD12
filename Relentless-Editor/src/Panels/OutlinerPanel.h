@@ -15,6 +15,9 @@ namespace Relentless
 		virtual ~OutlinerPanel() noexcept override = default;
 
 		const Ref<EntityOutlinerView>& GetEntityOutlinerView() const noexcept;
+		
+		NO_DISCARD virtual String GetDisplayName() const noexcept override;
+		NO_DISCARD virtual String GetPersistKey() const noexcept override;
 	private:
 		bool OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept override;
 	private:

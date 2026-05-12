@@ -1,17 +1,21 @@
 #include "DetailsModule.h"
 
 #include "UI/Views/Details/Customizations/Assets/EnvironmentDetailCustomization.h"
-#include "UI/Views/Details/Customizations/Viewport/ViewportCameraDetailCustomization.h"
-#include "UI/Views/Details/Customizations/Entity/TransformComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Assets/MaterialDetailCustomization.h"
+
 #include "UI/Views/Details/Customizations/Entity/DirectionalLightComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/PointLightComponentDetailCustomization.h"
-#include "UI/Views/Details/Customizations/Entity/SpotLightComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/PostProcessVolumeComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/SkyBoxComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/SkyLightComponentDetailCustomization.h"
-#include "UI/Views/Details/Customizations/Entity/PostProcessVolumeComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/SpotLightComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/TransformComponentDetailCustomization.h"
+
+#include "UI/Views/Details/Customizations/Viewport/ViewportCameraDetailCustomization.h"
 
 #include "UI/Views/Details/Context/EntityDetailsContext.h"
 #include "UI/Views/Details/Context/EnvironmentDetailsContext.h"
+#include "UI/Views/Details/Context/MaterialDetailsContext.h"
 #include "UI/Views/Details/Context/ViewportDetailsContext.h"
 
 namespace Relentless
@@ -37,6 +41,7 @@ namespace Relentless
 
 		//Assets
 		m_DetailCustomizationRegistry.Register<EnvironmentDetailsContext, EnvironmentDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<MaterialDetailsContext, MaterialDetailCustomization>();
 
 	}
 }

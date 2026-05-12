@@ -8,6 +8,11 @@ namespace Relentless
 	{
 	}
 
+	IDetailLayoutBuilder::~IDetailLayoutBuilder() noexcept
+	{
+		TearDown();
+	}
+
 	IDetailCategoryBuilder& IDetailLayoutBuilder::EditCategory(const char* aName) noexcept
 	{
 		auto [it, inserted] = m_Categories.try_emplace(aName, std::make_unique<IDetailCategoryBuilder>(aName));
@@ -26,6 +31,12 @@ namespace Relentless
 
 	void IDetailLayoutBuilder::TearDown() noexcept
 	{
+		for (const auto& customization : m_Customizations)
+		{
+			if (customization->ShouldCustomize(*this))
+				customization->OnDestroy(*this);
+		}
+		
 		m_Categories.clear();
 		m_Customizations.clear();
 	}

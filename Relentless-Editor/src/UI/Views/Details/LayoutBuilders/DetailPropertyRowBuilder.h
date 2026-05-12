@@ -183,20 +183,23 @@ namespace Relentless
 								case EEditorType::Slider:
 								{
 									if constexpr (is_numeric_not_bool_v<DataType>)
-										pValueBox->AddWidget(CreateSlider<DataType>(pPropertyHandle, valueSlot.Details));
+										pValueBox->AddWidget(CreateSlider<DataType>(pPropertyHandle, valueSlot.Details))
+										->SetIsEnabled(valueSlot.Details.Enabled);
 									break;
 								}
 								case EEditorType::SpinBox:
 								{
 									if constexpr (is_numeric_not_bool_v<DataType>)
 										pValueBox->AddWidget(CreateSpinBox<DataType>(pPropertyHandle, valueSlot.Details))
-										->SetIndicatorColor(Colors::Red);
+										->SetIndicatorColor(Colors::Red)
+										->SetIsEnabled(valueSlot.Details.Enabled);
 									break;
 								}
 								case EEditorType::NumericEntryBox:
 								{
 									if constexpr (is_numeric_not_bool_v<DataType>)
-										pValueBox->AddWidget(CreateNumericEntryBox<DataType>(pPropertyHandle, valueSlot.Details));
+										pValueBox->AddWidget(CreateNumericEntryBox<DataType>(pPropertyHandle, valueSlot.Details))
+										->SetIsEnabled(valueSlot.Details.Enabled);
 									break;
 								}
 								case EEditorType::CheckBox:
@@ -218,7 +221,8 @@ namespace Relentless
 										pValueBox->AddWidget(RLS_NEW::Relentless::ColorPicker())
 											->Bind(pPropertyHandle)
 											->SetHorizontalSizePolicy(ESizePolicy::Stretch)
-											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center)
+											->SetIsEnabled(valueSlot.Details.Enabled);
 									}
 
 									break;
@@ -232,7 +236,8 @@ namespace Relentless
 											->AddSelectables(valueSlot.Details.ComboBoxOptions)
 											->SetSelectedItem(valueSlot.Details.ComboBoxIndex)
 											->SetHorizontalSizePolicy(ESizePolicy::Stretch)
-											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center)
+											->SetIsEnabled(valueSlot.Details.Enabled);
 									}
 
 									break;
@@ -244,7 +249,8 @@ namespace Relentless
 										pValueBox->AddWidget(RLS_NEW::Relentless::EditableTextBox())
 											->Bind(pPropertyHandle)
 											->SetHorizontalSizePolicy(ESizePolicy::Stretch)
-											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center)
+											->SetIsEnabled(valueSlot.Details.Enabled);
 									}
 									break;
 								}
@@ -272,7 +278,8 @@ namespace Relentless
 													}
 												})
 											->Slot(RLS_NEW AssetThumbnail(pThumbnailDataWeakPtr, Vector2(50.0f, 50.0f)))
-											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center)
+											->SetIsEnabled(valueSlot.Details.Enabled);
 									}
 									break;
 								}
@@ -453,22 +460,28 @@ namespace Relentless
 			{
 			case EEditorType::Slider:
 			{
-				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleX, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleY, aPropertyDetails));
+				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleX, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleY, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				break;
 			}
 			case EEditorType::SpinBox:
 			{
 				aHorizontalBox->AddWidget(CreateSpinBox<float>(pPropertyHandleX, aPropertyDetails))
-					->SetIndicatorColor(Colors::Red);
+					->SetIndicatorColor(Colors::Red)
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				aHorizontalBox->AddWidget(CreateSpinBox<float>(pPropertyHandleY, aPropertyDetails))
-					->SetIndicatorColor(Colors::Green);
+					->SetIndicatorColor(Colors::Green)
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				break;
 			}
 			case EEditorType::NumericEntryBox:
 			{
-				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleX, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleY, aPropertyDetails));
+				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleX, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleY, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				break;
 			}
 			default:
@@ -486,26 +499,35 @@ namespace Relentless
 			{
 			case EEditorType::Slider:
 			{
-				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleX, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleY, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleZ, aPropertyDetails));
+				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleX, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleY, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleZ, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				break;
 			}
 			case EEditorType::SpinBox:
 			{
 				aHorizontalBox->AddWidget(CreateSpinBox<float>(pPropertyHandleX, aPropertyDetails))
-					->SetIndicatorColor(Colors::Red);
+					->SetIndicatorColor(Colors::Red)
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				aHorizontalBox->AddWidget(CreateSpinBox<float>(pPropertyHandleY, aPropertyDetails))
-					->SetIndicatorColor(Colors::Green);
+					->SetIndicatorColor(Colors::Green)
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				aHorizontalBox->AddWidget(CreateSpinBox<float>(pPropertyHandleZ, aPropertyDetails))
-					->SetIndicatorColor(Colors::Blue);
+					->SetIndicatorColor(Colors::Blue)
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				break;
 			}
 			case EEditorType::NumericEntryBox:
 			{
-				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleX, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleY, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleZ, aPropertyDetails));
+				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleX, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleY, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleZ, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				break;
 			}
 			default:
@@ -524,30 +546,42 @@ namespace Relentless
 			{
 			case EEditorType::Slider:
 			{
-				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleX, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleY, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleZ, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleW, aPropertyDetails));
+				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleX, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleY, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleZ, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateSlider<float>(pPropertyHandleW, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				break;
 			}
 			case EEditorType::SpinBox:
 			{
 				aHorizontalBox->AddWidget(CreateSpinBox<float>(pPropertyHandleX, aPropertyDetails))
-					->SetIndicatorColor(Colors::Red);
+					->SetIndicatorColor(Colors::Red)
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				aHorizontalBox->AddWidget(CreateSpinBox<float>(pPropertyHandleY, aPropertyDetails))
-					->SetIndicatorColor(Colors::Green);
+					->SetIndicatorColor(Colors::Green)
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				aHorizontalBox->AddWidget(CreateSpinBox<float>(pPropertyHandleZ, aPropertyDetails))
-					->SetIndicatorColor(Colors::Blue);
+					->SetIndicatorColor(Colors::Blue)
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				aHorizontalBox->AddWidget(CreateSpinBox<float>(pPropertyHandleW, aPropertyDetails))
-					->SetIndicatorColor(Colors::Yellow);
+					->SetIndicatorColor(Colors::Yellow)
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				break;
 			}
 			case EEditorType::NumericEntryBox:
 			{
-				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleX, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleY, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleZ, aPropertyDetails));
-				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleW, aPropertyDetails));
+				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleX, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleY, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleZ, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
+				aHorizontalBox->AddWidget(CreateNumericEntryBox<float>(pPropertyHandleW, aPropertyDetails))
+					->SetIsEnabled(aPropertyDetails.Enabled);
 				break;
 			}
 			default:

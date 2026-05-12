@@ -46,7 +46,17 @@ namespace Relentless
 
 	void MaterialSceneSubsystem::OnUnload(ISystemManager* aSystemManager) noexcept
 	{
-		AssetManager::DetachOnAssetCreated<Material>(this);
+		auto lock = AssetManager::LockStorage<Material>();
+		
+		AssetManager::DetachOnAssetCreated<Material>(lock, this);
+
+		AssetManager::ForEachAsset<Material>(lock, [this](Material& aMaterial)
+			{
+				aMaterial.OnPropertyChanged.Detach(this);
+				aMaterial.OnDestroy.Detach(this);
+
+				return true;
+			});
 	}
 
 	bool MaterialSceneSubsystem::ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept
@@ -82,6 +92,9 @@ namespace Relentless
 		materialRenderProxy.DisplacementIntensity = aMaterial.GetDisplacementIntensity();
 		materialRenderProxy.AmbientOcclusionIntensity = aMaterial.GetAmbientOcclusionIntensity();
 		materialRenderProxy.BlendMode = aMaterial.GetBlendMode();
+		materialRenderProxy.AlphaCutOff = aMaterial.GetAlphaCutOff();
+		materialRenderProxy.IOR = aMaterial.GetIOR();
+		materialRenderProxy.RefractionStrength = aMaterial.GetRefractionStrength();
 		materialRenderProxy.IsTwoSided = aMaterial.IsTwoSided();
 
 		materialRenderProxy.AlbedoMap = FetchTexture(ETextureType::Albedo);
@@ -91,6 +104,7 @@ namespace Relentless
 		materialRenderProxy.MetalnessMap = FetchTexture(ETextureType::Metallic);
 		materialRenderProxy.EmissionMap = FetchTexture(ETextureType::Emission);
 		materialRenderProxy.AmbientOcclusionMap = FetchTexture(ETextureType::AmbientOcclusion);
+		materialRenderProxy.OpacityMap = FetchTexture(ETextureType::Opacity);
 
 		return materialRenderProxy;
 	}
@@ -98,6 +112,8 @@ namespace Relentless
 	void MaterialSceneSubsystem::OnMaterialAssetCreated(const AssetHandle& aMaterialHandle) noexcept
 	{
 		Ref<Material> pMaterial = AssetManager::Get<Material>(aMaterialHandle);
+		pMaterial->OnPropertyChanged.Connect(this, &MaterialSceneSubsystem::OnMaterialAssetEdited);
+		pMaterial->OnDestroy.Connect(this, &MaterialSceneSubsystem::OnMaterialAssetDestroy);
 
 		std::vector<MaterialRenderProxy> renderProxies;
 		renderProxies.push_back(CreateRenderProxy(*pMaterial));

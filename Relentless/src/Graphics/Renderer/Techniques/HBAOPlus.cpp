@@ -5,12 +5,14 @@
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/ResourceViews.h"
 
+#include "Subsystem/CoreTypes/PostProcessRenderSubsystem.h"
+
 #include "../../../vendor/includes/HBAO+/GFSDK_SSAO.h"
 
 namespace Relentless
 {
-	HBAOPlus::HBAOPlus(GraphicsDevice* pDevice) noexcept
-		: m_pDevice{ pDevice }
+	HBAOPlus::HBAOPlus(GraphicsDevice* aGraphicsDevice) noexcept
+		: m_pDevice{ aGraphicsDevice }
 	{
 		GFSDK_SSAO_CustomHeap CustomHeap;
 		CustomHeap.new_ = ::operator new;
@@ -36,8 +38,19 @@ namespace Relentless
 		RLS_VERIFY(status == GFSDK_SSAO_OK, "[HBAOPlus::HBAOPlus]: Failed To Initialize HBAO+.");
 	}
 
-	void HBAOPlus::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept
+	void HBAOPlus::Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures) noexcept
 	{
+		PostProcessRenderSubsystem* pPostProcessRenderSubsystem = aRenderView.pRenderScene->GetSubsystem<PostProcessRenderSubsystem>();
+		const PostProcessRenderProxy& renderProxy = pPostProcessRenderSubsystem->GetRenderProxy();
+		const AmbientOcclusionProxySettings& ambientOcclusionSettings = renderProxy.AmbientOcclusionProxySettings;
+
+		if (!ambientOcclusionSettings.IsEnabled)
+			return;
+
+		RLS_ASSERT(ambientOcclusionSettings.BlurRadius == 2u || ambientOcclusionSettings.BlurRadius == 4u, "[HBAOPlus::Render]: Invalid Blur Radius Encountered.");
+		RLS_ASSERT(ambientOcclusionSettings.DepthPrecision == 16u || ambientOcclusionSettings.DepthPrecision == 32u, "[HBAOPlus::Render]: Invalid Depth Precision Encountered.");
+		RLS_ASSERT(ambientOcclusionSettings.StepCount == 4u || ambientOcclusionSettings.StepCount == 8u, "[HBAOPlus::Render]: Invalid Step Count Encountered.");
+
 		//#if defined(RLS_DEBUG) || defined(RLS_RELWITHDEBINFO)
 		// HBAO+ internally waits on fence value 0 on first frame — suppress known 3rd party warning
 		Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
@@ -52,9 +65,9 @@ namespace Relentless
 
 		GFSDK_SSAO_InputData_D3D12 inputData = {};
 		inputData.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;
-		inputData.DepthData.FullResDepthTextureSRV.pResource = sceneTextures.pDepthTarget->GetResource();
-		inputData.DepthData.FullResDepthTextureSRV.GpuHandle = sceneTextures.pDepthTarget->GetSRV()->GetGPUHandle().ptr;
-		inputData.DepthData.ProjectionMatrix.Data = GFSDK_SSAO_Float4x4((const GFSDK_SSAO_FLOAT*)&renderView.ViewToClip);
+		inputData.DepthData.FullResDepthTextureSRV.pResource = aSceneTextures.pDepthTarget->GetResource();
+		inputData.DepthData.FullResDepthTextureSRV.GpuHandle = aSceneTextures.pDepthTarget->GetSRV()->GetGPUHandle().ptr;
+		inputData.DepthData.ProjectionMatrix.Data = GFSDK_SSAO_Float4x4((const GFSDK_SSAO_FLOAT*)&aRenderView.ViewToClip);
 		inputData.DepthData.ProjectionMatrix.Layout = GFSDK_SSAO_ROW_MAJOR_ORDER;
 		inputData.DepthData.MetersToViewSpaceUnits = 1.0f;
 		inputData.NormalData.Enable = false;
@@ -62,34 +75,34 @@ namespace Relentless
 		const GFSDK_SSAO_RenderMask renderMask = GFSDK_SSAO_RENDER_AO;
 
 		GFSDK_SSAO_RenderTargetView_D3D12 rtv{};
-		rtv.pResource = sceneTextures.pColorTarget->GetResource();
-		rtv.CpuHandle = sceneTextures.pColorTarget->GetRTV()->GetCPUHandle().ptr;
+		rtv.pResource = aSceneTextures.pColorTarget->GetResource();
+		rtv.CpuHandle = aSceneTextures.pColorTarget->GetRTV()->GetCPUHandle().ptr;
 
 		GFSDK_SSAO_Output_D3D12 output{};
 		output.pRenderTargetView = &rtv;
 		output.Blend.Mode = GFSDK_SSAO_MULTIPLY_RGB;
 
 		GFSDK_SSAO_Parameters parameters{};
-		parameters.Radius = 2.f;
-		parameters.Bias = 0.1f;
-		parameters.PowerExponent = 2.f;
-		parameters.Blur.Enable = true;
-		parameters.Blur.Sharpness = 16.f;
-		parameters.Blur.Radius = GFSDK_SSAO_BLUR_RADIUS_4;
-		parameters.DepthStorage = GFSDK_SSAO_FP32_VIEW_DEPTHS;
+		parameters.Radius = ambientOcclusionSettings.Radius;
+		parameters.Bias = ambientOcclusionSettings.Bias;
+		parameters.PowerExponent = ambientOcclusionSettings.PowerExponent;
+		parameters.Blur.Enable = ambientOcclusionSettings.BlurEnabled;
+		parameters.Blur.Sharpness = ambientOcclusionSettings.BlurSharpness; 16.f;
+		parameters.Blur.Radius = ambientOcclusionSettings.BlurRadius == 4u ? GFSDK_SSAO_BLUR_RADIUS_4 : GFSDK_SSAO_BLUR_RADIUS_2;
+		parameters.DepthStorage = ambientOcclusionSettings.DepthPrecision == 32u ? GFSDK_SSAO_FP32_VIEW_DEPTHS : GFSDK_SSAO_FP16_VIEW_DEPTHS ;
 		parameters.EnableDualLayerAO = false;
-		parameters.StepCount = GFSDK_SSAO_STEP_COUNT_8;
+		parameters.StepCount = ambientOcclusionSettings.StepCount == 8u ? GFSDK_SSAO_STEP_COUNT_8 : GFSDK_SSAO_STEP_COUNT_4;
 
-		const uint32 width = sceneTextures.pColorTarget->GetWidth();
-		const uint32 height = sceneTextures.pColorTarget->GetHeight();
+		const uint32 width = aSceneTextures.pColorTarget->GetWidth();
+		const uint32 height = aSceneTextures.pColorTarget->GetHeight();
 
-		commandContext.InsertResourceBarrier(sceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		commandContext.InsertResourceBarrier(sceneTextures.pDepthTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		commandContext.FlushResourceBarriers();
+		aCommandContext.InsertResourceBarrier(aSceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		aCommandContext.InsertResourceBarrier(aSceneTextures.pDepthTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		aCommandContext.FlushResourceBarriers();
 
-		commandContext.SetViewport(FloatRect(0, 0, (float)width, (float)height), 0.0f, 1.0f);
+		aCommandContext.SetViewport(FloatRect(0.0f, 0.0f, (float)width, (float)height), 0.0f, 1.0f);
 
-		const GFSDK_SSAO_Status status = m_pSSAOContext->RenderAO(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue(), commandContext.GetCommandList(), inputData, parameters, output, renderMask);
+		const GFSDK_SSAO_Status status = m_pSSAOContext->RenderAO(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue(), aCommandContext.GetCommandList(), inputData, parameters, output, renderMask);
 		RLS_VERIFY(status == GFSDK_SSAO_OK, "Failed To Issue HBAOPlus Render Command.");
 
 		//#if defined(RLS_DEBUG)|| defined(RLS_RELWITHDEBINFO)

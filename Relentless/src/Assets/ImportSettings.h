@@ -32,5 +32,6 @@ namespace Relentless
 		Path DestinationPath;
 		Ref<IFactory> pFactory = nullptr;
 		bool ReplaceExisting = false;
+		bool ShouldSave = true;
 	};
 }

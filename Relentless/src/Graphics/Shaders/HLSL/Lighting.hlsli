@@ -62,7 +62,8 @@ float DirectionalAttenuation(float3 L, float3 direction, float cosUmbra, float c
 float3 EvaluateLights(MaterialSurface aSurface, float3 aWorldPosition)
 {
     const float3 viewDirection = normalize(cView.ViewLocation - aWorldPosition);
-    const float3 baseReflectivity = lerp(float3(0.04f, 0.04f, 0.04f), aSurface.AlbedoColor, aSurface.Metalness);
+    const float f0Scalar = pow((1.0f - aSurface.IOR) / (1.0f + aSurface.IOR), 2.0f); //IOR of 1.5 produces the typical base reflectivity (0.04)
+    const float3 baseReflectivity = lerp(float3(f0Scalar, f0Scalar, f0Scalar), aSurface.AlbedoColor, aSurface.Metalness);
     float3 outgoingRadiance = float3(0.0f, 0.0f, 0.0f);
     
     StructuredBuffer<Light> lights = ResourceDescriptorHeap[cView.LightsIndex];

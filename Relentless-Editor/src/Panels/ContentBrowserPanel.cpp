@@ -14,4 +14,15 @@ namespace Relentless
 	}
 
 	ContentBrowserPanel::~ContentBrowserPanel() noexcept = default;
+
+	String ContentBrowserPanel::GetDisplayName() const noexcept
+	{
+		return "Content Browser";
+	}
+
+	String ContentBrowserPanel::GetPersistKey() const noexcept
+	{
+		return "Content Browser";
+	}
+
 }

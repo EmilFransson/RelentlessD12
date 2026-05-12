@@ -52,30 +52,8 @@ namespace Relentless
 			return AssetHandle::INVALID;
 
 		Ref<IAsset> pNewAsset = result.value();
-
-		Path fullPath = FilepathUtils::Combine(Project::GetProjectDirectory(), filePath);
-
-		LoadArchive coreArchive(fullPath, EArchiveFormat::Binary);
-		if (!coreArchive.IsValid())
+		if (!pNewAsset->Load())
 			return AssetHandle::INVALID;
-
-		AssetFileContent content{};
-		if (!coreArchive.Process(content))
-			return AssetHandle::INVALID;
-
-		if (!pNewAsset->SerializeCore(coreArchive))
-			return AssetHandle::INVALID;
-
-		if (content.BulkDataSize > 0)
-		{
-			FilepathUtils::SetExtension(fullPath, ".rbulk");
-			LoadArchive bulkArchive(fullPath, EArchiveFormat::Binary);
-			if (!bulkArchive.IsValid())
-				return AssetHandle::INVALID;
-
-			if (!pNewAsset->SerializeBulk(bulkArchive))
-				return AssetHandle::INVALID;
-		}
 
 		return RegisterAsset(pNewAsset);
 	}
@@ -95,32 +73,39 @@ namespace Relentless
 			return AssetHandle::INVALID;
 
 		Ref<IAsset> pNewAsset = result.value();
-
-		Path fullPath = FilepathUtils::Combine(Project::GetProjectDirectory(), aAssetData.PackagePath);
-
-		LoadArchive coreArchive(fullPath, EArchiveFormat::Binary);
-		if (!coreArchive.IsValid())
+		if (!pNewAsset->Load())
 			return AssetHandle::INVALID;
-
-		AssetFileContent content{};
-		if (!coreArchive.Process(content))
-			return AssetHandle::INVALID;
-
-		if (!pNewAsset->SerializeCore(coreArchive))
-			return AssetHandle::INVALID;
-
-		if (content.BulkDataSize > 0)
-		{
-			FilepathUtils::SetExtension(fullPath, ".rbulk");
-			LoadArchive bulkArchive(fullPath, EArchiveFormat::Binary);
-			if (!bulkArchive.IsValid())
-				return AssetHandle::INVALID;
-
-			if (!pNewAsset->SerializeBulk(bulkArchive))
-				return AssetHandle::INVALID;
-		}
 
 		return RegisterAsset(pNewAsset);
+	}
+
+	bool AssetManager::LoadAsset(const AssetHandle& aAssetHandle) noexcept
+	{
+		if (const AssetHandle handle = FindAsset(aAssetHandle.Type, aAssetHandle.Uuid); handle.IsValid())
+			return true;
+
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+
+		const AssetData* pAssetData = assetRegistry.FindAsset(aAssetHandle.Uuid);
+		if (!pAssetData)
+			return false;
+
+		AssetToolsModule& assetTools = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+		Ref<IFactory> pFactory = assetTools.GetSupportingFactory(pAssetData->Type);
+		if (!pFactory || !pFactory->CanCreateNew())
+			return false;
+
+		FactoryCreateResult result = pFactory->CreateNew(pAssetData->Type, pAssetData->Name, pAssetData->Uuid);
+		if (!result)
+			return false;
+
+		Ref<IAsset> pNewAsset = result.value();
+		if (!pNewAsset->Load())
+			return false;
+
+		RegisterAsset(pNewAsset);
+
+		return true;
 	}
 
 	void AssetManager::LoadAssetAsync(const String& aFilepath, AssetDoneLoadingCallback&& aCallback) noexcept
@@ -131,7 +116,10 @@ namespace Relentless
 		threadPool.Submit([aFilepath, callback = std::move(aCallback)]() mutable 
 			{
 				AssetHandle handle = LoadAsset(aFilepath);
-				callback(handle);
+				Application::Get().SubmitToMainThread([assetHandle = std::move(handle), cb = std::move(callback)]()
+					{
+						cb(assetHandle);
+					});
 			});
 	}
 

@@ -24,6 +24,16 @@ namespace Relentless
 		return m_pEntityOutlinerView;
 	}
 
+	String OutlinerPanel::GetDisplayName() const noexcept
+	{
+		return String(ICON_FA_LINES_LEANING " Outliner");
+	}
+
+	String OutlinerPanel::GetPersistKey() const noexcept
+	{
+		return "Outliner";
+	}
+
 	bool OutlinerPanel::OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept
 	{
 		switch (aEvent.key)

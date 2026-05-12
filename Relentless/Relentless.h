@@ -91,6 +91,9 @@
 #include <src/ECS/ECSCommon.h>
 #include <src/ECS/ISystem.h>
 #include <src/ECS/Components/LightComponent.h>
+#include <src/ECS/Components/MeshFilterComponent.h>
+#include <src/ECS/Components/MeshRendererComponent.h>
+#include <src/ECS/Components/PostProcessVolumeComponent.h>
 #include <src/ECS/Components/SkyBoxComponent.h>
 #include <src/ECS/Components/SkyLightComponent.h>
 #include <src/ECS/Components/TransformComponent.h>

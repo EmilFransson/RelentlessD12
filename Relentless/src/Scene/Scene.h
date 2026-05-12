@@ -20,8 +20,8 @@ namespace Relentless
 	class RLS_API Scene : public AssetBase<Scene>, public ISystemManager
 	{
 	public:
-		explicit Scene(const char* aName = "Sample Scene") noexcept;
-		virtual ~Scene() noexcept = default;
+		explicit Scene(const char* aName = "Sample Scene", const UUID& aUUID = CreateUUID()) noexcept;
+		virtual ~Scene() noexcept override;
 
 		NO_DISCARD bool AnyEntityHasName(const char* pName) const noexcept;
 

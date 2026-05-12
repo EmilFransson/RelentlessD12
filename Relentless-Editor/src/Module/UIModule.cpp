@@ -10,6 +10,22 @@
 
 namespace Relentless
 {
+	uint32 UIModule::AcquireSlot(const String& aPersistKey) noexcept
+	{
+		std::vector<bool>& slots = m_Slots[aPersistKey];
+		for (size_t i = 0u; i < slots.size(); ++i)
+		{
+			if (!slots[i])
+			{
+				slots[i] = true;
+				return static_cast<uint32>(i);
+			}
+		}
+
+		slots.push_back(true);
+		return static_cast<uint32>(slots.size() - 1);
+	}
+
 	// ---------------- PUBLIC FUNCTIONS ------------------
 
 	void UIModule::ClearActiveDragDropOperation() noexcept

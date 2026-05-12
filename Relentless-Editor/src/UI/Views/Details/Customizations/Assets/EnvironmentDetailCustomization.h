@@ -9,10 +9,10 @@ namespace Relentless
 
 	class EnvironmentDetailCustomization : public IDetailCustomization
 	{
-	public:
-		virtual ~EnvironmentDetailCustomization() noexcept override;
 	protected:
 		virtual void CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept override;
+
+		virtual void OnDestroy(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept override;
 
 		NO_DISCARD virtual bool ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept override;
 	private:

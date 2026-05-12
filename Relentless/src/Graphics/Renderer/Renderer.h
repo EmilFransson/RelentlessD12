@@ -21,6 +21,8 @@ namespace Relentless
 	class DepthPrePass;
 	class EditorGrid;
 	class ForwardRenderer;
+	class ForwardOpaqueAlphaMask;
+	class ForwardAlphaBlend;
 	class HBAOPlus;
 	class Outlines;
 	class Picking;
@@ -67,6 +69,7 @@ namespace Relentless
 		CallbackID RegisterOnUploadCallback(Callback<void(CommandContext&)> aUploadCallback) noexcept;
 		void RenderViews(const std::vector<ViewRenderDesc>& someRenderDescs) noexcept;
 
+		static void SubmitBatch(CommandContext& aCommandContext, const Batch& aBatch) noexcept;
 		static RenderJobHandle SubmitComputeJob(Callback<void(CommandContext&)>&& aCallback) noexcept;
 		static RenderJobHandle SubmitRenderJob(Callback<void(CommandContext&)>&& aCallback) noexcept;
 
@@ -124,7 +127,8 @@ namespace Relentless
 		/*
 		* Techniques
 		*/
-		UniquePtr<ForwardRenderer> m_pForwardRenderer;
+		UniquePtr<ForwardOpaqueAlphaMask> m_pForwardOpaqueAlphaMask;
+		UniquePtr<ForwardAlphaBlend> m_pForwardAlphaBlend;
 		UniquePtr<EditorGrid> m_pEditorGrid;
 		UniquePtr<PostProcessing> m_pPostProcessing;
 		UniquePtr<DepthPrePass> m_pDepthPrePass;

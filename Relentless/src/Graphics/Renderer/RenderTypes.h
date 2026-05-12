@@ -14,7 +14,6 @@ namespace Relentless
 	class Mesh;
 	class Renderer;
 	class RenderScene;
-	class Scene;
 
 	struct ViewTransform
 	{
@@ -54,7 +53,6 @@ namespace Relentless
 		Vector2i MouseHoverCoordinates				= Vector2i(-1, -1);
 		Renderer* pRenderer							= nullptr;
 		RenderScene* pRenderScene					= nullptr;
-		Scene* pScene								= nullptr;
 		Ref<Buffer> ViewCB							= nullptr;
 		uint32 FrameIndex							= 0u;
 	};
@@ -68,12 +66,11 @@ namespace Relentless
 		RenderQualitySettings RenderQualitySettings = {};
 		Vector2i MouseHoverCoordinates				= Vector2i(-1, -1);
 		Ref<Texture> RenderTarget					= nullptr;
-		Scene* Scene								= nullptr;
 	};
 
 	struct Batch
 	{
-		enum class Blending : uint8 { Opaque, AlphaMask, AlphaBlend };
+		enum class Blending : uint8 { Opaque = 0u, AlphaMask, AlphaBlend };
 
 		Vector3 Location = Vector3::Zero;
 		uint32 InstanceID = std::numeric_limits<uint32>::max();
@@ -82,6 +79,7 @@ namespace Relentless
 		uint32 NumIndices = 0u;
 		uint32 InstanceCount = 0u;
 		entity EntityID = NULL_ENTITY;
+		bool IsTwoSided = false;
 	};
 	DECLARE_BITMASK_TYPE(Batch::Blending)
 
@@ -113,6 +111,8 @@ namespace Relentless
 		Ref<Texture> pOutlinesBlurTarget				= nullptr;
 
 		Ref<Texture> pAutoExposureDownscaleTarget		= nullptr;
+
+		Ref<Texture> pOpaqueAlphaMaskedColorTargetCopy	= nullptr;
 	};
 
 	struct SceneBuffer

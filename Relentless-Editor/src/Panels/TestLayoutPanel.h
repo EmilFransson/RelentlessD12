@@ -7,5 +7,8 @@ namespace Relentless
 	{
 	public:
 		TestLayoutPanel() noexcept;
+		
+		NO_DISCARD virtual String GetDisplayName() const noexcept override;
+		NO_DISCARD virtual String GetPersistKey() const noexcept override;
 	};
 }

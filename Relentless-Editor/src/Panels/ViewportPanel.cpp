@@ -234,7 +234,7 @@ namespace Relentless
 
 	Texture* ViewportPanel::OnCanvasTargetRequest() const noexcept
 	{
-		return m_pRenderTarget.Get(); //Editor::Get()->GetSubsystem<EditorViewportSubsystem>()->GetRenderView(m_RenderViewIndex).pTarget.Get();
+		return m_pRenderTarget.Get();
 	}
 
 	void ViewportPanel::OnCanvasRenderEnd() noexcept

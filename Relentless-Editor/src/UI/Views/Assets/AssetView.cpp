@@ -100,8 +100,7 @@ namespace Relentless
 			if (!assetHandle.IsValid())
 				return;
 
-			Ref<IAsset> pAsset = AssetManager::Get(assetHandle);
-			pAssetDefinition->OpenAssets({ pAsset });
+			pAssetDefinition->OpenAssets({ assetHandle });
 		}
 	}
 

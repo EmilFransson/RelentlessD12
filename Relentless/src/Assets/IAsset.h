@@ -21,15 +21,35 @@ namespace Relentless
 		NO_DISCARD const String& GetName() const noexcept;
 		NO_DISCARD const UUID& GetUUID() const noexcept;
 
+		NO_DISCARD bool IsDirty() const noexcept;
+
+		bool Load();
+
+		void MarkDirty() noexcept;
+		
+		virtual void PreLoad() {}
+		virtual void PreSave() {}
+		virtual void PostLoad() {}
+		virtual void PostSave() {}
+
+		bool Save();
 		void SetName(const String& aName) noexcept;
 		virtual bool SerializeBulk(IArchive&) noexcept { return true; }
 		virtual bool SerializeCore(IArchive&) noexcept { return true; }
 
 		virtual const UUID& GetPersistentType() const noexcept = 0;
 		virtual const TypeIndex& GetStaticType() const noexcept = 0;
+
+		Broadcaster<void(IAsset* aAsset)> OnDestroy;
+		Broadcaster<void(IAsset* aAsset, uint64 aProperty)> OnPropertyChanged;
+		Broadcaster<void(IAsset* aAsset)> OnSave;
+		Broadcaster<void(IAsset* aAsset)> OnSaved;
+	private:
+		void MarkClean() noexcept;
 	private:
 		String m_Name;
 		UUID m_UUID = NULL_UUID;
+		bool m_IsDirty = false;
 	};
 
 	template<typename AssetType>
@@ -58,6 +78,7 @@ namespace Relentless
 
 		void BroadcastPropertyChanged(uint64 aProperty) noexcept
 		{
+			MarkDirty();
 			OnPropertyChanged(this, aProperty);
 			CoreObjectBroadcasters::OnAssetPropertyChanged(this, AssetType::StaticType(), aProperty);
 		}
@@ -73,8 +94,5 @@ namespace Relentless
 			static constexpr UUID uid = UUID{ 0, 0, 0, {0} };
 			return uid;
 		}
-
-		Broadcaster<void(IAsset* aAsset)> OnDestroy;
-		Broadcaster<void(IAsset* aAsset, uint64 aProperty)> OnPropertyChanged;
 	};
 }

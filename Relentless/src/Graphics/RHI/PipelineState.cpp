@@ -154,18 +154,72 @@ namespace Relentless
 				hash = fnv1a_combine(hash, fnv1a_hash(define.c_str(), define.size()));
 		}
 
-		auto& stream = const_cast<ObjectStream&>(m_Stream);
-		hash = fnv1a_combine(hash, reinterpret_cast<uint64>((ID3D12RootSignature*)stream.pRootSignature));
+		auto& s = const_cast<ObjectStream&>(m_Stream);
 
-		const auto& s = m_Stream;
-		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.RTFormats, sizeof(s.RTFormats)));
-		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.DSVFormat, sizeof(s.DSVFormat)));
-		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.DepthStencil, sizeof(s.DepthStencil)));
-		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.Rasterizer, sizeof(s.Rasterizer)));
-		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.Blend, sizeof(s.Blend)));
-		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.PrimitiveTopology, sizeof(s.PrimitiveTopology)));
-		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.SampleDesc, sizeof(s.SampleDesc)));
-		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&s.SampleMask, sizeof(s.SampleMask)));
+		ID3D12RootSignature* rs = s.pRootSignature;
+		D3D12_RT_FORMAT_ARRAY& rt = s.RTFormats;
+		DXGI_FORMAT                dsv = s.DSVFormat;
+		D3D12_DEPTH_STENCIL_DESC1& ds = s.DepthStencil;
+		D3D12_RASTERIZER_DESC& r = s.Rasterizer;
+		D3D12_BLEND_DESC& b = s.Blend;
+		D3D12_PRIMITIVE_TOPOLOGY_TYPE pt = s.PrimitiveTopology;
+		DXGI_SAMPLE_DESC& sd = s.SampleDesc;
+		UINT                       sm = s.SampleMask;
+
+		hash = fnv1a_combine(hash, reinterpret_cast<uint64>(rs));
+
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&rt.NumRenderTargets, sizeof(rt.NumRenderTargets)));
+		for (UINT i = 0; i < rt.NumRenderTargets; ++i)
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&rt.RTFormats[i], sizeof(DXGI_FORMAT)));
+
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&dsv, sizeof(dsv)));
+
+		// Depth-stencil fields.
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&ds.DepthEnable, sizeof(BOOL)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&ds.DepthWriteMask, sizeof(ds.DepthWriteMask)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&ds.DepthFunc, sizeof(ds.DepthFunc)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&ds.StencilEnable, sizeof(BOOL)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&ds.StencilReadMask, sizeof(ds.StencilReadMask)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&ds.StencilWriteMask, sizeof(ds.StencilWriteMask)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&ds.FrontFace, sizeof(ds.FrontFace)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&ds.BackFace, sizeof(ds.BackFace)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&ds.DepthBoundsTestEnable, sizeof(BOOL)));
+
+		// Rasterizer fields.
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.FillMode, sizeof(r.FillMode)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.CullMode, sizeof(r.CullMode)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.FrontCounterClockwise, sizeof(BOOL)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.DepthBias, sizeof(r.DepthBias)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.DepthBiasClamp, sizeof(r.DepthBiasClamp)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.SlopeScaledDepthBias, sizeof(r.SlopeScaledDepthBias)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.DepthClipEnable, sizeof(BOOL)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.MultisampleEnable, sizeof(BOOL)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.AntialiasedLineEnable, sizeof(BOOL)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.ForcedSampleCount, sizeof(r.ForcedSampleCount)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&r.ConservativeRaster, sizeof(r.ConservativeRaster)));
+
+		// Blend — only active RT slots.
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&b.AlphaToCoverageEnable, sizeof(BOOL)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&b.IndependentBlendEnable, sizeof(BOOL)));
+		for (UINT i = 0; i < rt.NumRenderTargets; ++i)
+		{
+			const D3D12_RENDER_TARGET_BLEND_DESC& brt = b.RenderTarget[i];
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&brt.BlendEnable, sizeof(BOOL)));
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&brt.LogicOpEnable, sizeof(BOOL)));
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&brt.SrcBlend, sizeof(brt.SrcBlend)));
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&brt.DestBlend, sizeof(brt.DestBlend)));
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&brt.BlendOp, sizeof(brt.BlendOp)));
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&brt.SrcBlendAlpha, sizeof(brt.SrcBlendAlpha)));
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&brt.DestBlendAlpha, sizeof(brt.DestBlendAlpha)));
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&brt.BlendOpAlpha, sizeof(brt.BlendOpAlpha)));
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&brt.LogicOp, sizeof(brt.LogicOp)));
+			hash = fnv1a_combine(hash, fnv1a_hash_bytes(&brt.RenderTargetWriteMask, sizeof(brt.RenderTargetWriteMask)));
+		}
+
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&pt, sizeof(pt)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&sd.Count, sizeof(sd.Count)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&sd.Quality, sizeof(sd.Quality)));
+		hash = fnv1a_combine(hash, fnv1a_hash_bytes(&sm, sizeof(sm)));
 
 		return hash;
 	}

@@ -84,8 +84,7 @@ namespace Relentless
 					renderProxy.Intensity *= pBackingBlendEnvironment->GetIntensity();
 			}
 
-			if (aSceneState.EntityManager.Has<SkyLightComponent::DirtyRenderState>(aEntity))
-				aSceneState.EntityManager.Remove<SkyLightComponent::DirtyRenderState>(aEntity);
+			aSceneState.EntityManager.RemoveIfExists<SkyLightComponent::DirtyRenderState>(aEntity);
 		}
 
 		Renderer::Dispatch([renderProxies = std::move(skyLightRenderProxies), uid = aSceneState.Scene.GetUUID()](Renderer* aRenderer)
