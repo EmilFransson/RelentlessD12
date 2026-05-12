@@ -1,7 +1,8 @@
 out/
 .vs/
 Build/
-Relentless-Editor/Assets/Textures
+/Relentless-Editor/Assets/Textures/quattro_canti_4k.rasset
+/Relentless-Editor/Assets/Textures/quattro_canti_4k.rbulk
 /Relentless/Assets/Textures/puresky.rasset
 /Relentless/Assets/Textures/puresky.hdr
 /Relentless-Editor/Assets/Models/REDDOT.rasset
