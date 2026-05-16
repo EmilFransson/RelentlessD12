@@ -8,7 +8,7 @@ namespace Relentless
 	{
 	public:
 		PostProcessing(GraphicsDevice* aGraphicsDevice) noexcept;
-		void Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures, Ref<Buffer> aAverageLuminanceBuffer, Ref<Texture> aFinalTexture) noexcept;
+		void Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures, Ref<Buffer> aAverageLuminanceBuffer) noexcept;
 	private:
 		GraphicsDevice* m_pDevice = nullptr;
 	};

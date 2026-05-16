@@ -21,7 +21,7 @@ namespace Relentless
 
 		RenderPassInfo::RenderTargetInfo& renderTarget = info.AddRenderTarget();
 		renderTarget.BeginAccessFlags = RenderTargetAccessFlags::Preserve;
-		renderTarget.pTarget = aSceneTextures.pColorTarget;
+		renderTarget.pTarget = aSceneTextures.pHDRColorTarget;
 		renderTarget.pResolveTarget = numSamples > 1 ? aSceneTextures.pColorResolveTarget : nullptr;
 		renderTarget.EndAccessFlags = RenderTargetAccessFlags::Preserve;
 
@@ -149,7 +149,7 @@ namespace Relentless
 			aCommandContext.FlushResourceBarriers();
 			aCommandContext.GetCommandList()->ResolveSubresourceRegion(info.RenderTargets[0].pResolveTarget->GetResource(), 0, 0, 0, info.RenderTargets[0].pTarget->GetResource(), 0, nullptr, D3D::ConvertFormat(info.RenderTargets[0].pResolveTarget->GetFormat()), D3D12_RESOLVE_MODE_AVERAGE);
 		
-			aSceneTextures.pColorTarget = info.RenderTargets[0].pResolveTarget;
+			aSceneTextures.pHDRColorTarget = info.RenderTargets[0].pResolveTarget;
 		}
 	}
 }

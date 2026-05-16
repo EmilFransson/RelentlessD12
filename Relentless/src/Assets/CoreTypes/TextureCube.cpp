@@ -7,9 +7,9 @@
 namespace Relentless
 {
 	TextureCube::TextureCube(Ref<Texture> aBackingTexture, const TextureDesc& aTextureDesc, DirectX::ScratchImage&& aImage) noexcept
-		:m_pGPUResource(aBackingTexture),
-		 m_Desc(aTextureDesc),
-		 m_ScratchImage(std::move(aImage))
+		:m_Desc(aTextureDesc),
+		 m_ScratchImage(std::move(aImage)),
+		m_pGPUResource(aBackingTexture)
 	{}
 
 	TextureCube::TextureCube(const UUID& aUUID) noexcept

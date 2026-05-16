@@ -6,11 +6,12 @@ namespace Relentless
 {
 	const PostProcessRenderProxy& PostProcessRenderSubsystem::GetRenderProxy() const noexcept
 	{
-		if (m_RenderData.empty())
-			return m_DefaultRenderProxy;
+		//TODO: This is a temporary solution until proper post process volume resolving is implemented.
 
 		for (auto& [id, renderProxy] : m_RenderData)
 			return renderProxy;
+
+		return m_DefaultRenderProxy;
 	}
 
 	bool PostProcessRenderSubsystem::ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept

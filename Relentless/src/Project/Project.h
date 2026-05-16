@@ -6,7 +6,7 @@ namespace Relentless
 	struct ProjectConfig
 	{
 		String Name				= "UntitledRelentlessProject";
-		Path AssetPath			= "Assets";
+		Path AssetPath			= "Assets/";
 		Path ThumbnailCachePath = "Cache/Thumbnails/";
 	};
 
@@ -20,8 +20,11 @@ namespace Relentless
 		NO_DISCARD static const Path& GetProjectDirectory() noexcept;
 
 		static Ref<Project> Load(const Path& aPath) noexcept;
-		static bool SaveActive(const Path& aPath) noexcept;
+		static Ref<Project> LoadOrCreateDefault() noexcept;
+		
 		static Ref<Project> New(const ProjectConfig& aConfig) noexcept;
+		
+		static bool SaveActive(const Path& aPath) noexcept;
 	private:
 		ProjectConfig m_Config;
 		Path m_ActiveProjectDirectory;

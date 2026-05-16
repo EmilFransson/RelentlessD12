@@ -13,6 +13,6 @@ namespace Relentless
 
 		NO_DISCARD virtual bool SupportsAsset(IAsset* aAsset) const noexcept override;
 		NO_DISCARD virtual bool SupportsAsset(AssetData* aAssetData) const noexcept override;
-		NO_DISCARD virtual bool SupportsAsset(const AssetHandle& aAssetHandle) const noexcept;
+		NO_DISCARD virtual bool SupportsAsset(const AssetHandle& aAssetHandle) const noexcept override;
 	};
 }

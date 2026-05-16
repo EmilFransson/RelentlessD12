@@ -27,6 +27,5 @@ namespace Relentless
 		EntityDetailsContext m_Context;
 		Scene* m_pInspectedScene = nullptr;
 		bool m_IsLocked = false;
-		bool m_RequestedRefresh = true;
 	};
 }

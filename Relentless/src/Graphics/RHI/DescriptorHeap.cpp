@@ -53,8 +53,8 @@ namespace Relentless
 		}
 		else
 		{
-			m_CurrentNrOfDescriptors++;
-			const uint32_t index = m_FreeHandles[m_CurrentNrOfDescriptors];
+			//m_CurrentNrOfDescriptors++;
+			const uint32_t index = m_FreeHandles[m_CurrentNrOfDescriptors++];
 			const uint32_t offset = index * m_DescriptorSize;
 
 			DescriptorHandle descriptorHandleToReturn{};
@@ -92,8 +92,8 @@ namespace Relentless
 			}
 			else
 			{
-				m_CurrentNrOfDescriptors++;
-				const uint32_t index = m_FreeHandles[m_CurrentNrOfDescriptors];
+				//m_CurrentNrOfDescriptors++;
+				const uint32_t index = m_FreeHandles[m_CurrentNrOfDescriptors++];
 				const uint32_t offset = index * m_DescriptorSize;
 
 				DescriptorHandle descriptorHandle{};

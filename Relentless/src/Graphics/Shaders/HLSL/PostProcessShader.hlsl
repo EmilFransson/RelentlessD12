@@ -5,10 +5,8 @@ struct PassParameters
 {
     uint SourceIndex;
     uint TargetIndex;
-    uint OutlinesSolidIndex;
-    uint OutlinesBlurredIndex;
     uint AverageLuminanceIndex;
-    float3 Padding;
+    float Padding;
 };
 
 float3 ToneMapACES(float3 hdrColor)
@@ -71,22 +69,11 @@ void cs_main(uint3 threadId : SV_DispatchThreadID)
     
     float4 hdrTextureColor = sourceHDRTexture.Load(int3(threadId.xy, 0));
     
-    Texture2D<float> solidTexture = ResourceDescriptorHeap[passData.OutlinesSolidIndex];
-    Texture2D<float> blurredTexture = ResourceDescriptorHeap[passData.OutlinesBlurredIndex];
-    const float blurredEntityID = blurredTexture.Load(int3(threadId.xy, 0));
-    const float EntityID = solidTexture.Load(int3(threadId.xy, 0));
-    
     StructuredBuffer<float> averageLuminanceBuffer = ResourceDescriptorHeap[passData.AverageLuminanceIndex];
     const float exposure = averageLuminanceBuffer[2];
     hdrTextureColor.xyz *= exposure;
     
-    if (abs(blurredEntityID - EntityID) > 0.15f)
-    {
-        hdrTextureColor = float4(float3(0.9, 0.35, 0.0), 1.0f);
-    }
-    
     const float3 sdr = ACESFitted(hdrTextureColor.xyz);
-    const float3 sRGB = LinearToSRGB(sdr);
     
-    targetTexture[threadId.xy] = float4(sRGB, hdrTextureColor.a);
+    targetTexture[threadId.xy] = float4(sdr, hdrTextureColor.a);
 }

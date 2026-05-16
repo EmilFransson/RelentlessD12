@@ -25,7 +25,7 @@ namespace Relentless
 		const ExposureRenderProxySettings& exposureSettings = renderProxy.ExposureRenderProxySettings;
 
 		aCommandContext.InsertResourceBarrier(aSceneTextures.pAutoExposureDownscaleTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		aCommandContext.InsertResourceBarrier(aSceneTextures.pColorTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		aCommandContext.InsertResourceBarrier(aSceneTextures.pHDRColorTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 		aCommandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());
 		aCommandContext.SetPipelineState(m_pDevice->GetOrCreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "DownsampleColorShader", "cs_main"));
@@ -44,7 +44,7 @@ namespace Relentless
 			parameters.TargetDimensions.x = aSceneTextures.pAutoExposureDownscaleTarget->GetWidth();
 			parameters.TargetDimensions.y = aSceneTextures.pAutoExposureDownscaleTarget->GetHeight();
 			parameters.TargetDimensionsInv = Vector2(1.0f / aSceneTextures.pAutoExposureDownscaleTarget->GetWidth(), 1.0f / aSceneTextures.pAutoExposureDownscaleTarget->GetHeight());
-			parameters.InputIndex = aSceneTextures.pColorTarget->GetSRVIndex();
+			parameters.InputIndex = aSceneTextures.pHDRColorTarget->GetSRVIndex();
 			parameters.OutputIndex = aSceneTextures.pAutoExposureDownscaleTarget->GetUAVIndex();
 			aCommandContext.BindRootCBV(BindingSlot::PerInstance, &parameters, sizeof(parameters));
 

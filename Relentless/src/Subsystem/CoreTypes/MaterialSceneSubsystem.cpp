@@ -44,7 +44,7 @@ namespace Relentless
 		return true;
 	}
 
-	void MaterialSceneSubsystem::OnUnload(ISystemManager* aSystemManager) noexcept
+	void MaterialSceneSubsystem::OnUnload(MAYBE_UNUSED ISystemManager* aSystemManager) noexcept
 	{
 		auto lock = AssetManager::LockStorage<Material>();
 		

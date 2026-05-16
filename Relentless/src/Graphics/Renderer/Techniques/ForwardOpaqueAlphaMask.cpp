@@ -15,12 +15,10 @@ namespace Relentless
 
 	void ForwardOpaqueAlphaMask::Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures) noexcept
 	{
-		const uint32 numSamples = static_cast<uint32>(aRenderView.RenderQualitySettings.MSAASampleCount);
-
 		RenderPassInfo info{};
 
 		RenderPassInfo::RenderTargetInfo& renderTarget = info.AddRenderTarget();
-		renderTarget.pTarget = aSceneTextures.pColorTarget;
+		renderTarget.pTarget = aSceneTextures.pHDRColorTarget;
 		renderTarget.pResolveTarget = nullptr;
 		renderTarget.BeginAccessFlags = RenderTargetAccessFlags::Preserve;
 		renderTarget.EndAccessFlags = RenderTargetAccessFlags::Preserve;

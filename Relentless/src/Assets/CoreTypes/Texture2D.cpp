@@ -41,6 +41,11 @@ namespace Relentless
 		return m_pGPUResource;
 	}
 
+	void Texture2D::PostLoad()
+	{
+		CreateResource();
+	}
+
 	bool Texture2D::SerializeBulk(IArchive& aArchive) noexcept
 	{
 		if (aArchive.IsSaving())

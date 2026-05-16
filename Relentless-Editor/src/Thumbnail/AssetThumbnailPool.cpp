@@ -163,7 +163,7 @@ namespace Relentless
 	{
 		ThumbnailEntry& entry = m_Thumbnails[aAssetData.Uuid];
 
-		//If Already existing
+		//If already existing
 		if (entry.ResidentBytes != 0)
 			m_ResidentBytes -= entry.ResidentBytes;
 

@@ -7,9 +7,6 @@ namespace Relentless
 	{
 		ImVec2 rowStart;
 		ImVec2 rowEnd;
-		float fullWidth;
-		float rowHeight;
-
 		const Vector2 size = ReportSize();
 
 		if (!m_Tiled)
@@ -27,10 +24,8 @@ namespace Relentless
 
 			ImGui::TableNextRow(0, maxHeight);
 
-			rowHeight = ImGui::GetFrameHeightWithSpacing();
 			const float minX = pTable->Columns[0].MinX;
 			const float maxX = pTable->Columns[pTable->ColumnsCount - 1].MaxX;
-			fullWidth = maxX - minX;
 
 			rowStart = ImVec2(minX, ImGui::GetCursorScreenPos().y);
 			rowEnd = ImVec2(maxX, rowStart.y + size.y);

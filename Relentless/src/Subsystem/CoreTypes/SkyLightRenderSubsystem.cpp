@@ -195,7 +195,6 @@ namespace Relentless
 
 	void SkyLightRenderSubsystem::DispatchIBLRequests(SkyLightRenderData& aRenderData) noexcept
 	{
-		SkyLightRenderData& renderData = m_RenderData.at(m_ActiveSkyLightID);
 		const bool isRealtime = aRenderData.RenderProxy.CaptureMode == ESkyLightCaptureMode::Realtime;
 
 		if (aRenderData.PrimaryEntry.IrradianceMap && aRenderData.RenderProxy.PrimaryEnvironmentMap && (aRenderData.PrimaryEntry.IrradianceDirty || isRealtime))

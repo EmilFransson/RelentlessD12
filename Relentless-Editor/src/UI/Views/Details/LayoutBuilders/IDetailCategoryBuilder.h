@@ -18,9 +18,9 @@ namespace Relentless
 
 	struct DetailEntry
 	{
-		bool IsGroup = false;
-		Ref<DetailNode> Node;
-		String GroupName;
+		bool IsGroup			= false;
+		Ref<DetailNode> Node	= nullptr;
+		String GroupName		= "";
 	};
 
 	class IDetailCategoryBuilder

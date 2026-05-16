@@ -19,6 +19,5 @@ namespace Relentless
 	private:
 		std::unordered_map<uint32, PostProcessRenderProxy> m_RenderData;
 		PostProcessRenderProxy m_DefaultRenderProxy{};
-		GraphicsDevice* m_pGraphicsDevice = nullptr;
 	};
 }

@@ -17,7 +17,7 @@ namespace Relentless
 			m_OnAssetPropertyChangedCallbackID = INVALID_CALLBACK_ID;
 		}
 
-		m_OnAssetPropertyChangedCallbackID = detailsContext.Environment->OnPropertyChanged.Connect([this, &aDetailLayoutBuilder, &detailsContext]
+		m_OnAssetPropertyChangedCallbackID = detailsContext.Environment->OnPropertyChanged.Connect([this, &aDetailLayoutBuilder]
 		(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty)
 			{
 				if (m_SuspendRefresh)

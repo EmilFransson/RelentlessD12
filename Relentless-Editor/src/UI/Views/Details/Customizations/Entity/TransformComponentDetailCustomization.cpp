@@ -129,7 +129,7 @@ namespace Relentless
 		return pRevertButton;
 	}
 
-	NO_DISCARD static Ref<NumericEntryBox<float>> CreateRotationNumericEntryBox(EntityDetailsContext& aContext, const Ref<PropertyHandle<int>>& aSpacePropertyHandle, int aComponentIndex, Button* aButton) noexcept
+	NO_DISCARD static Ref<NumericEntryBox<float>> CreateRotationNumericEntryBox(EntityDetailsContext& aContext, const Ref<PropertyHandle<int>>& aSpacePropertyHandle, int aComponentIndex, MAYBE_UNUSED Button* aButton) noexcept
 	{
 		Ref<NumericEntryBox<float>> pNumericEntryBox = RLS_NEW NumericEntryBox<float>();
 		pNumericEntryBox->SetSuffix("\xC2\xB0");
@@ -187,7 +187,7 @@ namespace Relentless
 		return pNumericEntryBox;
 	}
 
-	NO_DISCARD static Ref<NumericEntryBox<float>> CreateLocationNumericEntryBox(EntityDetailsContext& aContext, const Ref<PropertyHandle<int>>& aSpacePropertyHandle, int aComponentIndex, Button* aButton) noexcept
+	NO_DISCARD static Ref<NumericEntryBox<float>> CreateLocationNumericEntryBox(EntityDetailsContext& aContext, const Ref<PropertyHandle<int>>& aSpacePropertyHandle, int aComponentIndex, MAYBE_UNUSED Button* aButton) noexcept
 	{
 		Ref<NumericEntryBox<float>> pNumericEntryBox = RLS_NEW NumericEntryBox<float>();
 		pNumericEntryBox->SetSteppingEnabled(false);
@@ -234,7 +234,7 @@ namespace Relentless
 		return pNumericEntryBox;
 	}
 
-	NO_DISCARD static Ref<NumericEntryBox<float>> CreateScaleNumericEntryBox(EntityDetailsContext& aContext, const Ref<PropertyHandle<int>>& aSpacePropertyHandle, int aComponentIndex, Button* aButton) noexcept
+	NO_DISCARD static Ref<NumericEntryBox<float>> CreateScaleNumericEntryBox(EntityDetailsContext& aContext, const Ref<PropertyHandle<int>>& aSpacePropertyHandle, int aComponentIndex, MAYBE_UNUSED Button* aButton) noexcept
 	{
 		Ref<NumericEntryBox<float>> pNumericEntryBox = RLS_NEW NumericEntryBox<float>();
 		pNumericEntryBox->SetSteppingEnabled(false);
@@ -460,7 +460,7 @@ namespace Relentless
 			[&aContext](const int& aValue) { aContext.LocationTransformSpace = static_cast<ETransformSpace>(aValue); });
 		
 		Ref<Button> pRevertButton = CreateRevertButton(LocationDiffersFrom(Vector3::Zero, aContext, GetTransformSpace(pLocationComboHandle)));
-		pLocationComboHandle->OnValueChanged.Connect([&aContext, revertButton = pRevertButton.Get(), locationComboHandle = pLocationComboHandle.Get()](const int& aValue)
+		pLocationComboHandle->OnValueChanged.Connect([&aContext, revertButton = pRevertButton.Get(), locationComboHandle = pLocationComboHandle.Get()](MAYBE_UNUSED const int& aValue)
 			{
 				SyncRevertButtonState(revertButton, LocationDiffersFrom(Vector3::Zero, aContext, GetTransformSpace(locationComboHandle)));
 			});

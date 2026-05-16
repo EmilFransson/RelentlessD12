@@ -5,8 +5,8 @@
 namespace Relentless
 {
 	AssetThumbnail::AssetThumbnail(WeakPtr<const AssetThumbnailData> aAssetThumbnailData, const Vector2& aSize) noexcept
-		:m_pAssetThumbnailData{ aAssetThumbnailData },
-		 m_Size{ aSize }
+		: m_Size{ aSize },
+		  m_pAssetThumbnailData{ aAssetThumbnailData }
 	{
 		SharedPtr<const AssetThumbnailData> pData = aAssetThumbnailData.lock();
 		RLS_ASSERT(pData, "[Thumbnail::Thumbnail]: Asset Thumbnail Data is invalid.");

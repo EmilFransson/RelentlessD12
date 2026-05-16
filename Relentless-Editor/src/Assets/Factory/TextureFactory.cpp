@@ -199,7 +199,7 @@ namespace Relentless
 		}
 
 		const bool shouldCompress = m_CompressionType != ETextureCompressionType::Uncompressed;
-		if (shouldCompress)
+		if (shouldCompress && !m_ImportAsCubemap)
 		{
 			DirectX::TEX_COMPRESS_FLAGS compressFlags = DirectX::TEX_COMPRESS_FLAGS::TEX_COMPRESS_PARALLEL;
 			if (m_CompressionType == ETextureCompressionType::BC7_Quick)
@@ -297,6 +297,22 @@ namespace Relentless
 					}
 				}
 			}
+
+			if (shouldCompress)
+			{
+				DirectX::ScratchImage compressedCubemap;
+
+				const HRESULT hr = Compress(result.GetImages(), result.GetImageCount(), result.GetMetadata(), DXGI_FORMAT_BC6H_UF16, DirectX::TEX_COMPRESS_FLAGS::TEX_COMPRESS_PARALLEL, DirectX::TEX_THRESHOLD_DEFAULT, compressedCubemap);
+
+				if (FAILED(hr))
+					LogHR(hr, "compress cubemap", m_SrcPath);
+				else
+				{
+					meta = compressedCubemap.GetMetadata();
+					result = std::move(compressedCubemap);
+				}
+			}
+			
 
 			Ref<TextureCube> pNewCubeMap = RLS_NEW TextureCube(pOutCubemap, TextureDesc::CreateCube(meta.width, meta.height, D3D::ConvertFormat(meta.format), meta.mipLevels, TextureFlag::ShaderResource), std::move(result));
 			pNewCubeMap->SetName(fileName);

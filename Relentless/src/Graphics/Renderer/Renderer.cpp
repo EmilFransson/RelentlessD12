@@ -7,6 +7,7 @@
 #include "Core/Time.h"
 
 #include "Graphics/Renderer/Techniques/AutoExposure.h"
+#include "Graphics/Renderer/Techniques/BlitPass.h"
 #include "Graphics/Renderer/Techniques/DepthPrePass.h"
 #include "Graphics/Renderer/Techniques/EditorGrid.h"
 #include "Graphics/Renderer/Techniques/ForwardAlphaBlend.h"
@@ -16,6 +17,7 @@
 #include "Graphics/Renderer/Techniques/Picking.h"
 #include "Graphics/Renderer/Techniques/PostProcessing.h"
 #include "Graphics/Renderer/Techniques/ResolveDepthPass.h"
+#include "Graphics/Renderer/Techniques/SelectionOutlinesCompositePass.h"
 #include "Graphics/Renderer/Techniques/SkyBoxRenderer.h"
 
 #include "Graphics/RHI/CommandContext.h"
@@ -37,17 +39,19 @@ namespace Relentless
 	{
 		GraphicsCommon::Create(m_pDevice);
 
-		m_pForwardOpaqueAlphaMask	= MakeUnique<ForwardOpaqueAlphaMask>(pDevice);
-		m_pForwardAlphaBlend		= MakeUnique<ForwardAlphaBlend>(pDevice);
-		m_pEditorGrid				= MakeUnique<EditorGrid>(pDevice);
-		m_pPostProcessing			= MakeUnique<PostProcessing>(pDevice);
-		m_pDepthPrePass				= MakeUnique<DepthPrePass>(pDevice);
-		m_pHBAOPlus					= MakeUnique<HBAOPlus>(pDevice);
-		m_pOutlines					= MakeUnique<Outlines>(pDevice);
-		m_pAutoExposure				= MakeUnique<AutoExposure>(pDevice);
-		m_pSkyBoxRenderer			= MakeUnique<SkyBoxRenderer>(pDevice);
-		m_pPicking					= MakeUnique<Picking>(pDevice);
-		m_pResolveDepthPass			= MakeUnique<ResolveDepthPass>(pDevice);
+		m_pForwardOpaqueAlphaMask			= MakeUnique<ForwardOpaqueAlphaMask>(pDevice);
+		m_pForwardAlphaBlend				= MakeUnique<ForwardAlphaBlend>(pDevice);
+		m_pEditorGrid						= MakeUnique<EditorGrid>(pDevice);
+		m_pPostProcessing					= MakeUnique<PostProcessing>(pDevice);
+		m_pDepthPrePass						= MakeUnique<DepthPrePass>(pDevice);
+		m_pHBAOPlus							= MakeUnique<HBAOPlus>(pDevice);
+		m_pOutlines							= MakeUnique<Outlines>(pDevice);
+		m_pAutoExposure						= MakeUnique<AutoExposure>(pDevice);
+		m_pSkyBoxRenderer					= MakeUnique<SkyBoxRenderer>(pDevice);
+		m_pPicking							= MakeUnique<Picking>(pDevice);
+		m_pResolveDepthPass					= MakeUnique<ResolveDepthPass>(pDevice);
+		m_pSelectionOutlinesCompositePass	= MakeUnique<SelectionOutlinesCompositePass>(pDevice);
+		m_pBlitPass							= MakeUnique<BlitPass>(pDevice);
 	}
 
 	Renderer::~Renderer() noexcept
@@ -198,7 +202,7 @@ namespace Relentless
 				|| sceneTextureResources.pMSAAColorTarget->GetWidth() != width
 				|| sceneTextureResources.pMSAAColorTarget->GetHeight() != height)
 			{
-				sceneTextureResources.pMSAAColorTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource, ClearBinding(Colors::Black), static_cast<uint32>(aViewRenderDesc.RenderQualitySettings.MSAASampleCount)), "Color MSAA Target");
+				sceneTextureResources.pMSAAColorTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource, ClearBinding(Colors::Black), static_cast<uint32>(aViewRenderDesc.RenderQualitySettings.MSAASampleCount)), "Color HDR MSAA Target");
 			}
 
 			if (!sceneTextureResources.pMSAADepthTarget
@@ -216,7 +220,7 @@ namespace Relentless
 				sceneTextures.pDepthResolveTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil | TextureFlag::ShaderResource, ClearBinding(1.0f, 1u)), "Depth Resolve Target");
 
 			if (!sceneTextures.pColorResolveTarget || sceneTextures.pColorResolveTarget->GetWidth() != width || sceneTextures.pColorResolveTarget->GetHeight() != height)
-				sceneTextures.pColorResolveTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Color Target");
+				sceneTextures.pColorResolveTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Color HDR Target");
 		}
 
 		if (!sceneTextureResources.pColorTarget || sceneTextureResources.pColorTarget->GetWidth() != width || sceneTextureResources.pColorTarget->GetHeight() != height)
@@ -225,7 +229,10 @@ namespace Relentless
 		if (!sceneTextureResources.pDepthTarget || sceneTextureResources.pDepthTarget->GetWidth() != width || sceneTextureResources.pDepthTarget->GetHeight() != height)
 			sceneTextureResources.pDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil | TextureFlag::ShaderResource, ClearBinding(1.0f, 1u)), "Depth Target");
 
-		sceneTextures.pColorTarget = isMSAA ? sceneTextureResources.pMSAAColorTarget : sceneTextureResources.pColorTarget;
+		if (!sceneTextures.pLDRColorTarget || sceneTextures.pLDRColorTarget->GetWidth() != width || sceneTextures.pLDRColorTarget->GetHeight() != height)
+			sceneTextures.pLDRColorTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "LDR Color Target");
+
+		sceneTextures.pHDRColorTarget = isMSAA ? sceneTextureResources.pMSAAColorTarget : sceneTextureResources.pColorTarget;
 		sceneTextures.pDepthTarget = isMSAA ? sceneTextureResources.pMSAADepthTarget : sceneTextureResources.pDepthTarget;
 		
 		//Entity ID:
@@ -564,8 +571,8 @@ namespace Relentless
 		{
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			
-			pCommandContext->InsertResourceBarrier(aSceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			pCommandContext->ClearRenderTarget(aSceneTextures.pColorTarget);
+			pCommandContext->InsertResourceBarrier(aSceneTextures.pHDRColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			pCommandContext->ClearRenderTarget(aSceneTextures.pHDRColorTarget);
 			
 			commandContexts.push_back(pCommandContext);
 		}
@@ -610,17 +617,17 @@ namespace Relentless
 			{
 				PROFILE_SCOPE("Renderer::Render::PreAlphaBlendColorResolve");
 				
-				pCommandContext->InsertResourceBarrier(aSceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+				pCommandContext->InsertResourceBarrier(aSceneTextures.pHDRColorTarget, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
 				pCommandContext->InsertResourceBarrier(aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy, D3D12_RESOURCE_STATE_RESOLVE_DEST);
-				pCommandContext->ResolveResource(aSceneTextures.pColorTarget, 0u, aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy, 0u, aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy->GetFormat());
+				pCommandContext->ResolveResource(aSceneTextures.pHDRColorTarget, 0u, aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy, 0u, aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy->GetFormat());
 			}
 			else
 			{
 				PROFILE_SCOPE("Renderer::Render::PreAlphaBlendColorCopy");
 				
-				pCommandContext->InsertResourceBarrier(aSceneTextures.pColorTarget, D3D12_RESOURCE_STATE_COPY_SOURCE);
+				pCommandContext->InsertResourceBarrier(aSceneTextures.pHDRColorTarget, D3D12_RESOURCE_STATE_COPY_SOURCE);
 				pCommandContext->InsertResourceBarrier(aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy, D3D12_RESOURCE_STATE_COPY_DEST);
-				pCommandContext->CopyResource(aSceneTextures.pColorTarget, aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy);
+				pCommandContext->CopyResource(aSceneTextures.pHDRColorTarget, aSceneTextures.pOpaqueAlphaMaskedColorTargetCopy);
 			}
 			commandContexts.push_back(pCommandContext);
 		}
@@ -670,6 +677,7 @@ namespace Relentless
 		}
 
 		//Outlines
+		if (aRenderView.RenderFeatures.IsEnabled(ERenderFeature::Outlines))
 		{
 			PROFILE_SCOPE("Renderer::Render::Outlines");
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
@@ -677,7 +685,7 @@ namespace Relentless
 			commandContexts.push_back(pCommandContext);
 		}
 
-		//Auto Exposure:
+		//Histogram Auto Exposure:
 		{
 			PROFILE_SCOPE("Renderer::Render::AutoExposure");
 
@@ -686,6 +694,31 @@ namespace Relentless
 			commandContexts.push_back(pCommandContext);
 		}
 
+		CommandContext::Execute(commandContexts);
+
+		//Transition LDR & final texture to UAV:
+		{
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			pCommandContext->InsertResourceBarrier(aTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			pCommandContext->InsertResourceBarrier(aSceneTextures.pLDRColorTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			pCommandContext->Execute();
+		}
+
+		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
+		
+		//Post process; HDR -> LDR:
+		{
+			PROFILE_SCOPE("Renderer::Render::Post Process");
+
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+			m_pPostProcessing->Render(*pCommandContext, aRenderView, aSceneTextures, aSceneBuffers.AverageLuminanceBuffer.pBuffer);
+			pCommandContext->Execute();
+		}
+		
+		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
+
+		/*BEGIN LDR*/
+		
 		//Editor Grid:
 		if (aRenderView.RenderFeatures.IsEnabled(ERenderFeature::Grid))
 		{
@@ -693,26 +726,26 @@ namespace Relentless
 
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			m_pEditorGrid->Render(*pCommandContext, aRenderView, aSceneTextures);
-			commandContexts.push_back(pCommandContext);
-		}
-
-		CommandContext::Execute(commandContexts);
-
-		//Transition final texture to UAV:
-		{
-			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			pCommandContext->InsertResourceBarrier(aTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			pCommandContext->Execute();
 		}
 
-		//Post processing:
+		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
+		
+		//Selection Outlines Composite:
+		if (aRenderView.RenderFeatures.IsEnabled(ERenderFeature::Outlines))
 		{
-			PROFILE_SCOPE("Renderer::Render::Post Process");
+			PROFILE_SCOPE("Renderer::Render::Selection Outlines Compose");
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+			m_pSelectionOutlinesCompositePass->Render(*pCommandContext, aRenderView, aSceneTextures);
+			pCommandContext->Execute();
+		}
 
-			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
+		//Gamma Correction & Blit to final target:
+		{
+			PROFILE_SCOPE("Renderer::Render::Blit");
 
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(D3D12_COMMAND_LIST_TYPE_COMPUTE);
-			m_pPostProcessing->Render(*pCommandContext, aRenderView, aSceneTextures, aSceneBuffers.AverageLuminanceBuffer.pBuffer, aTarget);
+			m_pBlitPass->Render(*pCommandContext, aRenderView, aSceneTextures, aTarget);
 			pCommandContext->Execute();
 
 			m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));

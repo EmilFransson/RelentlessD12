@@ -53,7 +53,7 @@ namespace Relentless
 	void EditorGrid::Render(CommandContext& commandContext, const RenderView& renderView, SceneTextures& sceneTextures) noexcept
 	{
 		RenderPassInfo info;
-		info.RenderTargets[0].pTarget = sceneTextures.pColorTarget;
+		info.RenderTargets[0].pTarget = sceneTextures.pLDRColorTarget;
 		info.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargets[0].EndAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargetCount++;
@@ -62,7 +62,7 @@ namespace Relentless
 		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::Preserve;
 		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::Preserve;
 
-		commandContext.InsertResourceBarrier(sceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		commandContext.InsertResourceBarrier(sceneTextures.pLDRColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		commandContext.InsertResourceBarrier(sceneTextures.pDepthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 		commandContext.BeginRenderPass(info);
@@ -81,7 +81,7 @@ namespace Relentless
 		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
 		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
 		psoDesc.SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE);
-		psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, 1);
+		psoDesc.SetRenderTargetFormats(ResourceFormat::RGB10A2_UNORM, ResourceFormat::D32_FLOAT, 1);
 
 		commandContext.SetPipelineState(m_pDevice->GetOrCreatePipeline(psoDesc));
 
@@ -114,7 +114,7 @@ namespace Relentless
 		commandContext.Draw(0, EDITOR_GRID_VERTEX_COUNT, 0, EDITOR_GRID_INSTANCE_COUNT);
 
 		commandContext.EndRenderPass();
-
-		commandContext.InsertResourceBarrier(sceneTextures.pColorTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		
+		commandContext.InsertResourceBarrier(sceneTextures.pLDRColorTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	}
 }

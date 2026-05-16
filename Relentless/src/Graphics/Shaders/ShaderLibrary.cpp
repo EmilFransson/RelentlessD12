@@ -46,6 +46,8 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::Compute, "CubeMapLowerHemisphereBlendShader.hlsl", "cs_main"));
 
 		Add(Shader::Create(ShaderType::Compute, "ResolveDepthShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "BlitShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "SelectionOutlinesCompositeShader.hlsl", "cs_main"));
 	}
 
 	void ShaderLibrary::Add(const std::shared_ptr<Shader>& pShader) noexcept

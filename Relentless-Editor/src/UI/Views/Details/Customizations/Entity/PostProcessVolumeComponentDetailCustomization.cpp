@@ -14,8 +14,6 @@ namespace Relentless
 	void PostProcessVolumeComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
 		EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
-		const bool multiSelection = context.Entities.size() > 1u;
-
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(ICON_FA_PAINTBRUSH "  Post Process");
 
 		Ref<EntityPropertyHandle<bool, PostProcessVolumeComponent>> pInfiniteExtentHandle = RLS_NEW EntityPropertyHandle<bool, PostProcessVolumeComponent>(

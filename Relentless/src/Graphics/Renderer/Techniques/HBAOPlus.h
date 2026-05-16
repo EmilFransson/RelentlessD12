@@ -6,6 +6,8 @@ class GFSDK_SSAO_Context_D3D12;
 
 namespace Relentless
 {
+	struct HBAOPlusContextData;
+
 	class HBAOPlus
 	{
 	public:

@@ -40,8 +40,8 @@ namespace Relentless
 		//NO_DISCARD const std::vector<Ref<DetailNode>>& GetNodes() const noexcept;
 		bool m_IsExpanded = true;
 	private:
-		Ref<DetailNode> m_pGroupNode;
 		String m_Name;
+		Ref<DetailNode> m_pGroupNode;
 	};
 
 	template<typename DataType>

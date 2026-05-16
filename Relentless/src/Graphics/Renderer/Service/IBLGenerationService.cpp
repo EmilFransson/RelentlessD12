@@ -61,7 +61,7 @@ namespace Relentless
 				for (uint32 mip = aRequest.Mips.FirstMip; mip <= lastMip; ++mip)
 				{
 					if (mip == 0u)
-						ResampleCubemap(aCommandContext, aRequest.SourceEnvironmentCubemap, aRequest.TargetRadianceMap, mip);
+						ResampleCubemap(aCommandContext, aRequest.SourceEnvironmentCubemap, aRequest.TargetRadianceMap);
 					else
 						ConvolveRadiance(aCommandContext, aRequest.SourceEnvironmentCubemap, aRequest.TargetRadianceMap, mip);
 				}
@@ -139,7 +139,7 @@ namespace Relentless
 		aCommandContext.Dispatch(ComputeUtils::GetNumThreadGroups(passData.OutputDimensions, 32u, passData.OutputDimensions, 32u, 6u, 1u));
 	}
 
-	void IBLGenerationService::ResampleCubemap(CommandContext& aCommandContext, Texture* aSourceCubemap, Texture* aTargetRadianceMap, uint32 aMip) noexcept
+	void IBLGenerationService::ResampleCubemap(CommandContext& aCommandContext, Texture* aSourceCubemap, Texture* aTargetRadianceMap) noexcept
 	{
 		struct
 		{

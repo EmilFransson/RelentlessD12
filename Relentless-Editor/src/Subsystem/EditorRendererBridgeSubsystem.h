@@ -10,7 +10,7 @@ namespace Relentless
 	public:
 		NO_DISCARD entity GetHoveredEntity() const noexcept;
 
-		void OnEntityReadbackDone(uint32 aEntityID, const UUID& aSceneUUID) noexcept;
+		void OnEntityReadbackDone(uint32 aEntityID, MAYBE_UNUSED const UUID& aSceneUUID) noexcept;
 		NO_DISCARD bool OnLoad(ISystemManager* aSystemManager) noexcept override;
 		NO_DISCARD AssetHandle OnRequestBRDFLut() noexcept;
 		

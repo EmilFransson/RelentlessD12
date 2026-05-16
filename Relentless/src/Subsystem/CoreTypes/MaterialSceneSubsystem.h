@@ -13,7 +13,7 @@ namespace Relentless
 	{
 	public:
 		NO_DISCARD bool OnLoad(ISystemManager* aSystemManager) noexcept override;
-		void OnUnload(ISystemManager* aSystemManager) noexcept override;
+		void OnUnload(MAYBE_UNUSED ISystemManager* aSystemManager) noexcept override;
 
 		static bool ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept;
 	private:

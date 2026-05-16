@@ -49,7 +49,7 @@ namespace Relentless
 	private:
 		void ConvolveRadiance(CommandContext& aCommandContext, Texture* aSourceCubemap, Texture* aTargetRadianceMap, uint32 aMip) noexcept;
 
-		void ResampleCubemap(CommandContext& aCommandContext, Texture* aSourceCubemap, Texture* aTargetRadianceMap, uint32 aMip) noexcept;
+		void ResampleCubemap(CommandContext& aCommandContext, Texture* aSourceCubemap, Texture* aTargetRadianceMap) noexcept;
 	private:
 		Ref<PipelineState> m_pIrradiancePSO = nullptr;
 		Ref<PipelineState> m_pRadiancePSO = nullptr;

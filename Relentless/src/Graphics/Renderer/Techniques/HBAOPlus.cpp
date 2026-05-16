@@ -17,16 +17,16 @@ namespace Relentless
 		GFSDK_SSAO_CustomHeap CustomHeap;
 		CustomHeap.new_ = ::operator new;
 		CustomHeap.delete_ = ::operator delete;
-
+		
 		m_ShaderBindableHandles = m_pDevice->RegisterGlobalDescriptorBlock(DescriptorHandleType::CBV, 64);
 		m_RTVHandles = m_pDevice->RegisterGlobalDescriptorBlock(DescriptorHandleType::RTV, 64);
-
+		
 		GFSDK_SSAO_DescriptorHeaps_D3D12 DescriptorHeaps{};
 		DescriptorHeaps.CBV_SRV_UAV.pDescHeap = m_pDevice->GetGlobalShaderBindableHeap()->GetDescriptorHeapInterface();
 		DescriptorHeaps.CBV_SRV_UAV.BaseIndex = m_ShaderBindableHandles[0].Index;
 		DescriptorHeaps.RTV.pDescHeap = m_pDevice->GetRenderTargetViewDescriptorHeap()->GetDescriptorHeapInterface();
 		DescriptorHeaps.RTV.BaseIndex = m_RTVHandles[0].Index;
-
+		
 		const GFSDK_SSAO_Status status = GFSDK_SSAO_CreateContext_D3D12
 		(
 			m_pDevice->GetDevice(),
@@ -51,7 +51,6 @@ namespace Relentless
 		RLS_ASSERT(ambientOcclusionSettings.DepthPrecision == 16u || ambientOcclusionSettings.DepthPrecision == 32u, "[HBAOPlus::Render]: Invalid Depth Precision Encountered.");
 		RLS_ASSERT(ambientOcclusionSettings.StepCount == 4u || ambientOcclusionSettings.StepCount == 8u, "[HBAOPlus::Render]: Invalid Step Count Encountered.");
 
-		//#if defined(RLS_DEBUG) || defined(RLS_RELWITHDEBINFO)
 		// HBAO+ internally waits on fence value 0 on first frame — suppress known 3rd party warning
 		Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
 		bool hasInfoQueue = SUCCEEDED(m_pDevice->GetDevice()->QueryInterface(IID_PPV_ARGS(&infoQueue)));
@@ -75,8 +74,8 @@ namespace Relentless
 		const GFSDK_SSAO_RenderMask renderMask = GFSDK_SSAO_RENDER_AO;
 
 		GFSDK_SSAO_RenderTargetView_D3D12 rtv{};
-		rtv.pResource = aSceneTextures.pColorTarget->GetResource();
-		rtv.CpuHandle = aSceneTextures.pColorTarget->GetRTV()->GetCPUHandle().ptr;
+		rtv.pResource = aSceneTextures.pHDRColorTarget->GetResource();
+		rtv.CpuHandle = aSceneTextures.pHDRColorTarget->GetRTV()->GetCPUHandle().ptr;
 
 		GFSDK_SSAO_Output_D3D12 output{};
 		output.pRenderTargetView = &rtv;
@@ -87,16 +86,16 @@ namespace Relentless
 		parameters.Bias = ambientOcclusionSettings.Bias;
 		parameters.PowerExponent = ambientOcclusionSettings.PowerExponent;
 		parameters.Blur.Enable = ambientOcclusionSettings.BlurEnabled;
-		parameters.Blur.Sharpness = ambientOcclusionSettings.BlurSharpness; 16.f;
+		parameters.Blur.Sharpness = ambientOcclusionSettings.BlurSharpness;
 		parameters.Blur.Radius = ambientOcclusionSettings.BlurRadius == 4u ? GFSDK_SSAO_BLUR_RADIUS_4 : GFSDK_SSAO_BLUR_RADIUS_2;
 		parameters.DepthStorage = ambientOcclusionSettings.DepthPrecision == 32u ? GFSDK_SSAO_FP32_VIEW_DEPTHS : GFSDK_SSAO_FP16_VIEW_DEPTHS ;
 		parameters.EnableDualLayerAO = false;
 		parameters.StepCount = ambientOcclusionSettings.StepCount == 8u ? GFSDK_SSAO_STEP_COUNT_8 : GFSDK_SSAO_STEP_COUNT_4;
 
-		const uint32 width = aSceneTextures.pColorTarget->GetWidth();
-		const uint32 height = aSceneTextures.pColorTarget->GetHeight();
+		const uint32 width = aSceneTextures.pHDRColorTarget->GetWidth();
+		const uint32 height = aSceneTextures.pHDRColorTarget->GetHeight();
 
-		aCommandContext.InsertResourceBarrier(aSceneTextures.pColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		aCommandContext.InsertResourceBarrier(aSceneTextures.pHDRColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		aCommandContext.InsertResourceBarrier(aSceneTextures.pDepthTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		aCommandContext.FlushResourceBarriers();
 
@@ -105,7 +104,6 @@ namespace Relentless
 		const GFSDK_SSAO_Status status = m_pSSAOContext->RenderAO(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetCommandQueue(), aCommandContext.GetCommandList(), inputData, parameters, output, renderMask);
 		RLS_VERIFY(status == GFSDK_SSAO_OK, "Failed To Issue HBAOPlus Render Command.");
 
-		//#if defined(RLS_DEBUG)|| defined(RLS_RELWITHDEBINFO)
 		if (hasInfoQueue && !m_FirstFrameDone)
 		{
 			// Restore breaks first, then pop filter
@@ -114,7 +112,6 @@ namespace Relentless
 			infoQueue->SetMuteDebugOutput(false);
 			m_FirstFrameDone = true;
 		}
-		//#endif
 	}
 }
 

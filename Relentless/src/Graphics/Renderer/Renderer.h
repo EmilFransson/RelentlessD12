@@ -18,6 +18,7 @@ namespace ShaderInterop
 namespace Relentless
 {
 	class AutoExposure;
+	class BlitPass;
 	class DepthPrePass;
 	class EditorGrid;
 	class ForwardRenderer;
@@ -29,6 +30,7 @@ namespace Relentless
 	class PostProcessing;
 	class ResolveDepthPass;
 	class Scene;
+	class SelectionOutlinesCompositePass;
 	class SkyBoxRenderer;
 
 	enum class ERenderJobType : uint8 { None = 0u, Raster, Compute };
@@ -138,6 +140,8 @@ namespace Relentless
 		UniquePtr<SkyBoxRenderer> m_pSkyBoxRenderer;
 		UniquePtr<Picking> m_pPicking;
 		UniquePtr<ResolveDepthPass> m_pResolveDepthPass;
+		UniquePtr<SelectionOutlinesCompositePass> m_pSelectionOutlinesCompositePass;
+		UniquePtr<BlitPass> m_pBlitPass;
 
 		AssetHandle m_BRDFLutTextureHandle = AssetHandle::INVALID;
 		

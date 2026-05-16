@@ -43,7 +43,7 @@ namespace Relentless
 		return true;
 	}
 
-	void MeshSceneSubsystem::OnUnload(ISystemManager* aSystemManager) noexcept
+	void MeshSceneSubsystem::OnUnload(MAYBE_UNUSED ISystemManager* aSystemManager) noexcept
 	{
 		auto lock = AssetManager::LockStorage<Mesh>();
 

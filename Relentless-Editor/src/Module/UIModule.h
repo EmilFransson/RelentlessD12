@@ -89,7 +89,6 @@ namespace Relentless
 		Ref<DragDropOperationBase> m_pDragDropOperation = nullptr;
 		bool m_PanelStackDirty = false;
 		bool m_ShouldDestroyContextMenu = false;
-		bool m_DropTargetIsValid = false;
 
 		CallbackID m_OnUpdateCallbackID = 0;
 		CallbackID m_OnRenderCallbackID = 0;

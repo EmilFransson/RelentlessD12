@@ -29,6 +29,8 @@ namespace Relentless
 			return uid;
 		}
 
+		void PostLoad() override;
+
 		bool SerializeBulk(IArchive& aArchive) noexcept override;
 		bool SerializeCore(IArchive& aArchive) noexcept override;
 

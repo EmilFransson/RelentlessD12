@@ -19,7 +19,7 @@ namespace Relentless
 		NO_DISCARD virtual TypeIndex GetSupportedAssetType() const noexcept;
 		NO_DISCARD virtual Ref<ThumbnailInfo> GetThumbnailInfo(MAYBE_UNUSED const AssetData& aAssetData) const noexcept;
 
-		NO_DISCARD virtual bool OpenAssets(MAYBE_UNUSED const std::vector<AssetHandle>& someAssets) noexcept;
+		virtual bool OpenAssets(MAYBE_UNUSED const std::vector<AssetHandle>& someAssets) noexcept;
 		
 		virtual bool RequestGenerateThumbnail(MAYBE_UNUSED const AssetData& aAssetData, MAYBE_UNUSED const Callback<void(const Ref<Texture2D>&)>& aOnThumbnailGeneratedCallback) noexcept;
 		

@@ -51,6 +51,7 @@ namespace Relentless
 		renderFeatures.Disable(ERenderFeature::Grid);
 		renderFeatures.Disable(ERenderFeature::HBAOPlus);
 		renderFeatures.Disable(ERenderFeature::EntityPicking);
+		renderFeatures.Disable(ERenderFeature::Outlines);
 
 		RenderQualitySettings renderQualitySettings{};
 

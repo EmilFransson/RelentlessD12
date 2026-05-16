@@ -11,7 +11,7 @@ namespace Relentless
 		return m_HoveredEntity;
 	}
 
-	void EditorRendererBridgeSubsystem::OnEntityReadbackDone(uint32 aEntityID, const UUID& aSceneUUID) noexcept
+	void EditorRendererBridgeSubsystem::OnEntityReadbackDone(uint32 aEntityID, MAYBE_UNUSED const UUID& aSceneUUID) noexcept
 	{
 		/*
 		 An id of 0 is considered a sentinel value for the read back results.

@@ -94,7 +94,8 @@ namespace Relentless
 
 	struct SceneTextures
 	{
-		Ref<Texture> pColorTarget						= nullptr;
+		Ref<Texture> pHDRColorTarget					= nullptr;
+		Ref<Texture> pLDRColorTarget					= nullptr;
 		Ref<Texture> pColorResolveTarget				= nullptr;
 		Ref<Texture> pDepthTarget						= nullptr;
 		Ref<Texture> pDepthResolveTarget				= nullptr;

@@ -4,8 +4,7 @@
 
 namespace Relentless
 {
-	AssetDetailPropertyRowBuilder::AssetDetailPropertyRowBuilder(const char* aLabel, AssetDetailNode* aDetailNode) noexcept
-		: m_pDetailNode(aDetailNode)
+	AssetDetailPropertyRowBuilder::AssetDetailPropertyRowBuilder(const char* aLabel) noexcept
 	{
 		m_NameSlot.Details.Label = aLabel;
 		m_ValueSlot.Details.Label = aLabel;

@@ -1,8 +1,13 @@
 #include "Project.h"
-#include "Utility/FilepathUtils.h"
-#include "yaml-cpp/yaml.h"
+
+#include "File/File.h"
+
 #include "Module/AssetRegistryModule.h"
 #include "Module/ModuleManager.h"
+
+#include "Utility/FilepathUtils.h"
+
+#include "yaml-cpp/yaml.h"
 
 namespace Relentless
 {
@@ -60,7 +65,7 @@ namespace Relentless
 		config.AssetPath = projectNode["AssetDirectory"].as<String>();
 		config.ThumbnailCachePath = projectNode["ThumbnailCacheDirectory"].as<String>();
 
-		s_ActiveProject->m_ActiveProjectDirectory = aPath.parent_path();
+		s_ActiveProject->m_ActiveProjectDirectory = aPath.parent_path().string() + "/";
 		
 		FilepathUtils::CreateDirectoryTree(GetAssetDirectory());
 		FilepathUtils::CreateDirectoryTree(GetThumbnailCacheDirectory());
@@ -72,12 +77,51 @@ namespace Relentless
 		return s_ActiveProject;
 	}
 
+	Ref<Project> Project::LoadOrCreateDefault() noexcept
+	{
+		ProjectConfig config{};
+
+		const Path baseDir = FilepathUtils::Combine(Path(PROJECT_BUILD_DIRECTORY), std::format("{}/", config.Name));
+		const Path projectFile = FilepathUtils::Combine(baseDir, std::format("{}.rproject", config.Name));
+
+		if (File::Exists(projectFile))
+		{
+			if (Ref<Project> loaded = Load(projectFile))
+				return loaded;
+
+			RLS_CORE_WARN("[Project::LoadOrCreateDefault]: Default project at '{0}' failed to load; recreating.", projectFile.string());
+		}
+
+		RLS_CORE_INFO("[Project::LoadOrCreateDefault]: Creating default project at '{0}'.", baseDir.string());
+
+		New(config);
+
+		s_ActiveProject->m_ActiveProjectDirectory = baseDir;
+
+		FilepathUtils::CreateDirectoryTree(baseDir);
+		FilepathUtils::CreateDirectoryTree(GetAssetDirectory());
+		FilepathUtils::CreateDirectoryTree(GetThumbnailCacheDirectory());
+
+		SaveActive(baseDir);
+
+		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		assetRegistryModule.RegisterRoot(GetAssetDirectory(), EAssetSourceType::Project);
+		assetRegistryModule.ScanForAssets(GetAssetDirectory());
+
+		return s_ActiveProject;
+	}
+	
+	Ref<Project> Project::New(const ProjectConfig& aConfig) noexcept
+	{
+		s_ActiveProject = RLS_NEW Project();
+		s_ActiveProject->m_Config = aConfig;
+
+		return s_ActiveProject;
+	}
+
 	bool Project::SaveActive(const Path& aPath) noexcept
 	{
-		Path directory = FilepathUtils::Combine(aPath, s_ActiveProject->GetName());
-		directory += "\\";
-
-		if (!FilepathUtils::CreateDirectoryTree(directory))
+		if (!FilepathUtils::CreateDirectoryTree(aPath))
 			return false;
 
 		const ProjectConfig& config = s_ActiveProject->GetConfig();
@@ -96,18 +140,10 @@ namespace Relentless
 			out << YAML::EndMap; //Root
 		}
 
-		const Path destination = FilepathUtils::Combine(directory, s_ActiveProject->GetName() + ".rproject");
+		const Path destination = FilepathUtils::Combine(aPath, s_ActiveProject->GetName() + ".rproject");
 		std::ofstream fileOut(destination);
 		fileOut << out.c_str();
 
 		return true;
-	}
-
-	Ref<Project> Project::New(const ProjectConfig& aConfig) noexcept
-	{
-		s_ActiveProject = new Project();
-		s_ActiveProject->m_Config = aConfig;
-
-		return s_ActiveProject;
 	}
 }

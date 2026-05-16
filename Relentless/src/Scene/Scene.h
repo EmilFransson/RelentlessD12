@@ -97,7 +97,7 @@ namespace Relentless
 		void RemoveActiveSkyBox() noexcept;
 		void RemoveActiveSkyLight() noexcept;
 
-		NO_DISCARD bool SerializeCore(IArchive& aArchive) noexcept override;
+		NO_DISCARD bool SerializeCore(IArchive&) noexcept override;
 		void SetActiveSkyBox(entity aSkyBoxEntity) noexcept;
 		void SetActiveSkyLight(entity aSkyLightEntity) noexcept;
 

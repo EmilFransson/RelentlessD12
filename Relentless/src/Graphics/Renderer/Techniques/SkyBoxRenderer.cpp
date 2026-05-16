@@ -22,7 +22,7 @@ namespace Relentless
 		RenderPassInfo info{};
 		info.RenderTargets[0].BeginAccessFlags = RenderTargetAccessFlags::Preserve;
 		info.RenderTargets[0].EndAccessFlags = RenderTargetAccessFlags::Preserve;
-		info.RenderTargets[0].pTarget = aSceneTextures.pColorTarget;
+		info.RenderTargets[0].pTarget = aSceneTextures.pHDRColorTarget;
 		info.RenderTargetCount++;
 
 		info.DepthStencilTarget.pTarget = aSceneTextures.pDepthTarget;

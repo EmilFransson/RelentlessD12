@@ -20,7 +20,7 @@ namespace Relentless
 		RenderPassInfo info{};
 
 		RenderPassInfo::RenderTargetInfo& renderTarget = info.AddRenderTarget();
-		renderTarget.pTarget = aSceneTextures.pColorTarget;
+		renderTarget.pTarget = aSceneTextures.pHDRColorTarget;
 		renderTarget.pResolveTarget = numSamples > 1 ? aSceneTextures.pColorResolveTarget : nullptr;
 		renderTarget.BeginAccessFlags = RenderTargetAccessFlags::Preserve;
 		renderTarget.EndAccessFlags = numSamples > 1 ? RenderTargetAccessFlags::Resolve : RenderTargetAccessFlags::Preserve;
@@ -79,7 +79,7 @@ namespace Relentless
 		aCommandContext.EndRenderPass();
 
 		if (numSamples > 1)
-			aSceneTextures.pColorTarget = aSceneTextures.pColorResolveTarget;
+			aSceneTextures.pHDRColorTarget = aSceneTextures.pColorResolveTarget;
 	}
 
 }

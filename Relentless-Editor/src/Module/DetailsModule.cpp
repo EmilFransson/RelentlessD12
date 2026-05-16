@@ -4,6 +4,8 @@
 #include "UI/Views/Details/Customizations/Assets/MaterialDetailCustomization.h"
 
 #include "UI/Views/Details/Customizations/Entity/DirectionalLightComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/MeshFilterComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/MeshRendererComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/PointLightComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/PostProcessVolumeComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/SkyBoxComponentDetailCustomization.h"
@@ -38,10 +40,11 @@ namespace Relentless
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, SkyBoxComponentDetailCustomization>();
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, SkyLightComponentDetailCustomization>();
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, PostProcessVolumeComponentDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<EntityDetailsContext, MeshRendererComponentDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<EntityDetailsContext, MeshFilterComponentDetailCustomization>();
 
 		//Assets
 		m_DetailCustomizationRegistry.Register<EnvironmentDetailsContext, EnvironmentDetailCustomization>();
 		m_DetailCustomizationRegistry.Register<MaterialDetailsContext, MaterialDetailCustomization>();
-
 	}
 }

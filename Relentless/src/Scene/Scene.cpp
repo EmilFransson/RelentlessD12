@@ -487,16 +487,9 @@ namespace Relentless
 		m_ActiveSkyLightEntity = NULL_ENTITY;
 	}
 
-	bool Scene::SerializeCore(IArchive& aArchive) noexcept
+	bool Scene::SerializeCore(IArchive&) noexcept
 	{
-		if (aArchive.IsSaving())
-		{
-			m_EntityManager.Collect<IDComponent>().Do([this, &aArchive](entity aEntity)
-				{
-					//SerializeEntity(aArchive, aEntity);
-				});
-		}
-
+		//TODO: Implement scene serialization
 		return true;
 	}
 

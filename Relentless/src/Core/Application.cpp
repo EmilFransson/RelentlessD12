@@ -176,7 +176,7 @@ namespace Relentless
 
 		m_ThreadPool = std::make_unique<ThreadPool>();
 		GraphicsDeviceOptions options;
-		/*RLS_DEBUG_ONLY(*/options.UseDebugDevice = true/*)*/;
+		RLS_DEBUG_ONLY(options.UseDebugDevice = true);
 		//options.UseGPUValidation = true;
 		m_pGraphicsDevice = new GraphicsDevice(options);
 

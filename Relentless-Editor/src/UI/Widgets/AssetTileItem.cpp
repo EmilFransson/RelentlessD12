@@ -13,7 +13,6 @@ namespace Relentless
 	constexpr Color DEFAULT_BACKGROUND_COLOR = Color(56.0f, 56.0f, 56.0f, 255.0f);
 	constexpr float TILE_BORDER_SIZE = 2.0f;
 	constexpr float TILE_PADDING = 3.0f;
-	constexpr float TYPE_LINE_HEIGHT = 2.0f;
 
 	AssetTileItem::AssetTileItem(const AssetThumbnailData& aAssetThumbnailData, const Vector2& aSize, TileView<SharedPtr<AssetThumbnailData>>* pTileView) noexcept
 		:m_BackgroundColor{ DEFAULT_BACKGROUND_COLOR },
@@ -72,8 +71,6 @@ namespace Relentless
 		ImDrawList* pDrawList = ImGui::GetWindowDrawList();
 		if (!pDrawList)
 			return;
-
-		const Vector2 thumbnailSize = m_pThumbnail->ReportSize();
 
 		const ImVec2 cursorPos = ImGui::GetCursorScreenPos();
 		ImGui::Dummy(ImVec2(m_Size.x, m_Size.y));

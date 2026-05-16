@@ -116,7 +116,7 @@ namespace Relentless
 	{
 		GetSubsystem<EditorViewportSubsystem>();
 		LoadModules();
-		Project::Load("D:\\UntitledRelentlessProject\\UntitledRelentlessProject.rproject");
+		Project::LoadOrCreateDefault();
 		CreateSubsystems();
 		CreateStartScene();
 	}
@@ -243,7 +243,7 @@ namespace Relentless
 		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
 
 		{
-			entity dirEntity = m_pActiveScene->CreateLight("Point Light", ELightType::Directional);
+			entity dirEntity = m_pActiveScene->CreateLight("Directional Light", ELightType::Directional);
 			auto& dlc = entityManager.Get<DirectionalLightComponent>(dirEntity);
 			dlc.SetColor(Math::MakeFromColorTemperature(5'900.0f));
 			dlc.SetIntensityLux(2'000.0f);
@@ -252,53 +252,30 @@ namespace Relentless
 			tc.SetWorldRotationEulerDegrees(Vector3(-90.0f, 0.0f, 0.0f));
 		}
 
-		AssetHandle offWhiteMaterialHandle = AssetManager::LoadAsset("Game/Materials/OffWhite");
-		AssetHandle meshHandle = pContentSubsystem->GetCubeMeshHandle();
+		const AssetHandle WhiteMaterialHandle = pContentSubsystem->GetWhiteMaterialHandle();
+		const AssetHandle meshHandle = pContentSubsystem->GetCubeMeshHandle();
 
-		//Opaque stuff:
-		for (uint32 i = 0u; i < 10u; ++i)
-		{
-			entity cubeEntity = m_pActiveScene->CreateEntity(std::format("Cube_{}", i).c_str());
-			entityManager.Add<MeshFilterComponent>(cubeEntity).SetMesh(meshHandle);
-			entityManager.Add<MeshRendererComponent>(cubeEntity).SetMaterial(offWhiteMaterialHandle);
-			entityManager.Get<TransformComponent>(cubeEntity).AddWorldOffset(Vector3((float)i, 0.0f, 0.0f));
-		}
-
-		AssetHandle groundMaterialHandle = AssetManager::LoadAsset("Game/Materials/Ground");
-		AssetHandle sphereMeshHandle = pContentSubsystem->GetSphereMeshHandle();
-
-		//Transparent stuff:
-		for (uint32 i = 10; i < 20u; ++i)
-		{
-			entity cubeEntity = m_pActiveScene->CreateEntity(std::format("Cube_{}", i).c_str());
-			entityManager.Add<MeshFilterComponent>(cubeEntity).SetMesh(sphereMeshHandle);
-			entityManager.Add<MeshRendererComponent>(cubeEntity).SetMaterial(groundMaterialHandle);
-			entityManager.Get<TransformComponent>(cubeEntity).AddWorldOffset(Vector3((float)i, 0.0f, 0.0f));
-		}
+		const entity cubeEntity = m_pActiveScene->CreateEntity("Cube");
+		entityManager.Add<MeshFilterComponent>(cubeEntity).SetMesh(meshHandle);
+		entityManager.Add<MeshRendererComponent>(cubeEntity).SetMaterial(WhiteMaterialHandle);
 
 		const entity postProcessEntity = m_pActiveScene->CreateEntity("Post Process");
 		entityManager.Add<PostProcessVolumeComponent>(postProcessEntity);
 
 		const entity skyBoxAndLightEntity = m_pActiveScene->CreateEntity("SkyBoxAndLight");
-		m_pActiveScene->GetEntityManager().Add<SkyLightComponent>(skyBoxAndLightEntity);
-		m_pActiveScene->GetEntityManager().Add<SkyBoxComponent>(skyBoxAndLightEntity);
+		SkyLightComponent& skyLightComponent = m_pActiveScene->GetEntityManager().Add<SkyLightComponent>(skyBoxAndLightEntity);
+		SkyBoxComponent& skyBoxComponent = m_pActiveScene->GetEntityManager().Add<SkyBoxComponent>(skyBoxAndLightEntity);
 
 		m_pActiveScene->SetActiveSkyLight(skyBoxAndLightEntity);
 		m_pActiveScene->SetActiveSkyBox(skyBoxAndLightEntity);
 
-		AssetManager::LoadAssetAsync("Game/Environments/PureSky/PureSkyEnvironment", [this, skyBoxAndLightEntity](const AssetHandle& aHandle)
-			{
-				RLS_ASSERT(aHandle.IsValid(), "PureSky environment is invalid.");
-				m_pActiveScene->GetEntityManager().Get<SkyLightComponent>(skyBoxAndLightEntity).SetPrimaryEnvironment(aHandle);
-				m_pActiveScene->GetEntityManager().Get<SkyBoxComponent>(skyBoxAndLightEntity).SetPrimaryEnvironment(aHandle);
-			});
+		const AssetHandle citrusOrchardRoadEnvironmentHandle = pContentSubsystem->GetCitrusOrchardRoadEnvironmentHandle();
+		const AssetHandle overcastSoilEnvironmentHandle = pContentSubsystem->GetOvercastSoilEnvironmentHandle();
 
-		AssetManager::LoadAssetAsync("Game/Environments/Overcast/OvercastEnvironment", [this, skyBoxAndLightEntity](const AssetHandle& aHandle)
-			{
-				RLS_ASSERT(aHandle.IsValid(), "Overcast environment is invalid.");
-				m_pActiveScene->GetEntityManager().Get<SkyLightComponent>(skyBoxAndLightEntity).SetBlendEnvironment(aHandle);
-				m_pActiveScene->GetEntityManager().Get<SkyBoxComponent>(skyBoxAndLightEntity).SetBlendEnvironment(aHandle);
-			});
+		skyBoxComponent.SetPrimaryEnvironment(citrusOrchardRoadEnvironmentHandle);
+		skyLightComponent.SetPrimaryEnvironment(citrusOrchardRoadEnvironmentHandle);
+		skyBoxComponent.SetBlendEnvironment(overcastSoilEnvironmentHandle);
+		skyLightComponent.SetBlendEnvironment(overcastSoilEnvironmentHandle);
 	}
 
 	void Editor::UI_DrawMainMenuBar() noexcept

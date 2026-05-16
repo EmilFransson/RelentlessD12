@@ -17,6 +17,11 @@ namespace Relentless
 		NO_DISCARD const AssetHandle& GetSphereMeshHandle() const noexcept;
 		NO_DISCARD const AssetHandle& GetMaterialPreviewCubemapHandle() const noexcept;
 		NO_DISCARD const AssetHandle& GetNoneTexture2DHandle() const noexcept;
+		NO_DISCARD const AssetHandle& GetWhiteMaterialHandle() const noexcept;
+		NO_DISCARD const AssetHandle& GetCitrusOrchardRoadTextureCubeHandle() const noexcept;
+		NO_DISCARD const AssetHandle& GetOvercastSoilTextureCubeHandle() const noexcept;
+		NO_DISCARD const AssetHandle& GetCitrusOrchardRoadEnvironmentHandle() const noexcept;
+		NO_DISCARD const AssetHandle& GetOvercastSoilEnvironmentHandle() const noexcept;
 
 		NO_DISCARD bool IsLoading() const noexcept;
 
@@ -27,10 +32,15 @@ namespace Relentless
 		template<typename AssetType>
 		void RequestAsyncLoad(const String& aPath, EngineAssetEntry<AssetType>& aOutAssetEntry) noexcept;
 	private:
-		EngineAssetEntry<TextureCube> m_MaterialPreviewEnvironment;
+		EngineAssetEntry<TextureCube> m_MaterialPreviewTextureCube;
+		EngineAssetEntry<TextureCube> m_CitrusOrchardRoadPureSkyTextureCube;
+		EngineAssetEntry<TextureCube> m_OvercastSoilPureSkyTextureCube;
 		EngineAssetEntry<Texture2D> m_NoneThumbnail;
 		EngineAssetEntry<Mesh> m_SphereMesh;
 		EngineAssetEntry<Mesh> m_CubeMesh;
+		EngineAssetEntry<Material> m_DefaultWhiteMaterial;
+		EngineAssetEntry<Environment> m_CitrusOrchardRoadPureSkyEnvironment;
+		EngineAssetEntry<Environment> m_OvercastSoilPureSkyEnvironment;
 
 		uint32 m_NumAssetsLoading = 0u;
 	};

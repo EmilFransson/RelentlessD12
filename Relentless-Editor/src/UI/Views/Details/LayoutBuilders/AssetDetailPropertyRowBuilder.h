@@ -12,7 +12,7 @@ namespace Relentless
 	class AssetDetailPropertyRowBuilder
 	{
 	public:
-		explicit AssetDetailPropertyRowBuilder(const char* aLabel, AssetDetailNode* aDetailNode) noexcept;
+		explicit AssetDetailPropertyRowBuilder(const char* aLabel) noexcept;
 		virtual ~AssetDetailPropertyRowBuilder() noexcept;
 		
 		AssetDetailPropertyRowBuilder& AcceptableAssetTypes(Span<TypeIndex> someTypes) noexcept;
@@ -30,7 +30,6 @@ namespace Relentless
 		Callback<void()> m_OnRevertedCallback;
 		Callback<void(Span<const AssetData>)> m_OnAssetsDroppedCallback;
 
-		AssetDetailNode* m_pDetailNode = nullptr;
 		bool m_HasBuilt = false;
 	};
 }

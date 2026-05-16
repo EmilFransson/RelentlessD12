@@ -26,7 +26,7 @@ namespace Relentless
 			m_OnAssetPropertyChangedCallbackID = INVALID_CALLBACK_ID;
 		}
 
-		m_OnAssetPropertyChangedCallbackID = detailsContext.Material->OnPropertyChanged.Connect([this, &aDetailLayoutBuilder, &detailsContext]
+		m_OnAssetPropertyChangedCallbackID = detailsContext.Material->OnPropertyChanged.Connect([this, &aDetailLayoutBuilder]
 		(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty)
 			{
 				if (m_SuspendRefresh)
@@ -104,7 +104,6 @@ namespace Relentless
 								pButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f));
 								pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
-								pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 1.0f)); });
 								pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 1.0f)); });
 								pButton->OnMouseExit([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f)); });
 								pButton->OnClicked([&detailsContext, aTextureType, &aDetailLayoutBuilder]()
