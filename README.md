@@ -34,7 +34,7 @@ Relentless is an explorative game engine project with a personal goal of researc
   - Content Browser panel with asset thumbnails (wip)
   - Drag/Drop support
 
-**Asset pipelines**
+- **Asset pipelines**
   - Synchronous & Asynchronous asset importing
   - Custom binary format for efficient asset (de-)serialization & GPU uploads
   - Per-asset-type factories for specializing and customizing asset imports (including optimizations, compression, etc...)
