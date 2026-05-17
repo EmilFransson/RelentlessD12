@@ -1,0 +1,30 @@
+Copyright (c) 2026 Emil Fransson. All rights reserved.
+
+This license applies ONLY to the original code authored by Emil Fransson
+in this repository. Specifically, it does NOT apply to third-party code
+located in the /vendor/ directories, which is governed by each library's
+respective license, included with the code.
+
+For the original code authored by Emil Fransson:
+
+You may:
+- View the source code through the GitHub web interface or local clone
+- Clone the repository to evaluate, run, and test the engine locally
+- Reference concepts, ideas, and approaches in your own original work
+
+You may NOT, without express written permission from the copyright holder:
+- Copy, reproduce, or redistribute any portion of this code
+- Modify or create derivative works based on this code
+- Incorporate this code, in whole or in part, into other projects
+  (commercial or non-commercial)
+- Use this code or its compiled output in any product, service, or
+  publication that you distribute, sell, or otherwise make available
+- Sublicense, lease, rent, or transfer any rights in this code
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
