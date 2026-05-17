@@ -24,6 +24,7 @@ namespace Relentless
 		void OnEntityFolderDelete(EntityFolder* aFolder) noexcept;
 		void OnEntityFolderMoved(MAYBE_UNUSED EntityFolder* aMovedFolder, MAYBE_UNUSED EntityFolder* aMovedFolderParent, const String& aOldPath, const String& aNewPath) noexcept;
 		void OnEntitySelectionChanged(entity aEntity, ESelectionState aSelectionState) noexcept;
+		void OnSceneChange(Scene* aCurrentScene) noexcept;
 		void OnSceneChanged(Scene* aNewScene) noexcept;
 	private:
 		Editor* m_pEditor = nullptr;

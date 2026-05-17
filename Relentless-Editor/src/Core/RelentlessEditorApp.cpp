@@ -55,6 +55,13 @@ namespace Relentless
 		return m_pRenderer;
 	}
 
+	void RelentlessEditor::ShutDown() noexcept
+	{
+		m_pRenderer.reset();
+
+		Application::ShutDown();
+	}
+
 	UniquePtr<Application> CreateApplication() noexcept
 	{
 		ApplicationSpecification applicationSpecification;

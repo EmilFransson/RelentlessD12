@@ -21,6 +21,7 @@ namespace Relentless
 	private:
 		void OnEntityDestroyed(entity aDestroyedEntity) noexcept;
 		void OnEntityTransformed(entity aTransformedEntity) noexcept;
+		void OnSceneChange(Scene* aCurrentScene) noexcept;
 		void OnSceneChanged(Scene* aScene) noexcept;
 		void OnSelectionChanged(entity aEntity, ESelectionState aSelectionState) noexcept;
 	private:

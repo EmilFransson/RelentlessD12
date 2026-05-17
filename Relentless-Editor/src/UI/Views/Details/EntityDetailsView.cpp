@@ -14,6 +14,7 @@ namespace Relentless
 		Editor::OnEntityTransformed.Connect(this, &EntityDetailsView::OnEntityTransformed);
 
 		Editor* pEditor = Editor::Get();
+		pEditor->OnSceneChange.Connect(this, &EntityDetailsView::OnSceneChange);
 		pEditor->OnSceneChanged.Connect(this, &EntityDetailsView::OnSceneChanged);
 		pEditor->GetSubsystem<SelectionSubsystem>()->OnSelectionChanged.Connect(this, &EntityDetailsView::OnSelectionChanged);
 
@@ -27,6 +28,7 @@ namespace Relentless
 			if (const auto& pSelection = pEditor->GetSubsystem<SelectionSubsystem>())
 				pSelection->OnSelectionChanged.Detach(this);
 
+			pEditor->OnSceneChange.Detach(this);
 			pEditor->OnSceneChanged.Detach(this);
 		}
 
@@ -81,15 +83,18 @@ namespace Relentless
 			RequestRefresh();
 	}
 
-	void EntityDetailsView::OnSceneChanged(Scene* aScene) noexcept
+	void EntityDetailsView::OnSceneChange(Scene* aCurrentScene) noexcept
 	{
-		SetLocked(false);
-
-		if (m_pInspectedScene)
+		if (aCurrentScene && aCurrentScene == m_pInspectedScene)
 		{
 			m_pInspectedScene->OnEntityDestroyed.Detach(this);
 			m_pInspectedScene = nullptr;
 		}
+	}
+
+	void EntityDetailsView::OnSceneChanged(Scene* aScene) noexcept
+	{
+		SetLocked(false);
 
 		m_Context.Entities.clear();
 

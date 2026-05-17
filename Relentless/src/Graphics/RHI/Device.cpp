@@ -237,6 +237,16 @@ namespace Relentless
 		return m_pDescriptorManager->CreateDescriptorHandleBlock(descriptorHandleType, blockSize);
 	}
 
+	void GraphicsDevice::ShutDown() noexcept
+	{
+		{
+			std::lock_guard<std::mutex> guard(m_PSOMutex);
+			m_PSOs.clear();
+		}
+
+		IdleGPU();
+	}
+
 	Ref<Buffer> GraphicsDevice::CreateBuffer(const BufferDesc& desc, const char* pName, const void* pInitData /*= (const void*)nullptr*/) noexcept
 	{
 		auto&& GetResourceDesc = [](const BufferDesc& desc) -> D3D12_RESOURCE_DESC

@@ -14,6 +14,7 @@ namespace Relentless
 	bool EditorSceneBridgeSubsystem::OnLoad(ISystemManager* aSystemManager) noexcept
 	{
 		Editor* pEditor = static_cast<Editor*>(aSystemManager);
+		pEditor->OnSceneChange.Connect(this, &EditorSceneBridgeSubsystem::OnSceneChange);
 		pEditor->OnSceneChanged.Connect(this, &EditorSceneBridgeSubsystem::OnSceneChanged);
 		pEditor->GetSubsystem<SelectionSubsystem>()->OnSelectionChanged.Connect(this, &EditorSceneBridgeSubsystem::OnEntitySelectionChanged);
 
@@ -135,14 +136,17 @@ namespace Relentless
 			m_pBridgedScene->GetEntityManager().Remove<SelectedInEditorComponent>(aEntity);
 	}
 
-	void EditorSceneBridgeSubsystem::OnSceneChanged(Scene* aNewScene) noexcept
+	void EditorSceneBridgeSubsystem::OnSceneChange(Scene* aCurrentScene) noexcept
 	{
-		if (m_pBridgedScene)
+		if (aCurrentScene && aCurrentScene == m_pBridgedScene)
 		{
 			m_pBridgedScene->OnEntityDestroy.Detach(this);
 			m_pBridgedScene->OnEntityAttached.Detach(this);
 		}
+	}
 
+	void EditorSceneBridgeSubsystem::OnSceneChanged(Scene* aNewScene) noexcept
+	{
 		m_pBridgedScene = aNewScene;
 		if (!m_pBridgedScene)
 			return;

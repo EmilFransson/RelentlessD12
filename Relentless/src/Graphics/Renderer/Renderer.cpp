@@ -58,6 +58,7 @@ namespace Relentless
 	{
 		//Explicit so subsystems can clean up properly:
 		m_RenderScenes.clear();
+		GraphicsCommon::Destroy();
 	}
 
 	void Renderer::Render() noexcept

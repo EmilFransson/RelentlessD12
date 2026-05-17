@@ -191,7 +191,7 @@ namespace Relentless
 		style.ScaleAllSizes(scaleFactor);
 
 		RLS_VERIFY(ImGui_ImplWin32_Init(Application::Get().GetWindow()->GetNativeWindow()), "[ImGuiLayer::OnAttach]: Failed to initialize ImGui win32 backend.");
-		ImGui_ImplWin32_EnableDpiAwareness();
+		//ImGui_ImplWin32_EnableDpiAwareness();
 
 		m_Allocator.Initialize(m_pDevice);
 

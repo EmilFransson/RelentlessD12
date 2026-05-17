@@ -1,6 +1,6 @@
 ﻿#Top/Root/Relentless
 
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 4.1.0)
 
 include(ProcessorCount)
 ProcessorCount(N)
@@ -11,8 +11,8 @@ if (NOT DEFINED CMAKE_BUILD_PARALLEL_LEVEL)
     set(CMAKE_BUILD_PARALLEL_LEVEL ${N})
 endif()
 
-if(${CMAKE_VERSION} VERSION_LESS 3.25)
-	message(FATAL_ERROR "Fatal error: CMake minimum version required is 3.25.0. Update CMake at cmake.org to continue. Exiting...")
+if(${CMAKE_VERSION} VERSION_LESS 4.1.0)
+	message(FATAL_ERROR "Fatal error: CMake minimum version required is 4.1.0. Update CMake at cmake.org to continue. Exiting...")
 endif()
 
 if (NOT WIN32)

@@ -23,6 +23,7 @@ namespace Relentless
 		NO_DISCARD bool IsEntitySelected(entity aEntityToQuery) const noexcept;
 
 		NO_DISCARD bool OnLoad(ISystemManager* aSystemManager) noexcept override;
+		void OnUnload(ISystemManager* aSystemManager) noexcept override;
 		void OnSceneChange(MAYBE_UNUSED Scene* aScene) noexcept;
 
 		void SelectEntity(entity aEntityToSelect) noexcept;

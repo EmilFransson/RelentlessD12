@@ -60,6 +60,9 @@ namespace Relentless
 		Broadcaster<void(PanelBase*)> OnPanelClose;
 	protected:
 		void OnLoad() override;
+		void OnUnload() override;
+
+		NO_DISCARD bool SupportsAutomaticShutdown() const override;
 	private:
 		void CreateDefaultPanels() noexcept;
 

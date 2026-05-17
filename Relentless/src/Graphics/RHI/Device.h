@@ -64,6 +64,8 @@ namespace Relentless
 		NO_DISCARD DescriptorHandle RegisterGlobalDescriptor(DescriptorHandleType descriptorHandleType) noexcept;
 		NO_DISCARD std::vector<DescriptorHandle> RegisterGlobalDescriptorBlock(DescriptorHandleType descriptorHandleType, uint32 blockSize) noexcept;
 
+		void ShutDown() noexcept;
+
 		void TickFrame() noexcept;
 		void UnregisterGlobalDescriptor(const DescriptorHandle& descriptorHandle) noexcept;
 	private:

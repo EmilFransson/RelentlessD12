@@ -77,6 +77,8 @@ namespace Relentless
 
 	Scene::~Scene() noexcept
 	{
+		DestroyAllSubSystems();
+
 		Renderer::Dispatch([uuid = GetUUID()](Renderer* aRenderer)
 			{
 				aRenderer->DestroyRenderScene(uuid);

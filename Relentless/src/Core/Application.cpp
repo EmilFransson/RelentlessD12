@@ -253,13 +253,12 @@ namespace Relentless
 		m_pGraphicsDevice->TickFrame();
 	}
 
-
 	void Application::ShutDown_Internal() noexcept
 	{
 		ShutDown();
 
 		LayerStack::Get().PopAllLayers();
-		m_pGraphicsDevice->IdleGPU();
+		m_pGraphicsDevice->ShutDown();
 
 		AssetManager::Shutdown();
 	}

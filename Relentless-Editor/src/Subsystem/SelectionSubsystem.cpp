@@ -56,6 +56,12 @@ namespace Relentless
 		return true;
 	}
 
+	void SelectionSubsystem::OnUnload(ISystemManager* aSystemManager) noexcept
+	{
+		Editor* pEditor = static_cast<Editor*>(aSystemManager);
+		pEditor->OnSceneChange.Detach(this);
+	}
+
 	void SelectionSubsystem::OnSceneChange(MAYBE_UNUSED Scene* aScene) noexcept
 	{
 		DeselectAllEntities();

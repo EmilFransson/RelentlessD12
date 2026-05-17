@@ -87,16 +87,15 @@ namespace Relentless
 	private:
 		static void ShutdownAllModules() noexcept
 		{
-			std::unique_lock<std::shared_mutex> writeLock(s_ModuleMutex);
-
 			for (auto& [id, moduleEntry] : s_Modules)
 			{
 				const UniquePtr<IModule>& pModule = moduleEntry->Module;
-
+			
 				if (!pModule->SupportsAutomaticShutdown())
 					pModule->OnUnload();
 			}
 
+			std::unique_lock<std::shared_mutex> writeLock(s_ModuleMutex);
 			s_Modules.clear();
 		}
 

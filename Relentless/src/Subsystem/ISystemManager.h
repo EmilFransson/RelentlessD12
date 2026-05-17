@@ -13,6 +13,14 @@ namespace Relentless
 				pSystem->OnUnload(this);
 		}
 
+		void DestroyAllSubSystems() noexcept
+		{
+			for (const auto& [type, pSystem] : m_Subsystems)
+				pSystem->OnUnload(this);
+
+			m_Subsystems.clear();
+		}
+
 		template<typename SystemType>
 		SystemType* GetSubsystem() noexcept
 		{

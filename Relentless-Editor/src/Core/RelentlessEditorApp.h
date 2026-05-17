@@ -17,6 +17,8 @@ namespace Relentless
 		virtual void UIRenderEnd(CommandContext* aCommandContext) noexcept override;
 
 		NO_DISCARD const UniquePtr<Renderer>& GetRenderer() const noexcept;
+	protected:
+		void ShutDown() noexcept override;
 	private:
 		UniquePtr<ImGuiLayer> m_pImGuiLayer;
 		UniquePtr<EditorLayer> m_pEditorLayer = nullptr;

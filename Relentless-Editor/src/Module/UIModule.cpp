@@ -280,6 +280,24 @@ namespace Relentless
 		CreateDefaultPanels();
 	}
 
+	void UIModule::OnUnload()
+	{
+		Editor* pEditor = Editor::Get();
+		pEditor->UnregisterUpdateCallback(m_OnUpdateCallbackID);
+		pEditor->UnregisterUIRenderCallback(m_OnRenderCallbackID);
+		pEditor->UnregisterEventCallback(m_OnEventCallbackID);
+		m_OnUpdateCallbackID = INVALID_CALLBACK_ID;
+		m_OnRenderCallbackID = INVALID_CALLBACK_ID;
+		m_OnEventCallbackID = INVALID_CALLBACK_ID;
+
+		m_PanelStack.clear();
+	}
+
+	bool UIModule::SupportsAutomaticShutdown() const
+	{
+		return false;
+	}
+
 	// ---------------- PRIVATE FUNCTIONS ------------------
 
 	void UIModule::FocusSortPanelStack() noexcept

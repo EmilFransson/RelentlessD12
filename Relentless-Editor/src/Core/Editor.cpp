@@ -124,6 +124,8 @@ namespace Relentless
 	void Editor::OnDestroy() noexcept
 	{
 		ModuleManager::ShutDown();
+		DestroyAllSubSystems();
+		SetActiveScene(nullptr);
 		OnShutDown();
 	}
 
