@@ -82,3 +82,9 @@ Relentless integrates the following third-party libraries:
    .\build-and-run.bat
 ```
 # Usage
+
+# License
+Source-available for viewing and evaluation. Copying, modification, and use
+in other projects is not permitted without permission. See [LICENSE](LICENSE)
+for full terms. Third-party libraries in `/vendor/` retain their original
+licenses.
