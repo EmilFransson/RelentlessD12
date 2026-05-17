@@ -53,6 +53,7 @@ Relentless is an explorative game engine project with a personal goal of researc
 - Windows SDK 10.0.26100.0
 - [Clang 21.1.8](https://github.com/llvm/llvm-project/releases/tag/llvmorg-21.1.8) (Standalone LLVM. Download, install & add to PATH)
 - [CMake](https://cmake.org/download/) (C++26 compatible version - 4.1 or later)
+- Shader Model 6.6 compatible GPU
 #### Third-Party Libraries
 Relentless integrates the following third-party libraries:
   1. [ImGui](https://github.com/ocornut/imgui) (subdirectory in /vendor)
