@@ -19,6 +19,7 @@ Relentless is an explorative game engine project with a personal goal of researc
   - Multi-viewport editor architecture
   - FNV-1A hashed PSO cache for declarative pipeline state authoring
   - Game/Render thread proxy dispatch model (**wip, actual threading not yet active**)
+  - Multi Sampled Anti Aliasing (MSAA)
 
 - **Entity Component System (ECS)**
   - Pure; Entities are ids, Components are data, Systems are stateless component mutators
@@ -39,3 +40,44 @@ Relentless is an explorative game engine project with a personal goal of researc
   - Custom binary format for efficient asset (de-)serialization & GPU uploads
   - Per-asset-type factories for specializing and customizing asset imports (including optimizations, compression, etc...)
   
+- **Architecture**
+  - Engine built as DLL, editor consumes
+  - Subsystems: automatically instanced classes with managed lifetime
+  - Modules: basic building blocks for code organization and encapsulating functionality. Future goal includes compiling as separate compilation units (plugins...)
+  - Threadpool for efficient work distribution
+
+# Building
+### Dependencies
+#### Build Tools
+- [Visual Studio 2026](https://visualstudio.microsoft.com/)
+- Windows SDK 10.0.26100.0
+- [Clang 21.1.8](https://github.com/llvm/llvm-project/releases/tag/llvmorg-21.1.8) (Standalone LLVM. Download, install & add to PATH)
+- [CMake](https://cmake.org/download/) (C++26 compatible version - 4.1 or later)
+#### Third-Party Libraries
+Relentless integrates the following third-party libraries:
+  1. [ImGui](https://github.com/ocornut/imgui) (subdirectory in /vendor)
+  2. [ImGuizmo](https://github.com/cedricguillemet/imguizmo) (subdirectory in /vendor)
+  3. [assimp](https://github.com/assimp/assimp) (subdirectory in /vendor)
+  4. [meshoptimizer](https://github.com/zeux/meshoptimizer) (subdirectory in /vendor)
+  5. [yaml-cpp](https://github.com/jbeder/yaml-cpp/) (subdirectory in /vendor)
+  6. [HBAO+](https://github.com/NVIDIAGameWorks/HBAOPlus) (subdirectory in /vendor)
+  7. [dense_hash_map](https://github.com/Jiwan/dense_hash_map) (subdirectory in /vendor)
+  8. [StaticTypeInfo](https://github.com/TheLartians/StaticTypeInfo) (subdirectory in /vendor)
+  9. [DirectXTK](https://github.com/microsoft/directxtk) (subdirectory in /vendor)
+  10. [DirectXTex](https://github.com/microsoft/DirectXTex) (subdirectory in /vendor)
+  11. [DirectXShaderCompiler](https://github.com/microsoft/directxshadercompiler) (subdirectory in /vendor)
+  12. [DirectX12 Agility SDK](https://devblogs.microsoft.com/directx/directx12agility/) (subdirectory in /vendor)
+  13. [IconFontCppHeaders](https://github.com/juliettef/iconfontcppheaders) (subdirectory in /vendor)
+  14. [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h) (Header only in /vendor)
+  15. [spdlog](https://github.com/gabime/spdlog) (Retrieved via CMake FetchContent on configuration)
+### Build Steps
+1. Clone the repo:
+  ```bash
+   git clone --recursive https://github.com/EmilFransson/RelentlessD12.git
+   cd RelentlessD12
+```
+2. Invoke build-and-run.bat:
+ ```bash
+   .\build-and-run.bat
+```
+# Usage
