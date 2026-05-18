@@ -3,7 +3,7 @@
 # Relentless - A D3D12 Game Engine
 Relentless is an explorative game engine project with a personal goal of researching and experimenting with modern techniques and ideas pertaining to the development of a game engine, from scratch. This repo also serves as a hallmark portfolio piece, for showcasing work done and committed over multiple years. The project is under active development.
 
-# Features
+# Noteable Features
 - **D3D12 Render Backend:**
   - Physically Based Rendering (PBR), Microfacet BRDF
   - Complex material support and authoring based on metalness workflow
