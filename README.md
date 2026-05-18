@@ -82,7 +82,38 @@ Relentless integrates the following third-party libraries:
    .\build-and-run.bat
 ```
 # Usage
+Note: Upon first start the user must currently self-assign and dock panels. Upon restarts this is handled automatically. Exit the application with File -> Exit.
 
+### Scene Navigation & Transformation
+With a scene viewport focused:
+- Right Mouse Button + WASD: fly cam.
+- Left Mouse Button: horizontal dollying.
+- Left + Right Mouse Button: vertical dollying.
+- Left Mouse Button + Alt: Orbiting. Change orbit offset by mouse scrolling.
+- Left Mouse Button while hovering entity: selection. LCtrl for multi-selection.
+- With 1+ entity selected: Q/W/E/R buttons to toggle between transformation gizmo modes.
+- With 1+ entity selected: Delete button to delete entity.
+- Alt + gizmo manipulation: entity duplication.
+- H with 1+ entity selected: hide entity.
+- LCtrl + H: set all entities visible. 
+### Content Browser
+Currently limited to (wip):
+- Double clicking on a material or environment asset opens its corresponding editor panel.
+### Details Panel
+- Selecting an entity opens its corresponding details view, enabling component data editing. Bulk editing available.
+### Outliner Panel
+- Left Mouse Button: single selection.
+- Left Mouse Button + LCtrl: toggle selection/add to selection.
+- Left Mouse Button + LShift: range selection.
+- F2 with entity selected: rename.
+- Delete Button with 1+ entity selected: delete selection.
+- Type in search bar: filter entity items.
+- Clicking an entity eye-icon: toggle visibility.
+- Note: folder functionality is currently broken in build (wip).
+### Editor Panels
+- Changes propagate directly to scene; asset data is scene-representative.
+- LCrtl + S: Save asset.
+- Drag & drop asset thumbnails from content browser to assign where applicable. Eligible drops are denoted with a green overlay.
 # License
 Source-available for viewing and evaluation. Copying, modification, and use
 in other projects is not permitted without permission. See [LICENSE](LICENSE)
