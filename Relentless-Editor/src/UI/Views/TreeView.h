@@ -53,7 +53,7 @@ namespace Relentless
 			}
 		}
 
-		void SetClippingActive(bool aIsActive) noexcept { m_ClippingActive = aIsActive; }
+		TreeView<ItemType>* SetClippingActive(bool aIsActive) noexcept { m_ClippingActive = aIsActive; return this; }
 		void SetItemExpandedState(const ItemType& pItem, bool expandedState) noexcept;
 
 		Broadcaster<void()> OnTreeRefreshed;

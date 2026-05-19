@@ -36,6 +36,7 @@ namespace Relentless
 		Ref<TreeView<Ref<DetailNode>>> pTreeView = RLS_NEW TreeView<Ref<DetailNode>>(pHeaderRow);
 		pTreeView->SetFlags(ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersH | ImGuiTableFlags_SizingStretchProp);
 		pTreeView->SetClippingActive(false);
+		pTreeView->SetSpacing(Vector2::Zero);
 
 		pTreeView
 			->OnGetChildren(this, &IDetailsView::OnGetChildren)

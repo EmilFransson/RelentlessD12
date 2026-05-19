@@ -77,6 +77,7 @@ namespace Relentless
 
 		m_pOutlinerTreeView
 			->OnGetChildren(this, &EntityOutlinerView::OnGetChildren)
+			->SetClippingActive(true)
 			->OnRequestSource(this, &EntityOutlinerView::OnRequestSource)
 			->OnGenerateRow(this, &EntityOutlinerView::OnGenerateRow)
 			->OnDoubleClick(this, &EntityOutlinerView::OnRowDoubleClicked)
@@ -84,6 +85,7 @@ namespace Relentless
 			->OnSelectionChanged(this, &EntityOutlinerView::OnSelectionChanged)
 			->OnContextMenuOpening(this, &EntityOutlinerView::OnContextMenuOpening)
 			->OnItemScrolledIntoView(this, &EntityOutlinerView::OnItemScrolledIntoView)
+			->SetSpacing(Vector2::Zero)
 			->SetHorizontalSizePolicy(ESizePolicy::Stretch)
 			->SetVerticalSizePolicy(ESizePolicy::Stretch);
 
