@@ -47,8 +47,10 @@ namespace Relentless
 	void DetailCategoryRow::OnRenderColumn(uint32 aColumn) noexcept
 	{
 		ImGuiTable* pTable = ImGui::GetCurrentTable();
-		const ImVec2 clipMin(pTable->WorkRect.Min.x, pTable->WorkRect.Min.y);
-		const ImVec2 clipMax(clipMin.x + pTable->WorkRect.GetWidth(), clipMin.y + pTable->WorkRect.GetHeight());
+		ImGuiWindow* pInnerWindow = pTable->InnerWindow;
+
+		const ImVec2 clipMin(pTable->WorkRect.Min.x, Math::Max(pTable->WorkRect.Min.y, pInnerWindow->ClipRect.Min.y));
+		const ImVec2 clipMax(pTable->WorkRect.Max.x, Math::Min(pTable->WorkRect.Max.y, pInnerWindow->ClipRect.Max.y));
 
 		ImGui::PushClipRect(clipMin, clipMax, false);
 
