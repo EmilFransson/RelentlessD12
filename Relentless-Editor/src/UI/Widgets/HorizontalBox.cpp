@@ -246,14 +246,14 @@ namespace Relentless
 			OnFocusChanged(m_IsFocused);
 		}
 
-		const ImVec2 rMin = ImGui::GetWindowPos();
-		const ImVec2 rMax = ImVec2(rMin.x + ImGui::GetWindowSize().x, rMin.y + ImGui::GetWindowSize().y);
-		ImDrawList* parentDL = ImGui::GetCurrentWindow()->DrawList;
+		//const ImVec2 rMin = ImGui::GetWindowPos();
+		//const ImVec2 rMax = ImVec2(rMin.x + ImGui::GetWindowSize().x, rMin.y + ImGui::GetWindowSize().y);
+		//ImDrawList* parentDL = ImGui::GetCurrentWindow()->DrawList;
 
 		ImGui::EndChild();
 
-		if (hovered)
-			parentDL->AddRect(rMin, rMax, IM_COL32(255, 255, 0, 255), 0.0f, 0, 2.0f);
+		//if (hovered)
+		//	parentDL->AddRect(rMin, rMax, IM_COL32(255, 255, 0, 255), 0.0f, 0, 2.0f);
 	}
 
 }
