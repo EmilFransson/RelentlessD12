@@ -45,13 +45,21 @@ namespace Relentless
 
 	void DetailGroupRow::OnRenderColumn(uint32 aColumn) noexcept
 	{
+		ImGuiTable* pTable = ImGui::GetCurrentTable();
+		ImGuiWindow* pInnerWindow = pTable->InnerWindow;
+
+		const ImVec2 clipMin(pTable->WorkRect.Min.x, Math::Max(pTable->WorkRect.Min.y, pInnerWindow->ClipRect.Min.y));
+		const ImVec2 clipMax(pTable->WorkRect.Max.x, Math::Min(pTable->WorkRect.Max.y, pInnerWindow->ClipRect.Max.y));
+
+		ImGui::PushClipRect(clipMin, clipMax, false);
+
 		if (aColumn == 0u)
 		{
 			for (uint32 i = 1u; i < m_IndentationLevel; ++i)
 				ImGui::Indent();
 		}
 
-		m_ColumnWidgets2[aColumn]->AssignSize({ ImGui::GetContentRegionAvail().x, ReportSize().y });
+		m_ColumnWidgets2[aColumn]->AssignSize({ pTable->WorkRect.GetWidth(), ReportSize().y });
 		m_ColumnWidgets2[aColumn]->Render();
 
 		if (aColumn == 0u)
@@ -59,5 +67,7 @@ namespace Relentless
 			for (uint32 i = 1u; i < m_IndentationLevel; ++i)
 				ImGui::Unindent();
 		}
+
+		ImGui::PopClipRect();
 	}
 }
