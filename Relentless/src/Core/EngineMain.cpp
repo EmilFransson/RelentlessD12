@@ -7,14 +7,12 @@ namespace Relentless
 		if (!aApplication)
 			return -1;
 
-		INITIALIZE_DEBUG_MEMORY_LEAK_DETECTION;
-
 		RLS_VERIFY(!FAILED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)));
 
 		aApplication->Run();
+		aApplication.reset();
 
 		CoUninitialize();
-		_CrtDumpMemoryLeaks();
 
 		return 0;
 	}

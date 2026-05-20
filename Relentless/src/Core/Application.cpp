@@ -118,7 +118,10 @@ namespace Relentless
 		s_Instance = this;
 	}
 
-	Application::~Application() noexcept = default;
+	Application::~Application() noexcept
+	{
+		RLS_CORE_INFO("Shutting down application.");
+	}
 
 	GraphicsDevice* Application::GetGraphicsDevice() const noexcept
 	{
@@ -261,6 +264,8 @@ namespace Relentless
 		m_pGraphicsDevice->ShutDown();
 
 		AssetManager::Shutdown();
+
+		g_FrameScratchArena.ShutDown();
 	}
 
 	void Application::FlushMainThreadQueue() noexcept

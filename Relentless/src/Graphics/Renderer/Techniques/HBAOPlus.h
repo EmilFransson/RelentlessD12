@@ -12,6 +12,7 @@ namespace Relentless
 	{
 	public:
 		HBAOPlus(GraphicsDevice* aGraphicsDevice) noexcept;
+		~HBAOPlus() noexcept;
 
 		void Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures) noexcept;
 	private:

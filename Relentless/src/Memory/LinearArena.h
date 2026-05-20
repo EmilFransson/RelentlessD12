@@ -34,6 +34,14 @@ namespace Relentless
 
 		void Reset() noexcept { m_Offset = 0; }
 
+		void ShutDown() noexcept 
+		{
+			::operator delete(m_pMemory);
+			m_pMemory = nullptr;
+			m_Capacity = 0;
+			m_Offset = 0;
+		}
+
 		NO_DISCARD size_t UsedBytes()      const noexcept { return m_Offset; }
 		NO_DISCARD size_t CapacityBytes()  const noexcept { return m_Capacity; }
 

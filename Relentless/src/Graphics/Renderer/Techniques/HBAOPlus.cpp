@@ -38,6 +38,11 @@ namespace Relentless
 		RLS_VERIFY(status == GFSDK_SSAO_OK, "[HBAOPlus::HBAOPlus]: Failed To Initialize HBAO+.");
 	}
 
+	HBAOPlus::~HBAOPlus() noexcept
+	{
+		m_pSSAOContext->Release();
+	}
+
 	void HBAOPlus::Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures) noexcept
 	{
 		PostProcessRenderSubsystem* pPostProcessRenderSubsystem = aRenderView.pRenderScene->GetSubsystem<PostProcessRenderSubsystem>();
