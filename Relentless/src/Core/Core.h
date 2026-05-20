@@ -36,7 +36,10 @@ namespace Relentless
 	#endif
 
 	#ifndef INITIALIZE_DEBUG_MEMORY_LEAK_DETECTION
-		#define INITIALIZE_DEBUG_MEMORY_LEAK_DETECTION _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#define INITIALIZE_DEBUG_MEMORY_LEAK_DETECTION                              \
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);           \
+    _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG | _CRTDBG_MODE_FILE);   \
+    _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR)
 	#endif
 
 	#ifndef RLS_NEW

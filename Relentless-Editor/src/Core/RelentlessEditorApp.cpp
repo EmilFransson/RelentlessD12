@@ -1,5 +1,4 @@
 #include "RelentlessEditorApp.h"
-#include "EntryPoint.h"
 #include "ImGui/ImGuiLayer.h"
 
 #include "Subsystem/EditorViewportSubsystem.h"
