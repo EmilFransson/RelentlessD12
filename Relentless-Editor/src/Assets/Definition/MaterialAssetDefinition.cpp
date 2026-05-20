@@ -16,6 +16,7 @@ namespace Relentless
 
 			AssetImportTask& task = importTasks.emplace_back();
 			task.FilePath = FilepathUtils::Combine(ENGINE_ASSET_DIRECTORY, "Textures/MaterialThumbnail.jpg");
+			task.ShouldSave = false;
 
 			Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
 			pFactory->SetImportAsSRGB(true);

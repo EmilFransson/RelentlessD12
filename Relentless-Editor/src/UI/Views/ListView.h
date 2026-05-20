@@ -127,6 +127,7 @@ namespace Relentless
 		NO_DISCARD virtual String GetReferencerName() const noexcept;
 		uint32 GetSelectedItems(std::vector<ItemType>& outSelectedItems) const noexcept;
 		NO_DISCARD Ref<ITableRow> GetRowWidget(const ItemType& item) const noexcept;
+		NO_DISCARD float GetUniformItemHeight() noexcept;
 
 		NO_DISCARD bool HasValidItemSource() const noexcept;
 
@@ -154,6 +155,9 @@ namespace Relentless
 
 		template<typename InstanceType>
 		ListView<ItemType>* OnItemScrolledIntoView(InstanceType* instance, void(InstanceType::*method)(const ItemType&)) noexcept;
+
+		template<typename InstanceType>
+		ListView<ItemType>* OnItemHeightRequested(InstanceType* aInstance, float(InstanceType::*aMethod)()) noexcept;
 
 		template<typename InstanceType>
 		ListView<ItemType>* OnGenerateRow(InstanceType* instance, Ref<ITableRow>(InstanceType::*method)(const ItemType&)) noexcept;
@@ -184,7 +188,6 @@ namespace Relentless
 	private:
 		void OnRender() noexcept override;
 		void OnRowDoubleClicked(const ItemType& pItem) noexcept;
-
 	protected:
 		Callback<void(const PointerInfo& pointerInfo, const ItemType& item)> m_OnClick;
 		Callback<Ref<ContextMenu>(const ItemType& item)> m_OnContextMenuOpening;
@@ -199,6 +202,7 @@ namespace Relentless
 		Callback<const std::vector<ItemType>*()> m_OnRequestSource;
 		Callback<void(const Ref<ITableRow>&)> m_OnRowReleased;
 		Callback<void(const ItemType&, ESelectionType)> m_OnSelectionChanged;
+		Callback<float()> m_OnItemHeightRequestedCallback;
 	
 		std::optional<ItemType> m_ItemToScrollIntoView;
 		std::optional<ItemType> m_RangeSelectionStart;
@@ -221,6 +225,20 @@ namespace Relentless
 	{
 		RLS_ASSERT(this->m_ItemToRowWidgetMap.contains(item), "[ListView::GetRowWidget]: Widget does not exist for item '{}'", m_OnDebugItemToString.IsSet() ? m_OnDebugItemToString(item) : "Unknown");
 		return this->m_ItemToRowWidgetMap.at(item);
+	}
+
+	template<class ItemType>
+	float ListView<ItemType>::GetUniformItemHeight() noexcept
+	{
+		if (m_OnItemHeightRequestedCallback.IsSet())
+			return m_OnItemHeightRequestedCallback();
+
+		if (!HasValidItemSource())
+			return -1.0f;
+
+		const ItemType& itemToMeasure = (*this->m_pSource).front();
+		Ref<ITableRow> pRowToMeasure = m_OnGenerateRow(itemToMeasure);
+		return pRowToMeasure->ReportSize().y;
 	}
 
 	template<class ItemType>
@@ -587,6 +605,14 @@ namespace Relentless
 	ListView<ItemType>* ListView<ItemType>::OnItemScrolledIntoView(InstanceType* instance, void(InstanceType::*method)(const ItemType&)) noexcept
 	{
 		m_OnItemScrolledIntoView = [instance, method](const ItemType& item) { return (instance->*method)(item); };
+		return this;
+	}
+
+	template<class ItemType>
+	template<typename InstanceType>
+	ListView<ItemType>* ListView<ItemType>::OnItemHeightRequested(InstanceType* aInstance, float(InstanceType::*aMethod)()) noexcept
+	{
+		m_OnItemHeightRequestedCallback = [aInstance, aMethod]() { return (aInstance->*aMethod)(); };
 		return this;
 	}
 

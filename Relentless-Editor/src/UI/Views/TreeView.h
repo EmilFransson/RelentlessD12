@@ -36,12 +36,10 @@ namespace Relentless
 		TreeView<ItemType>* OnGetChildren(InstanceType* instance, void(InstanceType::*method)(const ItemType&, std::vector<ItemType>& outChildren)) noexcept;
 
 		void RequestTreeRefresh() noexcept;
-
 		void RequestScrollToRow(uint32 row, float centerRatio = 0.35f) noexcept { m_PendingScroll = { row, centerRatio }; }
 		void RequestScrollToItem(const ItemType& item, float centerRatio = 0.35f) noexcept
 		{
-			if (auto it = std::find(m_LinearizedItems.begin(), m_LinearizedItems.end(), item);
-				it != m_LinearizedItems.end())
+			if (auto it = std::find(m_LinearizedItems.begin(), m_LinearizedItems.end(), item); it != m_LinearizedItems.end())
 			{
 				RequestScrollToRow(static_cast<uint32>(std::distance(m_LinearizedItems.begin(), it)), centerRatio);
 			}
@@ -67,8 +65,8 @@ namespace Relentless
 		std::unordered_map<ItemType, ItemInfo> m_ItemInfos;
 
 		struct PendingScrollTarget { uint32 Row = UINT32_MAX; float CenterRatio = 0.35f; bool IsValid() const { return Row != UINT32_MAX; } };
-		PendingScrollTarget m_PendingScroll;                 // [scroll] request by row
-		std::optional<ItemType> m_PendingScrollItem;         // [scroll] request by item (resolved after refresh)
+		PendingScrollTarget m_PendingScroll;
+		std::optional<ItemType> m_PendingScrollItem;
 
 		Callback<void(const ItemType&)> m_OnExpansionChanged;
 		Callback<void(const ItemType&, std::vector<ItemType>&)> m_OnGetChildren;
@@ -208,25 +206,18 @@ namespace Relentless
 		{
 			this->m_pHeaderRow->OnRender();
 
-			float clipStartPosY = FLT_MAX;
-			float lastRowY = 0.0f;
+			float lastItemBottom = 0.0f;
 			bool clipRangeDirty = false;
-			float clipItemsHeight = 0.0f;
+			uint32 frameMinStart = UINT32_MAX;
+			uint32 frameMaxEnd = 0u;
 
 			if (this->m_ClippingActive)
 			{
 				ImGuiListClipper clipper;
-				clipper.Begin(m_LinearizedItems.size());
-
-				bool warmUp = true;
+				clipper.Begin(m_LinearizedItems.size(), this->GetUniformItemHeight());
 
 				while (clipper.Step())
 				{
-					if (clipStartPosY == FLT_MAX)
-						clipStartPosY = clipper.StartPosY;
-					if (!warmUp)
-						clipItemsHeight = clipper.ItemsHeight;
-
 					for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
 					{
 						const ItemType& item = m_LinearizedItems[row];
@@ -238,20 +229,18 @@ namespace Relentless
 						}
 
 						this->m_ItemToRowWidgetMap[item]->Render();
-						lastRowY = ImGui::GetCursorScreenPos().y;
+						lastItemBottom = ImGui::GetItemRectMax().y;
 					}
 
-					if (!warmUp)
-					{
-						if (static_cast<int>(this->m_VisibleListStart) != clipper.DisplayStart || static_cast<int>(this->m_VisibleListEnd) != clipper.DisplayEnd)
-						{
-							this->m_VisibleListStart = static_cast<uint32>(clipper.DisplayStart);
-							this->m_VisibleListEnd = static_cast<uint32>(clipper.DisplayEnd);
-							clipRangeDirty = true;
-						}
-					}
+					frameMinStart = std::min(frameMinStart, static_cast<uint32>(clipper.DisplayStart));
+					frameMaxEnd = std::max(frameMaxEnd, static_cast<uint32>(clipper.DisplayEnd));
+				}
 
-					warmUp = !warmUp; // ping pong: warmup1 -> no warmup -> warmup2
+				if (frameMaxEnd > frameMinStart && (frameMinStart != this->m_VisibleListStart || frameMaxEnd != this->m_VisibleListEnd))
+				{
+					this->m_VisibleListStart = frameMinStart;
+					this->m_VisibleListEnd = frameMaxEnd;
+					clipRangeDirty = true;
 				}
 			}
 			else
@@ -267,40 +256,48 @@ namespace Relentless
 					}
 
 					this->m_ItemToRowWidgetMap[item]->Render();
-					lastRowY = ImGui::GetCursorScreenPos().y;
+					lastItemBottom = ImGui::GetItemRectMax().y;
 				}
 			}
 
 			if (m_PendingScrollItem.has_value() && !m_PendingScroll.IsValid())
 			{
-				const ItemType& want = *m_PendingScrollItem;
-				auto it = std::find(m_LinearizedItems.begin(), m_LinearizedItems.end(), want);
+				const ItemType& toScrollItem = *m_PendingScrollItem;
+				auto it = std::find(m_LinearizedItems.begin(), m_LinearizedItems.end(), toScrollItem);
 				if (it != m_LinearizedItems.end())
 				{
 					m_PendingScroll.Row = static_cast<uint32>(std::distance(m_LinearizedItems.begin(), it));
-					// keep CenterRatio default (0.35f) unless you want to carry one with the item request
+					m_PendingScrollItem.reset();
 				}
-				m_PendingScrollItem.reset();
 			}
 
-			if (m_PendingScroll.IsValid() && clipStartPosY != FLT_MAX && !m_LinearizedItems.empty())
+			if (m_PendingScroll.IsValid() && !m_LinearizedItems.empty())
 			{
 				const uint32 maxRow = static_cast<uint32>(m_LinearizedItems.size() - 1);
-				const uint32 clampedRow = (m_PendingScroll.Row > maxRow) ? maxRow : m_PendingScroll.Row;
+				const uint32 clampedRow = Math::Min(m_PendingScroll.Row, maxRow);
 
-				// Convert the desired row to local Y (relative to current window)
-				const float localY = clipStartPosY + static_cast<float>(clampedRow) * clipItemsHeight;
+				const bool rowIsVisible = clampedRow >= this->m_VisibleListStart && clampedRow < this->m_VisibleListEnd;
 
-				// Scroll so that 'localY' appears at the chosen spot in view (0=top, .5=center, 1=bottom)
-				ImGui::SetScrollFromPosY(localY, m_PendingScroll.CenterRatio);
+				if (rowIsVisible)
+					m_PendingScroll = {};
+				else
+				{
+					ImGuiTable* pTable = ImGui::GetCurrentTable();
+					
+					const float rowHeight = this->GetUniformItemHeight();
+					const float headerHeight = pTable->RowPosY1 - pTable->OuterRect.Min.y;
+					const float targetLocalY = headerHeight + static_cast<float>(clampedRow) * rowHeight;
+					const float viewportH = ImGui::GetWindowHeight() - headerHeight;
+					const float desiredScroll = targetLocalY - viewportH * m_PendingScroll.CenterRatio;
 
-				m_PendingScroll = {}; // clear request
+					ImGui::SetScrollY(Math::Clamp(desiredScroll, 0.0f, ImGui::GetScrollMaxY()));
+				}
 			}
 
 			ImGui::EndTable();
 
 			const ImVec2 rowMax = ImGui::GetItemRectMax();
-			const ImVec2 rowMin = ImVec2(ImGui::GetItemRectMin().x, lastRowY);
+			const ImVec2 rowMin = ImVec2(ImGui::GetItemRectMin().x, lastItemBottom);
 
 			const float remainingHeight = rowMax.y - rowMin.y;
 			if (remainingHeight > 0.0f && this->m_ClearSelectionOnEmptySpaceClick && ImGui::IsMouseHoveringRect(rowMin, rowMax) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
