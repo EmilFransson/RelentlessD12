@@ -28,6 +28,7 @@ namespace Relentless
 		NO_DISCARD bool IsMouseScrollingEnabled() const noexcept;
 		NO_DISCARD bool IsScrollBarsVisible() const noexcept;
 
+		void RemoveAllWidgets() noexcept;
 		void RemoveWidget(IBaseWidget* aWidget) noexcept;
 
 		DerivedType* SetHorizontalScrollBarEnabled(bool aEnabled) noexcept;
@@ -49,6 +50,12 @@ namespace Relentless
 		bool m_MouseScrollingEnabled = true;
 		bool m_IsFocused = false;
 	};
+
+	template<typename DerivedType>
+	void IWidgetContainer<DerivedType>::RemoveAllWidgets() noexcept
+	{
+		m_Widgets.clear();
+	}
 
 	template<typename DerivedType>
 	IWidgetContainer<DerivedType>::IWidgetContainer(const Vector2 aSize, bool aIsChildRegion) noexcept

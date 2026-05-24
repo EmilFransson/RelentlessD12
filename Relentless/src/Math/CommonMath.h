@@ -40,6 +40,9 @@ namespace Relentless
 		constexpr Color RowAncestorToSelectedColorDefault	= Normalize(44.0f, 50.0f, 58.0f, 255.0f);
 		constexpr Color ContextMenuColorDefault				= Normalize(56.0f, 56.0f, 56.0f, 255.0f);
 
+		//Text:
+		constexpr Color TextInactive	= Color(1.0f, 1.0f, 1.0f, 0.5f);
+		constexpr Color TextDefault		= Colors::White;
 	};
 
 	namespace Math

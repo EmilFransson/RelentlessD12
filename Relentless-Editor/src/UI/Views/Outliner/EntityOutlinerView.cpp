@@ -316,7 +316,7 @@ namespace Relentless
 		auto pEditor = Editor::Get();
 
 		if (pItem->IsEntity())
-			return pEditor->GetActiveScene()->GetEntityManager().Get<NameComponent>(pItem->AsEntity()).Name;
+			return pEditor->GetActiveScene()->GetEntityManager().Get<NameComponent>(pItem->AsEntity()).GetName();
 		else if (pItem->IsFolder())
 			return pItem->AsFolder()->GetLabel();
 		else
@@ -972,7 +972,7 @@ namespace Relentless
 		if (item->IsEntity())
 		{
 			createInfo.Icon = ICON_FA_CUBE;
-			createInfo.Name = scene.GetEntityManager().Get<NameComponent>(item->AsEntity()).Name;
+			createInfo.Name = scene.GetEntityManager().Get<NameComponent>(item->AsEntity()).GetName();
 			createInfo.Type = "Entity";
 			createInfo.IsSelected = pEditor->GetSubsystem<SelectionSubsystem>()->IsEntitySelected(item->AsEntity());
 			createInfo.IsVisible = scene.IsEntityVisible(item->AsEntity());
@@ -1180,6 +1180,7 @@ namespace Relentless
 					{
 						const String& currentLabel = GetItemName(pListItem);
 						const String newName = name;
+						entity entityItem = NULL_ENTITY;
 
 						if (currentLabel == newName)
 						{
@@ -1206,6 +1207,7 @@ namespace Relentless
 							}
 							else if (pListItem->IsEntity() && RenameEntity(pListItem->AsEntity(), newName))
 							{
+								entityItem = pListItem->AsEntity();
 								//TODO: Hightlight request
 							}
 
@@ -1219,6 +1221,7 @@ namespace Relentless
 							}
 							else if (pListItem->IsEntity() && RenameEntity(pListItem->AsEntity(), newName))
 							{
+								entityItem = pListItem->AsEntity();
 								//TODO: Hightlight request
 							}
 							else
@@ -1232,6 +1235,12 @@ namespace Relentless
 						}
 
 						RecreateItemHierarchy();
+						if (entityItem != NULL_ENTITY)
+						{
+							const Ref<OutlinerListItem> pEntityItem = GetEntityItem(entityItem);
+							m_pOutlinerTreeView->SetItemSelection(pEntityItem, ESelectionType::Selected);
+						}
+						
 						m_pOutlinerTreeView->RequestTreeRefresh();
 					});
 			});
@@ -1340,7 +1349,7 @@ namespace Relentless
 				{
 					const bool isEntityItem = items[i]->IsEntity();
 
-					if (!m_pOutlinerTreeView->IsItemSelected(items[i]) && m_pFilter->TestTextFilter(isEntityItem ? mgr.Get<NameComponent>(items[i]->AsEntity()).Name : "?", ETextFilterTextComparisonMode::Partial))
+					if (!m_pOutlinerTreeView->IsItemSelected(items[i]) && m_pFilter->TestTextFilter(isEntityItem ? mgr.Get<NameComponent>(items[i]->AsEntity()).GetName() : "?", ETextFilterTextComparisonMode::Partial))
 						m_pOutlinerTreeView->SetItemSelection(items[i], ESelectionType::Selected);
 
 					Self(Self, items[i]->Children);
@@ -1550,7 +1559,7 @@ namespace Relentless
 				//All entities for all those folders:
 				EntityFoldersSubsystem::ForEachEntityInFolders(scene, descendantFolderPaths, [&](entity aCurrentEntity)
 					{
-						if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(aCurrentEntity).Name, ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
+						if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(aCurrentEntity).GetName(), ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
 						{
 							foldersToAdd.push_back(aEntityFolder.GetPath());
 							return false;
@@ -1559,7 +1568,7 @@ namespace Relentless
 						//Test descendants:
 						scene.ForEachEntityWithAncestorEntity(aCurrentEntity, true, [&](entity currentDescendant)
 							{
-								if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(currentDescendant).Name, ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
+								if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(currentDescendant).GetName(), ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
 								{
 									foldersToAdd.push_back(aEntityFolder.GetPath());
 									return false;
@@ -1577,7 +1586,7 @@ namespace Relentless
 			{
 				scene.ForEachEntityWithAncestorEntity(currentEntity, true, [&](entity e)
 					{
-						if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(e).Name, ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
+						if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(e).GetName(), ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
 						{
 							entitiesToAdd.push_back(currentEntity);
 							return false;
@@ -1657,7 +1666,7 @@ namespace Relentless
 				if (pSelection->IsEntitySelected(e))
 					m_pOutlinerTreeView->SetItemSelection(pEntityListItem, ESelectionType::Selected);
 
-				if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(e).Name, ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
+				if (m_pFilter->TestTextFilter(scene.GetEntityManager().Get<NameComponent>(e).GetName(), ETextFilterTextComparisonMode::Partial) || containsEntityLabel)
 					m_pOutlinerTreeView->SetItemHighlighted(pEntityListItem, true);
 
 				if (scene.EntityHasAncestors(e))
@@ -1702,10 +1711,10 @@ namespace Relentless
 		auto pEditor = Editor::Get();
 
 		NameComponent& nameComponent = pEditor->GetActiveScene()->GetEntityManager().Get<NameComponent>(aEntity);
-		if (nameComponent.Name == aName)
+		if (nameComponent.GetName() == aName)
 			return false;
 
-		nameComponent.Name = aName;
+		nameComponent.SetName(aName);
 		return true;
 	}
 

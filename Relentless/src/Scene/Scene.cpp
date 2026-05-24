@@ -7,6 +7,7 @@
 #include "ECS/Components/LightComponent.h"
 #include "ECS/Components/MeshFilterComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
+#include "ECS/Components/NameComponent.h"
 #include "ECS/Components/SkyBoxComponent.h"
 #include "ECS/Components/SkyLightComponent.h"
 #include "ECS/Components/TransformComponent.h"
@@ -92,7 +93,7 @@ namespace Relentless
 		const std::vector<NameComponent>& components = m_EntityManager.Collect<NameComponent>().GetComponents();
 		for (const auto& component : components)
 		{
-			if (component.Name == name)
+			if (component.GetName() == name)
 				return true;
 		}
 
@@ -126,7 +127,7 @@ namespace Relentless
 
 	entity Scene::DuplicateEntity(entity entityToCopy, bool /*preserveHierarchy*/) noexcept
 	{
-		const String originalName = m_EntityManager.Get<NameComponent>(entityToCopy).Name;
+		const String originalName = m_EntityManager.Get<NameComponent>(entityToCopy).GetName();
 
 		// Find the position where trailing digits start
 		size_t end = originalName.size();
@@ -620,7 +621,7 @@ namespace Relentless
 		pSrcScene->GetEntityManager().Collect<NameComponent, IDComponent>().Do([&UUIDToEntityMap, &mgr](NameComponent& nc, IDComponent& idc)
 			{
 				const auto entity = mgr.CreateEntity();
-				mgr.Add<NameComponent>(entity, nc.Name.c_str());
+				mgr.Add<NameComponent>(entity, nc.GetName().c_str());
 				mgr.Add<IDComponent>(entity, idc.UuId);
 				UUIDToEntityMap[idc.UuId] = entity;
 			});

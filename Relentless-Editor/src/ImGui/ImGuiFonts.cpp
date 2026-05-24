@@ -49,4 +49,9 @@ namespace Relentless::UI
 		ImGui::PopFont();
 	}
 
+	Vector2 CalculateTextSize(const char* aText) noexcept
+	{
+		const ImVec2 size = ImGui::CalcTextSize(aText);
+		return Vector2(size.x, size.y);
+	}
 }

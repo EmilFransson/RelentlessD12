@@ -92,7 +92,7 @@ namespace Relentless
 						[&](entity e, const FolderComponent& fc)
 						{
 							rows.push_back({ e,
-											 scene.GetEntityManager().Get<NameComponent>(e).Name,
+											 scene.GetEntityManager().Get<NameComponent>(e).GetName(),
 											 fc.Folder.GetPath() });
 						});
 					std::sort(rows.begin(), rows.end(),

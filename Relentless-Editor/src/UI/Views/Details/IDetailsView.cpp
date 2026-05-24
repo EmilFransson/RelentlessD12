@@ -8,7 +8,12 @@ namespace Relentless
 {
 	IDetailsView::IDetailsView() noexcept
 	{
-		m_pDetailsTreeView = BuildTreeView();
+		m_pMainBox = RLS_NEW VerticalBox();
+		m_pMainBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		m_pMainBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
+
+		m_pHeaderBox = m_pMainBox->AddWidget(RLS_NEW VerticalBox());
+		m_pDetailsTreeView = m_pMainBox->AddWidget(BuildTreeView());
 	}
 
 	Ref<TreeView<Ref<DetailNode>>> IDetailsView::BuildTreeView() noexcept
@@ -37,6 +42,8 @@ namespace Relentless
 		pTreeView->SetFlags(ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersH | ImGuiTableFlags_SizingStretchProp);
 		pTreeView->SetClippingActive(false);
 		pTreeView->SetSpacing(Vector2::Zero);
+		pTreeView->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pTreeView->SetVerticalSizePolicy(ESizePolicy::Stretch);
 
 		pTreeView
 			->OnGetChildren(this, &IDetailsView::OnGetChildren)
@@ -46,9 +53,15 @@ namespace Relentless
 		return pTreeView;
 	}
 
+	VerticalBox* IDetailsView::GetHeader() const noexcept
+	{
+		return m_pHeaderBox;
+	}
+
 	void IDetailsView::OnRender() noexcept
 	{
-		m_pDetailsTreeView->Render();
+		m_pMainBox->AssignSize(GetAssignedSize());
+		m_pMainBox->Render();
 	}
 
 	void IDetailsView::RequestRefresh() noexcept

@@ -6,7 +6,7 @@ namespace Relentless
 {
 	NO_DISCARD static std::string_view locGetEntityName(entity aEntity, const Scene& aScene)
 	{
-		return aScene.GetEntityManager().Get<NameComponent>(aEntity).Name;
+		return aScene.GetEntityManager().Get<NameComponent>(aEntity).GetName();
 	}
 
 	EntityOutlinerPolicies::DuplicatePlan EntityOutlinerPolicies::ResolveDuplicateRequest(MAYBE_UNUSED const DuplicateContext& aContext) const noexcept

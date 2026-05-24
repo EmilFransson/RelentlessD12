@@ -26,12 +26,15 @@ namespace Relentless
 
 	struct RLS_API IComponent
 	{
+		virtual  ~IComponent() noexcept = default;
 		virtual const TypeIndex& GetStaticType() const noexcept = 0;
 	};
 
 	template<typename ComponentType>
 	struct RLS_API ComponentBase : public IComponent
 	{
+		virtual ~ComponentBase() noexcept override = default;
+
 		virtual const TypeIndex& GetStaticType() const noexcept override final
 		{
 			return StaticType();
@@ -74,15 +77,6 @@ namespace Relentless
 
 		entity m_Self = NULL_ENTITY;
 		EntityManager* m_EntityManager = nullptr;
-	};
-
-	struct NameComponent
-	{
-		explicit NameComponent(const char* name)
-			: Name{name}
-		{ }
-
-		String Name;
 	};
 
 	struct IDComponent

@@ -20,6 +20,7 @@ namespace Relentless
 
 		template<typename ContextType>
 		NO_DISCARD ContextType& GetContext() noexcept;
+		NO_DISCARD VerticalBox* GetHeader() const noexcept;
 
 		virtual void OnRender() noexcept override;
 		
@@ -49,6 +50,8 @@ namespace Relentless
 		Ref<TreeView<Ref<DetailNode>>> m_pDetailsTreeView = nullptr;
 	private:
 		UniquePtr<IDetailLayoutBuilder> m_pLayoutBuilder = nullptr;
+		Ref<VerticalBox> m_pMainBox = nullptr;
+		Ref<VerticalBox> m_pHeaderBox = nullptr;
 		void* m_pContext = nullptr;
 		bool m_ManualRefreshTriggered = false;
 	};

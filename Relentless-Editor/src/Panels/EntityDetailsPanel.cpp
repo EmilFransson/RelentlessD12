@@ -3,6 +3,7 @@
 #include <UI/Views/Details/EntityDetailsView.h>
 
 #include <UI/Widgets/VerticalBox.h>
+#include <UI/Widgets/WidgetSwitcher.h>
 
 namespace Relentless
 {

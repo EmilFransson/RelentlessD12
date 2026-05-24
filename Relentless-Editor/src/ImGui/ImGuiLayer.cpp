@@ -118,22 +118,51 @@ namespace Relentless
 
 		ImGui::StyleColorsDark();
 
+		auto AddFontAwesomeMerge = [](const char* uniqueName, float aSize)
+			{
+				static const ImWchar s_FontAwesomeRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+				UI::FontConfiguration fa;
+				fa.FontName = uniqueName;
+				fa.FilePath = "Fonts/FontAwesome/fa-solid-900.ttf";
+				fa.Size = aSize;
+				fa.GlyphRanges = s_FontAwesomeRanges;
+				fa.MergeWithLast = true;
+				UI::Fonts::Add(fa);
+			};
+
 		//Configure fonts:
 		{
+			UI::FontConfiguration robotoBold;
+			robotoBold.FontName = "Bold";
+			robotoBold.FilePath = "Fonts/Roboto/Roboto-Bold.ttf";
+			robotoBold.Size = 18.0f;
+			UI::Fonts::Add(robotoBold);
+
+			AddFontAwesomeMerge("FA_BOLD", 19.0f);
+
+			UI::FontConfiguration robotoLarge;
+			robotoLarge.FontName = "Large";
+			robotoLarge.FilePath = "Fonts/Roboto/Roboto-Regular.ttf";
+			robotoLarge.Size = 24.0f;
+			UI::Fonts::Add(robotoLarge);
+
+			AddFontAwesomeMerge("FA_LARGE", 25.0f);
+
 			UI::FontConfiguration robotoDefault;
 			robotoDefault.FontName = "Default";
 			robotoDefault.FilePath = "Fonts/Roboto/Roboto-SemiMedium.ttf";
 			robotoDefault.Size = 15.0f;
 			UI::Fonts::Add(robotoDefault, true);
 
-			static const ImWchar s_FontAwesomeRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
-			UI::FontConfiguration fontAwesome;
-			fontAwesome.FontName = "FontAwesome";
-			fontAwesome.FilePath = "Fonts/FontAwesome/fa-solid-900.ttf";
-			fontAwesome.Size = 16.0f;
-			fontAwesome.GlyphRanges = s_FontAwesomeRanges;
-			fontAwesome.MergeWithLast = true;
-			UI::Fonts::Add(fontAwesome);
+			AddFontAwesomeMerge("FA_DEFAULT", 16.0f);
+
+			UI::FontConfiguration robotoMedium;
+			robotoMedium.FontName = "Medium";
+			robotoMedium.FilePath = "Fonts/Roboto/Roboto-SemiMedium.ttf";
+			robotoMedium.Size = 18.0f;
+			UI::Fonts::Add(robotoMedium);
+
+			AddFontAwesomeMerge("FA_MEDIUM", 19.0f);
 		}
 
 		if (io.ConfigFlags & ImGuiConfigFlags_::ImGuiConfigFlags_ViewportsEnable)

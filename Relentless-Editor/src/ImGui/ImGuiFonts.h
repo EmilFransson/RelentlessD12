@@ -20,4 +20,6 @@ namespace Relentless::UI
 		static void PopFont();
 		static ImFont* Get(const String& aFontName);
 	};
+
+	NO_DISCARD Vector2 CalculateTextSize(const char* aText) noexcept;
 }

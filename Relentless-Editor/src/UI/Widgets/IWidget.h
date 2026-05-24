@@ -21,7 +21,7 @@ namespace Relentless
 		NO_DISCARD virtual bool IsHovered() const noexcept override;
 
 		virtual void OnMouseButtonDown(const WidgetGeometry&, const PointerInfo&) noexcept {};
-		virtual void OnMouseButtonDoubleClick(const WidgetGeometry&, const PointerInfo&) noexcept {};
+		virtual void OnMouseButtonDoubleClick(const WidgetGeometry&, const PointerInfo&) noexcept;
 		virtual void OnMouseButtonUp(const WidgetGeometry&, const PointerInfo&) noexcept {};
 		virtual void OnMouseEnter(const WidgetGeometry&, const PointerInfo&) noexcept {};
 		virtual void OnMouseLeave(const PointerInfo&) noexcept {};
@@ -46,6 +46,7 @@ namespace Relentless
 		DerivedType* SetTooltip(Ref<Tooltip> aTooltip) noexcept;
 		DerivedType* SetTooltipText(StringView aText) noexcept;
 
+		Broadcaster<void(const WidgetGeometry&, const PointerInfo&)> OnMouseDoubleClick;
 		Broadcaster<void()> OnPreRenderEnd;
 		Broadcaster<void()> OnRenderEnd;
 		Broadcaster<void()> OnPostRenderEnd;
@@ -104,6 +105,12 @@ namespace Relentless
 	bool IWidget<DerivedType>::IsHovered() const noexcept
 	{
 		return m_IsHovered;
+	}
+
+	template<class DerivedType>
+	void IWidget<DerivedType>::OnMouseButtonDoubleClick(const WidgetGeometry& aWidgetGeometry, const PointerInfo& aPointerInfo) noexcept
+	{
+		OnMouseDoubleClick(aWidgetGeometry, aPointerInfo);
 	}
 
 	template<typename DerivedType>

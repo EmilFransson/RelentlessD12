@@ -2,7 +2,11 @@
 
 #include "Core/Editor.h"
 
+#include "ImGui/ImGuiFonts.h"
+
 #include "Subsystem/SelectionSubsystem.h"
+
+#include "UI/Widgets/WidgetSwitcher.h"
 
 namespace Relentless
 {
@@ -12,12 +16,14 @@ namespace Relentless
 		SetVerticalSizePolicy(ESizePolicy::Stretch);
 
 		Editor::OnEntityTransformed.Connect(this, &EntityDetailsView::OnEntityTransformed);
+		CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Connect(this, &EntityDetailsView::OnEntityComponentPropertyChanged);
 
 		Editor* pEditor = Editor::Get();
 		pEditor->OnSceneChange.Connect(this, &EntityDetailsView::OnSceneChange);
 		pEditor->OnSceneChanged.Connect(this, &EntityDetailsView::OnSceneChanged);
 		pEditor->GetSubsystem<SelectionSubsystem>()->OnSelectionChanged.Connect(this, &EntityDetailsView::OnSelectionChanged);
 
+		RequestRebuildHeader();
 		SetContext(&m_Context);
 	}
 
@@ -25,7 +31,7 @@ namespace Relentless
 	{
 		if (Editor* pEditor = Editor::Get())
 		{
-			if (const auto& pSelection = pEditor->GetSubsystem<SelectionSubsystem>())
+			if (SelectionSubsystem* pSelection = pEditor->GetSubsystem<SelectionSubsystem>())
 				pSelection->OnSelectionChanged.Detach(this);
 
 			pEditor->OnSceneChange.Detach(this);
@@ -39,6 +45,7 @@ namespace Relentless
 		}
 
 		Editor::OnEntityTransformed.Detach(this);
+		CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(this);
 	}
 
 	bool EntityDetailsView::IsLocked() const noexcept
@@ -48,7 +55,11 @@ namespace Relentless
 
 	void EntityDetailsView::SetLocked(bool aLock) noexcept
 	{
+		if (m_IsLocked == aLock) 
+			return;
+		
 		m_IsLocked = aLock;
+		RequestRebuildHeader();
 	}
 
 	void EntityDetailsView::OnPreRequestSource(bool aFromManualTrigger) noexcept
@@ -62,6 +73,140 @@ namespace Relentless
 
 			TearDown();
 		}
+	}
+
+	void EntityDetailsView::BuildEmptyHeader(HorizontalBox* aRow) noexcept
+	{
+		aRow->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Center);
+		aRow->AddWidget(RLS_NEW Label("Select an entity to view its details."))
+			->SetTextColor(Colors::TextInactive);
+	}
+
+	void EntityDetailsView::BuildHeader() noexcept
+	{
+		VerticalBox* pHeaderRow = GetHeader();
+		pHeaderRow->SetMargin(FloatRect::Uniform(5.0f));
+		pHeaderRow->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+		pHeaderRow->RemoveAllWidgets();
+		
+		HorizontalBox* pHorizontalBox = pHeaderRow->AddWidget(RLS_NEW HorizontalBox());
+		
+		SelectionSubsystem* pSelectionSubsystem = Editor::Get()->GetSubsystem<SelectionSubsystem>();
+		const std::vector<entity>& selectedEntities = pSelectionSubsystem->GetSelectedEntities();
+
+		if (selectedEntities.empty())
+			BuildEmptyHeader(pHorizontalBox);
+		else if (selectedEntities.size() == 1)
+			BuildSingleEntityHeader(pHorizontalBox, selectedEntities.front());
+		else
+			BuildMultiEntityHeader(pHorizontalBox, static_cast<uint32>(selectedEntities.size()));
+	}
+
+	void EntityDetailsView::BuildSingleEntityHeader(HorizontalBox* aRow, entity aEntity) noexcept
+	{
+		const NameComponent& nameComponent = m_pInspectedScene->GetEntityManager().Get<NameComponent>(aEntity);
+
+		auto [pLeft, pRight] = BuildTwoSlotLayout(aRow);
+
+		pLeft->AddWidget(RLS_NEW Label(ICON_FA_CUBE, UI::Fonts::Get("Medium")));
+
+		WidgetSwitcher* pSwitcher = pLeft->AddWidget(RLS_NEW WidgetSwitcher());
+		Label* pNameLabel = pSwitcher->Add(RLS_NEW Label(nameComponent.GetName().c_str(), UI::Fonts::Get("Medium")));
+		EditableTextBox* pNameEdit = pSwitcher->Add(RLS_NEW EditableTextBox());
+		pNameEdit->SetFont(UI::Fonts::Get("Medium"));
+		pSwitcher->SetActiveWidgetIndex(0);
+
+		pNameLabel->SetTooltip(RLS_NEW Tooltip(std::format("Rename the selected entity '{}'", nameComponent.GetName())));
+		pNameLabel->OnMouseDoubleClick.Connect([pSwitcher, pNameEdit, pNameLabel](const WidgetGeometry&, const PointerInfo&)
+			{
+				pNameEdit->SetText(pNameLabel->GetText());
+				pSwitcher->SetActiveWidgetIndex(1);
+				pNameEdit->ForceKeyboardFocus();
+			});
+
+		pNameEdit->OnTextCommitted([this, pSwitcher, pNameLabel](const char* aText, ETextCommitType)
+			{
+				SelectionSubsystem* pSelectionSubsystem = Editor::Get()->GetSubsystem<SelectionSubsystem>();
+				const std::vector<entity>& selection = pSelectionSubsystem->GetSelectedEntities();
+				if (selection.empty())
+					return;
+
+				ScopedSuspend scopedSuspend(m_SuspendEditCallback);
+
+				m_pInspectedScene->GetEntityManager().Get<NameComponent>(selection.front()).SetName(aText);
+				pNameLabel->SetText(aText);
+				pSwitcher->SetActiveWidgetIndex(0);
+			});
+
+		pRight->AddWidget(BuildLockButton());
+	}
+
+	void EntityDetailsView::BuildMultiEntityHeader(HorizontalBox* aRow, uint32 aEntityCount) noexcept
+	{
+		auto [pLeftBox, pMiddleBox, pRightBox] = BuildThreeSlotLayout(aRow);
+
+		pLeftBox->AddWidget(RLS_NEW Label(ICON_FA_CUBES, UI::Fonts::Get("Medium")))
+			->SetTextColor(Colors::TextInactive);
+
+		pMiddleBox->AddWidget(RLS_NEW Label(std::format("{} entities", aEntityCount), UI::Fonts::Get("Medium")))
+			->SetTextColor(Colors::TextInactive);
+
+		pRightBox->AddWidget(BuildLockButton());
+	}
+
+	Ref<Button> EntityDetailsView::BuildLockButton() noexcept
+	{
+		UI::Fonts::PushFont("Medium");
+		const Vector2 textSizeLocked = UI::CalculateTextSize(ICON_FA_LOCK);
+		const Vector2 textSizeUnlocked = UI::CalculateTextSize(ICON_FA_LOCK_OPEN);
+		constexpr float buttonPadding = 5.0f;
+		const Vector2 buttonSize = Vector2(Math::Max(textSizeLocked.x, textSizeUnlocked.x) + buttonPadding, Math::Max(textSizeLocked.y, textSizeUnlocked.y) + buttonPadding);
+		UI::Fonts::PopFont();
+
+		Ref<Button> pLockButton = RLS_NEW Button(IsLocked() ? ICON_FA_LOCK : ICON_FA_LOCK_OPEN);
+		pLockButton->SetBackgroundColor(Colors::Transparent);
+		pLockButton->SetBorderColor(Colors::Transparent);
+		pLockButton->SetFont(UI::Fonts::Get("Medium"));
+		pLockButton->SetHorizontalSizePolicy(ESizePolicy::Fixed);
+		pLockButton->SetVerticalSizePolicy(ESizePolicy::Fixed);
+		pLockButton->SetSize(buttonSize);
+		pLockButton->SetTextColor(Colors::TextInactive);
+		pLockButton->SetTooltip(RLS_NEW Tooltip(std::format("{} the current selection for the Details panel", IsLocked() ? "Unlocks" : "Locks")));
+		pLockButton->OnClicked([this]()
+			{
+				SetLocked(!IsLocked());
+			});
+		pLockButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Colors::TextDefault); });
+		pLockButton->OnMouseExit([](Button* aButton) { aButton->SetTextColor(Colors::TextInactive); });
+
+		return pLockButton;
+	}
+
+	ThreeSlotLayout EntityDetailsView::BuildThreeSlotLayout(HorizontalBox* aRow) noexcept
+	{
+		HorizontalBox* pLeft = aRow->AddWidget(RLS_NEW HorizontalBox());
+		HorizontalBox* pMiddle = aRow->AddWidget(RLS_NEW HorizontalBox());
+		HorizontalBox* pRight = aRow->AddWidget(RLS_NEW HorizontalBox());
+
+		pLeft->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pMiddle->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pRight->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+
+		pMiddle->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Center);
+		pRight->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);
+
+		return { pLeft, pMiddle, pRight };
+	}
+
+	TwoSlotLayout EntityDetailsView::BuildTwoSlotLayout(HorizontalBox* aRow) noexcept
+	{
+		HorizontalBox* pLeft = aRow->AddWidget(RLS_NEW HorizontalBox());
+		HorizontalBox* pRight = aRow->AddWidget(RLS_NEW HorizontalBox());
+
+		pLeft->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pRight->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);
+
+		return { pLeft, pRight };
 	}
 
 	void EntityDetailsView::OnEntityDestroyed(entity aDestroyedEntity) noexcept
@@ -81,6 +226,18 @@ namespace Relentless
 	{
 		if (std::ranges::any_of(m_Context.Entities, [aTransformedEntity](entity aEntity) { return aEntity == aTransformedEntity; }))
 			RequestRefresh();
+	}
+
+	void EntityDetailsView::OnEntityComponentPropertyChanged(entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty) noexcept
+	{
+		const bool nameIsDisplayed = !m_SuspendEditCallback
+			&& m_Context.Entities.size() == 1
+			&& m_Context.Entities.front() == aEntity
+			&& aComponentType == NameComponent::StaticType()
+			&& aProperty == "m_Name"_h;
+		
+		if (nameIsDisplayed)
+			RequestRebuildHeader();
 	}
 
 	void EntityDetailsView::OnSceneChange(Scene* aCurrentScene) noexcept
@@ -114,16 +271,28 @@ namespace Relentless
 		RequestRefresh();
 	}
 
-	void EntityDetailsView::OnSelectionChanged(entity aEntity, ESelectionState aSelectionState) noexcept
+	void EntityDetailsView::OnSelectionChanged(MAYBE_UNUSED entity aEntity, MAYBE_UNUSED ESelectionState aSelectionState) noexcept
 	{
-		if (IsLocked())
+		if (IsLocked()) 
 			return;
-
-		if (aSelectionState == ESelectionState::Selected)
-			m_Context.Entities.push_back(aEntity);
-		else
-			m_Context.Entities.erase(std::remove(m_Context.Entities.begin(), m_Context.Entities.end(), aEntity), m_Context.Entities.end());
 		
+		m_Context.Entities = Editor::Get()->GetSubsystem<SelectionSubsystem>()->GetSelectedEntities();
+		RequestRebuildHeader();
 		RequestRefresh();
+	}
+
+	void EntityDetailsView::RequestRebuildHeader() noexcept
+	{
+		if (m_HeaderRebuildPending) 
+			return;
+		
+		m_HeaderRebuildPending = true;
+
+		Ref<EntityDetailsView> pThis(this);
+		Application::Get().SubmitToMainThread([pThis]()
+			{
+				pThis->m_HeaderRebuildPending = false;
+				pThis->BuildHeader();
+			});
 	}
 }

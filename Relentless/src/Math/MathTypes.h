@@ -200,6 +200,11 @@ struct TRect
 		return zero;
 	}
 
+	NO_DISCARD inline static TRect Uniform(T aValue) noexcept
+	{
+		return TRect(aValue, aValue, aValue, aValue);
+	}
+
 	bool operator==(const TRect& other) const
 	{
 		return Left == other.Left && Top == other.Top && Right == other.Right && Bottom == other.Bottom;
