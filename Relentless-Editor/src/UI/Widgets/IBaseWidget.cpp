@@ -35,6 +35,11 @@ namespace Relentless
 		return m_Geometry;
 	}
 
+	int IBaseWidget::GetHoverFlags() const noexcept
+	{
+		return m_HoverFlags;
+	}
+
 	const FloatRect& IBaseWidget::GetMargin() const noexcept
 	{
 		return m_Margin;
@@ -123,6 +128,12 @@ namespace Relentless
 	IBaseWidget* IBaseWidget::SetHorizontalSizePolicy(ESizePolicy aSizePolicy) noexcept
 	{
 		m_SizePolicy = aSizePolicy;
+		return this;
+	}
+
+	IBaseWidget* IBaseWidget::SetHoverFlags(int aHoverFlags) noexcept
+	{
+		m_HoverFlags = aHoverFlags;
 		return this;
 	}
 

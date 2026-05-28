@@ -2,37 +2,37 @@
 
 namespace Relentless
 {
-	Separator::Separator(const String& label, float spacing) noexcept
-		: m_Label{ label }, m_Spacing{ spacing }
+	Separator::Separator() noexcept
 	{
+		SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		SetVerticalSizePolicy(ESizePolicy::Stretch);
+		SetPadding(Vector2::Zero);
+	}
+
+	float Separator::GetThickness() const noexcept
+	{
+		return m_Thickness;
 	}
 
 	void Separator::OnRender() noexcept
 	{
-		ImGui::AlignTextToFramePadding();
-		ImGui::SetWindowFontScale(0.85f);
-		ImGui::TextUnformatted(m_Label.c_str());      
-		ImGui::SameLine(0.0f, m_Spacing);
+		ImGui::SeparatorEx(m_IsHorizontal ? ImGuiSeparatorFlags_Horizontal : ImGuiSeparatorFlags_Vertical, m_Thickness);
+	}
 
-		// how much room we have for the line
-		float avail = ImGui::GetContentRegionAvail().x - GetMargin().Right;
-		if (avail <= 0.0f)
-			return;
+	Vector2 Separator::ReportSize() const noexcept
+	{
+		return m_IsHorizontal ? Vector2(0.0f, Math::Max(m_Thickness, 1.0f)) : Vector2(Math::Max(m_Thickness, 1.0f), 0.0f);
+	}
+	
+	Separator* Separator::SetActiveColor(const Color& aColor) noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_Separator, ImVec4(aColor.R(), aColor.G(), aColor.B(), aColor.A()));
+		return this;
+	}
 
-		// where in screen space we start
-		ImVec2 p0 = ImGui::GetCursorScreenPos();
-
-		// vertically center the line on the text
-		float y = p0.y + ImGui::GetTextLineHeightWithSpacing() * 0.5f;
-
-		// draw the line out to the right
-		ImGui::GetWindowDrawList()->AddLine(
-			ImVec2(p0.x, y),
-			ImVec2(p0.x + avail, y),
-			ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.6f))
-		);
-		ImGui::SetWindowFontScale(1.0f);
-
-		//ImGui::Dummy({ avail + ImGui::CalcTextSize(m_Label.c_str()).x + m_Spacing, 0 });
+	Separator* Separator::SetThickness(float aThickness) noexcept
+	{
+		m_Thickness = aThickness;
+		return this;
 	}
 }

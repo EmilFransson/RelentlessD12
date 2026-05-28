@@ -90,7 +90,7 @@ namespace Relentless
 			ImGui::SetKeyboardFocusHere();
 			this->m_ShouldForceKeyboardFocus = false;
 		}
-
+		
 		ImGui::BeginGroup();
 		this->OnRender();
 		ImGui::EndGroup();

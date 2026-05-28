@@ -3,6 +3,8 @@
 
 #include "Subsystem/EditorSceneBridgeSubsystem.h"
 
+#include "UI/Widgets/VerticalBox.h"
+
 namespace Relentless
 {
 	OutlinerPanel::OutlinerPanel() noexcept

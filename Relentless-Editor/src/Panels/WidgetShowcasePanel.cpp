@@ -6,13 +6,11 @@
 #include <UI/Widgets/ColorPicker.h>
 #include <UI/Widgets/ComboBox.h>
 #include <UI/Widgets/EditableTextBox.h>
-#include <UI/Widgets/FloatDrag.h>
-#include <UI/Widgets/FloatSlider.h>
 #include <UI/Widgets/HorizontalBox.h>
-#include <UI/Widgets/IntDrag.h>
-#include <UI/Widgets/IntSlider.h>
 #include <UI/Widgets/Label.h>
 #include <UI/Widgets/SearchBar.h>
+#include <UI/Widgets/Slider.h>
+#include <UI/Widgets/SpinBox.h>
 #include <UI/Widgets/VerticalBox.h>
 
 namespace Relentless
@@ -42,8 +40,8 @@ namespace Relentless
 			{
 				HorizontalBox* pHorizontal = pRootBox->AddWidget(new HorizontalBox());
 
-				pHorizontal->AddWidget(new Label("Float Dragger"));
-				pHorizontal->AddWidget(new FloatDrag())
+				pHorizontal->AddWidget(new Label("Slider"));
+				pHorizontal->AddWidget(new Slider<float>())
 					->Value([]() { return 0.0f; })
 					->OnValueChanged([](float) {});
 			}
@@ -51,27 +49,9 @@ namespace Relentless
 			{
 				HorizontalBox* pHorizontal = pRootBox->AddWidget(new HorizontalBox());
 
-				pHorizontal->AddWidget(new Label("Int Dragger"));
-				pHorizontal->AddWidget(new IntDrag())
-					->Value([]() { return 0; })
-					->OnValueChanged([](int32) {});
-			}
-
-			{
-				HorizontalBox* pHorizontal = pRootBox->AddWidget(new HorizontalBox());
-
-				pHorizontal->AddWidget(new Label("Float Slider"));
-				pHorizontal->AddWidget(new FloatSlider(-10.0f, 10.0f))
+				pHorizontal->AddWidget(new Label("SpinBox"));
+				pHorizontal->AddWidget(new SpinBox<float>())
 					->Value([]() { return 0.0f; })
-					->OnValueChanged([](float) {});
-			}
-
-			{
-				HorizontalBox* pHorizontal = pRootBox->AddWidget(new HorizontalBox());
-
-				pHorizontal->AddWidget(new Label("Int Slider"));
-				pHorizontal->AddWidget(new IntSlider(-10.0f, 10.0f))
-					->Value([]() { return 0; })
 					->OnValueChanged([](float) {});
 			}
 

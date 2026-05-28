@@ -32,6 +32,7 @@ namespace Relentless
 	protected:
 		virtual void OnPreRequestSource(bool aFromManualTrigger) noexcept override;
 	private:
+		NO_DISCARD Ref<Button> BuildAddComponentButton() noexcept;
 		void BuildEmptyHeader(HorizontalBox* aRow) noexcept;
 		void BuildHeader() noexcept;
 		void BuildSingleEntityHeader(HorizontalBox* aRow, entity aEntity) noexcept;
@@ -40,6 +41,7 @@ namespace Relentless
 		NO_DISCARD ThreeSlotLayout BuildThreeSlotLayout(HorizontalBox* aRow) noexcept;
 		NO_DISCARD TwoSlotLayout BuildTwoSlotLayout(HorizontalBox* aRow) noexcept;
 
+		void OnAddComponentButtonClicked() noexcept;
 		void OnEntityDestroyed(entity aDestroyedEntity) noexcept;
 		void OnEntityTransformed(entity aTransformedEntity) noexcept;
 		void OnEntityComponentPropertyChanged(entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty) noexcept;

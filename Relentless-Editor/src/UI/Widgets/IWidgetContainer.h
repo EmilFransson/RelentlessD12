@@ -4,10 +4,10 @@
 namespace Relentless
 {
 	template<typename DerivedType>
-	class IWidgetContainer : public IWidget<IWidgetContainer<DerivedType>>
+	class IWidgetContainer : public IWidget<DerivedType>
 	{
 	public:
-		IWidgetContainer(const Vector2 aSize = Vector2::Zero, bool aIsChildRegion = false) noexcept;
+		IWidgetContainer(const Vector2 aSize = Vector2::Zero) noexcept;
 		virtual ~IWidgetContainer() noexcept = default;
 
 		template<typename T>
@@ -31,6 +31,7 @@ namespace Relentless
 		void RemoveAllWidgets() noexcept;
 		void RemoveWidget(IBaseWidget* aWidget) noexcept;
 
+		DerivedType* SetBackgroundColor(const Color& aColor) noexcept;
 		DerivedType* SetHorizontalScrollBarEnabled(bool aEnabled) noexcept;
 		DerivedType* SetMouseScrollingEnabled(bool aEnabled) noexcept;
 		DerivedType* SetScrollBarsVisible(bool aVisible) noexcept;
@@ -42,9 +43,9 @@ namespace Relentless
 		virtual void OnRender() noexcept override = 0;
 	protected:
 		std::vector<Ref<IBaseWidget>> m_Widgets;
+		Color m_BackgroundColor = Colors::Transparent;
 		Vector2 m_Size = Vector2::Zero;
 		Vector2 m_Spacing = Vector2::Zero;
-		bool m_IsChildRegion = false;
 		bool m_HorizontalScrollBarEnabled = false;
 		bool m_ScrollBarsVisible = false;
 		bool m_MouseScrollingEnabled = true;
@@ -58,9 +59,8 @@ namespace Relentless
 	}
 
 	template<typename DerivedType>
-	IWidgetContainer<DerivedType>::IWidgetContainer(const Vector2 aSize, bool aIsChildRegion) noexcept
+	IWidgetContainer<DerivedType>::IWidgetContainer(const Vector2 aSize) noexcept
 		: m_Size{ aSize }
-		, m_IsChildRegion{ aIsChildRegion }
 	{
 	}
 
@@ -129,6 +129,13 @@ namespace Relentless
 	void IWidgetContainer<DerivedType>::RemoveWidget(IBaseWidget* aWidget) noexcept
 	{
 		std::erase_if(m_Widgets, [aWidget](const Ref<IBaseWidget>& aChildWidget) { return aChildWidget.Get() == aWidget; });
+	}
+
+	template<typename DerivedType>
+	DerivedType* IWidgetContainer<DerivedType>::SetBackgroundColor(const Color& aColor) noexcept
+	{
+		m_BackgroundColor = aColor;
+		return static_cast<DerivedType*>(this);
 	}
 
 	template<typename DerivedType>

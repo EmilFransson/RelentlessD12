@@ -20,7 +20,7 @@ namespace Relentless
 
 		NO_DISCARD virtual bool IsHovered() const noexcept override;
 
-		virtual void OnMouseButtonDown(const WidgetGeometry&, const PointerInfo&) noexcept {};
+		virtual void OnMouseButtonDown(const WidgetGeometry&, const PointerInfo&) noexcept;
 		virtual void OnMouseButtonDoubleClick(const WidgetGeometry&, const PointerInfo&) noexcept;
 		virtual void OnMouseButtonUp(const WidgetGeometry&, const PointerInfo&) noexcept {};
 		virtual void OnMouseEnter(const WidgetGeometry&, const PointerInfo&) noexcept {};
@@ -46,6 +46,7 @@ namespace Relentless
 		DerivedType* SetTooltip(Ref<Tooltip> aTooltip) noexcept;
 		DerivedType* SetTooltipText(StringView aText) noexcept;
 
+		Broadcaster<void(const WidgetGeometry&, const PointerInfo&)> OnMouseDown;
 		Broadcaster<void(const WidgetGeometry&, const PointerInfo&)> OnMouseDoubleClick;
 		Broadcaster<void()> OnPreRenderEnd;
 		Broadcaster<void()> OnRenderEnd;
@@ -113,6 +114,12 @@ namespace Relentless
 		OnMouseDoubleClick(aWidgetGeometry, aPointerInfo);
 	}
 
+	template<class DerivedType>
+	void IWidget<DerivedType>::OnMouseButtonDown(const WidgetGeometry& aWidgetGeometry, const PointerInfo& aPointerInfo) noexcept
+	{
+		OnMouseDown(aWidgetGeometry, aPointerInfo);
+	}
+
 	template<typename DerivedType>
 	template<typename InstanceType>
 	DerivedType* IWidget<DerivedType>::OnMouseEnter(InstanceType* aInstance, void(InstanceType::*aMethod)(DerivedType*)) noexcept
@@ -170,7 +177,15 @@ namespace Relentless
 			m_ShouldForceKeyboardFocus = false;
 		}
 
+		ImGui::BeginGroup();
 		OnRender();
+		ImGui::EndGroup();
+
+		HandleDragDrop();
+		ResolveGeometry();
+		ResolveHoverState();
+		ResolveMouseStates();
+		
 		OnRenderEnd();
 
 		OnPostRender();
@@ -238,7 +253,7 @@ namespace Relentless
 	template<class DerivedType>
 	void IWidget<DerivedType>::ResolveHoverState() noexcept
 	{
-		const bool hovers = ImGui::IsItemHovered();
+		const bool hovers = ImGui::IsItemHovered(GetHoverFlags());
 		if (hovers && !m_IsHovered)
 		{
 			OnMouseEnter(m_Geometry, Mouse::CreatePointerInfo());

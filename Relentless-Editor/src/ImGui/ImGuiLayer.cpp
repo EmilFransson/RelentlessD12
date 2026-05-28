@@ -163,6 +163,14 @@ namespace Relentless
 			UI::Fonts::Add(robotoMedium);
 
 			AddFontAwesomeMerge("FA_MEDIUM", 19.0f);
+
+			UI::FontConfiguration robotoSmall;
+			robotoSmall.FontName = "Small";
+			robotoSmall.FilePath = "Fonts/Roboto/Roboto-SemiMedium.ttf";
+			robotoSmall.Size = 12.0f;
+			UI::Fonts::Add(robotoSmall);
+
+			AddFontAwesomeMerge("FA_SMALL", 13.0f);
 		}
 
 		if (io.ConfigFlags & ImGuiConfigFlags_::ImGuiConfigFlags_ViewportsEnable)

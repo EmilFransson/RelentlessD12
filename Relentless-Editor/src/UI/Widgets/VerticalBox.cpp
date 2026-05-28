@@ -207,7 +207,7 @@ namespace Relentless
 					assignedHeight = Math::Max(0.0f, assignedHeight - scrollBarSize);
 			}
 
-			if (assignedWidth <= 3.0f || assignedHeight <= 3.0f)
+			if (assignedWidth <= 3.0f || assignedHeight < 1.0f)
 				continue;
 
 			ImGui::SetCursorPos(layoutCursor);
@@ -254,7 +254,6 @@ namespace Relentless
 		//	rMin.y + ImGui::GetWindowSize().y);
 
 		//ImDrawList* parentDL = ImGui::GetCurrentWindow()->DrawList;
-
 		ImGui::EndChild();
 
 		//if (hovered)

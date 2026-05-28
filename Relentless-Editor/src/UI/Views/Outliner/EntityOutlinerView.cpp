@@ -347,19 +347,7 @@ namespace Relentless
 
 	Ref<ContextMenu> EntityOutlinerView::OnContextMenuOpening(MAYBE_UNUSED const Ref<OutlinerListItem>& item) noexcept
 	{
-		Ref<MenuBuilder> pBuilder = new MenuBuilder();
-
-		Ref<ContextMenu> pMenu = pBuilder
-			->AddSection("ENTITY OPTIONS")
-				->BeginSubMenu("Edit", "Edit Current Selection", ICON_FA_PEN_RULER)
-					->AddMenuEntry("Duplicate", "Duplicate Selection", ICON_FA_COPY, this, &EntityOutlinerView::OnDuplicateSelection)
-					->AddMenuEntry("Delete", "Delete Current Selection", ICON_FA_DELETE_LEFT, this, &EntityOutlinerView::OnDeleteSelection)
-					->AddMenuEntry("Rename", "Rename Current Selection", ICON_FA_PEN, this, &EntityOutlinerView::OnRenameSelection, m_pOutlinerTreeView->GetNumItemsSelected() == 1)
-				->EndSubMenu()
-			->AddSection("VIEW OPTIONS")
-			->Build();
-
-		pMenu->SetSpacing(Vector2(8.0f, 1.0f));
+		Ref<ContextMenu> pMenu = RLS_NEW ContextMenu();
 		return pMenu;
 	}
 

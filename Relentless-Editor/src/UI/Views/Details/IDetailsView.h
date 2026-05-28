@@ -9,6 +9,7 @@ namespace Relentless
 {
 	class Button;
 	template<typename T> class TreeView;
+	class VerticalBox;
 
 	class IDetailsView : public IWidget<IDetailsView>
 	{

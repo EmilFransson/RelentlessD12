@@ -35,6 +35,8 @@ namespace Relentless
 
 		void ClearActiveDragDropOperation() noexcept;
 
+		void DestroyActiveContextMenu() noexcept;
+
 		NO_DISCARD Ref<DragDropOperationBase> GetActiveDragDropOperation() const noexcept;
 
 		NO_DISCARD bool HasActiveDragDrop() const noexcept;

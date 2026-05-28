@@ -205,6 +205,26 @@ struct TRect
 		return TRect(aValue, aValue, aValue, aValue);
 	}
 
+	NO_DISCARD inline static TRect WithBottom(T aValue) noexcept
+	{
+		return TRect((T)0, (T)0, (T)0, aValue);
+	}
+
+	NO_DISCARD inline static TRect WithLeft(T aValue) noexcept
+	{
+		return TRect(aValue, (T)0, (T)0, (T)0);
+	}
+
+	NO_DISCARD inline static TRect WithRight(T aValue) noexcept
+	{
+		return TRect((T)0, (T)0, aValue, (T)0);
+	}
+
+	NO_DISCARD inline static TRect WithTop(T aValue) noexcept
+	{
+		return TRect((T)0, aValue, (T)0, (T)0);
+	}
+
 	bool operator==(const TRect& other) const
 	{
 		return Left == other.Left && Top == other.Top && Right == other.Right && Bottom == other.Bottom;

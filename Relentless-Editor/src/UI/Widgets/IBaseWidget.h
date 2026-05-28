@@ -28,6 +28,14 @@ namespace Relentless
 		void Push(ImGuiStyleVar idx, float v) { ImGui::PushStyleVar(idx, v); ++Count; }
 	};
 
+	struct ScopedStyleColor
+	{
+		int Count = 0;
+		~ScopedStyleColor() { while (Count--) ImGui::PopStyleColor(); }
+		void Push(ImGuiCol idx, ImVec4 v) { ImGui::PushStyleColor(idx, v); ++Count; }
+		void Push(ImGuiCol idx, ImU32 v) { ImGui::PushStyleColor(idx, v); ++Count; }
+	};
+
 	class IBaseWidget : public RefCounted<IBaseWidget>
 	{
 	public:
@@ -41,6 +49,7 @@ namespace Relentless
 		NO_DISCARD float GetFixedHeight() const noexcept;
 		NO_DISCARD const Vector2& GetFixedSize() const noexcept;
 		NO_DISCARD const WidgetGeometry& GetGeometry() const noexcept;
+		NO_DISCARD int GetHoverFlags() const noexcept;
 		NO_DISCARD const FloatRect& GetMargin() const noexcept;
 		NO_DISCARD EHorizontalAlignmentPolicy GetHorizontalAlignmentPolicy() const noexcept;
 		NO_DISCARD ESizePolicy GetHorizontalSizePolicy() const noexcept;
@@ -83,6 +92,7 @@ namespace Relentless
 
 		IBaseWidget* SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy aAlignmentPolicy) noexcept;
 		IBaseWidget* SetHorizontalSizePolicy(ESizePolicy aSizePolicy) noexcept;
+		IBaseWidget* SetHoverFlags(int aHoverFlags) noexcept;
 		void SetIsEnabled(bool aIsEnabledState) noexcept;
 		void SetIsVisible(bool aVisibleState) noexcept;
 		void SetMargin(const FloatRect& aMargin) noexcept;
@@ -114,6 +124,7 @@ namespace Relentless
 		ESizePolicy m_SizePolicy = ESizePolicy::Auto;
 		ESizePolicy m_VerticalSizePolicy = ESizePolicy::Auto;
 
+		int m_HoverFlags = 0;
 		bool m_IsEnabled = true;
 		bool m_IsVisible = true;
 		bool m_IsDraggingOver = false;

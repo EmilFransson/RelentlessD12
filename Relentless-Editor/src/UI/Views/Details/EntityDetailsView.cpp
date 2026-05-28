@@ -4,8 +4,11 @@
 
 #include "ImGui/ImGuiFonts.h"
 
+#include "Subsystem/EntityComponentDefinitionRegistry.h"
 #include "Subsystem/SelectionSubsystem.h"
 
+#include "UI/Views/Details/LayoutBuilders/ContextMenuBuilder.h"
+#include "UI/Widgets/VerticalBox.h"
 #include "UI/Widgets/WidgetSwitcher.h"
 
 namespace Relentless
@@ -75,6 +78,15 @@ namespace Relentless
 		}
 	}
 
+	Ref<Button> EntityDetailsView::BuildAddComponentButton() noexcept
+	{
+		Ref<Button> pButton = RLS_NEW Button(std::format("{} Add", ICON_FA_PLUS));
+		pButton->SetFont(UI::Fonts::Get("Medium"));
+		pButton->OnClicked(this, &EntityDetailsView::OnAddComponentButtonClicked);
+
+		return pButton;
+	}
+
 	void EntityDetailsView::BuildEmptyHeader(HorizontalBox* aRow) noexcept
 	{
 		aRow->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Center);
@@ -106,11 +118,11 @@ namespace Relentless
 	{
 		const NameComponent& nameComponent = m_pInspectedScene->GetEntityManager().Get<NameComponent>(aEntity);
 
-		auto [pLeft, pRight] = BuildTwoSlotLayout(aRow);
+		auto [pLeftBox, pRightBox] = BuildTwoSlotLayout(aRow);
 
-		pLeft->AddWidget(RLS_NEW Label(ICON_FA_CUBE, UI::Fonts::Get("Medium")));
+		pLeftBox->AddWidget(RLS_NEW Label(ICON_FA_CUBE, UI::Fonts::Get("Medium")));
 
-		WidgetSwitcher* pSwitcher = pLeft->AddWidget(RLS_NEW WidgetSwitcher());
+		WidgetSwitcher* pSwitcher = pLeftBox->AddWidget(RLS_NEW WidgetSwitcher());
 		Label* pNameLabel = pSwitcher->Add(RLS_NEW Label(nameComponent.GetName().c_str(), UI::Fonts::Get("Medium")));
 		EditableTextBox* pNameEdit = pSwitcher->Add(RLS_NEW EditableTextBox());
 		pNameEdit->SetFont(UI::Fonts::Get("Medium"));
@@ -138,7 +150,8 @@ namespace Relentless
 				pSwitcher->SetActiveWidgetIndex(0);
 			});
 
-		pRight->AddWidget(BuildLockButton());
+		pRightBox->AddWidget(BuildAddComponentButton());
+		pRightBox->AddWidget(BuildLockButton());
 	}
 
 	void EntityDetailsView::BuildMultiEntityHeader(HorizontalBox* aRow, uint32 aEntityCount) noexcept
@@ -151,6 +164,7 @@ namespace Relentless
 		pMiddleBox->AddWidget(RLS_NEW Label(std::format("{} entities", aEntityCount), UI::Fonts::Get("Medium")))
 			->SetTextColor(Colors::TextInactive);
 
+		pRightBox->AddWidget(BuildAddComponentButton());
 		pRightBox->AddWidget(BuildLockButton());
 	}
 
@@ -207,6 +221,56 @@ namespace Relentless
 		pRight->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);
 
 		return { pLeft, pRight };
+	}
+
+	void EntityDetailsView::OnAddComponentButtonClicked() noexcept
+	{
+		EntityComponentDefinitionRegistry* pComponentDefinitionRegistry = Editor::Get()->GetSubsystem<EntityComponentDefinitionRegistry>();
+
+		std::flat_map<String, std::vector<Ref<IEntityComponentDefinition>>> categoryMap;
+
+		for (const Ref<IEntityComponentDefinition>& pDefinition : pComponentDefinitionRegistry->GetAllComponentDefinitions() 
+			| std::views::filter([](const auto& aDefinition) { return aDefinition->CanShowInEditor(); }))
+		{
+			categoryMap[pDefinition->GetCategory()].push_back(pDefinition);
+		}
+
+		for (auto&& [_, definitions] : categoryMap)
+			std::ranges::sort(definitions, {}, [](const auto& aDefinition) { return aDefinition->GetDisplayName(); });
+
+		ContextMenuBuilder builder;
+		for (const auto&[category, definitions] : categoryMap)
+		{
+			builder.AddSection(category)
+					.Font(UI::Fonts::Get("Small"))
+					.SeparatorColor(Color(1.0f, 1.0f, 1.0f, 0.25f))
+					.TextColor(Colors::TextInactive)
+					.Thickness(0.5f);
+				
+			for (const Ref<IEntityComponentDefinition>& pDefinition : definitions)
+			{
+				builder.AddItem(pDefinition->GetDisplayName())
+						.Icon(pDefinition->GetIcon())
+						.Tooltip(pDefinition->GetDescription())
+						.DisabledTooltip("Selection already has the given component.")
+						.Enabled(std::ranges::any_of(m_Context.Entities, [this, pDefinition](entity aEntity){ return !pDefinition->Has(*m_Context.EntityManager, aEntity);}))
+						.OnClicked([this, pDefinition]()
+						{
+							for (entity aEntity : m_Context.Entities)
+							{
+								if (pDefinition->Has(*m_Context.EntityManager, aEntity))
+									continue;
+
+								pDefinition->Add(*m_Context.EntityManager, aEntity);
+							}
+
+							ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
+							RequestRefresh();
+						});
+			}
+		}
+
+		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(builder.BuildContextMenu());
 	}
 
 	void EntityDetailsView::OnEntityDestroyed(entity aDestroyedEntity) noexcept

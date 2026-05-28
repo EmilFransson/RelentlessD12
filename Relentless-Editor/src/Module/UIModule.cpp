@@ -36,6 +36,11 @@ namespace Relentless
 		m_pDragDropOperation = nullptr;
 	}
 
+	void UIModule::DestroyActiveContextMenu() noexcept
+	{
+		m_ShouldDestroyContextMenu = true;
+	}
+
 	Ref<DragDropOperationBase> UIModule::GetActiveDragDropOperation() const noexcept
 	{
 		RLS_ASSERT(m_pDragDropOperation, "[UIModule::GetActiveDragDropOperation]: Drag drop operation is invalid");

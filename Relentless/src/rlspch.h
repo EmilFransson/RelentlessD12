@@ -39,6 +39,7 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <execution>
 #include <expected>
 #include <filesystem>
+#include <flat_map>
 #include <fstream>
 #include <functional>
 #include <future>

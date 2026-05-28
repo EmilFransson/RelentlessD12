@@ -7,6 +7,7 @@ namespace Relentless
 	{
 	public:
 		explicit NameComponent(const char* aName) noexcept;
+		NameComponent() noexcept = default;
 
 		NO_DISCARD const String& GetName() const noexcept;
 

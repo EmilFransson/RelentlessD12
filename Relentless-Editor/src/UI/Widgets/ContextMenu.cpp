@@ -1,128 +1,87 @@
 #include "ContextMenu.h"
 
-#include "SearchBar.h"
-#include "Separator.h"
+
+#include "UI/Widgets/IBaseWidget.h"
+#include "UI/Widgets/SubMenuRow.h"
 
 namespace Relentless
 {
-	MenuBuilder::MenuBuilder() noexcept
-		: m_pMenu{ new ContextMenu() }
+	ContextMenu::ContextMenu(bool aIsSubMenu) noexcept
+		: m_IsSubMenu(aIsSubMenu)
 	{
-		Ref<HorizontalBox> pBox = new HorizontalBox();
-		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pBox->SetMargin(FloatRect(20, 10, 20, 0));
-		
-		pBox->AddWidget(new SearchBar("Start typing to search"))
-			->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		
-		Ref<MenuItem> pEntry = new MenuItem();
-		pEntry->pWidget = pBox;
-		pEntry->HighlightOnHover = false;
-		
-		m_pMenu->AddEntry(pEntry);
+		SetHoverFlags(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenOverlapped);
+
+		m_pRoot = RLS_NEW VerticalBox();
+		m_pRoot->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		m_pRoot->SetVerticalSizePolicy(ESizePolicy::Stretch);
 	}
 
-	MenuBuilder* MenuBuilder::AddWidget(Ref<IBaseWidget> pWidget, const String& label, const String& tooltip) noexcept
+	ContextMenu::~ContextMenu() noexcept
 	{
-		Ref<HorizontalBox> pBox = new HorizontalBox();
-		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pBox->AddWidget(pWidget);
-
-		Ref<Label> pLabel = new Label(label, ImGui::GetIO().Fonts->Fonts[2]);
-		pBox->AddWidget(pLabel);
-
-		if (!tooltip.empty())
-			pBox->SetTooltipText(tooltip);
-
-		pBox->SetMargin(IntRect(40, 0, 0, 0));
-
-		Ref<MenuItem> pItem = new MenuItem();
-		pItem->pWidget = std::move(pBox);
-
-		if (!m_SubMenuStack.empty())
-			m_SubMenuStack.top()->Entries.push_back(pItem);
-		else
-			m_pMenu->AddEntry(pItem);
-
-		return this;
+		if (m_IsOpen)
+			OnClosed();
 	}
 
-	Ref<ContextMenu> MenuBuilder::Build() noexcept
+	void ContextMenu::AddRows(const std::vector<Ref<IBaseWidget>>& someRows) noexcept
 	{
-		return m_pMenu;
+		for (const Ref<IBaseWidget>& pRow : someRows)
+			m_pRoot->AddWidget(pRow);
 	}
 
-	MenuBuilder* MenuBuilder::AddSection(const String& label) noexcept
+	void ContextMenu::OnRender() noexcept
 	{
-		Ref<MenuItem> pItem = new MenuItem();
+		if (!m_pRoot) 
+			return;
 
-		Ref<HorizontalBox> pBox = new HorizontalBox();
-		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pBox->SetMargin(FloatRect(20, 0, 20, 0));
-
-		Ref<Separator> pSeparator = new Separator(label, 10.0f);
-		pSeparator->SetMargin({ 0, 0, 20, 0 });
-		pSeparator->SetAlpha(0.5f);
-		pBox->AddWidget(pSeparator);
-
-		pItem->pWidget = pBox;
-		pItem->HighlightOnHover = false;
-
-		m_pMenu->AddEntry(std::move(pItem));
-
-		return this;
-	}
-
-	MenuBuilder* MenuBuilder::BeginSubMenu(const String& label, const String& tooltip, const String& icon) noexcept
-	{
-		Ref<HorizontalBox> pBox = new HorizontalBox();
-		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pBox->SetMargin(FloatRect(0.0f, 4.0f, 0.0f, 0.0f));
-
-		if (!icon.empty())
+		if (m_IsSubMenu)
 		{
-			Ref<Label> pIconLabel = new Label(icon);
-			pIconLabel->SetAlpha(0.5f);
-			pBox->AddWidget(pIconLabel);
+			RenderRows();
+			return;
 		}
 
-		Ref<Label> pLabel = new Label(label);
+		if (!m_IsOpen)
+		{
+			ImGui::OpenPopup("##ContextMenu");
+			m_IsOpen = true;
+		}
 
-		pBox->AddWidget(pLabel);
+		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
 
-		Ref<Label> pChevronIcon = new Label(ICON_FA_CHEVRON_RIGHT);
+		const Vector2 size = m_pRoot->ReportSize();
+		const ImVec2 winPadding = ImGui::GetStyle().WindowPadding;
+		const float totalWidth = size.x + winPadding.x * 2.0f;
+		const float totalHeight = size.y + winPadding.y * 2.0f;
+		ImGui::SetNextWindowSize(ImVec2(totalWidth, totalHeight), ImGuiCond_Always);
 
-		Ref<HorizontalBox> pRightBox = new HorizontalBox();
-		pRightBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);
-		pRightBox->SetMargin(FloatRect(0.0f, 0.0f, 20.0f, 0.0f));
-		pRightBox->AddWidget(pChevronIcon);
+		const bool isOpen = ImGui::BeginPopup("##ContextMenu", ImGuiWindowFlags_NoMove);
+		ImGui::PopStyleVar();
 
-		pBox->AddWidget(pRightBox);
+		if (!isOpen)
+		{
+			if (m_IsOpen)
+			{
+				m_IsOpen = false;
+				OnClosed();
+			}
+			return;
+		}
 
-		if (!tooltip.empty())
-			pBox->SetTooltipText(tooltip);
-
-		pBox->SetMargin(IntRect(40.0f, 0.0f, 0.0f, 0.0f));
-
-		Ref<SubMenu> pItem = new SubMenu(m_SubMenuStack.size() + 1);
-		pItem->pWidget = std::move(pBox);
-
-		m_SubMenuStack.push(pItem);
-
-		return this;
+		RenderRows();
+		ImGui::EndPopup();
 	}
 
-	MenuBuilder* MenuBuilder::EndSubMenu() noexcept
+	Vector2 ContextMenu::ReportSize() const noexcept
 	{
-		Ref<SubMenu> pSubMenu = m_SubMenuStack.top();
-		m_SubMenuStack.pop();
+		if (m_pRoot)
+			return m_pRoot->ReportSize();
 
-		if (m_SubMenuStack.empty())
-			m_pMenu->AddEntry(pSubMenu);
-		else
-			m_SubMenuStack.top()->Entries.push_back(pSubMenu);
-
-		return this;
+		return Vector2::Zero;
 	}
 
+	void ContextMenu::RenderRows() noexcept
+	{
+		const Vector2 size = m_pRoot->ReportSize();
+		m_pRoot->AssignSize(Vector2(size.x, size.y));
+		m_pRoot->Render();
+	}
 }

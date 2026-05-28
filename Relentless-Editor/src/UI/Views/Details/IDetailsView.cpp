@@ -3,6 +3,7 @@
 #include "UI/Views/TreeView.h"
 
 #include "UI/Widgets/Button.h"
+#include "UI/Widgets/VerticalBox.h"
 
 namespace Relentless
 {
