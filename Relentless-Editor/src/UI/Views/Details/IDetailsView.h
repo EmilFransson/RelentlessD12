@@ -29,6 +29,7 @@ namespace Relentless
 		void Rebuild() noexcept;
 
 		void RequestRefresh() noexcept;
+		NO_DISCARD bool RequiresAssignedSize() const noexcept override;
 
 		void SetContext(void* aContext) noexcept;
 
@@ -39,6 +40,7 @@ namespace Relentless
 
 			m_pLayoutBuilder->TearDown();
 		}
+
 	protected:
 		virtual void OnPreRequestSource(MAYBE_UNUSED bool aFromManualTrigger) noexcept {};
 	private:

@@ -33,7 +33,6 @@ namespace Relentless
 		std::vector<SharedPtr<AssetThumbnailData>> m_Items;
 		Ref<TileView<SharedPtr<AssetThumbnailData>>> m_pAssetsTreeView = nullptr;
 
-		Ref<HorizontalBox> m_pBox = nullptr;
 		CallbackID m_AssetRegistryFileScanDoneID = -1;
 	};
 }

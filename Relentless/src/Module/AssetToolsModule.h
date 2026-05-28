@@ -44,6 +44,7 @@ namespace Relentless
 	public:
 		template<typename AssetType>
 		NO_DISCARD AssetHandle CreateAsset(const String& aName, const Path& aPackagePath, const Ref<IFactory>& aFactory = nullptr, bool aShouldSave = true) noexcept;
+		NO_DISCARD AssetHandle CreateAsset(TypeIndex aType, const String& aName, const Path& aPackagePath, const Ref<IFactory>& aFactory = nullptr, bool aShouldSave = true) noexcept;
 
 		std::vector<AssetImportResult> Import(Span<AssetImportTask> someImportTasks) noexcept;
 		AsyncImportTasks ImportAsync(Span<AssetImportTask> someImportTasks, AssetImportTasksCompletedCallback aImportCompletedCallback) noexcept;
@@ -57,7 +58,6 @@ namespace Relentless
 		Ref<IFactory> GetSupportingFactory(const Path& aPath) const noexcept;
 		Ref<IFactory> GetSupportingFactory(const TypeIndex& aType) const noexcept;
 	private:
-		template<typename AssetType>
 		NO_DISCARD AssetHandle CreateAndRegisterAssetData(const Ref<IAsset>& aAsset, const Path& aPackagePath, TimeStamp aTimeStamp) noexcept;
 
 		template<typename SupportedAssetType>
@@ -119,25 +119,9 @@ namespace Relentless
 		}
 
 		if (aShouldSave)
-			return CreateAndRegisterAssetData<AssetType>(pCreatedAsset, fullPackagePath, timeStamp);
+			return CreateAndRegisterAssetData(pCreatedAsset, fullPackagePath, timeStamp);
 		else
 			return AssetManager::RegisterAsset<AssetType>(pCreatedAsset);
-	}
-
-	template<typename AssetType>
-	AssetHandle AssetToolsModule::CreateAndRegisterAssetData(const Ref<IAsset>& aAsset, const Path& aPackagePath, TimeStamp aTimeStamp) noexcept
-	{
-		AssetData data{};
-		data.Name = aAsset->GetName();
-		data.Type = aAsset->GetStaticType();
-		data.Uuid = aAsset->GetUUID();
-		data.PackagePath = aPackagePath;
-		data.ModificationDateAndTime = aTimeStamp;
-
-		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-		assetRegistry.AssetCreated(std::move(data));
-
-		return AssetManager::RegisterAsset<AssetType>(aAsset);
 	}
 
 	template<typename SupportedAssetType>

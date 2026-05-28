@@ -20,10 +20,7 @@ namespace Relentless
 {
 	AssetView::AssetView() noexcept
 	{
-		m_pBox = RLS_NEW HorizontalBox();
-		m_pBox->SetPadding(FloatRect(20.0f, 10.0f, 20.0f, 10.0f));
-
-		m_pAssetsTreeView = m_pBox->AddWidget(RLS_NEW TileView<SharedPtr<AssetThumbnailData>>());
+		m_pAssetsTreeView = RLS_NEW TileView<SharedPtr<AssetThumbnailData>>();
 
 		m_pAssetsTreeView
 			->SetItemWidth(100.0f)
@@ -119,7 +116,6 @@ namespace Relentless
 
 	void AssetView::OnRender() noexcept
 	{
-		m_pBox->AssignSize(GetAssignedSize());
-		m_pBox->Render();
+		m_pAssetsTreeView->Render();
 	}
 }

@@ -65,6 +65,11 @@ namespace Relentless
 		m_pMainBox->Render();
 	}
 
+	bool IDetailsView::RequiresAssignedSize() const noexcept
+	{
+		return true;
+	}
+
 	void IDetailsView::RequestRefresh() noexcept
 	{
 		m_pDetailsTreeView->RequestTreeRefresh();

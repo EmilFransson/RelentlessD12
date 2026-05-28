@@ -79,13 +79,13 @@ namespace Relentless
 		pRoot->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		pRoot->SetVerticalSizePolicy(ESizePolicy::Stretch);
 
-		Ref<HorizontalBox> pBox = pRoot->AddWidget(RLS_NEW HorizontalBox());
+		HorizontalBox* pBox = pRoot->AddWidget(RLS_NEW HorizontalBox());
 		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		pBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
 
 		pBox->AddWidget(BuildDefaultCanvasWidget());
 
-		Ref<HorizontalBox> pDetailsViewBox = pBox->AddWidget(RLS_NEW HorizontalBox());
+		HorizontalBox* pDetailsViewBox = pBox->AddWidget(RLS_NEW HorizontalBox());
 		pDetailsViewBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
 		pDetailsViewBox->SetSize(Vector2(300.0f, -1.0f));
 		pDetailsViewBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
