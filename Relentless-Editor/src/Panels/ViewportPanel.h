@@ -4,8 +4,9 @@
 #include "Controller/PerspectiveCameraController.h"
 #include "Controller/TransformGizmoController.h"
 
+#include "Panel.h"
+
 #include "UI/Widgets/Canvas.h"
-#include "UI/Widgets/Panel.h"
 
 namespace Relentless
 {

@@ -2,7 +2,7 @@
 
 #include "Module/UIModule.h"
 
-#include "IWidget.h"
+#include "UI/Widgets/IWidget.h"
 
 namespace Relentless
 {

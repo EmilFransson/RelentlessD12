@@ -1,5 +1,5 @@
 #pragma once
-#include <UI/Widgets/Panel.h>
+#include "Panel.h"
 
 namespace Relentless
 {

@@ -1,8 +1,9 @@
 #pragma once
 #include <Relentless.h>
 
-#include "../UI/Views/Outliner/EntityOutlinerView.h"
-#include "../UI/Widgets/Panel.h"
+#include "Panel.h"
+
+#include "UI/Views/Outliner/EntityOutlinerView.h"
 
 namespace Relentless
 {

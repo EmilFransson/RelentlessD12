@@ -1,9 +1,10 @@
 #pragma once
 
-#include <Event/EditorEvents.h>
+#include "Event/EditorEvents.h"
 
-#include <UI/Widgets/ContextMenu.h>
-#include <UI/Widgets/Panel.h>
+#include "Panels/Panel.h"
+
+#include "UI/Widgets/ContextMenu.h"
 
 namespace Relentless
 {
