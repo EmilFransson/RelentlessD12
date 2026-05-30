@@ -11,6 +11,21 @@
 
 namespace Relentless
 {
+	namespace
+	{
+		Path Canonicalize(const Path& aPath)
+		{
+			Path normalized = std::filesystem::absolute(aPath).lexically_normal();
+			if (!normalized.empty())
+			{
+				const auto& nat = normalized.native();
+				if (nat.back() == L'\\' || nat.back() == L'/')
+					normalized = normalized.parent_path();
+			}
+			return normalized;
+		}
+	}
+
 	AssetRegistryModule::AssetRegistryModule() noexcept
 	{
 	}
@@ -223,12 +238,16 @@ namespace Relentless
 		const AssetRoot* pRoot = FindRootFor(aAssetData.PackagePath);
 		RLS_ASSERT(pRoot, "[AssetRegistryModule::BuildKeys]: Asset path doesn't belong to any registered root.");
 
-		const Path absFull = std::filesystem::absolute(aAssetData.PackagePath).lexically_normal();
-		const Path absRoot = std::filesystem::absolute(pRoot->BaseDirectory).lexically_normal();
-		const Path relative = std::filesystem::relative(absFull, absRoot);
+		const Path absFull = Canonicalize(aAssetData.PackagePath);
+		const Path relative = absFull.lexically_relative(pRoot->BaseDirectory);
 
-		String folder = relative.string() + "/";
-		StringUtils::ReplaceCharacters(folder, '\\', '/');
+		String folder;
+		if (relative != Path("."))
+		{
+			folder = relative.string();
+			StringUtils::ReplaceCharacters(folder, '\\', '/');
+			folder += "/";
+		}
 
 		const String prefix = (pRoot->SourceType == EAssetSourceType::Engine) ? "Engine/" : "Game/";
 
@@ -243,16 +262,17 @@ namespace Relentless
 
 	const AssetRoot* AssetRegistryModule::FindRootFor(const Path& aAbsoluteAssetPath) const
 	{
-		const Path normalized = std::filesystem::absolute(aAbsoluteAssetPath).lexically_normal();
+		const Path normalized = Canonicalize(aAbsoluteAssetPath);
+
 		for (const auto& root : m_Roots)
 		{
-			const Path absRoot = std::filesystem::absolute(root.BaseDirectory).lexically_normal();
-			// Check if normalized starts with absRoot
-			auto rel = std::filesystem::relative(normalized, absRoot);
-			if (!rel.empty() && rel.native()[0] != '.') // didn't traverse upward
-				return &root;
+			// Roots are already canonical (see RegisterRoot), no need to re-normalize.
+			const Path rel = normalized.lexically_relative(root.BaseDirectory);
+			if (rel.empty())            continue; // unrelated (e.g., different drive)
+			if (*rel.begin() == "..")   continue; // traversed upward
+			return &root;                          // descends into root, or equals it ("."): both valid
 		}
-		
+
 		return nullptr;
 	}
 
@@ -369,16 +389,17 @@ namespace Relentless
 			return;
 		}
 
-		const Path absFull = std::filesystem::absolute(aPath).lexically_normal();
-		const Path absRoot = std::filesystem::absolute(pRoot->BaseDirectory).lexically_normal();
-		const Path relative = std::filesystem::relative(absFull, absRoot);
+		const Path absFull = Canonicalize(aPath);
+		const Path relative = absFull.lexically_relative(pRoot->BaseDirectory);
+
+		if (relative.empty() || relative == Path("."))
+			return; // The root itself isn't a child folder of anything we track.
 
 		String pathString = relative.string();
 		StringUtils::ReplaceCharacters(pathString, '\\', '/');
 
 		const String prefix = (pRoot->SourceType == EAssetSourceType::Engine) ? "Engine/" : "Game/";
 
-		// Tokenize and build parent path + child folder
 		const std::vector<String> tokens = StringUtils::Split(pathString, '/');
 		if (tokens.empty())
 			return;
@@ -395,7 +416,7 @@ namespace Relentless
 	{
 		std::unique_lock<std::shared_mutex> lock(m_Mutex);
 
-		const Path normalized = std::filesystem::absolute(aBaseDirectory).lexically_normal();
+		const Path normalized = Canonicalize(aBaseDirectory);
 
 		for (const auto& root : m_Roots)
 		{

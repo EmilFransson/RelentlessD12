@@ -102,7 +102,13 @@ using float4x4 = Matrix;
 
 		uint BlendIrradianceMapIndex;
 		uint BlendRadianceMapIndex;
-		float2 Padding;
+		float2 Padding0;
+
+		float3 EnvironmentATintColor;
+		float Padding1;
+
+		float3 EnvironmentBTintColor;
+		float Padding2;
 	};
 
 	struct Environment

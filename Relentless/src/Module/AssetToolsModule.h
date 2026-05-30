@@ -46,6 +46,8 @@ namespace Relentless
 		NO_DISCARD AssetHandle CreateAsset(const String& aName, const Path& aPackagePath, const Ref<IFactory>& aFactory = nullptr, bool aShouldSave = true) noexcept;
 		NO_DISCARD AssetHandle CreateAsset(TypeIndex aType, const String& aName, const Path& aPackagePath, const Ref<IFactory>& aFactory = nullptr, bool aShouldSave = true) noexcept;
 
+		NO_DISCARD String GenerateUniqueAssetName(const String& aVirtualFolder, const String& aBaseName) const;
+
 		std::vector<AssetImportResult> Import(Span<AssetImportTask> someImportTasks) noexcept;
 		AsyncImportTasks ImportAsync(Span<AssetImportTask> someImportTasks, AssetImportTasksCompletedCallback aImportCompletedCallback) noexcept;
 

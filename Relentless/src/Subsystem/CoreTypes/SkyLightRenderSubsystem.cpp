@@ -179,18 +179,98 @@ namespace Relentless
 
 		const SkyLightRenderData& renderData = m_RenderData.at(m_ActiveSkyLightID);
 		const SkyLightRenderProxy& proxy = renderData.RenderProxy;
-		const bool isCubemap = proxy.PrimaryEnvironmentSourceType == EEnvironmentSourceType::Cubemap;
-		const uint32 fallbackSRV = GraphicsCommon::GetDefaultTexture(DefaultTextureType::WhiteCube)->GetSRVIndex();
-
-		outSkyLightData.IrradianceMapIndex = isCubemap && renderData.PrimaryEntry.IrradianceMap ? renderData.PrimaryEntry.IrradianceMap->GetSRVIndex() : fallbackSRV;
-		outSkyLightData.RadianceMapIndex = isCubemap && renderData.PrimaryEntry.RadianceMap ? renderData.PrimaryEntry.RadianceMap->GetSRVIndex() : fallbackSRV;
-		outSkyLightData.BlendIrradianceMapIndex = isCubemap && renderData.SecondaryEntry.IrradianceMap ? renderData.SecondaryEntry.IrradianceMap->GetSRVIndex() : fallbackSRV;
-		outSkyLightData.BlendRadianceMapIndex = isCubemap && renderData.SecondaryEntry.RadianceMap ? renderData.SecondaryEntry.RadianceMap->GetSRVIndex() : fallbackSRV;
+	
 		outSkyLightData.Intensity = proxy.Intensity;
 		outSkyLightData.BlendFactor = proxy.BlendFactor;
-		outSkyLightData.Tint = Vector3(proxy.TintColor.R(), proxy.TintColor.G(), proxy.TintColor.B());
+		outSkyLightData.Tint = proxy.TintColor.ToVector3();
 		outSkyLightData.WorldRotation = Matrix::CreateFromQuaternion(proxy.WorldRotation);
 		outSkyLightData.LowerHemisphereColor = proxy.LowerHemisphereColor.ToVector4();
+		outSkyLightData.EnvironmentATintColor = proxy.TintColor.ToVector3();
+		outSkyLightData.EnvironmentBTintColor = proxy.TintColor.ToVector3();
+
+		const uint32 fallbackSRVBlackCube = GraphicsCommon::GetDefaultTexture(DefaultTextureType::BlackCube)->GetSRVIndex();
+		const uint32 fallbackSRVWhiteCube = GraphicsCommon::GetDefaultTexture(DefaultTextureType::WhiteCube)->GetSRVIndex();
+
+		if (proxy.BlendFactor <= 0.0f)
+		{
+			if (proxy.PrimaryEnvironmentSourceType == EEnvironmentSourceType::Cubemap)
+			{
+				outSkyLightData.IrradianceMapIndex = proxy.PrimaryEnvironmentMap && renderData.PrimaryEntry.IrradianceMap ? renderData.PrimaryEntry.IrradianceMap->GetSRVIndex() : proxy.BlendEnvironmentMap && renderData.SecondaryEntry.IrradianceMap ? renderData.SecondaryEntry.IrradianceMap->GetSRVIndex() : fallbackSRVBlackCube;
+				outSkyLightData.RadianceMapIndex = proxy.PrimaryEnvironmentMap && renderData.PrimaryEntry.RadianceMap ? renderData.PrimaryEntry.RadianceMap->GetSRVIndex() : proxy.BlendEnvironmentMap && renderData.SecondaryEntry.RadianceMap ? renderData.SecondaryEntry.RadianceMap->GetSRVIndex() : fallbackSRVBlackCube;
+			}
+			else //Solid Color
+			{
+				outSkyLightData.IrradianceMapIndex = fallbackSRVWhiteCube;
+				outSkyLightData.RadianceMapIndex = fallbackSRVWhiteCube;
+				outSkyLightData.EnvironmentATintColor = proxy.PrimaryEnvironmentColor.ToVector3();
+			}
+		}
+		else if (proxy.BlendFactor >= 1.0f)
+		{
+			if (proxy.BlendEnvironmentSourceType == EEnvironmentSourceType::Cubemap)
+			{
+				outSkyLightData.BlendIrradianceMapIndex = proxy.BlendEnvironmentMap && renderData.SecondaryEntry.IrradianceMap ? renderData.SecondaryEntry.IrradianceMap->GetSRVIndex() : proxy.PrimaryEnvironmentMap && renderData.PrimaryEntry.IrradianceMap ? renderData.PrimaryEntry.IrradianceMap->GetSRVIndex() : fallbackSRVBlackCube;
+				outSkyLightData.BlendRadianceMapIndex = proxy.BlendEnvironmentMap && renderData.SecondaryEntry.RadianceMap ? renderData.SecondaryEntry.RadianceMap->GetSRVIndex() : proxy.PrimaryEnvironmentMap && renderData.PrimaryEntry.RadianceMap ? renderData.PrimaryEntry.RadianceMap->GetSRVIndex() : fallbackSRVBlackCube;
+			}
+			else //Solid Color
+			{
+				outSkyLightData.IrradianceMapIndex = fallbackSRVWhiteCube;
+				outSkyLightData.RadianceMapIndex = fallbackSRVWhiteCube;
+				outSkyLightData.EnvironmentATintColor = proxy.BlendEnvironmentColor.ToVector3();
+			}
+		}
+		else
+		{
+			if (proxy.PrimaryEnvironmentSourceType == EEnvironmentSourceType::Cubemap)
+			{
+				if (proxy.PrimaryEnvironmentMap)
+				{
+					outSkyLightData.IrradianceMapIndex = renderData.PrimaryEntry.IrradianceMap->GetSRVIndex();
+					outSkyLightData.RadianceMapIndex = renderData.PrimaryEntry.RadianceMap->GetSRVIndex();
+				}
+				else if (proxy.BlendEnvironmentMap)
+				{
+					outSkyLightData.BlendIrradianceMapIndex = renderData.SecondaryEntry.IrradianceMap->GetSRVIndex();
+					outSkyLightData.BlendRadianceMapIndex = renderData.SecondaryEntry.RadianceMap->GetSRVIndex();
+				}
+				else
+				{
+					outSkyLightData.IrradianceMapIndex = fallbackSRVBlackCube;
+					outSkyLightData.RadianceMapIndex = fallbackSRVBlackCube;
+				}
+			}
+			else //Solid Color
+			{
+				outSkyLightData.IrradianceMapIndex = fallbackSRVWhiteCube;
+				outSkyLightData.RadianceMapIndex = fallbackSRVWhiteCube;
+				outSkyLightData.EnvironmentATintColor = proxy.PrimaryEnvironmentColor.ToVector3();
+			}
+
+			if (proxy.BlendEnvironmentSourceType == EEnvironmentSourceType::Cubemap)
+			{
+				if (proxy.BlendEnvironmentMap)
+				{
+					outSkyLightData.BlendIrradianceMapIndex = renderData.SecondaryEntry.IrradianceMap->GetSRVIndex();
+					outSkyLightData.BlendRadianceMapIndex = renderData.SecondaryEntry.RadianceMap->GetSRVIndex();
+				}
+				else if (proxy.PrimaryEnvironmentMap)
+				{
+					outSkyLightData.BlendIrradianceMapIndex = renderData.PrimaryEntry.IrradianceMap->GetSRVIndex();
+					outSkyLightData.BlendRadianceMapIndex = renderData.PrimaryEntry.RadianceMap->GetSRVIndex();
+				}
+				else
+				{
+					outSkyLightData.BlendIrradianceMapIndex = fallbackSRVBlackCube;
+					outSkyLightData.BlendRadianceMapIndex = fallbackSRVBlackCube;
+				}
+			}
+			else // Solid Color
+			{
+				outSkyLightData.BlendIrradianceMapIndex = fallbackSRVWhiteCube;
+				outSkyLightData.BlendRadianceMapIndex = fallbackSRVWhiteCube;
+				outSkyLightData.EnvironmentBTintColor = proxy.BlendEnvironmentColor.ToVector3();
+			}
+		}
 	}
 
 	void SkyLightRenderSubsystem::DispatchIBLRequests(SkyLightRenderData& aRenderData) noexcept

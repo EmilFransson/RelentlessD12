@@ -181,7 +181,6 @@ namespace Relentless
 		OnRender();
 		ImGui::EndGroup();
 
-		HandleDragDrop();
 		ResolveGeometry();
 		ResolveHoverState();
 		ResolveMouseStates();

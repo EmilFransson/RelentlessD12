@@ -70,9 +70,6 @@ namespace Relentless
 	void ContentBrowserPanel::OnAddAssetButtonClicked() noexcept
 	{
 		AssetDefinitionRegistry* pAssetDefinitionRegistry = Editor::Get()->GetSubsystem<AssetDefinitionRegistry>();
-		if (!pAssetDefinitionRegistry)
-			return;
-
 		ContextMenuBuilder builder;
 
 		builder.AddSection("Core")
@@ -87,6 +84,12 @@ namespace Relentless
 			builder.AddItem(pDefinition->GetAssetDisplayName())
 					.OnClicked([pDefinition]()
 					{
+						AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+						const String uniqueName = assetToolsModule.GenerateUniqueAssetName("Game/", pDefinition->GetAssetDisplayName());
+						const String assetDirectory = Project::GetAssetDirectory().string();
+
+						assetToolsModule.CreateAsset(pDefinition->GetSupportedAssetType(), uniqueName, assetDirectory);
+						ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
 					});
 		}
 

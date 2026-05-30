@@ -92,6 +92,18 @@ namespace Relentless
 			return AssetManager::RegisterAsset(pCreatedAsset);
 	}
 
+	String AssetToolsModule::GenerateUniqueAssetName(const String& aVirtualFolder, const String& aBaseName) const
+	{
+		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		String name = aBaseName;
+		uint32 accumulator = 1u;
+
+		for (uint32 accumulator = 1u; assetRegistryModule.FindAssetByPackagePath(std::format("{}{}.rasset", aVirtualFolder, name)); ++accumulator)
+			name = std::format("{}{}", aBaseName, accumulator);
+
+		return name;
+	}
+
 	std::vector<AssetImportResult> AssetToolsModule::Import(Span<AssetImportTask> someImportTasks) noexcept
 	{
 		ThreadPool& threadPool = Application::Get().GetThreadPool();

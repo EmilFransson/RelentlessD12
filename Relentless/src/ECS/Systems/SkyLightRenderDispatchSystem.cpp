@@ -35,8 +35,8 @@ namespace Relentless
 		{
 			const auto& [skyLightComponent, transformComponent] = aSceneState.EntityManager.Get<SkyLightComponent, TransformComponent>(aEntity);
 
-			const bool hasValidPrimaryEnvironment = skyLightComponent.HasAssignedPrimaryEnvironment() && skyLightComponent.GetPrimaryEnvironment()->HasValidEnvironmentMap();
-			const bool hasValidBlendEnvironment = skyLightComponent.HasAssignedBlendEnvironment() && skyLightComponent.GetBlendEnvironment()->HasValidEnvironmentMap();
+			const bool hasValidPrimaryEnvironment = skyLightComponent.HasAssignedPrimaryEnvironment();
+			const bool hasValidBlendEnvironment = skyLightComponent.HasAssignedBlendEnvironment();
 
 			if ((!hasValidPrimaryEnvironment && !hasValidBlendEnvironment) || !aSceneState.Scene.IsEntityVisible(aEntity))
 			{

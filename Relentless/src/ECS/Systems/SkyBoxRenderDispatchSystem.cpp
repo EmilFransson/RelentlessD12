@@ -36,8 +36,8 @@ namespace Relentless
 		{
 			const auto& [skyBoxComponent, transformComponent] = aSceneState.EntityManager.Get<SkyBoxComponent, TransformComponent>(aEntity);
 
-			const bool hasValidPrimaryEnvironment = skyBoxComponent.HasAssignedPrimaryEnvironment() && skyBoxComponent.GetPrimaryEnvironment()->HasValidEnvironmentMap();
-			const bool hasValidBlendEnvironment = skyBoxComponent.HasAssignedBlendEnvironment() && skyBoxComponent.GetBlendEnvironment()->HasValidEnvironmentMap();
+			const bool hasValidPrimaryEnvironment = skyBoxComponent.HasAssignedPrimaryEnvironment();
+			const bool hasValidBlendEnvironment = skyBoxComponent.HasAssignedBlendEnvironment();
 
 			SkyBoxRenderProxy& renderProxy = skyBoxRenderProxies.emplace_back();
 			renderProxy.WorldRotation = transformComponent.GetWorldRotation();
@@ -51,7 +51,7 @@ namespace Relentless
 			if (hasValidPrimaryEnvironment)
 			{
 				Ref<Environment> pPrimaryEnvironment = skyBoxComponent.GetPrimaryEnvironment();
-				renderProxy.EnvironmentMapA = pPrimaryEnvironment->GetEnvironmentMap()->GetResource();
+				renderProxy.EnvironmentMapA = pPrimaryEnvironment->HasValidEnvironmentMap() ? pPrimaryEnvironment->GetEnvironmentMap()->GetResource() : nullptr;
 				renderProxy.EnvironmentASolidColor = pPrimaryEnvironment->GetSolidColor();
 				renderProxy.EnvironmentASourceType = pPrimaryEnvironment->GetSourceType();
 
@@ -61,7 +61,7 @@ namespace Relentless
 			if (hasValidBlendEnvironment)
 			{
 				Ref<Environment> pBlendEnvironment = skyBoxComponent.GetBlendEnvironment();
-				renderProxy.EnvironmentMapB = pBlendEnvironment->GetEnvironmentMap()->GetResource();
+				renderProxy.EnvironmentMapB = pBlendEnvironment->HasValidEnvironmentMap() ? pBlendEnvironment->GetEnvironmentMap()->GetResource() : nullptr;
 				renderProxy.EnvironmentBSolidColor = pBlendEnvironment->GetSolidColor();
 				renderProxy.EnvironmentBSourceType = pBlendEnvironment->GetSourceType();
 

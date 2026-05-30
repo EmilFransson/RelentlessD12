@@ -45,6 +45,15 @@ namespace Relentless
 		return m_EnvironmentMapHandle.IsValid();
 	}
 
+	void Environment::RemoveEnvironmentMap() noexcept
+	{
+		if (!HasValidEnvironmentMap())
+			return;
+
+		m_EnvironmentMapHandle = AssetHandle::INVALID;
+		NOTIFY_PROPERTY_CHANGED(m_EnvironmentMapHandle);
+	}
+
 	bool Environment::SerializeCore(IArchive& aArchive) noexcept
 	{
 		return

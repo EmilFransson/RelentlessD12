@@ -1,5 +1,9 @@
 #include "EnvironmentDetailCustomization.h"
 
+#include "Core/Editor.h"
+
+#include "Subsystem/EngineContentSubsystem.h"
+
 #include "UI/Views/Details/Context/EnvironmentDetailsContext.h"
 #include "UI/Views/Details/IDetailsView.h"
 #include "UI/Views/Details/LayoutBuilders/DetailPropertyRowBuilder.h"
@@ -26,8 +30,65 @@ namespace Relentless
 				aDetailLayoutBuilder.ForceRefreshDetails();
 			});
 
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		EngineContentSubsystem* pEngineContentSubsystem = Editor::Get()->GetSubsystem<EngineContentSubsystem>();
+
+		auto AddEnvironmentMap = [&assetRegistry, &detailsContext, pEngineContentSubsystem, &aDetailLayoutBuilder](const char* aPropertyName, IDetailCategoryBuilder& aCategoryBuilder)
+			{
+				AssetData* pAssetData = assetRegistry.FindAsset(detailsContext.Environment->GetEnvironmentMapHandle().Uuid);
+				bool isNone = false;
+				if (!pAssetData)
+				{
+					isNone = true;
+					pAssetData = assetRegistry.FindAsset(pEngineContentSubsystem->GetNoneTexture2DHandle().Uuid);
+				}
+				aCategoryBuilder.AddAssetProperty(aPropertyName, *pAssetData)
+					.AcceptableAssetTypes({ TextureCube::StaticType() })
+					.OnAssetsDropped([&detailsContext, &aDetailLayoutBuilder](Span<const AssetData> someAssetDatas)
+						{
+							const AssetHandle assetHandle = AssetManager::LoadAsset(someAssetDatas[0]);
+							detailsContext.Environment->SetEnvironmentMapHandle(assetHandle);
+
+							Application::Get().SubmitToMainThread([&aDetailLayoutBuilder]()
+								{
+									aDetailLayoutBuilder.GetDetailsView()->Rebuild<EnvironmentDetailsContext>();
+								});
+						})
+					.NameSlot().Label(aPropertyName)
+					.ValueSlot().AssetThumbnail().Row()
+					.RevertSlot().Widget([&detailsContext, &aDetailLayoutBuilder, isNone]()
+						{
+							Ref<HorizontalBox> pRevertBox = RLS_NEW HorizontalBox();
+							pRevertBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+
+							if (!isNone)
+							{
+								Button* pButton = pRevertBox->AddWidget(RLS_NEW Button(ICON_FA_ARROW_ROTATE_LEFT));
+								pButton->SetBackgroundColor(Colors::Transparent);
+								pButton->SetBorderColor(Colors::Transparent);
+								pButton->SetHoverColor(Colors::Transparent);
+								pButton->SetActiveColor(Colors::Transparent);
+								pButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f));
+								pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+
+								pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 1.0f)); });
+								pButton->OnMouseExit([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f)); });
+								pButton->OnClicked([&detailsContext, &aDetailLayoutBuilder]()
+									{
+										detailsContext.Environment->RemoveEnvironmentMap();
+
+										Application::Get().SubmitToMainThread([&aDetailLayoutBuilder]()
+											{
+												aDetailLayoutBuilder.GetDetailsView()->Rebuild<EnvironmentDetailsContext>();
+											});
+									});
+							}
+
+							return pRevertBox;
+						});
+			};
+
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(ICON_FA_CLOUD_SUN "  Environment");
-		AssetData* pAssetData = ModuleManager::LoadModuleChecked<AssetRegistryModule>().FindAsset(detailsContext.Environment->GetEnvironmentMapHandle().Uuid);
 
 		//Source Type:
 		{
@@ -47,15 +108,7 @@ namespace Relentless
 
 		//Environment Map:
 		{
-			categoryBuilder.AddAssetProperty("Environment Map", *pAssetData)
-				.AcceptableAssetTypes({ TextureCube::StaticType() })
-				.OnAssetsDropped([&detailsContext](Span<const AssetData> someAssetDatas)
-					{
-						const AssetHandle assetHandle = AssetManager::LoadAsset(someAssetDatas[0]);
-						detailsContext.Environment->SetEnvironmentMapHandle(assetHandle);
-					})
-				.NameSlot().Label("Environment Map")
-				.ValueSlot().AssetThumbnail();
+			AddEnvironmentMap("Environment Map", categoryBuilder);
 		}
 
 		//Color:

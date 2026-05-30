@@ -65,5 +65,5 @@ float4 ps_main(VS_OUT psIn) : SV_Target
     color = lerp(color, colorB, skyBoxData.BlendFactor);
     #endif
     
-    return color * /*float4(skyBoxData.BackgroundColor, 1.0f) * */skyBoxData.Intensity;
+    return color * skyBoxData.Intensity;
 }

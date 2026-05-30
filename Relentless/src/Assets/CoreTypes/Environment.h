@@ -30,6 +30,8 @@ namespace Relentless
 
 		NO_DISCARD bool HasValidEnvironmentMap() const noexcept;
 
+		void RemoveEnvironmentMap() noexcept;
+
 		virtual bool SerializeCore(IArchive& aArchive) noexcept override final;
 		void SetEnvironmentMapHandle(const AssetHandle& aHandle) noexcept;
 		void SetIntensity(float aIntensity) noexcept;
