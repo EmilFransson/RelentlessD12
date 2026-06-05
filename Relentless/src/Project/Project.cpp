@@ -71,7 +71,7 @@ namespace Relentless
 		FilepathUtils::CreateDirectoryTree(GetThumbnailCacheDirectory());
 
 		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-		assetRegistryModule.RegisterRoot(GetAssetDirectory(), EAssetSourceType::Project);
+		assetRegistryModule.RegisterRoot("Game", "Game", GetAssetDirectory(), EAssetSourceType::Project);
 		assetRegistryModule.ScanForAssets(GetAssetDirectory());
 
 		return s_ActiveProject;
@@ -105,7 +105,7 @@ namespace Relentless
 		SaveActive(baseDir);
 
 		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-		assetRegistryModule.RegisterRoot(GetAssetDirectory(), EAssetSourceType::Project);
+		assetRegistryModule.RegisterRoot("Game", "Game", GetAssetDirectory(), EAssetSourceType::Project);
 		assetRegistryModule.ScanForAssets(GetAssetDirectory());
 
 		return s_ActiveProject;

@@ -7,7 +7,7 @@ namespace Relentless
 		if (!aApplication)
 			return -1;
 
-		RLS_VERIFY(!FAILED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)));
+		RLS_VERIFY(!FAILED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE)));
 
 		aApplication->Run();
 		aApplication.reset();

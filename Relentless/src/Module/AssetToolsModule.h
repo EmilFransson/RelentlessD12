@@ -27,6 +27,7 @@ namespace Relentless
 	{
 		AssetHandle Handle = AssetHandle::INVALID;
 		Path FilePath;
+		Path DestinationPath;
 	};
 
 	using AssetImportTasksCompletedCallback = Callback<void(const std::vector<AssetImportResult>& someAssetImportResults)>;
@@ -43,8 +44,8 @@ namespace Relentless
 	{
 	public:
 		template<typename AssetType>
-		NO_DISCARD AssetHandle CreateAsset(const String& aName, const Path& aPackagePath, const Ref<IFactory>& aFactory = nullptr, bool aShouldSave = true) noexcept;
-		NO_DISCARD AssetHandle CreateAsset(TypeIndex aType, const String& aName, const Path& aPackagePath, const Ref<IFactory>& aFactory = nullptr, bool aShouldSave = true) noexcept;
+		AssetHandle CreateAsset(const String& aName, const Path& aPackagePath, const Ref<IFactory>& aFactory = nullptr, bool aShouldSave = true) noexcept;
+		AssetHandle CreateAsset(TypeIndex aType, const String& aName, const Path& aPackagePath, const Ref<IFactory>& aFactory = nullptr, bool aShouldSave = true) noexcept;
 
 		NO_DISCARD String GenerateUniqueAssetName(const String& aVirtualFolder, const String& aBaseName) const;
 

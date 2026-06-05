@@ -33,6 +33,7 @@ namespace Relentless
 		NO_DISCARD virtual bool OnMouseBeginDragEvent(MouseBeginDragEvent&) noexcept { return false; };
 		NO_DISCARD virtual bool OnMouseDragEvent(MouseDragEvent&) noexcept { return false; };
 		NO_DISCARD virtual bool OnMouseEndDragEvent(MouseEndDragEvent&) noexcept { return false; };
+		NO_DISCARD virtual bool OnRawMouseMoveEvent(RawMouseMoveEvent&) noexcept { return false; };
 	};
 
 	class PanelBase : public IPanel

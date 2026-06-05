@@ -38,7 +38,11 @@ namespace Relentless
 		if (!pAssetdata)
 			return false;
 
-		Path targetLoadPath = FilepathUtils::Combine(pAssetdata->PackagePath, pAssetdata->Name);
+		const String absoluteFolder = assetRegistry.VirtualPathToAbsolutePath(pAssetdata->PackagePath.string());
+		if (absoluteFolder.empty())
+			return false;
+
+		Path targetLoadPath = FilepathUtils::Combine(absoluteFolder, pAssetdata->Name);
 		FilepathUtils::SetExtension(targetLoadPath, ".rasset");
 
 		LoadArchive coreArchive(targetLoadPath, EArchiveFormat::Binary);

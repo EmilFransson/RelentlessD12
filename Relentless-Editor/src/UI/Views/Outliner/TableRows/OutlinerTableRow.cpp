@@ -108,7 +108,7 @@ namespace Relentless
 		}
 
 		//TODO: MOVE into parent -> ONCE, not EVERY ROW!
-		if (m_Hovered && !m_ColumnWidgets[0]->IsHovered() && !(static_cast<HorizontalBox*>(m_ColumnWidgets[1].Get())->GetWidget<HorizontalBox>(0)->IsHovered()) && aColumn == 2)
+		if (m_IsHovered && !m_ColumnWidgets[0]->IsHovered() && !(static_cast<HorizontalBox*>(m_ColumnWidgets[1].Get())->GetWidget<HorizontalBox>(0)->IsHovered()) && aColumn == 2)
 		{
 			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
 				m_OnDoubleClickedCallback.ExecuteIfSet(Mouse::CreatePointerInfo(), this);
@@ -125,7 +125,7 @@ namespace Relentless
 
 	const Color& OutlinerTableRow::GetBackgroundColor() const noexcept
 	{
-		if (!m_Selected && m_Hovered)
+		if (!m_Selected && m_IsHovered)
 			return Colors::RowHoverColorDefault;
 		else if (m_Selected && m_pOwningTreeView->IsFocused())
 			return Colors::RowFocusedSelectionColorDefault;

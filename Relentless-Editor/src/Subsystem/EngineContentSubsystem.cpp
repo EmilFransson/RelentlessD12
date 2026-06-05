@@ -65,15 +65,15 @@ namespace Relentless
 
 	bool EngineContentSubsystem::OnLoad(MAYBE_UNUSED ISystemManager* aSystemManager) noexcept
 	{
-		RequestAsyncLoad("Engine/Models/Cube", m_CubeMesh);
-		RequestAsyncLoad("Engine/Models/Sphere", m_SphereMesh);
-		RequestAsyncLoad("Engine/Textures/quattro_canti_2k", m_MaterialPreviewTextureCube);
-		RequestAsyncLoad("Engine/Textures/citrus_orchard_road_puresky_2k", m_CitrusOrchardRoadPureSkyTextureCube);
-		RequestAsyncLoad("Engine/Textures/overcast_soil_puresky_2k", m_OvercastSoilPureSkyTextureCube);
-		RequestAsyncLoad("Engine/Textures/none_thumbnail", m_NoneThumbnail);
-		RequestAsyncLoad("Engine/Materials/M_DefaultWhite", m_DefaultWhiteMaterial);
-		RequestAsyncLoad("Engine/Environments/CitrusOrchardRoadEnvironment", m_CitrusOrchardRoadPureSkyEnvironment);
-		RequestAsyncLoad("Engine/Environments/OvercastSoilEnvironment", m_OvercastSoilPureSkyEnvironment);
+		RequestAsyncLoad("/Engine/Models/Cube", m_CubeMesh);
+		RequestAsyncLoad("/Engine/Models/Sphere", m_SphereMesh);
+		RequestAsyncLoad("/Engine/Textures/quattro_canti_2k", m_MaterialPreviewTextureCube);
+		RequestAsyncLoad("/Engine/Textures/citrus_orchard_road_puresky_2k", m_CitrusOrchardRoadPureSkyTextureCube);
+		RequestAsyncLoad("/Engine/Textures/overcast_soil_puresky_2k", m_OvercastSoilPureSkyTextureCube);
+		RequestAsyncLoad("/Engine/Textures/none_thumbnail", m_NoneThumbnail);
+		RequestAsyncLoad("/Engine/Materials/M_DefaultWhite", m_DefaultWhiteMaterial);
+		RequestAsyncLoad("/Engine/Environments/CitrusOrchardRoadEnvironment", m_CitrusOrchardRoadPureSkyEnvironment);
+		RequestAsyncLoad("/Engine/Environments/OvercastSoilEnvironment", m_OvercastSoilPureSkyEnvironment);
 
 		return true;
 	}

@@ -12,6 +12,11 @@ namespace Relentless
 		return "Mesh";
 	}
 
+	String MeshAssetDefinition::GetAssetIcon() const noexcept
+	{
+		return ICON_FA_CUBE;
+	}
+
 	bool MeshAssetDefinition::SupportsAsset(IAsset* aAsset) const noexcept
 	{
 		return aAsset->GetStaticType() == Mesh::StaticType();

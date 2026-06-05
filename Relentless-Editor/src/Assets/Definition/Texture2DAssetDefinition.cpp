@@ -12,6 +12,11 @@ namespace Relentless
 		return "Texture2D";
 	}
 
+	String Texture2DAssetDefinition::GetAssetIcon() const noexcept
+	{
+		return ICON_FA_IMAGE;
+	}
+
 	TypeIndex Texture2DAssetDefinition::GetSupportedAssetType() const noexcept
 	{
 		return Texture2D::StaticType();

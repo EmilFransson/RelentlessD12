@@ -1,7 +1,6 @@
 #pragma once
 #include "Assets/IAsset.h"
 #include "AssetMeta.h"
-#include "AssetRegistry.h"
 
 #include "Callback/Callback.h"
 

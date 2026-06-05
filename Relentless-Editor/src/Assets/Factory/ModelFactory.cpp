@@ -334,10 +334,12 @@ namespace Relentless
 		}
 
 		auto& metaData = image.GetMetadata();
-		const std::string fileName = FilepathUtils::ExtractFilename(absolutePath);
+		String name = FilepathUtils::ExtractFilename(absolutePath);
+		if (name.empty())
+			name = "Texture";
 
 		Ref<Texture2D> pNewTexture = new Texture2D(TextureDesc::Create2D(metaData.width, metaData.height, D3D::ConvertFormat(metaData.format), metaData.mipLevels, TextureFlag::ShaderResource), std::move(image));
-		pNewTexture->SetName(fileName);
+		pNewTexture->SetName(name);
 		
 		pOutTexture = pNewTexture;
 		outAssetHandle = AssetManager::RegisterAsset<Texture2D>(pNewTexture);
@@ -360,7 +362,7 @@ namespace Relentless
 
 					Ref<Mesh> pMesh = nullptr;
 					AssetHandle assetHandle = NULL_HANDLE;
-					if (ImportMesh(importInfo.pMesh, pMesh, assetHandle))
+					if (ImportMesh(importInfo.pMesh, pMesh, assetHandle, importInfo.UniqueName))
 					{
 						pMesh->SetDefaultMaterial(m_UniqueMaterials[importInfo.pMesh->mMaterialIndex].HandleToImportedMaterial);
 
@@ -380,7 +382,7 @@ namespace Relentless
 			meshFuture.wait();
 	}
 
-	bool ModelFactory::ImportMesh(const aiMesh* pMesh, Ref<Mesh>& pOutMesh, AssetHandle& outHandle) noexcept
+	bool ModelFactory::ImportMesh(const aiMesh* pMesh, Ref<Mesh>& pOutMesh, AssetHandle& outHandle, const std::string& aUniqueName) noexcept
 	{
 		if (!pMesh->HasPositions() || !pMesh->HasFaces() || !pMesh->HasNormals() || !pMesh->HasTangentsAndBitangents() || !pMesh->HasTextureCoords(0u))
 		{
@@ -451,12 +453,10 @@ namespace Relentless
 		//Optimization 4: optimize vertex buffer accesses:
 		meshopt_optimizeVertexFetch(optimizedVertices.data(), optimizedIndices.data(), nrOfIndices, optimizedVertices.data(), optimizedVertexCount, sizeof(SimpleVertex));
 
-		const std::string sanitizedName = FilepathUtils::SanitizeFileName(pMesh->mName.C_Str());
-
 		Ref<Buffer> pVertexBuffer = m_pDevice->CreateBuffer(BufferDesc::CreateVertexBuffer((uint32_t)optimizedVertices.size(), sizeof(SimpleVertex), BufferFlag::ShaderResource), "Vertex Buffer", optimizedVertices.data());
 		Ref<Buffer> pIndexBuffer = m_pDevice->CreateBuffer(BufferDesc::CreateIndexBuffer((uint32_t)optimizedIndices.size(), ResourceFormat::R32_UINT, BufferFlag::ShaderResource), "Index Buffer", optimizedIndices.data());
 
-		Ref<Mesh> pNewMesh = new Mesh(pVertexBuffer, pIndexBuffer, sanitizedName);
+		Ref<Mesh> pNewMesh = new Mesh(pVertexBuffer, pIndexBuffer, aUniqueName);
 
 		AssetHandle handle = AssetManager::RegisterAsset<Mesh>(pNewMesh);
 
@@ -498,6 +498,21 @@ namespace Relentless
 		return true;
 	}
 
+	String ModelFactory::MakeUniqueName(String aBaseName) noexcept
+	{
+		if (aBaseName.empty())
+			aBaseName = "Asset";
+
+		String candidate = aBaseName;
+		uint32 suffix = 1u;
+		while (m_UsedNames.contains(candidate))
+			candidate = aBaseName + "_" + std::to_string(suffix++);
+
+		m_UsedNames.insert(candidate);
+		
+		return candidate;
+	}
+
 	bool ModelFactory::ParseModel() noexcept
 	{
 		if (m_ImportMaterialsAndTextures)
@@ -523,9 +538,11 @@ namespace Relentless
 		{
 			MaterialImportInfo& materialInfo = m_UniqueMaterials.emplace_back();
 			materialInfo.pMaterial = m_pScene->mMaterials[i];
-			materialInfo.Name = FilepathUtils::SanitizeFileName(std::string(materialInfo.pMaterial->GetName().C_Str()));
-			if (materialInfo.Name.empty())
-				materialInfo.Name = "Unnamed";
+
+			String sanitized = FilepathUtils::SanitizeFileName(std::string(materialInfo.pMaterial->GetName().C_Str()));
+			if (sanitized.empty())
+				sanitized = "Material";
+			materialInfo.Name = MakeUniqueName(sanitized);
 
 			auto&& TryGetTexture = [this, &materialInfo, &UniqueTexturePaths, &workingDirectory](const aiMaterial* pMaterial, aiTextureType textureType, bool isSRGB) -> bool
 				{
@@ -590,6 +607,12 @@ namespace Relentless
 			{
 				MeshImportInfo& importInfo = m_UniqueMeshes.emplace_back();
 				importInfo.pMesh = m_pScene->mMeshes[i];
+
+				String sanitized = FilepathUtils::SanitizeFileName(m_pScene->mMeshes[i]->mName.C_Str());
+				if (sanitized.empty())
+					sanitized = "Mesh";
+
+				importInfo.UniqueName = MakeUniqueName(sanitized);
 			}
 		}
 	}

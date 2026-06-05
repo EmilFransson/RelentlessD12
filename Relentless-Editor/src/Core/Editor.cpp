@@ -115,9 +115,11 @@ namespace Relentless
 	void Editor::OnCreate() noexcept
 	{
 		GetSubsystem<EditorViewportSubsystem>();
-		LoadModules();
+		LoadModules(ELoadPhase::Default);
 		Project::LoadOrCreateDefault();
+		LoadModules(ELoadPhase::PostProjectLoad);
 		CreateSubsystems();
+		LoadModules(ELoadPhase::PostCreateSubsystems);
 		CreateStartScene();
 	}
 
@@ -326,28 +328,45 @@ namespace Relentless
 		ImGui::EndMainMenuBar();
 	}
 
-	void Editor::LoadModules() noexcept
+	void Editor::LoadModules(ELoadPhase aLoadPhase) noexcept
 	{
 		//Note: Load order should be preserved:
-		AssetToolsModule& assetTools = ModuleManager::LoadModuleChecked<AssetToolsModule>();
-		assetTools.RegisterFactory<Material>(RLS_NEW MaterialFactory());
-		assetTools.RegisterFactory<Mesh>(RLS_NEW MeshFactory());
-		assetTools.RegisterFactory<Texture2D>(RLS_NEW TextureFactory());
-		assetTools.RegisterFactory<TextureCube>(RLS_NEW TextureFactory());
-		assetTools.RegisterFactory<Environment>(RLS_NEW EnvironmentFactory());
-		assetTools.RegisterCompositeFactory<ModelFactory>(RLS_NEW ModelFactory());
+		switch (aLoadPhase)
+		{
+		case ELoadPhase::Default:
+		{
+			AssetToolsModule& assetTools = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+			assetTools.RegisterFactory<Material>(RLS_NEW MaterialFactory());
+			assetTools.RegisterFactory<Mesh>(RLS_NEW MeshFactory());
+			assetTools.RegisterFactory<Texture2D>(RLS_NEW TextureFactory());
+			assetTools.RegisterFactory<TextureCube>(RLS_NEW TextureFactory());
+			assetTools.RegisterFactory<Environment>(RLS_NEW EnvironmentFactory());
+			assetTools.RegisterCompositeFactory<ModelFactory>(RLS_NEW ModelFactory());
 
-		ModuleManager::LoadModuleChecked<DetailsModule>();
-		ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EditorViewportPanel>();
-		ModuleManager::LoadModuleChecked<ContentBrowserModule>();
-		
-		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-		assetRegistryModule.RegisterRoot(SystemPaths::GetEditorAssetsDirectory(), EAssetSourceType::Engine);
-		assetRegistryModule.ScanForAssets(SystemPaths::GetEditorAssetsDirectory());
-		
-		while (assetRegistryModule.IsLoadingAssets()) {}
+			ModuleManager::LoadModuleChecked<DetailsModule>();
+			ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EditorViewportPanel>();
 
-		ModuleManager::LoadModuleChecked<RenderModule>();
+			AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+			assetRegistryModule.RegisterRoot("Engine", "Engine", SystemPaths::GetEditorAssetsDirectory(), EAssetSourceType::Engine);
+			assetRegistryModule.ScanForAssets(SystemPaths::GetEditorAssetsDirectory());
+
+			Application& app = Application::Get();
+			while (assetRegistryModule.IsLoadingAssets()) 
+				app.FlushMainThreadQueue();
+
+			ModuleManager::LoadModuleChecked<RenderModule>();
+			break;
+		}
+		case ELoadPhase::PostProjectLoad:
+			break;
+		case ELoadPhase::PostCreateSubsystems:
+		{
+			ModuleManager::LoadModuleChecked<ContentBrowserModule>();
+			break;
+		}
+		default:
+			RLS_ASSERT(false, "[Editor::LoadModules]: Unknown load phase encountered.");
+		}
 	}
 
 	void Editor::OnViewportEntityDuplicationRequest() noexcept

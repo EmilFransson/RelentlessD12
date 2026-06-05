@@ -2,8 +2,10 @@
 
 #include "ImGui/ImGuiFonts.h"
 
+#include "UI/Widgets/CheckBox.h"
 #include "UI/Widgets/HorizontalBox.h"
 #include "UI/Widgets/Label.h"
+#include "UI/Widgets/RadioButton.h"
 #include "UI/Widgets/SectionRow.h"
 #include "UI/Widgets/Separator.h"
 #include "UI/Widgets/SubMenuRow.h"
@@ -27,6 +29,15 @@ namespace Relentless
 		return *this;
 	}
 
+	CheckBoxItemBuilder ContextMenuBuilder::AddCheckBox(StringView aName) noexcept
+	{
+		ContextMenuItem& item = m_Items.emplace_back();
+		item.Type = ContextMenuItem::EType::Checkbox;
+		item.Name = aName;
+
+		return CheckBoxItemBuilder(*this, item);
+	}
+
 	TextItemBuilder ContextMenuBuilder::AddItem(StringView aName) noexcept
 	{
 		ContextMenuItem& item = m_Items.emplace_back();
@@ -42,6 +53,15 @@ namespace Relentless
 		item.OnClickedCallback = std::move(aCallback);
 
 		return TextItemBuilder(*this, item);
+	}
+
+	RadioButtonItemBuilder ContextMenuBuilder::AddRadioButton(StringView aName) noexcept
+	{
+		ContextMenuItem& item = m_Items.emplace_back();
+		item.Type = ContextMenuItem::EType::RadioButton;
+		item.Name = aName;
+
+		return RadioButtonItemBuilder(*this, item);
 	}
 
 	SectionItemBuilder ContextMenuBuilder::AddSection(StringView aText) noexcept
@@ -94,6 +114,88 @@ namespace Relentless
 		pSubMenu->AddRows(BuildRows());
 		
 		return pSubMenu;
+	}
+
+	Ref<IBaseWidget> ContextMenuBuilder::BuildCheckBoxRow(const ContextMenuItem& aItem) noexcept
+	{
+		Ref<HorizontalBox> pMainRow = RLS_NEW HorizontalBox();
+		pMainRow->SetSpacing(10.0f);
+
+		if (aItem.Enabled)
+		{
+			pMainRow->OnMouseEnter([](HorizontalBox* aRow) { aRow->SetBackgroundColor(Colors::RowFocusedSelectionColorDefault); });
+			pMainRow->OnMouseExit([](HorizontalBox* aRow) { aRow->SetBackgroundColor(Colors::Transparent); });
+		}
+
+		pMainRow->SetMargin(IntRect::Uniform(1));
+		pMainRow->SetPadding(FloatRect::WithLeft(5.0f));
+		pMainRow->SetHoverFlags(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenOverlapped);
+
+		if (!aItem.Enabled && !aItem.DisabledTooltip.empty())
+			pMainRow->SetTooltipText(aItem.DisabledTooltip);
+		else if (!aItem.Tooltip.empty())
+			pMainRow->SetTooltipText(aItem.Tooltip);
+
+		HorizontalBox* pCheckBoxBox = pMainRow->AddWidget(RLS_NEW HorizontalBox());
+		
+		CheckBox* pCheckBox = pCheckBoxBox->AddWidget(RLS_NEW CheckBox());
+		pCheckBox->SetIsEnabled(aItem.Enabled);
+		pCheckBox->SetFont(aItem.Font);
+
+		if (aItem.ValueCallbackBool.IsSet())
+			pCheckBox->Value(std::move(aItem.ValueCallbackBool));
+		if (aItem.OnValueChangedCallbackBool.IsSet())
+			pCheckBox->OnCheckStateChanged(std::move(aItem.OnValueChangedCallbackBool));
+
+		HorizontalBox* pRightBox = pMainRow->AddWidget(RLS_NEW HorizontalBox());
+
+		if (!aItem.Icon.empty())
+		{
+			HorizontalBox* pIconBox = pRightBox->AddWidget(RLS_NEW HorizontalBox());
+			pIconBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);
+			pIconBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
+			pIconBox->SetSize(Vector2(24.0f, 0.0f));
+
+			pIconBox->AddWidget(RLS_NEW Label(aItem.Icon, aItem.Font))
+				->SetIsEnabled(aItem.Enabled);
+		}
+
+		HorizontalBox* pTextBox = pRightBox->AddWidget(RLS_NEW HorizontalBox());
+		pTextBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pTextBox->AddWidget(RLS_NEW Label(aItem.Name, aItem.Font))
+			->SetIsEnabled(aItem.Enabled);
+
+		return pMainRow;
+	}
+
+	Ref<IBaseWidget> ContextMenuBuilder::BuildRadioButtonRow(const ContextMenuItem& aItem) noexcept
+	{
+		Ref<HorizontalBox> pMainRow = RLS_NEW HorizontalBox();
+
+		if (aItem.Enabled)
+		{
+			pMainRow->OnMouseEnter([](HorizontalBox* aRow) { aRow->SetBackgroundColor(Colors::RowFocusedSelectionColorDefault); });
+			pMainRow->OnMouseExit([](HorizontalBox* aRow) { aRow->SetBackgroundColor(Colors::Transparent); });
+		}
+
+		pMainRow->SetMargin(IntRect::Uniform(1));
+		pMainRow->SetPadding(FloatRect::WithLeft(5.0f));
+		pMainRow->SetHoverFlags(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenOverlapped);
+
+		if (!aItem.Enabled && !aItem.DisabledTooltip.empty())
+			pMainRow->SetTooltipText(aItem.DisabledTooltip);
+		else if (!aItem.Tooltip.empty())
+			pMainRow->SetTooltipText(aItem.Tooltip);
+
+		Ref<RadioButton> pRadioButton = pMainRow->AddWidget(RLS_NEW RadioButton(aItem.Name));
+		pRadioButton->SetBorderColor(Colors::Transparent);
+
+		if (aItem.ValueCallbackBool.IsSet())
+			pRadioButton->Value(std::move(aItem.ValueCallbackBool));
+		if (aItem.OnValueChangedCallbackBool.IsSet())
+			pRadioButton->OnValueChanged(std::move(aItem.OnValueChangedCallbackBool));
+
+		return pMainRow;
 	}
 
 	Ref<IBaseWidget> ContextMenuBuilder::BuildSectionRow(const ContextMenuItem& aItem) noexcept
@@ -195,15 +297,49 @@ namespace Relentless
 		 {
 			 switch (item.Type)
 			 {
-			 case ContextMenuItem::EType::TextItem: rows.push_back(BuildTextRow(item)); break;
-			 case ContextMenuItem::EType::Submenu:  rows.push_back(BuildSubMenuRow(item)); break;
-			 case ContextMenuItem::EType::Separator: rows.push_back(BuildSeparatorRow(item)); break;
+			 case ContextMenuItem::EType::Checkbox: rows.push_back(BuildCheckBoxRow(item)); break;
+			 case ContextMenuItem::EType::RadioButton: rows.push_back(BuildRadioButtonRow(item)); break;
 			 case ContextMenuItem::EType::Section: rows.push_back(BuildSectionRow(item)); break;
+			 case ContextMenuItem::EType::Separator: rows.push_back(BuildSeparatorRow(item)); break;
+			 case ContextMenuItem::EType::Submenu:  rows.push_back(BuildSubMenuRow(item)); break;
+			 case ContextMenuItem::EType::TextItem: rows.push_back(BuildTextRow(item)); break;
 			 default: RLS_ASSERT(false, "[ContextMenuBuilder::BuildRows]: Unknown context menu type encountered."); break;
 			 }
 		 }
 
 		 return rows;
+	}
+
+	CheckBoxItemBuilder::CheckBoxItemBuilder(ContextMenuBuilder& aParent, ContextMenuItem& aItem) noexcept
+		: ContextMenuItemBuilder<CheckBoxItemBuilder>(aParent, aItem)
+	{}
+
+	CheckBoxItemBuilder& CheckBoxItemBuilder::OnCheckStateChanged(Callback<void(bool)>&& aCallback) noexcept
+	{
+		m_Item.OnValueChangedCallbackBool = std::move(aCallback);
+		return *this;
+	}
+
+	CheckBoxItemBuilder& CheckBoxItemBuilder::Value(Callback<bool()>&& aCallback) noexcept
+	{
+		m_Item.ValueCallbackBool = std::move(aCallback);
+		return *this;
+	}
+
+	RadioButtonItemBuilder::RadioButtonItemBuilder(ContextMenuBuilder& aParent, ContextMenuItem& aItem) noexcept
+		: ContextMenuItemBuilder<RadioButtonItemBuilder>(aParent, aItem)
+	{}
+
+	RadioButtonItemBuilder& RadioButtonItemBuilder::OnValueChanged(Callback<void(bool)>&& aCallback) noexcept
+	{
+		m_Item.OnValueChangedCallbackBool = std::move(aCallback);
+		return *this;
+	}
+
+	RadioButtonItemBuilder& RadioButtonItemBuilder::Value(Callback<bool()>&& aCallback) noexcept
+	{
+		m_Item.ValueCallbackBool = std::move(aCallback);
+		return *this;
 	}
 
 	SectionItemBuilder::SectionItemBuilder(ContextMenuBuilder& aParent, ContextMenuItem& aItem) noexcept
@@ -254,4 +390,5 @@ namespace Relentless
 		m_Item.OnOpenSubmenuCallback = std::move(aCallback);
 		return *this;
 	}
+
 }

@@ -48,6 +48,11 @@ namespace Relentless
 		return "Environment";
 	}
 
+	String EnvironmentAssetDefinition::GetAssetIcon() const noexcept
+	{
+		return ICON_FA_CLOUD_SUN;
+	}
+
 	TypeIndex EnvironmentAssetDefinition::GetSupportedAssetType() const noexcept
 	{
 		return Environment::StaticType();

@@ -45,6 +45,11 @@ namespace Relentless
 		return m_Margin;
 	}
 
+	float IBaseWidget::GetMaxWidth() const noexcept
+	{
+		return m_MaxWidth;
+	}
+
 	EHorizontalAlignmentPolicy IBaseWidget::GetHorizontalAlignmentPolicy() const noexcept
 	{
 		return m_HorizontalAlignmentPolicy;
@@ -73,6 +78,11 @@ namespace Relentless
 	bool IBaseWidget::HasAssignedSize() const noexcept
 	{
 		return m_AssignedSize != Vector2::Zero;
+	}
+
+	bool IBaseWidget::HasMaxWidth() const noexcept
+	{
+		return m_MaxWidth > 0.0f;
 	}
 
 	bool IBaseWidget::IsEnabled() const noexcept
@@ -137,13 +147,15 @@ namespace Relentless
 		return this;
 	}
 
-	void IBaseWidget::SetIsEnabled(bool aIsEnabledState) noexcept
+	IBaseWidget* IBaseWidget::SetIsEnabled(bool aIsEnabledState) noexcept
 	{
-		if (m_IsEnabled == aIsEnabledState)
-			return;
-
-		m_IsEnabled = aIsEnabledState;
-		OnEnabledStateChanged(m_IsEnabled);
+		if (m_IsEnabled != aIsEnabledState)
+		{
+			m_IsEnabled = aIsEnabledState;
+			OnEnabledStateChanged(m_IsEnabled);
+		}
+		
+		return this;
 	}
 
 	void IBaseWidget::SetIsVisible(bool aVisibleState) noexcept
@@ -158,6 +170,12 @@ namespace Relentless
 	void IBaseWidget::SetMargin(const FloatRect& aMargin) noexcept
 	{
 		m_Margin = aMargin;
+	}
+
+	IBaseWidget* IBaseWidget::SetMaxWidth(float aMaxWidth) noexcept
+	{
+		m_MaxWidth = aMaxWidth;
+		return this;
 	}
 
 	IBaseWidget* IBaseWidget::SetPadding(const FloatRect& aPadding) noexcept

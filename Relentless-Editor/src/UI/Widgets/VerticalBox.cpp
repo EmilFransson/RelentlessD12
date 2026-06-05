@@ -87,6 +87,9 @@ namespace Relentless
 		ScopedStyleVar styleVarScope;
 		styleVarScope.Push(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
+		ScopedStyleColor styleColorScope;
+		styleColorScope.Push(ImGuiCol_ChildBg, ImVec4(m_BackgroundColor.R(), m_BackgroundColor.G(), m_BackgroundColor.B(), m_BackgroundColor.A()));
+
 		if (!ImGui::BeginChild(ImGui::GetID(this), ImVec2(boxSize.x, boxSize.y), childFlags, windowFlags))
 		{
 			ImGui::EndChild();
@@ -207,7 +210,7 @@ namespace Relentless
 					assignedHeight = Math::Max(0.0f, assignedHeight - scrollBarSize);
 			}
 
-			if (assignedWidth <= 3.0f || assignedHeight < 1.0f)
+			if (assignedWidth < 1.0f || assignedHeight < 1.0f)
 				continue;
 
 			ImGui::SetCursorPos(layoutCursor);

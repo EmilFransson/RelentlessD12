@@ -44,6 +44,21 @@ namespace Relentless
 			return std::stoi(digits);
 		}
 
+		String Join(std::vector<String>& someStrings, const String& aDelimiter) noexcept
+		{
+			if (someStrings.empty())
+				return {};
+			
+			String result = someStrings[0];
+			for (size_t i = 1u; i < someStrings.size(); ++i)
+			{
+				result += aDelimiter;
+				result += someStrings[i];
+			}
+
+			return result;
+		}
+
 		void ReplaceCharacters(String& aInputString, char aToReplace, char aToReplaceWith) noexcept
 		{
 			std::replace(aInputString.begin(), aInputString.end(), aToReplace, aToReplaceWith);

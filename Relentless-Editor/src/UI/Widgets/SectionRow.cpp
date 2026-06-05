@@ -30,7 +30,7 @@ namespace Relentless
 		if (pFont)
 			ImGui::PopFont();
 
-		return Vector2(textSize.x + padding.x, frameHeight + m_SeparatorThickness);
+		return Vector2(textSize.x + padding.x + (textSize.x * 0.5f), frameHeight + m_SeparatorThickness);
 	}
 
 	SectionRow* SectionRow::SetSeparatorColor(const Color& aColor) noexcept

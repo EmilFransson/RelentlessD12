@@ -26,12 +26,31 @@ namespace Relentless
 		}
 	}
 
-	AssetRegistryModule::AssetRegistryModule() noexcept
-	{
-	}
+	AssetRegistryModule::AssetRegistryModule() noexcept = default;
+	AssetRegistryModule::~AssetRegistryModule() noexcept = default;
 
-	AssetRegistryModule::~AssetRegistryModule() noexcept
+	String AssetRegistryModule::AbsolutePathToVirtualPath(const Path& aAbsolutePath) const
 	{
+		const AssetRoot* pRoot = FindRootFor(aAbsolutePath);
+		if (!pRoot)
+		{
+			RLS_CORE_WARN("[AssetRegistryModule::AbsolutePathToVirtualPath]: Path doesn't belong to any registered root: '{}'", aAbsolutePath.string());
+			return String();
+		}
+
+		const Path absFull = Canonicalize(aAbsolutePath);
+		const Path relative = absFull.lexically_relative(pRoot->BaseDirectory);
+
+		const String prefix = MakeRootVirtualPath(*pRoot);
+
+		if (relative == Path("."))
+			return prefix;
+
+		String folder = relative.string();
+		StringUtils::ReplaceCharacters(folder, '\\', '/');
+		folder += "/";
+
+		return prefix + folder;
 	}
 
 	void AssetRegistryModule::AssetCreated(AssetData aAssetData) noexcept
@@ -177,6 +196,33 @@ namespace Relentless
 		}
 	}
 
+	void AssetRegistryModule::ForEachChildFolder(const String& aVirtualPath, Callback<bool(const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType)>&& aCallback) noexcept
+	{
+		std::shared_lock<std::shared_mutex> lock(m_Mutex);
+		if (!m_PathToFolders.contains(aVirtualPath))
+			return;
+
+		const AssetRoot* pRoot = FindRootByMountName(StringUtils::Split(aVirtualPath, '/').front());
+		if (!pRoot)
+			return;
+
+		for (const auto& folder : m_PathToFolders.at(aVirtualPath))
+		{
+			if (!aCallback(aVirtualPath + folder + "/", folder, pRoot->SourceType))
+				return;
+		}
+	}
+
+	void AssetRegistryModule::ForEachRoot(Callback<bool(const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType)>&& aCallback) noexcept
+	{
+		std::shared_lock<std::shared_mutex> lock(m_Mutex);
+		for (const auto& aRoot : m_Roots)
+		{
+			if (!aCallback(MakeRootVirtualPath(aRoot), aRoot.DisplayName, aRoot.SourceType))
+				break;
+		}
+	}
+
 	std::vector<const AssetData*> AssetRegistryModule::GetAllAssetsOfType(const TypeIndex& aTypeIndex) const noexcept
 	{
 		std::vector<const AssetData*> assetDatas;
@@ -193,6 +239,25 @@ namespace Relentless
 		return assetDatas;
 	}
 
+	std::vector<AssetData> AssetRegistryModule::GetAssetsUnderPaths(const std::vector<String>& somePaths) const noexcept
+	{
+		std::vector<AssetData> assetsToReturn;
+		
+		std::shared_lock<std::shared_mutex> lock(m_Mutex);
+
+		for (const String& path : somePaths)
+		{
+			if (!m_PathToAssetIndexes.contains(path))
+				continue;
+
+			const AssetBucket& bucket = m_PathToAssetIndexes.at(path);
+			for (AssetIndex index : bucket.Dense())
+				assetsToReturn.push_back(m_AssetDatas[index]);
+		}
+
+		return assetsToReturn;
+	}
+
 	bool AssetRegistryModule::IsLoadingAssets() const noexcept
 	{
 		return m_IsLoadingAssets;
@@ -203,10 +268,10 @@ namespace Relentless
 		namespace fs = std::filesystem;
 
 		ThreadPool& threadPool = Application::Get().GetThreadPool();
+		m_IsLoadingAssets = true;
 
 		threadPool.Submit([this, aPath, aRecursive]()
 			{
-				m_IsLoadingAssets = true;
 				if (aRecursive)
 				{
 					for (const auto& entry : fs::recursive_directory_iterator(aPath))
@@ -227,34 +292,44 @@ namespace Relentless
 							ProcessDirectory(entry.path());
 					}
 				}
-				m_IsLoadingAssets = false;
 				
-				Application::Get().SubmitToMainThread([this]() { OnFileScanDone(); });
+				Application::Get().SubmitToMainThread([this]() 
+					{ 
+						m_IsLoadingAssets = false;
+						OnFileScanDone(); 
+					});
 			});
+	}
+
+	String AssetRegistryModule::VirtualPathToAbsolutePath(const String& aVirtualPath) const noexcept
+	{
+		const std::vector<String> pathComponents = StringUtils::Split(aVirtualPath, '/');
+		if (pathComponents.empty())
+			return String();
+
+		const AssetRoot* pRoot = FindRootByMountName(pathComponents.front());
+		if (!pRoot)
+			return String();
+
+		Path pathToReturn = pRoot->BaseDirectory;
+
+		for (size_t i = 1u; i < pathComponents.size(); ++i)
+			pathToReturn /= pathComponents[i];
+
+		return pathToReturn.string();
 	}
 
 	AssetKeys AssetRegistryModule::BuildKeys(const AssetData& aAssetData) const
 	{
-		const AssetRoot* pRoot = FindRootFor(aAssetData.PackagePath);
-		RLS_ASSERT(pRoot, "[AssetRegistryModule::BuildKeys]: Asset path doesn't belong to any registered root.");
+		const String& folderKey = aAssetData.PackagePath.string();
 
-		const Path absFull = Canonicalize(aAssetData.PackagePath);
-		const Path relative = absFull.lexically_relative(pRoot->BaseDirectory);
-
-		String folder;
-		if (relative != Path("."))
-		{
-			folder = relative.string();
-			StringUtils::ReplaceCharacters(folder, '\\', '/');
-			folder += "/";
-		}
-
-		const String prefix = (pRoot->SourceType == EAssetSourceType::Engine) ? "Engine/" : "Game/";
+		RLS_ASSERT(!folderKey.empty() && folderKey.front() == '/',
+			"[BuildKeys]: PackagePath must be a virtual path (e.g. '/Game/Textures/').");
 
 		return AssetKeys
 		{
-			.FolderKey = prefix + folder,
-			.FileKey = prefix + folder + aAssetData.Name + ".rasset",
+			.FolderKey = folderKey,
+			.FileKey = folderKey + aAssetData.Name + ".rasset",
 			.Type = aAssetData.Type,
 			.Uuid = aAssetData.Uuid
 		};
@@ -266,11 +341,24 @@ namespace Relentless
 
 		for (const auto& root : m_Roots)
 		{
-			// Roots are already canonical (see RegisterRoot), no need to re-normalize.
 			const Path rel = normalized.lexically_relative(root.BaseDirectory);
-			if (rel.empty())            continue; // unrelated (e.g., different drive)
-			if (*rel.begin() == "..")   continue; // traversed upward
-			return &root;                          // descends into root, or equals it ("."): both valid
+			if (rel.empty())            
+				continue;
+			if (*rel.begin() == "..")   
+				continue;
+
+			return &root;
+		}
+
+		return nullptr;
+	}
+
+	const AssetRoot* AssetRegistryModule::FindRootByMountName(const String& aMountName) const
+	{
+		for (const auto& root : m_Roots)
+		{
+			if (root.MountName == aMountName)
+				return &root;
 		}
 
 		return nullptr;
@@ -340,6 +428,11 @@ namespace Relentless
 		}
 	}
 
+	String AssetRegistryModule::MakeRootVirtualPath(const AssetRoot& aRoot) const
+	{
+		return "/" + aRoot.MountName + "/";
+	}
+
 	void AssetRegistryModule::ProcessAssetFile(const Path& aPath) noexcept
 	{
 		LoadArchive archive(aPath, EArchiveFormat::Binary);
@@ -369,7 +462,7 @@ namespace Relentless
 		assetData.Name = FilepathUtils::ExtractFilenameWithoutExtension(aPath);
 		assetData.Uuid = content.AssetUUID;
 		assetData.SourcePath = Path(content.SourcePath);
-		assetData.PackagePath = aPath.parent_path();
+		assetData.PackagePath = AbsolutePathToVirtualPath(aPath.parent_path());  //aPath.parent_path();
 		assetData.Type = AssetManager::PersistentTypeToRuntimeType(content.PersistentID);
 		assetData.ModificationDateAndTime = content.ModificationDateAndTime;
 		assetData.Flags = 0;
@@ -398,7 +491,7 @@ namespace Relentless
 		String pathString = relative.string();
 		StringUtils::ReplaceCharacters(pathString, '\\', '/');
 
-		const String prefix = (pRoot->SourceType == EAssetSourceType::Engine) ? "Engine/" : "Game/";
+		const String prefix = MakeRootVirtualPath(*pRoot);
 
 		const std::vector<String> tokens = StringUtils::Split(pathString, '/');
 		if (tokens.empty())
@@ -412,7 +505,12 @@ namespace Relentless
 		m_PathToFolders[parentPath].insert(tokens.back());
 	}
 
-	void AssetRegistryModule::RegisterRoot(const Path& aBaseDirectory, EAssetSourceType aSourceType) noexcept
+	bool AssetRegistryModule::RootExists(const String& aMountName) const noexcept
+	{
+		return std::ranges::any_of(m_Roots, [&aMountName](const AssetRoot& root) { return root.MountName == aMountName; });
+	}
+
+	void AssetRegistryModule::RegisterRoot(const String& aMountName, const String& aDisplayName, const Path& aBaseDirectory, EAssetSourceType aSourceType) noexcept
 	{
 		std::unique_lock<std::shared_mutex> lock(m_Mutex);
 
@@ -420,13 +518,18 @@ namespace Relentless
 
 		for (const auto& root : m_Roots)
 		{
+			if (root.MountName == aMountName)
+			{
+				RLS_CORE_WARN("[AssetRegistryModule::RegisterRoot]: Mount name already registered: '{}'", aMountName);
+				return;
+			}
 			if (root.BaseDirectory == normalized)
 			{
-				RLS_CORE_WARN("[AssetRegistryModule::RegisterRoot]: Already registered: '{}'", normalized.string());
+				RLS_CORE_WARN("[AssetRegistryModule::RegisterRoot]: Directory already mounted (as '{}'): '{}'", root.MountName, normalized.string());
 				return;
 			}
 		}
 
-		m_Roots.push_back(AssetRoot{ .BaseDirectory = normalized, .SourceType = aSourceType });
+		m_Roots.push_back(AssetRoot{ .MountName = aMountName, .DisplayName = aDisplayName, .BaseDirectory = normalized, .SourceType = aSourceType });
 	}
 }

@@ -7,7 +7,9 @@ namespace Relentless
 	class Button : public IStylableWidget<Button>
 	{
 	public:
-		Button(std::string_view aText, const Vector2& aSize = Vector2::Zero) noexcept;
+		Button(StringView aText, const Vector2& aSize = Vector2::Zero) noexcept;
+
+		NO_DISCARD static Ref<Button> CreateTransparent(StringView aText, const Vector2& aSize = Vector2::Zero) noexcept;
 
 		NO_DISCARD const String& GetText() const noexcept;
 

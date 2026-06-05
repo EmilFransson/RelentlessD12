@@ -12,6 +12,11 @@ namespace Relentless
 		return "TextureCube";
 	}
 
+	String TextureCubeAssetDefinition::GetAssetIcon() const noexcept
+	{
+		return ICON_FA_DICE_D6;
+	}
+
 	TypeIndex TextureCubeAssetDefinition::GetSupportedAssetType() const noexcept
 	{
 		return TextureCube::StaticType();

@@ -9,19 +9,19 @@ namespace Relentless
 		return m_FilterText;
 	}
 
-	void TextFilterExpressionEvaluator::SetFilterText(const String& filterText) noexcept
+	void TextFilterExpressionEvaluator::SetFilterText(const String& aFilterText) noexcept
 	{
-		m_FilterText = StringUtils::ToLower(filterText);
+		m_FilterText = StringUtils::ToLower(aFilterText);
 	}
 
-	bool TextFilterExpressionEvaluator::TestTextFilter(std::string_view text, ETextFilterTextComparisonMode comparisonMode) noexcept
+	bool TextFilterExpressionEvaluator::TestTextFilter(StringView aText, ETextFilterTextComparisonMode aComparisonMode) noexcept
 	{
 		if (m_FilterText.empty())
 			return true;
 
-		const String comparator = StringUtils::ToLower(String(text));
+		const String comparator = StringUtils::ToLower(String(aText));
 
-		switch (comparisonMode)
+		switch (aComparisonMode)
 		{
 		case ETextFilterTextComparisonMode::Exact:
 			return comparator == m_FilterText;

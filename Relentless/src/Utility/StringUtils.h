@@ -47,6 +47,8 @@ namespace Relentless
 		NO_DISCARD RLS_API String ExtractTrailingDigits(const String& input) noexcept;
 		NO_DISCARD RLS_API std::optional<int> ExtractTrailingNumber(const String& input) noexcept;
 
+		NO_DISCARD RLS_API String Join(std::vector<String>& someStrings, const String& aDelimiter) noexcept;
+
 		RLS_API void ReplaceCharacters(String& aInputString, char aToReplace, char aToReplaceWith) noexcept;
 
 		NO_DISCARD RLS_API std::vector<String> Split(const String& input, char delimiter) noexcept;

@@ -18,6 +18,11 @@ namespace Relentless
 		return Colors::White;
 	}
 
+	String IAssetDefinition::GetAssetIcon() const noexcept
+	{
+		return ICON_FA_FILE;
+	}
+
 	TypeIndex IAssetDefinition::GetSupportedAssetType() const noexcept
 	{
 		return INVALID_TYPE::StaticType();

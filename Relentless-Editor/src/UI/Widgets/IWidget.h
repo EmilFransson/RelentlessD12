@@ -64,6 +64,8 @@ namespace Relentless
 
 		void ShowTooltipIfApplicable() noexcept;
 
+		virtual bool TryGetHoverRect(ImRect&) const noexcept { return false; }
+
 		Callback<void(DerivedType*)> m_OnMouseEnterCallback;
 		Callback<void(DerivedType*)> m_OnMouseExitCallback;
 	protected:
@@ -252,7 +254,13 @@ namespace Relentless
 	template<class DerivedType>
 	void IWidget<DerivedType>::ResolveHoverState() noexcept
 	{
-		const bool hovers = ImGui::IsItemHovered(GetHoverFlags());
+		bool hovers = false;
+		ImRect rect;
+		if (TryGetHoverRect(rect))
+			hovers = ImGui::IsMouseHoveringRect(rect.Min, rect.Max, false) && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+		else
+			hovers = ImGui::IsItemHovered(GetHoverFlags() | ImGuiHoveredFlags_AllowWhenDisabled);
+
 		if (hovers && !m_IsHovered)
 		{
 			OnMouseEnter(m_Geometry, Mouse::CreatePointerInfo());

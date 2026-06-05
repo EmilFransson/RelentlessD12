@@ -50,8 +50,10 @@ namespace Relentless
 
 		void OnRender() noexcept;
 		void OnUpdate(MAYBE_UNUSED float aDeltaTime) noexcept;
+		void OverrideMouseCursor(ImGuiMouseCursor aCursor) noexcept;
 
 		void RequestClose(PanelBase* aPanel) noexcept;
+		void ResetMouseCursor() noexcept;
 
 		void SetActiveContextMenu(Ref<ContextMenu> aContextMenu) noexcept;
 		void SetActiveDragDropOperation(Ref<DragDropOperationBase> aDragDropOperation) noexcept;
@@ -95,6 +97,8 @@ namespace Relentless
 		Ref<DragDropOperationBase> m_pDragDropOperation = nullptr;
 		bool m_PanelStackDirty = false;
 		bool m_ShouldDestroyContextMenu = false;
+
+		ImGuiMouseCursor m_CursorOverride = ImGuiMouseCursor_None;
 
 		CallbackID m_OnUpdateCallbackID = 0;
 		CallbackID m_OnRenderCallbackID = 0;

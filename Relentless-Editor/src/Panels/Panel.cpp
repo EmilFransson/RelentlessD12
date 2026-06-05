@@ -36,6 +36,7 @@ namespace Relentless
 		case EventType::MouseBeginDragEvent:			return OnMouseBeginDragEvent(static_cast<MouseBeginDragEvent&>(aEvent));
 		case EventType::MouseDragEvent:					return OnMouseDragEvent(static_cast<MouseDragEvent&>(aEvent));
 		case EventType::MouseEndDragEvent:				return OnMouseEndDragEvent(static_cast<MouseEndDragEvent&>(aEvent));
+		case EventType::RawMouseMoveEvent:				return OnRawMouseMoveEvent(static_cast<RawMouseMoveEvent&>(aEvent));
 		default: return false;
 		}
 	}

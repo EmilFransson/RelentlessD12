@@ -10,6 +10,7 @@ namespace Relentless
 		:m_Desc(aTextureDesc),
 		 m_ScratchImage(std::move(aImage))
 	{
+		CreateResource();
 	}
 
 	Texture2D::Texture2D(const UUID& aUUID) noexcept

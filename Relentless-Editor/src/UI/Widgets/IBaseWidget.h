@@ -51,6 +51,7 @@ namespace Relentless
 		NO_DISCARD const WidgetGeometry& GetGeometry() const noexcept;
 		NO_DISCARD int GetHoverFlags() const noexcept;
 		NO_DISCARD const FloatRect& GetMargin() const noexcept;
+		NO_DISCARD float GetMaxWidth() const noexcept;
 		NO_DISCARD EHorizontalAlignmentPolicy GetHorizontalAlignmentPolicy() const noexcept;
 		NO_DISCARD ESizePolicy GetHorizontalSizePolicy() const noexcept;
 		NO_DISCARD const FloatRect& GetPadding() const noexcept;
@@ -58,6 +59,7 @@ namespace Relentless
 		NO_DISCARD EVerticalAlignmentPolicy GetVerticalAlignmentPolicy() const noexcept;
 
 		NO_DISCARD bool HasAssignedSize() const noexcept;
+		NO_DISCARD bool HasMaxWidth() const noexcept;
 
 		NO_DISCARD virtual bool IsContainer() const noexcept { return false; };
 		NO_DISCARD virtual bool SupportsDrag() const noexcept { return false; };
@@ -93,9 +95,10 @@ namespace Relentless
 		IBaseWidget* SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy aAlignmentPolicy) noexcept;
 		IBaseWidget* SetHorizontalSizePolicy(ESizePolicy aSizePolicy) noexcept;
 		IBaseWidget* SetHoverFlags(int aHoverFlags) noexcept;
-		void SetIsEnabled(bool aIsEnabledState) noexcept;
+		IBaseWidget* SetIsEnabled(bool aIsEnabledState) noexcept;
 		void SetIsVisible(bool aVisibleState) noexcept;
 		void SetMargin(const FloatRect& aMargin) noexcept;
+		IBaseWidget* SetMaxWidth(float aMaxWidth) noexcept;
 		IBaseWidget* SetPadding(const FloatRect& aPadding) noexcept;
 		void SetSize(const Vector2& aSize) noexcept;
 		IBaseWidget* SetVerticalSizePolicy(ESizePolicy aSizePolicy) noexcept;
@@ -118,13 +121,15 @@ namespace Relentless
 		Vector2 m_AssignedSize = Vector2::Zero;
 		Vector2 m_FixedSize = Vector2::Zero;
 
+		float m_MaxWidth = 0.0f;
+		int m_HoverFlags = 0;
+
 		EHorizontalAlignmentPolicy m_HorizontalAlignmentPolicy = EHorizontalAlignmentPolicy::Left;
 		EVerticalAlignmentPolicy m_VerticalAlignmentPolicy = EVerticalAlignmentPolicy::Top;
 
 		ESizePolicy m_SizePolicy = ESizePolicy::Auto;
 		ESizePolicy m_VerticalSizePolicy = ESizePolicy::Auto;
 
-		int m_HoverFlags = 0;
 		bool m_IsEnabled = true;
 		bool m_IsVisible = true;
 		bool m_IsDraggingOver = false;

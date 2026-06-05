@@ -48,6 +48,11 @@ namespace Relentless
 		return "Material";
 	}
 
+	String MaterialAssetDefinition::GetAssetIcon() const noexcept
+	{
+		return ICON_FA_PALETTE;
+	}
+
 	TypeIndex MaterialAssetDefinition::GetSupportedAssetType() const noexcept
 	{
 		return Material::StaticType();

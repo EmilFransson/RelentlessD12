@@ -39,6 +39,7 @@ namespace Relentless
 
 		NO_DISCARD Vector2 ReportSize() const noexcept override;
 
+		void SetHintText(StringView aText) noexcept;
 	private:
 		virtual void OnRender() noexcept override;
 

@@ -108,8 +108,8 @@ namespace Relentless
 		if (!InputFieldContainsText())
 		{
 			//Draw hint text:
-			ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + 40.0f, cursorPositionPreSearchBar.y + 6.0f));
-			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
+			ImGui::SetCursorPos(ImVec2(cursorPositionPreSearchBar.x + 35.0f, cursorPositionPreSearchBar.y + 3.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.3f);
 			ImGui::Text("%s", m_HintText.c_str());
 			ImGui::PopStyleVar();
 		}
@@ -133,8 +133,6 @@ namespace Relentless
 
 	void SearchBar::DrawSearchIcon(const ImVec2& searchBarStartPos) noexcept
 	{
-		//ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
-
 		const ImVec2 magnifyingGlassSize = ImGui::CalcTextSize(ICON_FA_MAGNIFYING_GLASS);
 		constexpr float margin = 5.0f;
 		const float magnifyingGlassXPosition = searchBarStartPos.x + margin;
@@ -146,14 +144,10 @@ namespace Relentless
 		m_MagnifyingGlassIconHovered = ImGui::IsItemHovered();
 		if (m_MagnifyingGlassIconHovered)
 			ImGui::SetMouseCursor(ImGuiMouseCursor_::ImGuiMouseCursor_Arrow);
-
-		//ImGui::PopFont();
 	}
 
 	void SearchBar::DrawCancelIcon(const ImVec2& searchBarStartPos) noexcept
 	{
-		//ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
-
 		const ImVec2 xMarkSize = ImGui::CalcTextSize(ICON_FA_XMARK);
 		constexpr float margin = 5.0f;
 		const float xMarkXPosition = searchBarStartPos.x + margin;
@@ -173,14 +167,10 @@ namespace Relentless
 			m_CancelIconHovered = false;
 			m_CallbackUserData.ClearedInput = true;
 		}
-	
-		//ImGui::PopFont();
 	}
 
 	void SearchBar::DrawSearchHistoryPopupIcon(const ImVec2& searchBarStartPos) noexcept
 	{
-		//ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
-
 		const ImVec2 chevronSize = ImGui::CalcTextSize(ICON_FA_CHEVRON_DOWN);
 		constexpr float margin = 5.0f;
 		const float chevronXPosition = searchBarStartPos.x + m_Size.x - chevronSize.x - margin;
@@ -203,8 +193,6 @@ namespace Relentless
 			ImGui::SetTooltip("Click to show the Search History");
 			ImGui::PopStyleColor(2);
 		}
-
-		//ImGui::PopFont();
 	}
 
 	void SearchBar::DrawSearchHistoryPopup(const ImVec2& searchBarStartPos) noexcept
@@ -271,12 +259,20 @@ namespace Relentless
 		const float avgW = ImGui::CalcTextSize("M").x;
 		const float desiredTextW = Math::Max(hintW, avgW * (float)minChars);
 
-		float width = leftOcclusion + desiredTextW + rightOcclusion;
-		float height = Math::Max(frameHeight, Math::Max(magSize.y, Math::Max(cancelSize.y, chevronSize.y)));
+		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();
+		const ESizePolicy verticalSizePolicy = GetVerticalSizePolicy();
+
+		float width = (horizontalSizePolicy == ESizePolicy::Fixed) ? GetAssignedSize().x : leftOcclusion + desiredTextW + rightOcclusion;
+		float height = (verticalSizePolicy == ESizePolicy::Fixed) ? GetAssignedSize().y : Math::Max(frameHeight, Math::Max(magSize.y, Math::Max(cancelSize.y, chevronSize.y)));
 
 		if (pFont) 
 			ImGui::PopFont();
 
 		return { width, height };
+	}
+
+	void SearchBar::SetHintText(StringView aText) noexcept
+	{
+		m_HintText = aText;
 	}
 }

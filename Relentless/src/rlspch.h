@@ -51,6 +51,8 @@ using IDXGISwapChainX = IDXGISwapChain4;
 #include <ranges>
 #include <set>
 #include <shared_mutex>
+#include <shobjidl.h>
+#include <shlobj.h>
 #include <span>
 #include <stdint.h>
 #include <sstream>

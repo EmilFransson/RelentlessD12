@@ -43,6 +43,9 @@ namespace Relentless
 		//Text:
 		constexpr Color TextInactive	= Color(1.0f, 1.0f, 1.0f, 0.5f);
 		constexpr Color TextDefault		= Colors::White;
+
+		//Folder:
+		constexpr Color FolderDefault	= Colors::Normalize(182.0f, 143.0f, 85.0f, 255.0f);
 	};
 
 	namespace Math

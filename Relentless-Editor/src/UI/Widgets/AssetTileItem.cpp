@@ -22,7 +22,7 @@ namespace Relentless
 		m_Tiled = true;
 		m_CustomHoverLogic = true;
 
-		const Vector2 thumbnailSize = Vector2(aSize.x - 10.0f, (aSize.y * 0.5f) - 4.0f);
+		const Vector2 thumbnailSize = Vector2(m_Size.x - 10.0f, (m_Size.y * 0.5f) - 4.0f);
 		m_pThumbnail = aAssetThumbnailData.MakeThumbnailWidget(thumbnailSize);
 
 		const AssetData& assetData = aAssetThumbnailData.GetAssetData();

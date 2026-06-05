@@ -170,6 +170,12 @@ namespace Relentless
 			ResolvedChild& child = list[i];
 
 			float allocatedWidth = child.StretchHorizontally ? stretchSlice : child.OccupiedSize.x;
+			if (child.StretchHorizontally && child.pWidget->HasMaxWidth())
+			{
+				const float maxSlot = child.pWidget->GetMaxWidth() + child.Margin.Left + child.Margin.Right;
+				allocatedWidth = Math::Min(allocatedWidth, maxSlot);
+			}
+
 			const float allocatedHeight = rowSlotHeight;
 
 			if (child.pWidget->GetHorizontalSizePolicy() == ESizePolicy::Auto)
@@ -205,7 +211,7 @@ namespace Relentless
 					assignedHeight = Math::Max(0.0f, assignedHeight - scrollBarSize);
 			}
 
-			if (assignedWidth <= 3.0f || assignedHeight <= 3.0f)
+			if (assignedWidth < 3.0f || assignedHeight < 3.0f)
 				continue;
 
 			ImVec2 contentPos = layoutCursor;

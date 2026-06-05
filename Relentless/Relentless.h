@@ -100,6 +100,9 @@
 #include <src/ECS/Components/TransformComponent.h>
 #include <src/Scene/Scene.h>
 
+//Platform:
+#include <src/Platform/FileDialogs.h>
+
 //Serialization
 #include <src/Serialization/Archive.h>
 

@@ -13,9 +13,9 @@ namespace Relentless
 
 		NO_DISCARD const String& GetFilterText() const noexcept;
 
-		void SetFilterText(const String& filterText) noexcept;
+		void SetFilterText(const String& aFilterText) noexcept;
 		
-		NO_DISCARD bool TestTextFilter(std::string_view text, ETextFilterTextComparisonMode comparisonMode) noexcept;
+		NO_DISCARD bool TestTextFilter(StringView aText, ETextFilterTextComparisonMode aComparisonMode) noexcept;
 	private:
 		String m_FilterText;
 	};

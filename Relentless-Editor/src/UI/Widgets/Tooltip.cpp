@@ -3,8 +3,8 @@
 
 namespace Relentless
 {
-	Tooltip::Tooltip(std::string_view text ) noexcept
-		: m_Text{text}
+	Tooltip::Tooltip(StringView aText) noexcept
+		: m_Text{ aText }
 	{
 	}
 
@@ -35,8 +35,8 @@ namespace Relentless
 		return m_Text;
 	}
 
-	void Tooltip::SetText(std::string_view text) noexcept
+	void Tooltip::SetText(StringView aText) noexcept
 	{
-		m_Text = text;
+		m_Text = aText;
 	}
 }

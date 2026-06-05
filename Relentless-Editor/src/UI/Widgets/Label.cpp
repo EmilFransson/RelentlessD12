@@ -6,6 +6,8 @@ namespace Relentless
 	Label::Label(std::string_view text, ImFont* pFont) noexcept
 		: m_Text{text}
 	{
+		SetTextColor(Colors::TextDefault);
+
 		if (pFont)
 			SetFont(pFont);
 		else

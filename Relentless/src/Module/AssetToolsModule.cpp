@@ -56,17 +56,24 @@ namespace Relentless
 			return AssetHandle::INVALID;
 		}
 
-		const Path fullPackagePath = FilepathUtils::Combine(Project::GetAssetDirectory(), aPackagePath);
-		const Path assetFilePath = FilepathUtils::Combine(fullPackagePath, aName + ".rasset");
-		if (aShouldSave && File::Exists(assetFilePath))
+		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		const String assetDirectory = assetRegistryModule.VirtualPathToAbsolutePath(aPackagePath.string());
+		if (assetDirectory.empty())
 		{
-			RLS_CORE_WARN("File with name '{0}' already exists at path '{1}'", aName, fullPackagePath.string());
+			RLS_CORE_WARN("Failed to resolve package path: {0}", aPackagePath.string());
 			return AssetHandle::INVALID;
 		}
 
-		if (!FilepathUtils::CreateDirectoryTree(fullPackagePath))
+		const Path assetFilePath = FilepathUtils::Combine(assetDirectory, aName + ".rasset");
+		if (aShouldSave && File::Exists(assetFilePath))
 		{
-			RLS_CORE_WARN("Failed to create directories for path '{0}'", fullPackagePath.string());
+			RLS_CORE_WARN("File with name '{0}' already exists at path '{1}'", aName, assetDirectory);
+			return AssetHandle::INVALID;
+		}
+
+		if (!FilepathUtils::CreateDirectoryTree(assetDirectory))
+		{
+			RLS_CORE_WARN("Failed to create directories for path '{0}'", assetDirectory);
 			return AssetHandle::INVALID;
 		}
 
@@ -87,7 +94,7 @@ namespace Relentless
 		}
 
 		if (aShouldSave)
-			return CreateAndRegisterAssetData(pCreatedAsset, fullPackagePath, timeStamp);
+			return CreateAndRegisterAssetData(pCreatedAsset, aPackagePath, timeStamp);
 		else
 			return AssetManager::RegisterAsset(pCreatedAsset);
 	}
@@ -96,7 +103,6 @@ namespace Relentless
 	{
 		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
 		String name = aBaseName;
-		uint32 accumulator = 1u;
 
 		for (uint32 accumulator = 1u; assetRegistryModule.FindAssetByPackagePath(std::format("{}{}.rasset", aVirtualFolder, name)); ++accumulator)
 			name = std::format("{}{}", aBaseName, accumulator);
@@ -203,6 +209,17 @@ namespace Relentless
 					results.swap(pAsyncImportResult->ImportResults);
 				}
 
+				AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+				const uint64 timeStamp = Time::GetCurrentTimeStamp();
+
+				for (auto& result : results)
+				{
+					if (!result.Handle.IsValid())
+						continue;
+
+					CreateAndRegisterAssetData(AssetManager::Get(result.Handle), assetRegistryModule.AbsolutePathToVirtualPath(result.DestinationPath), timeStamp);
+				}
+
 				auto cb = std::make_shared<AssetImportTasksCompletedCallback>(std::move(pAsyncImportResult->CompletionCallback));
 
 				Application::Get().SubmitToMainThread([cb = std::move(cb), results = std::move(results)]() mutable
@@ -245,14 +262,13 @@ namespace Relentless
 									destinationPath = task.FilePath;
 								else
 								{
-									Path fullDestination = FilepathUtils::Combine(Project::GetProjectDirectory(), destinationPath);
-									destinationPath = FilepathUtils::Combine(fullDestination, pAsset->GetName());
+									destinationPath = FilepathUtils::Combine(destinationPath, pAsset->GetName());
 								}
 
 								if (!SerializeAsset(pAsset, destinationPath, Time::GetCurrentTimePoint()))
 									continue;
 
-								pAsyncImportResult->ImportResults.push_back({ importResult.value(), task.FilePath });
+								pAsyncImportResult->ImportResults.push_back({ importResult.value(), task.FilePath, task.DestinationPath });
 							}
 							else
 							{

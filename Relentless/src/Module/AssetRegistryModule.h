@@ -17,6 +17,8 @@ namespace Relentless
 
 	struct AssetRoot
 	{
+		String MountName;
+		String DisplayName;
 		Path BaseDirectory;
 		EAssetSourceType SourceType;
 	};
@@ -54,6 +56,8 @@ namespace Relentless
 		AssetRegistryModule() noexcept;
 		virtual ~AssetRegistryModule() noexcept override;
 
+		NO_DISCARD String AbsolutePathToVirtualPath(const Path& aAbsolutePath) const;
+
 		void AssetCreated(AssetData aAssetData) noexcept;
 		void AssetRemoved(const AssetData& aAssetData) noexcept;
 
@@ -64,14 +68,19 @@ namespace Relentless
 		void ForEachAsset(const Callback<bool(const AssetData&)>& aOperation) noexcept;
 		void ForEachAssetWithPath(const Path& aPath, const Callback<bool(const AssetData&)>& aOperation, bool aRecursive = false) noexcept;
 		void ForEachAssetWithType(const TypeIndex& aType, const Callback<bool(const AssetData&)>& aOperation) noexcept;
+		void ForEachChildFolder(const String& aVirtualPath, Callback<bool(const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType)>&& aCallback) noexcept;
+		void ForEachRoot(Callback<bool(const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType)>&& aCallback) noexcept;
 
 		NO_DISCARD std::vector<const AssetData*> GetAllAssetsOfType(const TypeIndex& aTypeIndex) const noexcept;
+		NO_DISCARD std::vector<AssetData> GetAssetsUnderPaths(const std::vector<String>& somePaths) const noexcept;
 
 		NO_DISCARD bool IsLoadingAssets() const noexcept;
 
-		void RegisterRoot(const Path& aBaseDirectory, EAssetSourceType aSourceType) noexcept;
+		void RegisterRoot(const String& aMountName, const String& aDisplayName, const Path& aBaseDirectory, EAssetSourceType aSourceType) noexcept;
 
 		void ScanForAssets(const Path& aPath, bool aRecursive = true) noexcept;
+
+		NO_DISCARD String VirtualPathToAbsolutePath(const String& aVirtualPath) const noexcept;
 
 		Broadcaster<void(const AssetData& aAssetData)> OnAssetAdded;
 		Broadcaster<void(const AssetData& aAssetData)> OnAssetRemoved;
@@ -80,13 +89,18 @@ namespace Relentless
 		NO_DISCARD AssetKeys BuildKeys(const AssetData& aAssetData) const;
 
 		NO_DISCARD const AssetRoot* FindRootFor(const Path& aAbsoluteAssetPath) const;
+		NO_DISCARD const AssetRoot* FindRootByMountName(const String& aMountName) const;
 
 		void IndexAdd(AssetIndex aIndex, const AssetKeys& aAssetKeys) noexcept;
 		void IndexMove(AssetIndex aFromIndex, AssetIndex aToindex, const AssetKeys& aAssetKeys) noexcept;
 		void IndexRemove(AssetIndex aIndex, const AssetKeys& aAssetKeys) noexcept;
 
+		NO_DISCARD String MakeRootVirtualPath(const AssetRoot& aRoot) const;
+
 		void ProcessAssetFile(const Path& aPath) noexcept;
 		void ProcessDirectory(const Path& aPath) noexcept;
+
+		NO_DISCARD bool RootExists(const String& aMountName) const noexcept;
 	private:
 		using AssetBucket = DenseSet<AssetIndex>;
 

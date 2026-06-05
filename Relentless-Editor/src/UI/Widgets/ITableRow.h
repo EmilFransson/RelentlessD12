@@ -55,8 +55,15 @@ namespace Relentless
 
 		void SetColumnWidget(uint8 aColumnIndex, const Ref<HorizontalBox>& aWidget) noexcept;
 		void SetIndentation(uint32 aIndentation) noexcept;
+
+		virtual bool TryGetHoverRect(ImRect& aOutRect) const noexcept override 
+		{
+			aOutRect = m_HoverRect;
+			return m_HasHoverRect; 
+		}
 	protected:
 		std::vector<Ref<HorizontalBox>> m_ColumnWidgets;
+		ImRect m_HoverRect;
 
 		Callback<void(const PointerInfo& pointerInfo)> m_OnClickedCallback;
 		Callback<void(const PointerInfo& pointerInfo, ITableRow* aTableRow)> m_OnDoubleClickedCallback;
@@ -64,7 +71,8 @@ namespace Relentless
 		uint32 m_IndentationLevel = 0;
 
 		bool m_CustomHoverLogic = false;
-		bool m_Hovered = false;
+		//bool m_Hovered = false;
 		bool m_Tiled = false;
+		bool m_HasHoverRect = false;
 	};
 }

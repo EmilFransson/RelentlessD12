@@ -214,6 +214,9 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
+		if (m_CursorOverride != ImGuiMouseCursor_None)
+			ImGui::SetMouseCursor(m_CursorOverride);
+
 		for (auto& panel : m_PanelStack)
 			panel->Render();
 
@@ -243,9 +246,19 @@ namespace Relentless
 			panel->Update();
 	}
 
+	void UIModule::OverrideMouseCursor(ImGuiMouseCursor aCursor) noexcept
+	{
+		m_CursorOverride = aCursor;
+	}
+
 	void UIModule::RequestClose(PanelBase* aPanel) noexcept
 	{
 		m_PanelsToClose.push_back(aPanel);
+	}
+
+	void UIModule::ResetMouseCursor() noexcept
+	{
+		m_CursorOverride = ImGuiMouseCursor_None;
 	}
 
 	void UIModule::CreateDefaultPanels() noexcept

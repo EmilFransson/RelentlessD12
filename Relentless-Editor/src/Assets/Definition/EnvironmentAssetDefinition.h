@@ -12,6 +12,7 @@ namespace Relentless
 		NO_DISCARD virtual std::vector<String> GetAssetCategories() const noexcept override final;
 		NO_DISCARD virtual Color GetAssetColor() const noexcept override final;
 		NO_DISCARD virtual String GetAssetDisplayName() const noexcept override final;
+		NO_DISCARD virtual String GetAssetIcon() const noexcept override final;
 		NO_DISCARD virtual TypeIndex GetSupportedAssetType() const noexcept override final;
 		NO_DISCARD virtual Ref<ThumbnailInfo> GetThumbnailInfo(const AssetData& aAssetData) const noexcept override final;
 

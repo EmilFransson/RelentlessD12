@@ -27,7 +27,7 @@ namespace Relentless
 
 	struct ContextMenuItem
 	{
-		enum class EType : uint8 { TextItem = 0u, Checkbox, Submenu, Separator, Section, Custom };
+		enum class EType : uint8 { TextItem = 0u, Checkbox, RadioButton, Submenu, Separator, Section, Custom };
 
 		String Name;
 		String Tooltip;
@@ -38,6 +38,8 @@ namespace Relentless
 		ColorEntry TextColor;
 		Callback<void()> OnClickedCallback;
 		Callback<void(ContextMenuBuilder&)> OnOpenSubmenuCallback;
+		Callback<bool()> ValueCallbackBool;
+		Callback<void(bool)> OnValueChangedCallbackBool;
 		float SeparatorThickness = 1.0f;
 		ImFont* Font = nullptr;
 		EType Type = EType::TextItem;
@@ -121,14 +123,20 @@ namespace Relentless
 	{
 	}
 
-	class TextItemBuilder : public ContextMenuItemBuilder<TextItemBuilder>
+	class CheckBoxItemBuilder : public ContextMenuItemBuilder<CheckBoxItemBuilder>
 	{
 	public:
-		explicit TextItemBuilder(ContextMenuBuilder& aParent, ContextMenuItem& aItem) noexcept;
+		explicit CheckBoxItemBuilder(ContextMenuBuilder& aParent, ContextMenuItem& aItem) noexcept;
+		CheckBoxItemBuilder& OnCheckStateChanged(Callback<void(bool)>&& aCallback) noexcept;
+		CheckBoxItemBuilder& Value(Callback<bool()>&& aCallback) noexcept;
+	};
 
-		TextItemBuilder& OnClicked(Callback<void()>&& aCallback) noexcept;
-
-		TextItemBuilder& Shortcut(StringView aShortcut) noexcept;
+	class RadioButtonItemBuilder : public ContextMenuItemBuilder<RadioButtonItemBuilder>
+	{
+	public:
+		explicit RadioButtonItemBuilder(ContextMenuBuilder& aParent, ContextMenuItem& aItem) noexcept;
+		RadioButtonItemBuilder& OnValueChanged(Callback<void(bool)>&& aCallback) noexcept;
+		RadioButtonItemBuilder& Value(Callback<bool()>&& aCallback) noexcept;
 	};
 
 	class SectionItemBuilder : public ContextMenuItemBuilder<SectionItemBuilder>
@@ -152,6 +160,16 @@ namespace Relentless
 		SeparatorItemBuilder& Thickness(float aThickness) noexcept;
 	};
 
+	class TextItemBuilder : public ContextMenuItemBuilder<TextItemBuilder>
+	{
+	public:
+		explicit TextItemBuilder(ContextMenuBuilder& aParent, ContextMenuItem& aItem) noexcept;
+
+		TextItemBuilder& OnClicked(Callback<void()>&& aCallback) noexcept;
+
+		TextItemBuilder& Shortcut(StringView aShortcut) noexcept;
+	};
+
 	class SubmenuItemBuilder : public ContextMenuItemBuilder<SubmenuItemBuilder>
 	{
 	public:
@@ -163,8 +181,10 @@ namespace Relentless
 	class ContextMenuBuilder
 	{
 	public:
+		CheckBoxItemBuilder AddCheckBox(StringView aName) noexcept;
 		TextItemBuilder AddItem(StringView aName) noexcept;
 		TextItemBuilder AddItem(StringView aName, Callback<void()>&& aCallback) noexcept;
+		RadioButtonItemBuilder AddRadioButton(StringView aName) noexcept;
 		SectionItemBuilder AddSection(StringView aText) noexcept;
 		SeparatorItemBuilder AddSeparator() noexcept;
 		SubmenuItemBuilder AddSubmenu(StringView aName) noexcept;
@@ -173,6 +193,8 @@ namespace Relentless
 		NO_DISCARD Ref<ContextMenu> BuildContextMenu() noexcept;
 		NO_DISCARD Ref<ContextMenu> BuildSubMenu() noexcept;
 	private:
+		NO_DISCARD Ref<IBaseWidget> BuildCheckBoxRow(const ContextMenuItem& aItem) noexcept;
+		NO_DISCARD Ref<IBaseWidget> BuildRadioButtonRow(const ContextMenuItem& aItem) noexcept;
 		NO_DISCARD Ref<IBaseWidget> BuildSectionRow(const ContextMenuItem& aItem) noexcept;
 		NO_DISCARD Ref<IBaseWidget> BuildSeparatorRow(const ContextMenuItem& aItem) noexcept;
 		NO_DISCARD Ref<IBaseWidget> BuildSubMenuRow(ContextMenuItem& aItem) noexcept;

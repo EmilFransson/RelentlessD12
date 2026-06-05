@@ -35,6 +35,11 @@ namespace Relentless
 				ImGui::TableSetColumnIndex(column);
 				OnRenderColumn(column);
 			}
+
+			ImRect row(rowStart, rowEnd);
+			row.ClipWith(ImRect(pTable->InnerClipRect));
+			m_HoverRect = row;
+			m_HasHoverRect = true;
 		}
 		else
 		{
@@ -42,28 +47,13 @@ namespace Relentless
 				OnRenderColumn(column);
 		}
 		
+
+		if (m_HasHoverRect && !m_CustomHoverLogic)
 		{
-			if (!m_CustomHoverLogic)
-			{
-				ImGui::TablePushBackgroundChannel();
-
-				const Color& bgCol = GetBackgroundColor();
-				ImGui::GetWindowDrawList()->AddRectFilled(rowStart, rowEnd, ImGui::ColorConvertFloat4ToU32(ImVec4(bgCol.x, bgCol.y, bgCol.z, bgCol.w)));
-
-				const bool isHovering = ImGui::IsMouseHoveringRect(rowStart, rowEnd);
-				if (!m_Hovered && isHovering)
-				{
-					m_Hovered = true;
-					m_OnMouseEnterCallback.ExecuteIfSet(this);
-				}
-				else if (m_Hovered && !isHovering)
-				{
-					m_Hovered = false;
-					m_OnMouseExitCallback.ExecuteIfSet(this);
-				}
-
-				ImGui::TablePopBackgroundChannel();
-			}
+			ImGui::TablePushBackgroundChannel();
+			const Color& bgCol = GetBackgroundColor();
+			ImGui::GetWindowDrawList()->AddRectFilled(m_HoverRect.Min, m_HoverRect.Max, ImGui::ColorConvertFloat4ToU32(ImVec4(bgCol.x, bgCol.y, bgCol.z, bgCol.w)));
+			ImGui::TablePopBackgroundChannel();
 		}
 	}
 

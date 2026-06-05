@@ -4,6 +4,7 @@
 namespace Relentless
 {
 	enum class ESceneState : uint8 { Edit = 0u, Play, Simulate };
+	enum class ELoadPhase : uint8 { Default = 0u, PostProjectLoad, PostCreateSubsystems };
 
 	class EntityFolder;
 	class EntityOutlinerView;
@@ -59,7 +60,7 @@ namespace Relentless
 
 		void UI_DrawMainMenuBar() noexcept;
 
-		void LoadModules() noexcept;
+		void LoadModules(ELoadPhase aLoadPhase) noexcept;
 
 		void UpdateSubsystems(float aDeltaTime) noexcept;
 	private:

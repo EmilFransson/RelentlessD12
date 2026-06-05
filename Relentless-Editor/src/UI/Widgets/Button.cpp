@@ -2,7 +2,7 @@
 
 namespace Relentless
 {
-	Button::Button(std::string_view aText, const Vector2& aSize) noexcept
+	Button::Button(StringView aText, const Vector2& aSize) noexcept
 		:m_Text{ aText }
 		,m_Size{ aSize }
 	{
@@ -11,6 +11,16 @@ namespace Relentless
 
 		SetBorderSize(2.0f);
 		SetFrameRounding(4.0f);
+	}
+
+	Ref<Button> Button::CreateTransparent(StringView aText, const Vector2& aSize) noexcept
+	{
+		Ref<Button> pButton = RLS_NEW Button(aText, aSize);
+		pButton->SetBackgroundColor(Colors::Transparent);
+		pButton->SetBorderColor(Colors::Transparent);
+		pButton->SetActiveColor(Colors::Transparent);
+
+		return pButton;
 	}
 
 	const String& Button::GetText() const noexcept
@@ -79,11 +89,6 @@ namespace Relentless
 
 		if (ImGui::Button(m_Text.c_str(), ImVec2(size.x, size.y)))
 			m_OnClickedCallback.ExecuteIfSet();
-
-		if (!this->m_IsHovered && ImGui::IsItemHovered())
-			this->OnMouseEnter_private();
-		else if (this->m_IsHovered && !ImGui::IsItemHovered())
-			this->OnMouseExit_private();
 	}
 
 	void Button::SetText(const String& aText) noexcept

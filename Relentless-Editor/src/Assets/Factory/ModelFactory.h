@@ -16,7 +16,7 @@ namespace Relentless
 		struct MeshImportInfo
 		{
 			const aiMesh* pMesh = nullptr;
-
+			String UniqueName;
 			AssetHandle HandleToImportedMesh = NULL_HANDLE;
 		};
 
@@ -70,9 +70,12 @@ namespace Relentless
 		void ImportTextures() noexcept;
 		[[nodiscard]] bool ImportTexture(const Path& absolutePath, bool srgb, Ref<Texture2D>& pOutTexture, AssetHandle& outAssetHandle) noexcept;
 		void ImportMeshes() noexcept;
-		[[nodiscard]] bool ImportMesh(const aiMesh* pMesh, Ref<Mesh>& pOutMesh, AssetHandle& outHandle) noexcept;
+		[[nodiscard]] bool ImportMesh(const aiMesh* pMesh, Ref<Mesh>& pOutMesh, AssetHandle& outHandle, const std::string& aUniqueName) noexcept;
 		void IncreaseProgress() noexcept;
 		[[nodiscard]] bool InitializeImporter() noexcept;
+
+		NO_DISCARD String MakeUniqueName(String aBaseName) noexcept;
+
 		bool ParseModel() noexcept;
 		void ParseMaterialsAndTextures() noexcept;
 		void ParseMeshes() noexcept;
@@ -82,6 +85,8 @@ namespace Relentless
 	private:
 		std::array<String, 4> m_SupportedExtensions = { ".fbx", ".gltf", ".glb", ".obj" };
 		std::array<String, 4> m_SupportedFormats = { "FBX", "GLTF", "GLB", "OBJ" };
+
+		std::unordered_set<String> m_UsedNames;
 
 		//Embedded:
 		std::vector<MaterialImportInfo> m_UniqueMaterials;

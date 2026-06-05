@@ -199,6 +199,11 @@ namespace Relentless
 			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBg, ImVec4(this->m_Style.EvenRowColor.R(), this->m_Style.EvenRowColor.G(), this->m_Style.EvenRowColor.B(), this->m_Style.EvenRowColor.A()));
 			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBgAlt, ImVec4(this->m_Style.OddRowColor.R(), this->m_Style.OddRowColor.G(), this->m_Style.OddRowColor.B(), this->m_Style.OddRowColor.A()));
 		}
+		else
+		{
+			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBg, ImVec4(this->m_Style.EvenRowColor.R(), this->m_Style.EvenRowColor.G(), this->m_Style.EvenRowColor.B(), this->m_Style.EvenRowColor.A()));
+			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_TableRowBgAlt, ImVec4(this->m_Style.EvenRowColor.R(), this->m_Style.EvenRowColor.G(), this->m_Style.EvenRowColor.B(), this->m_Style.EvenRowColor.A()));
+		}
 
 		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(ImGui::GetStyle().CellPadding.x, 0.0f));
 
@@ -308,9 +313,7 @@ namespace Relentless
 		}
 
 		ImGui::PopStyleVar();
-
-		if (this->m_Style.UseAlternatingRowColors)
-			ImGui::PopStyleColor(2);
+		ImGui::PopStyleColor(2);
 	}
 
 	template<class ItemType>

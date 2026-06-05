@@ -69,6 +69,30 @@ namespace Relentless
 			return str;
 		}
 
+		inline static bool IsSingleChannel(ResourceFormat aFormat)
+		{
+			switch (aFormat)
+			{
+			case ResourceFormat::R8_UNORM:
+			case ResourceFormat::R8_SNORM:
+			case ResourceFormat::R8_UINT:
+			case ResourceFormat::R8_SINT:
+			case ResourceFormat::R16_UNORM:
+			case ResourceFormat::R16_SNORM:
+			case ResourceFormat::R16_UINT:
+			case ResourceFormat::R16_SINT:
+			case ResourceFormat::R16_FLOAT:
+			case ResourceFormat::R32_UINT:
+			case ResourceFormat::R32_SINT:
+			case ResourceFormat::R32_FLOAT:
+			case ResourceFormat::BC4_UNORM:
+			case ResourceFormat::BC4_SNORM:
+				return true;
+			default:
+				return false;
+			}
+		}
+
 		inline bool LogHRESULT(HRESULT hr, MAYBE_UNUSED ID3D12Device* pDevice, MAYBE_UNUSED const char* pCode, MAYBE_UNUSED const char* pFileName, MAYBE_UNUSED uint32_t lineNumber)
 		{
 			if (!SUCCEEDED(hr))
