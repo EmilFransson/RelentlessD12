@@ -150,20 +150,20 @@ namespace Relentless
 							if (task.ShouldSave)
 							{
 								Ref<IAsset> pAsset = AssetManager::Get(importResult.value());
+
 								Path destinationPath = task.DestinationPath;
 								if (destinationPath.empty())
 									destinationPath = task.FilePath;
 								else
 								{
-									Path fullDestination = FilepathUtils::Combine(Project::GetProjectDirectory(), destinationPath);
-									destinationPath = FilepathUtils::Combine(fullDestination, pAsset->GetName());
+									destinationPath = FilepathUtils::Combine(destinationPath, pAsset->GetName());
 								}
 
 								if (!SerializeAsset(pAsset, destinationPath, Time::GetCurrentTimePoint()))
 									continue;
 							}
 							
-							importedAssets.push_back({ importResult.value(), task.FilePath });
+							importedAssets.push_back({ importResult.value(), task.FilePath, task.DestinationPath });
 						}
 						else
 						{

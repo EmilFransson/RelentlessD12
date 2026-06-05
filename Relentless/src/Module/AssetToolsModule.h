@@ -61,7 +61,7 @@ namespace Relentless
 		Ref<IFactory> GetSupportingFactory(const Path& aPath) const noexcept;
 		Ref<IFactory> GetSupportingFactory(const TypeIndex& aType) const noexcept;
 	private:
-		NO_DISCARD AssetHandle CreateAndRegisterAssetData(const Ref<IAsset>& aAsset, const Path& aPackagePath, TimeStamp aTimeStamp) noexcept;
+		AssetHandle CreateAndRegisterAssetData(const Ref<IAsset>& aAsset, const Path& aPackagePath, TimeStamp aTimeStamp) noexcept;
 
 		template<typename SupportedAssetType>
 		Ref<IFactory> GetSupportingFactory() const noexcept;
