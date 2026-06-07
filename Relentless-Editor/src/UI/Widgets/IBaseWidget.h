@@ -62,7 +62,8 @@ namespace Relentless
 		NO_DISCARD bool HasMaxWidth() const noexcept;
 
 		NO_DISCARD virtual bool IsContainer() const noexcept { return false; };
-		NO_DISCARD virtual bool SupportsDrag() const noexcept { return false; };
+		NO_DISCARD virtual bool IsFocused() const noexcept { return m_IsFocused; };
+		
 		NO_DISCARD bool IsEnabled() const noexcept;
 		NO_DISCARD virtual bool IsHovered() const noexcept = 0;
 		NO_DISCARD bool IsVisible() const noexcept;
@@ -103,6 +104,7 @@ namespace Relentless
 		void SetSize(const Vector2& aSize) noexcept;
 		IBaseWidget* SetVerticalSizePolicy(ESizePolicy aSizePolicy) noexcept;
 		IBaseWidget* SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy aAlignmentPolicy) noexcept;
+		NO_DISCARD virtual bool SupportsDrag() const noexcept { return false; };
 
 		Broadcaster<void(bool)> OnEnabledStateChanged;
 		Broadcaster<void(bool)> OnVisibilityChanged;
@@ -115,6 +117,8 @@ namespace Relentless
 		Callback<void(const WidgetGeometry&, const Ref<DragDropOperationBase>&)> m_OnDragLeaveCallback;
 		Callback<Reply(const WidgetGeometry&, const Ref<DragDropOperationBase>&)> m_OnDragOverCallback;
 		Callback<Reply(const WidgetGeometry&, const Ref<DragDropOperationBase>&)> m_OnDropCallback;
+
+		bool m_IsFocused = false;
 	private:
 		FloatRect m_Margin = FloatRect{};
 		FloatRect m_Padding = FloatRect{};

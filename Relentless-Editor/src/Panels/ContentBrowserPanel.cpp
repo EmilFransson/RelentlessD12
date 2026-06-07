@@ -30,7 +30,7 @@ namespace Relentless
 		pRoot->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		pRoot->SetPadding(FloatRect(5.0f, 5.0f, 5.0f, 5.0f));
 
-		auto[pLeftTopBox, pLeftBottomBox, pMiddleBox, pRightTopBox, pRightBottomBox] = BuildLayout(pRoot);
+		auto[pLeftTopBox, pLeftBottomBox, pMiddleBox, pRightTopBox, pRightMiddleBox, pRightBottomBox] = BuildLayout(pRoot);
 
 		pLeftTopBox->AddWidget(RLS_NEW Label(std::format("{} {}", ICON_FA_CHEVRON_DOWN, Project::GetName()), UI::Fonts::Get("Medium")));
 		
@@ -59,7 +59,7 @@ namespace Relentless
 
 		pRightTopBox->AddWidget(BuildToolbar());
 
-		m_pAssetsView = pRightTopBox->AddWidget(RLS_NEW AssetView());
+		m_pAssetsView = pRightMiddleBox->AddWidget(RLS_NEW AssetView());
 		m_pAssetsView->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		m_pAssetsView->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		m_pAssetsView->OnSelectionChanged.Connect(this, &ContentBrowserPanel::UpdateItemsLabel);
@@ -129,7 +129,6 @@ namespace Relentless
 		VerticalBox* pLeftBottomBox = m_pPathViewBox->AddWidget(RLS_NEW VerticalBox());
 		pLeftBottomBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		pLeftBottomBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pLeftBottomBox->SetBackgroundColor(Colors::EvenRowColorDefault);
 
 		VerticalBox* pMiddleBox = aRoot->AddWidget(RLS_NEW VerticalBox());
 		pMiddleBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
@@ -141,14 +140,19 @@ namespace Relentless
 
 		VerticalBox* pRightTopBox = pRightBox->AddWidget(RLS_NEW VerticalBox());
 		pRightTopBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pRightTopBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
+
+		VerticalBox* pRightMiddleBox = pRightBox->AddWidget(RLS_NEW VerticalBox());
+		pRightMiddleBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pRightMiddleBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
 
 		VerticalBox* pRightBottomBox = pRightBox->AddWidget(RLS_NEW VerticalBox());
 		pRightBottomBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		pRightBottomBox->SetMargin(FloatRect(0.0f, 0.0f, 0.0f, 0.0f));
 		pRightBottomBox->SetBackgroundColor(Colors::EvenRowColorDefault);
 
-		return ContentBrowserLayout{ .LeftTopBox = pLeftTopBox, .LeftBottomBox = pLeftBottomBox, .MiddleBox = pMiddleBox, .RightTopBox = pRightTopBox, .RightBottomBox = pRightBottomBox };
+		m_pAssetsViewBox = pRightMiddleBox;
+
+		return ContentBrowserLayout{ .LeftTopBox = pLeftTopBox, .LeftBottomBox = pLeftBottomBox, .MiddleBox = pMiddleBox, .RightTopBox = pRightTopBox, .RightMiddleBox = pRightMiddleBox, .RightBottomBox = pRightBottomBox };
 	}
 
 	Ref<HorizontalBox> ContentBrowserPanel::BuildNavigation() noexcept
@@ -189,6 +193,9 @@ namespace Relentless
 		Ref<Button> pSettingsButton = Button::CreateTransparent(ICON_FA_GEAR);
 		pSettingsButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 		pSettingsButton->SetPadding(Vector2(6.0f, 6.0f));
+		pSettingsButton->SetTextColor(Colors::TextInactive);
+		pSettingsButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Colors::TextDefault); });
+		pSettingsButton->OnMouseExit([](Button* aButton) { aButton->SetTextColor(Colors::TextInactive); });
 		pSettingsButton->OnClicked(this, &ContentBrowserPanel::OnSettingsButtonClicked);
 		pSettingsButton->SetTooltipText("Content Browser Settings.");
 
@@ -213,10 +220,13 @@ namespace Relentless
 		return pToolbarBox;
 	}
 
-	void ContentBrowserPanel::OnAddAssetButtonClicked() noexcept
+	void ContentBrowserPanel::OpenContextMenu() noexcept
 	{
 		const std::vector<Ref<PathListItem>> selectedItems = m_pPathView->GetSelectedItems();
 		if (selectedItems.size() != 1u)
+			return;
+
+		if (selectedItems.front()->SourceType == EAssetSourceType::Engine)
 			return;
 
 		const String& virtualPath = selectedItems.front()->VirtualPath;
@@ -224,17 +234,33 @@ namespace Relentless
 		AssetDefinitionRegistry* pAssetDefinitionRegistry = Editor::Get()->GetSubsystem<AssetDefinitionRegistry>();
 		ContextMenuBuilder builder;
 
-		builder.AddSection("Core")
-				.Font(UI::Fonts::Get("Small"))
-				.SeparatorColor(Color(1.0f, 1.0f, 1.0f, 0.25f))
-				.TextColor(Colors::TextInactive)
-				.Thickness(0.5f);
+		builder.AddSection("Get")
+			.Font(UI::Fonts::Get("Small"))
+			.SeparatorColor(Color(1.0f, 1.0f, 1.0f, 0.25f))
+			.TextColor(Colors::TextInactive)
+			.Thickness(0.5f);
+
+		builder.AddItem("Import To Current Folder")
+			.Tooltip("Import an asset from file to this folder.")
+			.Icon(ICON_FA_DOWNLOAD)
+			.OnClicked([this]()
+				{
+					ImportToCurrentFolder();
+					ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
+				});
+
+		builder.AddSection("Create")
+			.Font(UI::Fonts::Get("Small"))
+			.SeparatorColor(Color(1.0f, 1.0f, 1.0f, 0.25f))
+			.TextColor(Colors::TextInactive)
+			.Thickness(0.5f);
 
 		for (auto& pDefinition : pAssetDefinitionRegistry->GetAllAssetDefinitions()
 			| std::views::filter([](const auto& aDefinition) { return aDefinition->SupportsCreateNew(); }))
 		{
 			builder.AddItem(pDefinition->GetAssetDisplayName())
-					.OnClicked([pDefinition, virtualPath]()
+				.Icon(pDefinition->GetAssetIcon())
+				.OnClicked([pDefinition, virtualPath]()
 					{
 						AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
 						const String uniqueName = assetToolsModule.GenerateUniqueAssetName(virtualPath, pDefinition->GetAssetDisplayName());
@@ -247,12 +273,7 @@ namespace Relentless
 		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(builder.BuildContextMenu());
 	}
 
-	bool ContentBrowserPanel::OnFilterRoots(EAssetSourceType aAssetSourceType, MAYBE_UNUSED const String& aVirtualPath) noexcept
-	{
-		return m_ShowEngineContent || aAssetSourceType != EAssetSourceType::Engine;
-	}
-
-	void ContentBrowserPanel::OnImportAssetButtonClicked() noexcept
+	void ContentBrowserPanel::ImportToCurrentFolder() noexcept
 	{
 		std::vector<Ref<PathListItem>> selectedItems = m_pPathView->GetSelectedItems();
 
@@ -273,12 +294,64 @@ namespace Relentless
 		}
 
 		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();
-		assetToolsModule.ImportAsync(importTasks, [](const std::vector<AssetImportResult>&){});
+		assetToolsModule.ImportAsync(importTasks, [](const std::vector<AssetImportResult>&) {});
+	}
+
+	void ContentBrowserPanel::OnAddAssetButtonClicked() noexcept
+	{
+		OpenContextMenu();
+	}
+
+	bool ContentBrowserPanel::OnFilterRoots(EAssetSourceType aAssetSourceType, MAYBE_UNUSED const String& aVirtualPath) noexcept
+	{
+		return m_ShowEngineContent || aAssetSourceType != EAssetSourceType::Engine;
+	}
+
+	void ContentBrowserPanel::OnImportAssetButtonClicked() noexcept
+	{
+		ImportToCurrentFolder();
 	}
 
 	bool ContentBrowserPanel::AcceptsMouseInput() const noexcept
 	{
-		return m_pViewSeparator->IsHovered() || m_DraggingViewSeparator;
+		if (m_pViewSeparator->IsHovered())
+			return true;
+
+		if (m_DraggingViewSeparator)
+			return true;
+
+		if (m_pAssetsView->IsMainViewHovered())
+			return true;
+
+		return false;
+	}
+
+	bool ContentBrowserPanel::OnKeyPressedEvent(KeyPressedEvent& aKeyPressedEvent) noexcept
+	{
+		switch (aKeyPressedEvent.key)
+		{
+		case RLS_Key::A:
+		{
+			if (Keyboard::IsKeyDown(RLS_Key::LCtrl))
+			{
+				if (m_pAssetsView->IsMainViewFocused())
+				{
+					m_pAssetsView->SelectAll();
+					return true;
+				}
+				else if (m_pPathView->IsMainViewFocused())
+				{
+					m_pPathView->SelectAll();
+					return true;
+				}
+			}
+			break;
+		}
+		default:
+			break;
+		}
+
+		return false;
 	}
 
 	bool ContentBrowserPanel::OnLeftMouseButtonPressedEvent(MAYBE_UNUSED LeftMouseButtonPressedEvent& aLeftMouseButtonPressedEvent) noexcept
@@ -323,6 +396,19 @@ namespace Relentless
 		const float target = Math::Min(Math::Max(2.0f, m_DragStartWidth + mouseDeltaX), panelSize.x - 20.f);
 		m_pPathViewBox->SetSize(Vector2(target, size.y));
 		
+		return true;
+	}
+
+	bool ContentBrowserPanel::OnRightMouseButtonReleasedEvent(MAYBE_UNUSED RightMouseButtonReleasedEvent& aRightMouseButtonReleasedEvent) noexcept
+	{
+		if (!m_pAssetsView->IsMainViewHovered())
+			return false;
+
+		if (m_pAssetsView->GetNumSelectedItems() != 0u)
+			return false;
+
+		OpenContextMenu();
+
 		return true;
 	}
 

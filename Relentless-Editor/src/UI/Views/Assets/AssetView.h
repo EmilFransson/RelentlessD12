@@ -11,6 +11,7 @@ namespace Relentless
 
 	class AssetTileItem;
 	class Button;
+	class ContextMenu;
 	class ITableRow;
 	class HorizontalBox;
 	class SearchBar;
@@ -35,6 +36,10 @@ namespace Relentless
 		NO_DISCARD uint32 GetNumItems() const noexcept;
 		NO_DISCARD uint32 GetNumSelectedItems() const noexcept;
 
+		NO_DISCARD bool IsMainViewFocused() const noexcept;
+		NO_DISCARD bool IsMainViewHovered() const noexcept;
+
+		void SelectAll() noexcept;
 		void SetAssetThumbnailSize(EAssetThumbnailSize aAssetThumbnailSize) noexcept;
 		void SetSourceFolders(const std::vector<String>& someVirtualPaths) noexcept;
 
@@ -72,6 +77,7 @@ namespace Relentless
 		
 		Ref<TileView<SharedPtr<AssetThumbnailData>>> m_pAssetsTreeView = nullptr;
 		Ref<VerticalBox> m_pRoot = nullptr;
+		HorizontalBox* m_pTileViewBox = nullptr;
 		Button* m_pSortingButton = nullptr;
 		SearchBar* m_pSearchBar = nullptr;
 		

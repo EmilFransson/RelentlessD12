@@ -41,6 +41,7 @@ namespace Relentless
 			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
 		pRightBox->AddWidget(RLS_NEW Label(aCreateInfo.DisplayName))
+			->SetHighlightedSubstring(aCreateInfo.HighlightText)
 			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
 		m_ColumnWidgets.push_back(pColumnBox);

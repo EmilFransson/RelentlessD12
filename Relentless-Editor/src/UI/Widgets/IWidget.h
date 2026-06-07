@@ -22,7 +22,7 @@ namespace Relentless
 
 		virtual void OnMouseButtonDown(const WidgetGeometry&, const PointerInfo&) noexcept;
 		virtual void OnMouseButtonDoubleClick(const WidgetGeometry&, const PointerInfo&) noexcept;
-		virtual void OnMouseButtonUp(const WidgetGeometry&, const PointerInfo&) noexcept {};
+		virtual void OnMouseButtonUp(const WidgetGeometry&, const PointerInfo&) noexcept;
 		virtual void OnMouseEnter(const WidgetGeometry&, const PointerInfo&) noexcept {};
 		virtual void OnMouseLeave(const PointerInfo&) noexcept {};
 		virtual void OnMouseMove(const WidgetGeometry&, const PointerInfo&) noexcept {};
@@ -48,6 +48,7 @@ namespace Relentless
 
 		Broadcaster<void(const WidgetGeometry&, const PointerInfo&)> OnMouseDown;
 		Broadcaster<void(const WidgetGeometry&, const PointerInfo&)> OnMouseDoubleClick;
+		Broadcaster<void(const WidgetGeometry&, const PointerInfo&)> OnMouseUp;
 		Broadcaster<void()> OnPreRenderEnd;
 		Broadcaster<void()> OnRenderEnd;
 		Broadcaster<void()> OnPostRenderEnd;
@@ -122,6 +123,12 @@ namespace Relentless
 		OnMouseDown(aWidgetGeometry, aPointerInfo);
 	}
 
+	template<class DerivedType>
+	void IWidget<DerivedType>::OnMouseButtonUp(const WidgetGeometry& aWidgetGeometry, const PointerInfo& aPointerInfo) noexcept
+	{
+		OnMouseUp(aWidgetGeometry, aPointerInfo);
+	}
+
 	template<typename DerivedType>
 	template<typename InstanceType>
 	DerivedType* IWidget<DerivedType>::OnMouseEnter(InstanceType* aInstance, void(InstanceType::*aMethod)(DerivedType*)) noexcept
@@ -184,7 +191,6 @@ namespace Relentless
 		ImGui::EndGroup();
 
 		ResolveGeometry();
-		ResolveHoverState();
 		ResolveMouseStates();
 		
 		OnRenderEnd();

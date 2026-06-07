@@ -18,7 +18,8 @@ namespace Relentless
 	struct PathTableRowCreateInfo
 	{
 		String DisplayName							= "";
-		String Tooltip;
+		String Tooltip								= "";
+		String HighlightText						= "";
 		bool IsExpanded								= false;
 		bool HasChildren							= false;
 		TreeView<Ref<PathListItem>>* OwningTreeView = nullptr;

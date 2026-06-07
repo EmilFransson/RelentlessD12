@@ -107,16 +107,20 @@ namespace Relentless
 		const int numItemsPerRow = Math::Max(1, static_cast<int>((availableWidth + spacing) / (tileWidth + spacing)));
 		const int numRows = (numItems + numItemsPerRow - 1) / numItemsPerRow;
 
-		ImGuiListClipper clipper;
-		clipper.Begin(numRows, tileHeight + spacing);
-
-		bool clipRangeDirty = false;
-
 		struct ItemRectInfo
 		{
 			ImVec2 Min;
 			ImVec2 Max;
 		};
+
+		const ImVec2 start = ImGui::GetCursorScreenPos();
+		const ImVec2 end = ImVec2(start.x + availableSpace.x, start.y + availableSpace.y);
+		ItemRectInfo totalSpaceRect{ .Min = start, .Max = end };
+
+		bool clipRangeDirty = false;
+
+		ImGuiListClipper clipper;
+		clipper.Begin(numRows, tileHeight + spacing);
 
 		std::vector<ItemRectInfo> itemRectInfos;
 
@@ -164,8 +168,13 @@ namespace Relentless
 			}
 		}
 
-		if (this->m_ClearSelectionOnEmptySpaceClick && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && std::ranges::none_of(itemRectInfos, [](const ItemRectInfo& aItemRectInfo){ return ImGui::IsMouseHoveringRect(aItemRectInfo.Min, aItemRectInfo.Max); }))
+		if (this->m_ClearSelectionOnEmptySpaceClick && ImGui::IsWindowHovered()
+			&& (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			&& ImGui::IsMouseHoveringRect(totalSpaceRect.Min, totalSpaceRect.Max)
+			&& std::ranges::none_of(itemRectInfos, [](const ItemRectInfo& aItemRectInfo) { return ImGui::IsMouseHoveringRect(aItemRectInfo.Min, aItemRectInfo.Max); }))
+		{
 			this->ClearSelection();
+		}
 
 		if (clipRangeDirty)
 			this->ReleaseInvisibleWidgets();

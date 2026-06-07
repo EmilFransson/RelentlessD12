@@ -365,6 +365,8 @@ namespace Relentless
 				m_pHoveredPanel = nullptr;
 			if (m_pFocusedPanel == pPanel)
 				m_pFocusedPanel = nullptr;
+			if (m_pCaptureTargetPanel == pPanel)
+				m_pCaptureTargetPanel = nullptr;
 
 			m_PanelStack.erase(std::remove_if(m_PanelStack.begin(), m_PanelStack.end(), [pPanel](const UniquePtr<PanelBase>& aPanel) { return aPanel.get() == pPanel; }), m_PanelStack.end());
 		}

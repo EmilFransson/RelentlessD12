@@ -49,7 +49,6 @@ namespace Relentless
 		bool m_HorizontalScrollBarEnabled = false;
 		bool m_ScrollBarsVisible = false;
 		bool m_MouseScrollingEnabled = true;
-		bool m_IsFocused = false;
 	};
 
 	template<typename DerivedType>

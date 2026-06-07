@@ -69,6 +69,7 @@ namespace Relentless
 		void ForEachAssetWithPath(const Path& aPath, const Callback<bool(const AssetData&)>& aOperation, bool aRecursive = false) noexcept;
 		void ForEachAssetWithType(const TypeIndex& aType, const Callback<bool(const AssetData&)>& aOperation) noexcept;
 		void ForEachChildFolder(const String& aVirtualPath, Callback<bool(const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType)>&& aCallback) noexcept;
+		void ForEachDescendantFolder(const String& aVirtualPath, Callback<bool(const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType)>&& aCallback) noexcept;
 		void ForEachRoot(Callback<bool(const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType)>&& aCallback) noexcept;
 
 		NO_DISCARD std::vector<const AssetData*> GetAllAssetsOfType(const TypeIndex& aTypeIndex) const noexcept;

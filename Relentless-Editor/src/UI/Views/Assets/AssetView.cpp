@@ -46,14 +46,14 @@ namespace Relentless
 		pChromeBox->AddWidget(BuildSearchBar());
 		pChromeBox->AddWidget(BuildSortingButton());
 		
-		HorizontalBox* pAssetsBox = m_pRoot->AddWidget(RLS_NEW HorizontalBox());
-		pAssetsBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pAssetsBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
-		pAssetsBox->SetScrollBarsVisible(true);
+		m_pTileViewBox = m_pRoot->AddWidget(RLS_NEW HorizontalBox());
+		m_pTileViewBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		m_pTileViewBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
+		m_pTileViewBox->SetScrollBarsVisible(true);
 
 		const Vector2 size = AssetThumbnailSizeEnumToSize(m_AssetThumbnailSize);
 		
-		m_pAssetsTreeView = pAssetsBox->AddWidget(RLS_NEW TileView<SharedPtr<AssetThumbnailData>>());
+		m_pAssetsTreeView = m_pTileViewBox->AddWidget(RLS_NEW TileView<SharedPtr<AssetThumbnailData>>());
 
 		m_pAssetsTreeView
 			->SetItemWidth(size.x)
@@ -125,6 +125,21 @@ namespace Relentless
 	uint32 AssetView::GetNumSelectedItems() const noexcept
 	{
 		return m_pAssetsTreeView->GetNumItemsSelected();
+	}
+
+	bool AssetView::IsMainViewFocused() const noexcept
+	{
+		return m_pTileViewBox->IsFocused();
+	}
+
+	bool AssetView::IsMainViewHovered() const noexcept
+	{
+		return m_pTileViewBox->IsHovered();
+	}
+
+	void AssetView::SelectAll() noexcept
+	{
+		m_pAssetsTreeView->SelectAll();
 	}
 
 	void AssetView::SetAssetThumbnailSize(EAssetThumbnailSize aAssetThumbnailSize) noexcept

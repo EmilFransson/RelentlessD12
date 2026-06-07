@@ -5,8 +5,10 @@
 
 namespace Relentless
 {
+	class AssetThumbnailData;
 	class AssetView;
 	class Button;
+	class ContextMenu;
 	class HorizontalBox;
 	class Label;
 	class PathView;
@@ -20,6 +22,7 @@ namespace Relentless
 		VerticalBox* LeftBottomBox = nullptr;
 		VerticalBox* MiddleBox = nullptr;
 		VerticalBox* RightTopBox = nullptr;
+		VerticalBox* RightMiddleBox = nullptr;
 		VerticalBox* RightBottomBox = nullptr;
 	};
 
@@ -40,6 +43,10 @@ namespace Relentless
 		NO_DISCARD Ref<Button> BuildSettingsButton() noexcept;
 		NO_DISCARD Ref<VerticalBox> BuildToolbar() noexcept;
 
+		void OpenContextMenu() noexcept;
+
+		void ImportToCurrentFolder() noexcept;
+
 		void OnAddAssetButtonClicked() noexcept;
 		NO_DISCARD bool OnFilterRoots(EAssetSourceType aAssetSourceType, MAYBE_UNUSED const String& aVirtualPath) noexcept;
 		void OnImportAssetButtonClicked() noexcept;
@@ -59,9 +66,11 @@ namespace Relentless
 	protected:
 		NO_DISCARD virtual bool AcceptsMouseInput() const noexcept override;
 
+		NO_DISCARD bool OnKeyPressedEvent(KeyPressedEvent& aKeyPressedEvent) noexcept override;
 		NO_DISCARD bool OnLeftMouseButtonPressedEvent(MAYBE_UNUSED LeftMouseButtonPressedEvent& aLeftMouseButtonPressedEvent) noexcept override;
 		NO_DISCARD bool OnLeftMouseButtonReleasedEvent(MAYBE_UNUSED LeftMouseButtonReleasedEvent& aLeftMouseButtonReleasedEvent) noexcept override;
 		NO_DISCARD bool OnMouseDragEvent(MAYBE_UNUSED MouseDragEvent& aMouseDragEvent) noexcept override;
+		NO_DISCARD bool OnRightMouseButtonReleasedEvent(MAYBE_UNUSED RightMouseButtonReleasedEvent& aRightMouseButtonReleasedEvent) noexcept override;
 	private:
 		std::vector<String> m_BreadcrumbForwardStack;
 		std::vector<String> m_BreadcrumbBackwardStack;
@@ -71,6 +80,7 @@ namespace Relentless
 		PathView* m_pPathView = nullptr;
 		Ref<HorizontalBox> m_pBreadcrumbBox = nullptr;
 		VerticalBox* m_pPathViewBox = nullptr;
+		VerticalBox* m_pAssetsViewBox = nullptr;
 		Button* m_pAddAssetButton = nullptr;
 		Button* m_pImportAssetButton = nullptr;
 		Button* m_pNavigateBackButton = nullptr;

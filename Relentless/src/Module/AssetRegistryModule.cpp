@@ -213,6 +213,39 @@ namespace Relentless
 		}
 	}
 
+	void AssetRegistryModule::ForEachDescendantFolder(const String& aVirtualPath, Callback<bool(const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType)>&& aCallback) noexcept
+	{
+		std::shared_lock<std::shared_mutex> lock(m_Mutex);
+		if (!m_PathToFolders.contains(aVirtualPath))
+			return;
+
+		const AssetRoot* pRoot = FindRootByMountName(StringUtils::Split(aVirtualPath, '/').front());
+		if (!pRoot)
+			return;
+
+		std::queue<String> paths;
+		paths.push(aVirtualPath);
+
+		while (!paths.empty())
+		{
+			const String virtualPath = paths.front();
+			paths.pop();
+			
+			if (!m_PathToFolders.contains(virtualPath))
+				continue;
+
+			for (const auto& folder : m_PathToFolders.at(virtualPath))
+			{
+				const String descendantPath = virtualPath + folder + "/";
+
+				if (!aCallback(descendantPath, folder, pRoot->SourceType))
+					return;
+
+				paths.push(descendantPath);
+			}
+		}
+	}
+
 	void AssetRegistryModule::ForEachRoot(Callback<bool(const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType)>&& aCallback) noexcept
 	{
 		std::shared_lock<std::shared_mutex> lock(m_Mutex);

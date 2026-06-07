@@ -444,15 +444,17 @@ namespace Relentless
 
 			if (m_OnContextMenuOpening.IsSet())
 			{
-				Ref<ContextMenu> pContextMenu = m_OnContextMenuOpening(pItem);
-				pContextMenu->OnClosed.Connect([this, clearOnEmptyClick = m_ClearSelectionOnEmptySpaceClick]() 
-					{ 
-						m_ClearSelectionOnEmptySpaceClick = clearOnEmptyClick; 
-						m_ContextMenuOpen = false;
-					});
-				m_ClearSelectionOnEmptySpaceClick = false;
-				ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(pContextMenu);
-				m_ContextMenuOpen = true;
+				if (Ref<ContextMenu> pContextMenu = m_OnContextMenuOpening(pItem))
+				{
+					pContextMenu->OnClosed.Connect([this, clearOnEmptyClick = m_ClearSelectionOnEmptySpaceClick]()
+						{
+							m_ClearSelectionOnEmptySpaceClick = clearOnEmptyClick;
+							m_ContextMenuOpen = false;
+						});
+					m_ClearSelectionOnEmptySpaceClick = false;
+					ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(pContextMenu);
+					m_ContextMenuOpen = true;
+				}
 			}
 		}
 
