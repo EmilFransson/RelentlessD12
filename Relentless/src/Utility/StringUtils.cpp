@@ -26,6 +26,17 @@ namespace Relentless
 			return result;
 		}
 
+		bool EqualsIgnoreCase(StringView aLhs, StringView aRhs) noexcept
+		{
+			if (aLhs.size() != aRhs.size())
+				return false;
+
+			return std::ranges::equal(aLhs, aRhs, [](char a, char b)
+				{
+					return ToLowerAscii(a) == ToLowerAscii(b);
+				});
+		}
+
 		String ExtractTrailingDigits(const String& input) noexcept
 		{
 			size_t pos = input.size();

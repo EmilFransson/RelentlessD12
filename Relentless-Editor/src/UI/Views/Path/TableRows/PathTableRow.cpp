@@ -2,7 +2,9 @@
 
 #include "UI/Views/TreeView.h"
 #include "UI/Widgets/Button.h"
+#include "UI/Widgets/EditableTextBox.h"
 #include "UI/Widgets/Label.h"
+#include "UI/Widgets/WidgetSwitcher.h"
 
 namespace Relentless
 {
@@ -30,7 +32,6 @@ namespace Relentless
 
 		HorizontalBox* pRightBox = pColumnBox->AddWidget(RLS_NEW HorizontalBox());
 		pRightBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pRightBox->SetTooltipText(aCreateInfo.Tooltip);
 
 		pRightBox->AddWidget(RLS_NEW Label(aCreateInfo.IsExpanded && aCreateInfo.HasChildren ? ICON_FA_FOLDER_OPEN : ICON_FA_FOLDER))
 			->SetTextColor(Colors::FolderDefault)
@@ -40,9 +41,25 @@ namespace Relentless
 			->SetBorderColor(Colors::Transparent)
 			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
-		pRightBox->AddWidget(RLS_NEW Label(aCreateInfo.DisplayName))
+		m_pSwitcher = pRightBox->AddWidget(RLS_NEW WidgetSwitcher());
+		m_pSwitcher->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+
+		m_pSwitcher->Add(RLS_NEW Label(aCreateInfo.DisplayName))
 			->SetHighlightedSubstring(aCreateInfo.HighlightText)
 			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+
+		m_pEditableTextBox = m_pSwitcher->Add(RLS_NEW EditableTextBox());
+		m_pEditableTextBox->SetTextColor(Colors::TextDefault);
+		m_pEditableTextBox->OnTextChanged(this, &PathTableRow::OnRenameTextChangedInternal);
+		m_pEditableTextBox->OnTextCommitted(this, &PathTableRow::OnRenameTextCommittedInternal);
+		m_pEditableTextBox->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+		
+		m_pSwitcher->SetActiveWidgetIndex(0);
+
+		m_pExclamationLabel = pRightBox->AddWidget(RLS_NEW Label(ICON_FA_CIRCLE_EXCLAMATION));
+		m_pExclamationLabel->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+		m_pExclamationLabel->SetIsVisible(false);
+		m_pExclamationLabel->SetTextColor(Colors::Red);
 
 		m_ColumnWidgets.push_back(pColumnBox);
 	}
@@ -72,9 +89,102 @@ namespace Relentless
 		}
 	}
 
+	Ref<PathListItem> PathTableRow::GetItem() const noexcept
+	{
+		return m_pOwningTreeView->GetItemFromWidget(this);
+	}
+
 	uint32 PathTableRow::GetNumColumns() noexcept
 	{
 		return 1u;
+	}
+
+	void PathTableRow::HandleDragDrop() noexcept
+	{
+		UIModule& uiModule = ModuleManager::LoadModuleChecked<UIModule>();
+		const bool chevronActiveAndHovered = m_pChevronButton->IsHovered() && m_pChevronButton->IsEnabled();
+
+		if (SupportsDrag() && m_IsHovered && !chevronActiveAndHovered && !uiModule.HasActiveDragDrop() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+		{
+			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceExtern | ImGuiDragDropFlags_SourceNoPreviewTooltip))
+			{
+				const Reply reply = OnDragDetected(m_Geometry, Mouse::CreatePointerInfo());
+				if (reply.IsHandled())
+					uiModule.SetActiveDragDropOperation(reply.GetDragDropOperation());
+
+				ImGui::SetDragDropPayload("RLS_DRAGOP", nullptr, 0);
+				ImGui::EndDragDropSource();
+			}
+		}
+
+		if (uiModule.HasActiveDragDrop())
+		{
+			const ImVec2 mouse = ImGui::GetMousePos();
+			const bool cursorOverRow = m_HasHoverRect && m_HoverRect.Contains(mouse);
+
+			if (cursorOverRow)
+			{
+				const Ref<DragDropOperationBase>& pOp = uiModule.GetActiveDragDropOperation();
+
+				uiModule.SetDragOverTarget(this, m_Geometry);
+
+				const Reply reply = OnDragOver(m_Geometry, pOp);
+				if (reply.IsHandled() && Mouse::IsButtonReleased(RLS_Button::Left))
+				{
+					OnDrop(m_Geometry, pOp);
+					uiModule.ClearDragOverTarget();
+					uiModule.ClearActiveDragDropOperation();
+				}
+			}
+		}
+
+		//if (ImGui::BeginDragDropTarget())
+		//{
+		//	if (uiModule.HasActiveDragDrop())
+		//	{
+		//		const Ref<DragDropOperationBase>& pOp = uiModule.GetActiveDragDropOperation();
+		//		
+		//		uiModule.SetDragOverTarget(this, m_Geometry);
+		//
+		//		//if (const ImGuiPayload* pPayload = ImGui::AcceptDragDropPayload("RLS_DRAGOP", ImGuiDragDropFlags_AcceptBeforeDelivery))
+		//		//{
+		//
+		//		const Reply reply = OnDragOver(m_Geometry, pOp);
+		//		if (reply.IsHandled())
+		//		{
+		//			if (Mouse::IsButtonReleased(RLS_Button::Left))
+		//			{
+		//				OnDrop(m_Geometry, pOp);
+		//				uiModule.ClearDragOverTarget();
+		//				uiModule.ClearActiveDragDropOperation();
+		//			}
+		//		}
+		//		//}
+		//	}
+		//
+		//	ImGui::EndDragDropTarget();
+		//}
+	}
+
+	void PathTableRow::SetRenameFieldError(bool aIsError) noexcept
+	{
+		m_pEditableTextBox->SetTextColor(aIsError ? Colors::Red : Colors::TextDefault);
+		m_pExclamationLabel->SetIsVisible(aIsError);
+	}
+
+	void PathTableRow::ShowEditableTextBox() noexcept
+	{
+		m_pSwitcher->SetActiveWidgetIndex(1u);
+		
+		Label* pLabel = static_cast<Label*>(m_pSwitcher->GetWidget(0).Get());
+		EditableTextBox* pEditableTextBox = static_cast<EditableTextBox*>(m_pSwitcher->GetWidget(1).Get());
+		pEditableTextBox->SetText(pLabel->GetText());
+		pEditableTextBox->ForceKeyboardFocus();
+	}
+
+	void PathTableRow::ShowLabel() noexcept
+	{
+		m_pSwitcher->SetActiveWidgetIndex(0u);
 	}
 
 	void PathTableRow::OnRenderColumn(uint32 aColumn) noexcept
@@ -120,4 +230,16 @@ namespace Relentless
 		m_pOwningTreeView->SetItemExpandedState(pItem, !info.IsExpanded);
 		m_pOwningTreeView->RequestTreeRefresh();
 	}
+
+	void PathTableRow::OnRenameTextChangedInternal(const char* aText) noexcept
+	{
+		OnRenameTextChangedCallback.ExecuteIfSet(GetItem(), aText);
+	}
+
+	void PathTableRow::OnRenameTextCommittedInternal(const char* aText, ETextCommitType aTextCommitType) noexcept
+	{
+		OnRenameTextCommittedCallback.ExecuteIfSet(GetItem(), aText, aTextCommitType);
+		m_pExclamationLabel->SetIsVisible(false);
+	}
+
 }

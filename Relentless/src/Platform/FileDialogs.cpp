@@ -56,4 +56,18 @@ namespace Relentless::Platform
 
 		return paths;
 	}
+
+	bool ShowInExplorer(const Path& aPath)
+	{
+		const WideString wideString = aPath.native();
+
+		PIDLIST_ABSOLUTE pidl = ::ILCreateFromPathW(wideString.c_str());
+		if (!pidl)
+			return false;
+
+		const HRESULT hr = ::SHOpenFolderAndSelectItems(pidl, 0, nullptr, 0);
+		::ILFree(pidl);
+
+		return SUCCEEDED(hr);
+	}
 }

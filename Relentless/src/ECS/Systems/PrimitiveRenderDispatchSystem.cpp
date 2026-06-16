@@ -1,5 +1,7 @@
 #include "PrimitiveRenderDispatchSystem.h"
 
+#include "Assets/CoreTypes/Mesh.h"
+
 #include "ECS/Components/MeshFilterComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/TransformComponent.h"
@@ -39,7 +41,7 @@ namespace Relentless
 
 			PrimitiveRenderProxy& renderProxy = primitiveRenderProxies.emplace_back();
 			renderProxy.EntityID = dirtyEntity;
-			renderProxy.LocalToWorld = transformComponent.GetWorldMatrix();
+			renderProxy.LocalToWorld = meshFilterComponent.HasAssignedMesh() ? meshFilterComponent.GetMesh()->GetOffsetTransform() * transformComponent.GetWorldMatrix() : transformComponent.GetWorldMatrix();
 			renderProxy.MeshUUID = meshFilterComponent.HasAssignedMesh() ? meshFilterComponent.GetMeshHandle().Uuid : NULL_UUID;
 			renderProxy.MaterialUUID = meshRenderComponent.HasAssignedMaterial() ? meshRenderComponent.GetMaterialHandle().Uuid : NULL_UUID;
 			renderProxy.Visible = aSceneState.Scene.IsEntityVisible(dirtyEntity);

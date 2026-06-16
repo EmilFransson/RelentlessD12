@@ -71,7 +71,6 @@ namespace Relentless
 		uint32 m_IndentationLevel = 0;
 
 		bool m_CustomHoverLogic = false;
-		//bool m_Hovered = false;
 		bool m_Tiled = false;
 		bool m_HasHoverRect = false;
 	};

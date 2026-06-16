@@ -34,6 +34,13 @@ namespace Relentless
 			OnDragDropOperationEnd(m_pDragDropOperation);
 		
 		m_pDragDropOperation = nullptr;
+		m_CurrentDragOverTarget = {};
+	}
+
+	void UIModule::ClearDragOverTarget() noexcept
+	{
+		m_CurrentDragOverTarget = {};
+		m_TargetClaimedThisFrame = false;
 	}
 
 	void UIModule::DestroyActiveContextMenu() noexcept
@@ -228,8 +235,31 @@ namespace Relentless
 				m_pActiveContextMenu->Render();
 		}
 
+		if (HasActiveDragDrop())
+		{
+			Ref<DragDropOperationBase> pDragDropOperation = GetActiveDragDropOperation();
+			if (Ref<IBaseWidget> pPreview = pDragDropOperation->GetPreview())
+			{
+				ImGui::BeginTooltip();
+				
+				if (pPreview->IsContainer() || pPreview->RequiresAssignedSize())
+					pPreview->AssignSize(pPreview->ReportSize());
+
+				pPreview->Render();
+				ImGui::EndTooltip();
+			}
+		}
+
 		if (m_pDragDropOperation && !ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 			ClearActiveDragDropOperation();
+
+		if (HasActiveDragDrop() && m_CurrentDragOverTarget.Widget && !m_TargetClaimedThisFrame)
+		{
+			m_CurrentDragOverTarget.Widget->OnDragLeave(m_CurrentDragOverTarget.Geometry, GetActiveDragDropOperation());
+			ClearDragOverTarget();
+		}
+
+		m_TargetClaimedThisFrame = false;
 	}
 
 	void UIModule::OnUpdate(MAYBE_UNUSED float aDeltaTime) noexcept
@@ -281,9 +311,29 @@ namespace Relentless
 	
 	void UIModule::SetActiveDragDropOperation(Ref<DragDropOperationBase> aDragDropOperation) noexcept
 	{
+		m_CurrentDragOverTarget = {};
+
 		m_pDragDropOperation = aDragDropOperation;
 		m_pDragDropOperation->CreatePreview();
 		OnDragDropOperationBegin(m_pDragDropOperation);
+	}
+
+	void UIModule::SetDragOverTarget(IBaseWidget* aWidget, const WidgetGeometry& aGeometry) noexcept
+	{
+		m_TargetClaimedThisFrame = true;
+
+		if (m_CurrentDragOverTarget.Widget == aWidget)
+			return;
+
+		Ref<DragDropOperationBase> pOp = GetActiveDragDropOperation();
+
+		if (m_CurrentDragOverTarget.Widget)
+			m_CurrentDragOverTarget.Widget->OnDragLeave(m_CurrentDragOverTarget.Geometry, pOp);
+
+		m_CurrentDragOverTarget.Widget = aWidget;
+		m_CurrentDragOverTarget.Geometry = aGeometry;
+		if (aWidget)
+			aWidget->OnDragEnter(aGeometry, pOp);
 	}
 
 	// ---------------- PROTECTED FUNCTIONS -----------------

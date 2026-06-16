@@ -9,11 +9,13 @@ namespace Relentless
 		Tooltip(StringView aText = "") noexcept;
 		virtual ~Tooltip() noexcept = default;
 
+		NO_DISCARD String GetText() const noexcept;
+
 		virtual void OnRender() noexcept;
 
-		NO_DISCARD const String& GetText() const noexcept;
 		void SetText(StringView aText) noexcept;
+		void SetText(Callback<String()>&& aTextCallback) noexcept;
 	private:
-		String m_Text;
+		Callback<String()> m_TooltipProvider;
 	};
 }

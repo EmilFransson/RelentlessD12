@@ -71,8 +71,14 @@ namespace Relentless
 		template<typename InstanceType>
 		IBaseWidget* OnDragDetected(InstanceType* aInstance, Reply(InstanceType::*aMethod)(const WidgetGeometry&, const PointerInfo&)) noexcept;
 
+		template<typename Func>
+		IBaseWidget* OnDragDetected(Func&& aCallback) noexcept;
+
 		template<typename InstanceType>
 		IBaseWidget* OnDragEnter(InstanceType* aInstance, void(InstanceType::* aMethod)(const WidgetGeometry&, const Ref<DragDropOperationBase>&)) noexcept;
+
+		template<typename Func>
+		IBaseWidget* OnDragEnter(Func&& aCallback) noexcept;
 
 		template<typename InstanceType>
 		IBaseWidget* OnDragLeave(InstanceType* aInstance, void(InstanceType::* aMethod)(const WidgetGeometry&, const Ref<DragDropOperationBase>&)) noexcept;
@@ -80,8 +86,14 @@ namespace Relentless
 		template<typename InstanceType>
 		IBaseWidget* OnDragOver(InstanceType* aInstance, Reply(InstanceType::*aMethod)(const WidgetGeometry&, const Ref<DragDropOperationBase>&)) noexcept;
 
+		template<typename Func>
+		IBaseWidget* OnDragOver(Func&& aCallback) noexcept;
+
 		template<typename InstanceType>
 		IBaseWidget* OnDrop(InstanceType* aInstance, Reply(InstanceType::*aMethod)(const WidgetGeometry&, const Ref<DragDropOperationBase>&)) noexcept;
+
+		template<typename Func>
+		IBaseWidget* OnDrop(Func&& aCallback) noexcept;
 
 		virtual Reply OnDragDetected(const WidgetGeometry& aGeometry, const PointerInfo& aPointerInfo) noexcept;
 		virtual void OnDragEnter(const WidgetGeometry& aGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept;
@@ -109,7 +121,7 @@ namespace Relentless
 		Broadcaster<void(bool)> OnEnabledStateChanged;
 		Broadcaster<void(bool)> OnVisibilityChanged;
 	protected:
-		void HandleDragDrop() noexcept;
+		virtual void HandleDragDrop() noexcept;
 	protected:
 		WidgetGeometry m_Geometry;
 		Callback<Reply(const WidgetGeometry&, const PointerInfo&)> m_OnDragDetectedCallback;
@@ -146,10 +158,24 @@ namespace Relentless
 		return this;
 	}
 
+	template<typename Func>
+	IBaseWidget* IBaseWidget::OnDragDetected(Func&& aCallback) noexcept
+	{
+		m_OnDragDetectedCallback = Callback<Reply(const WidgetGeometry&, const PointerInfo&)>(std::forward<Func>(aCallback));
+		return this;
+	}
+
 	template<typename InstanceType>
 	IBaseWidget* IBaseWidget::OnDragEnter(InstanceType* aInstance, void(InstanceType::*aMethod)(const WidgetGeometry&, const Ref<DragDropOperationBase>&)) noexcept
 	{
 		m_OnDragEnterCallback = [aInstance, aMethod](const WidgetGeometry& aGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) { return (aInstance->*aMethod)(aGeometry, aDragDropOperation); };
+		return this;
+	}
+
+	template<typename Func>
+	IBaseWidget* IBaseWidget::OnDragEnter(Func&& aCallback) noexcept
+	{
+		m_OnDragEnterCallback = Callback<void(const WidgetGeometry& aGeometry, const Ref<DragDropOperationBase>& aDragDropOperation)>(std::forward<Func>(aCallback));
 		return this;
 	}
 
@@ -167,10 +193,25 @@ namespace Relentless
 		return this;
 	}
 
+	template<typename Func>
+	IBaseWidget* IBaseWidget::OnDragOver(Func&& aCallback) noexcept
+	{
+		m_OnDragOverCallback = Callback<Reply(const WidgetGeometry& aGeometry, const Ref<DragDropOperationBase>& aDragDropOperation)>(std::forward<Func>(aCallback));
+		return this;
+	}
+
 	template<typename InstanceType>
 	IBaseWidget* IBaseWidget::OnDrop(InstanceType* aInstance, Reply(InstanceType::*aMethod)(const WidgetGeometry&, const Ref<DragDropOperationBase>&)) noexcept
 	{
 		m_OnDropCallback = [aInstance, aMethod](const WidgetGeometry& aGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) { return (aInstance->*aMethod)(aGeometry, aDragDropOperation); };
 		return this;
 	}
+
+	template<typename Func>
+	IBaseWidget* IBaseWidget::OnDrop(Func&& aCallback) noexcept
+	{
+		m_OnDropCallback = Callback<Reply(const WidgetGeometry& aGeometry, const Ref<DragDropOperationBase>& aDragDropOperation)>(std::forward<Func>(aCallback));
+		return this;
+	}
+
 }

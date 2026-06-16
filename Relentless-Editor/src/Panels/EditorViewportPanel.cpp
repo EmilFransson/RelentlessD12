@@ -13,6 +13,9 @@ namespace Relentless
 	{
 		SetRoot(BuildDefaultWindowLayout());
 		
+		m_pCanvas->OnDragOver(this, &EditorViewportPanel::OnCanvasDragOverInternal);
+		m_pCanvas->OnDrop(this, &EditorViewportPanel::OnDropOnCanvasInternal);
+
 		Renderer::Dispatch([viewID = GetUUID()](Renderer* aRenderer)
 			{
 				aRenderer->CreateView(viewID);
@@ -64,4 +67,23 @@ namespace Relentless
 		return "Scene Viewport";
 	}
 
+	Reply EditorViewportPanel::OnCanvasDragOverInternal(MAYBE_UNUSED const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
+	{
+		const std::vector<Reply> replies = OnCanvasDragOver(aWidgetGeometry, aDragDropOperation);
+		
+		if (std::ranges::any_of(replies, [](const Reply& reply) { return reply.IsHandled(); }))
+			return Reply::Handled();
+
+		return Reply::Unhandled();
+	}
+
+	Reply EditorViewportPanel::OnDropOnCanvasInternal(MAYBE_UNUSED const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
+	{
+		const std::vector<Reply> replies = OnCanvasDrop(aWidgetGeometry, aDragDropOperation);
+
+		if (std::ranges::any_of(replies, [](const Reply& reply) { return reply.IsHandled(); }))
+			return Reply::Handled();
+
+		return Reply::Unhandled();
+	}
 }

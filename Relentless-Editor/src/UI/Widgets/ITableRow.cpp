@@ -47,7 +47,6 @@ namespace Relentless
 				OnRenderColumn(column);
 		}
 		
-
 		if (m_HasHoverRect && !m_CustomHoverLogic)
 		{
 			ImGui::TablePushBackgroundChannel();
@@ -84,5 +83,4 @@ namespace Relentless
 
 		return size;
 	}
-
 }

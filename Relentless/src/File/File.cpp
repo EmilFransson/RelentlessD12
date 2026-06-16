@@ -13,6 +13,11 @@ namespace Relentless
 		return ::SetFileAttributesW(aPath.c_str(), attrs) != FALSE;
 	}
 
+	bool File::CreateDirectory(const Path& aPath) noexcept
+	{
+		return std::filesystem::create_directory(aPath);
+	}
+
 	bool File::Exists(const Path& aPath) noexcept
 	{
 		return std::filesystem::exists(aPath);

@@ -44,6 +44,7 @@ namespace Relentless
 		NO_DISCARD RLS_API String ConvertFromWide(const WideString& input) noexcept;
 		NO_DISCARD RLS_API WideString ConvertToWide(const String& input) noexcept;
 		
+		NO_DISCARD RLS_API bool EqualsIgnoreCase(StringView aLhs, StringView aRhs) noexcept;
 		NO_DISCARD RLS_API String ExtractTrailingDigits(const String& input) noexcept;
 		NO_DISCARD RLS_API std::optional<int> ExtractTrailingNumber(const String& input) noexcept;
 
@@ -55,6 +56,11 @@ namespace Relentless
 		NO_DISCARD RLS_API String StripTrailingDigits(const std::string& input) noexcept;
 		
 		NO_DISCARD RLS_API String ToLower(const String& input) noexcept;
+
+		constexpr char ToLowerAscii(char c) noexcept
+		{
+			return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+		}
 
 		template<typename T>
 		requires std::is_integral_v<T>

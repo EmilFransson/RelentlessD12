@@ -3,20 +3,20 @@
 
 namespace Relentless
 {
-	Label::Label(std::string_view text, ImFont* pFont) noexcept
-		: m_Text{text}
+	Label::Label(StringView aText, ImFont* aFont) noexcept
 	{
+		SetText(aText);
 		SetTextColor(Colors::TextDefault);
 
-		if (pFont)
-			SetFont(pFont);
+		if (aFont)
+			SetFont(aFont);
 		else
 			SetFont(UI::Fonts::Get("Default"));
 	}
 
-	const String& Label::GetText() const noexcept
+	String Label::GetText() const noexcept
 	{
-		return m_Text;
+		return m_TextProvider.IsSet() ? m_TextProvider() : String(); //m_Text;
 	}
 
 	void Label::OnRender() noexcept
@@ -37,7 +37,7 @@ namespace Relentless
 
 		const Vector2 padding = GetPadding() * 2.0f;
 		const float frameHeight = ImGui::GetFontSize() + padding.y;
-		const ImVec2 textSize = ImGui::CalcTextSize(m_Text.c_str());
+		const ImVec2 textSize = ImGui::CalcTextSize(/*m_Text*/GetText().c_str());
 
 		if (pFont)
 			ImGui::PopFont();
@@ -45,28 +45,36 @@ namespace Relentless
 		return Vector2(textSize.x + padding.x, frameHeight);
 	}
 
-	Label* Label::SetHighlightedSubstring(std::string_view text) noexcept
+	Label* Label::SetHighlightedSubstring(StringView aText) noexcept
 	{
-		m_HighlightedSubstring = StringUtils::ToLower(String(text));
+		m_HighlightedSubstring = StringUtils::ToLower(String(aText));
 		return this;
 	}
 
-	Label* Label::SetText(std::string_view text) noexcept
+	Label* Label::SetText(StringView aText) noexcept
 	{
-		m_Text = text;
+		m_TextProvider = [text = String(aText)]() { return text; };
+		//m_Text = aText;
+		return this;
+	}
+
+	Label* Label::SetText(Callback<String()>&& aTextCallback) noexcept
+	{
+		m_TextProvider = std::move(aTextCallback);
 		return this;
 	}
 
 	void Label::RenderHighlight() noexcept
 	{
-		const String loweredText = StringUtils::ToLower(m_Text);
+		const String text = GetText();
+		const String loweredText = StringUtils::ToLower(/*m_Text*/text);
 		const size_t startIndex = loweredText.find(m_HighlightedSubstring);
 
 		const ImVec2 textPos = ImGui::GetCursorScreenPos();
 
 		// Text before highlight
-		const std::string before = m_Text.substr(0, startIndex);
-		const std::string highlight = m_Text.substr(startIndex, m_HighlightedSubstring.length());
+		const std::string before = text.substr(0, startIndex);
+		const std::string highlight = text.substr(startIndex, m_HighlightedSubstring.length());
 
 		ImVec2 preSize = ImGui::CalcTextSize(before.c_str());
 		ImVec2 highlightSize = ImGui::CalcTextSize(highlight.c_str());
@@ -86,7 +94,7 @@ namespace Relentless
 
 	void Label::RenderText() noexcept
 	{
-		ImGui::Text("%s", m_Text.c_str());
+		ImGui::Text("%s", GetText().c_str());
 
 		if (!this->m_IsHovered && ImGui::IsItemHovered())
 			this->OnMouseEnter_private();

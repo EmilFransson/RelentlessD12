@@ -31,10 +31,10 @@ namespace Relentless
 {
 	AssetView::AssetView() noexcept
 	{
-		m_Filters.Add<AssetTextFilter>();
-		m_Filters.Add<AssetTypeFilter>();
-		m_Filters.Add<AssetSourceFilter>();
-		m_Filters.OnFilterChanged.Connect(this, &AssetView::Repopulate);
+		m_AssetFilters.Add<AssetTextFilter>();
+		m_AssetFilters.Add<AssetTypeFilter>();
+		m_AssetFilters.Add<AssetSourceFilter>();
+		m_AssetFilters.OnFilterChanged.Connect(this, &AssetView::Repopulate);
 
 		m_pRoot = RLS_NEW VerticalBox();
 		m_pRoot->SetHorizontalSizePolicy(ESizePolicy::Stretch);
@@ -85,14 +85,14 @@ namespace Relentless
 		assetRegistry.OnAssetAdded.Detach(this);
 	}
 
-	bool AssetView::BelongsToCurrentView(const AssetData& aAssetData) const noexcept
+	bool AssetView::BelongsToCurrentView(const String& aVirtualPath) const noexcept
 	{
 		if (m_SourceFolders.empty())
 			return true;
 
 		for (const String& src : m_SourceFolders)
 		{
-			if (aAssetData.PackagePath == src)
+			if (aVirtualPath == src)
 				return true;
 		}
 
@@ -109,7 +109,7 @@ namespace Relentless
 
 	AssetFilterCollection& AssetView::GetAssetFilterCollection() noexcept
 	{
-		return m_Filters;
+		return m_AssetFilters;
 	}
 
 	EAssetThumbnailSize AssetView::GetAssetThumbnailSize() const noexcept
@@ -238,6 +238,12 @@ namespace Relentless
 					return true;
 				},
 				true);
+
+			assetRegistry.ForEachDescendantFolder(root, [this](const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType) 
+				{
+					OnPathAdded(aVirtualPath, aDisplayName, aSourceType);
+					return true;
+				});
 		}
 
 		assetRegistry.OnAssetAdded.Connect(this, &AssetView::OnAssetAdded);
@@ -245,9 +251,9 @@ namespace Relentless
 
 	void AssetView::OnAssetAdded(const AssetData& aAssetData) noexcept
 	{
-		if (!m_Filters.PassesAll(aAssetData))
+		if (!m_AssetFilters.PassesAll(aAssetData))
 			return;
-		if (!BelongsToCurrentView(aAssetData))
+		if (!BelongsToCurrentView(aAssetData.PackagePath.string()))
 			return;
 
 		ContentBrowserModule& contentBrowser = ModuleManager::LoadModuleChecked<ContentBrowserModule>();
@@ -257,11 +263,13 @@ namespace Relentless
 		m_pAssetsTreeView->RequestRefresh();
 	}
 
-	Reply AssetView::OnAssetTileItemDragDetected(MAYBE_UNUSED const WidgetGeometry& aGeometry, MAYBE_UNUSED const PointerInfo& aPointerInfo) noexcept
+	Reply AssetView::OnAssetTileItemDragDetected(AssetTileItem* aAssetTileItem) noexcept
 	{
 		std::vector<SharedPtr<AssetThumbnailData>> selectedItems;
 		if (m_pAssetsTreeView->GetSelectedItems(selectedItems) == 0u)
 			return Reply::Unhandled();
+
+		const SharedPtr<AssetThumbnailData>& pDragInitiatorItem = m_pAssetsTreeView->GetItemFromWidget(aAssetTileItem);
 
 		std::vector<AssetData> assetDatas;
 		assetDatas.reserve(selectedItems.size());
@@ -269,7 +277,11 @@ namespace Relentless
 		for (const auto& thumbnailData : selectedItems)
 			assetDatas.push_back(thumbnailData->GetAssetData());
 
-		return Reply::Handled().BeginDragDrop(RLS_NEW AssetDragDropOperation(assetDatas));
+		String previewText = pDragInitiatorItem->GetAssetData().Name;
+		if (selectedItems.size() > 1)
+			previewText += std::format(" and {} other{}", selectedItems.size() - 1, selectedItems.size() > 2 ? "s" : "");
+
+		return Reply::Handled().BeginDragDrop(RLS_NEW AssetDragDropOperation(assetDatas, previewText));
 	}
 
 	void AssetView::OnAssetTileItemDoubleClicked(const SharedPtr<AssetThumbnailData>& aThumbnailData) noexcept
@@ -305,8 +317,8 @@ namespace Relentless
 		{
 			contextMenuBuilder.AddCheckBox(assetDefinition->GetAssetDisplayName())
 				.Icon(assetDefinition->GetAssetIcon())
-				.Value([this, type = assetDefinition->GetSupportedAssetType()]() { return m_Filters.Get<AssetTypeFilter>()->IsEnabled(type); })
-				.OnCheckStateChanged([this, type = assetDefinition->GetSupportedAssetType()](bool aState) { m_Filters.Get<AssetTypeFilter>()->SetEnabled(type, aState); });
+				.Value([this, type = assetDefinition->GetSupportedAssetType()]() { return m_AssetFilters.Get<AssetTypeFilter>()->IsEnabled(type); })
+				.OnCheckStateChanged([this, type = assetDefinition->GetSupportedAssetType()](bool aState) { m_AssetFilters.Get<AssetTypeFilter>()->SetEnabled(type, aState); });
 		}
 
 		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(contextMenuBuilder.BuildContextMenu());
@@ -316,10 +328,32 @@ namespace Relentless
 	{
 		const Vector2 size = AssetThumbnailSizeEnumToSize(m_AssetThumbnailSize);
 		Ref<AssetTileItem> pAssetTileItem = RLS_NEW AssetTileItem(*aItem, Vector2(size.x, size.y), m_pAssetsTreeView);
-		pAssetTileItem->OnDragDetected(this, &AssetView::OnAssetTileItemDragDetected);
+		pAssetTileItem->OnDragDetected([this, pItem = pAssetTileItem.Get()](MAYBE_UNUSED const WidgetGeometry& aGeometry, MAYBE_UNUSED const PointerInfo& aPointerInfo)
+			{
+				return OnAssetTileItemDragDetected(pItem);
+			});
 		pAssetTileItem->SetTooltip(RLS_NEW AssetTileItemTooltip(aItem->GetAssetData()));
 
 		return pAssetTileItem;
+	}
+
+	void AssetView::OnPathAdded(MAYBE_UNUSED const String& aVirtualPath, MAYBE_UNUSED const String& aDisplayName, MAYBE_UNUSED EAssetSourceType aSourceType) noexcept
+	{
+		//Uh ohh... (this function UNDER CONSTRUCTION!)
+
+		//if (!m_Filters.PassesAll(aAssetData))
+		//	return;
+
+		//TODO: Should probably be the parent path here...
+		//if (!BelongsToCurrentView(aVirtualPath))
+		//	return;
+		//
+		//ContentBrowserModule& contentBrowser = ModuleManager::LoadModuleChecked<ContentBrowserModule>();
+		//const SharedPtr<AssetThumbnailPool>& pThumbnailPool = contentBrowser.GetAssetThumbnailPool();
+		//
+		////Should resolve a folder thumbnail data, oops
+		//m_Items.push_back(MakeShared<AssetThumbnailData>(aAssetData, pThumbnailPool));
+		//m_pAssetsTreeView->RequestRefresh();
 	}
 
 	const std::vector<SharedPtr<AssetThumbnailData>>* AssetView::OnRequestSource() noexcept
@@ -344,7 +378,7 @@ namespace Relentless
 
 	void AssetView::OnSearchBarTextChanged(const char* aText) noexcept
 	{
-		m_Filters.Get<AssetTextFilter>()->SetTextFilter(aText);
+		m_AssetFilters.Get<AssetTextFilter>()->SetTextFilter(aText);
 	}
 
 	void AssetView::OnSelectionChangedInternal(MAYBE_UNUSED const SharedPtr<AssetThumbnailData>& aItem, MAYBE_UNUSED ESelectionType aSelectionType) noexcept

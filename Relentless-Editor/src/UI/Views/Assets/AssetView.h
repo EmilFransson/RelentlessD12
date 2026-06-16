@@ -27,7 +27,7 @@ namespace Relentless
 		AssetView() noexcept;
 		virtual ~AssetView() noexcept;
 
-		NO_DISCARD bool BelongsToCurrentView(const AssetData& aAssetData) const noexcept;
+		NO_DISCARD bool BelongsToCurrentView(const String& aVirtualPath) const noexcept;
 
 		void Clear() noexcept;
 		
@@ -55,10 +55,11 @@ namespace Relentless
 		void InitializeFromAssetRegistry() noexcept;
 
 		void OnAssetAdded(const AssetData& aAssetData) noexcept;
-		NO_DISCARD Reply OnAssetTileItemDragDetected(MAYBE_UNUSED const WidgetGeometry& aGeometry, MAYBE_UNUSED const PointerInfo& aPointerInfo) noexcept;
+		NO_DISCARD Reply OnAssetTileItemDragDetected(AssetTileItem* aAssetTileItem) noexcept;
 		void OnAssetTileItemDoubleClicked(const SharedPtr<AssetThumbnailData>& aThumbnailData) noexcept;
 		void OnFilterButtonClicked() noexcept;
 		NO_DISCARD Ref<ITableRow> OnGenerateItem(const SharedPtr<AssetThumbnailData>& aItem) noexcept;
+		void OnPathAdded(MAYBE_UNUSED const String& aVirtualPath, MAYBE_UNUSED const String& aDisplayName, MAYBE_UNUSED EAssetSourceType aSourceType) noexcept;
 		NO_DISCARD const std::vector<SharedPtr<AssetThumbnailData>>* OnRequestSource() noexcept;
 		void OnRender() noexcept override;
 		void OnSearchBarTextChanged(const char* aText) noexcept;
@@ -73,7 +74,7 @@ namespace Relentless
 		std::vector<SharedPtr<AssetThumbnailData>> m_Items;
 		std::vector<String> m_SourceFolders;
 		
-		AssetFilterCollection m_Filters;
+		AssetFilterCollection m_AssetFilters;
 		
 		Ref<TileView<SharedPtr<AssetThumbnailData>>> m_pAssetsTreeView = nullptr;
 		Ref<VerticalBox> m_pRoot = nullptr;

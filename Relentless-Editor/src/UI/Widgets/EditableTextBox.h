@@ -16,7 +16,7 @@ namespace Relentless
 		EditableTextBox* Bind(Ref<PropertyHandle<String>> aPropertyHandle) noexcept;
 
 		virtual void OnRender() noexcept override;
-		void SetText(const String& aText) noexcept;
+		EditableTextBox* SetText(const String& aText) noexcept;
 		
 		template<typename Func>
 		EditableTextBox* OnTextChanged(Func&& callback) noexcept

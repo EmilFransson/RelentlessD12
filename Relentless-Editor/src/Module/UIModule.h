@@ -35,6 +35,7 @@ namespace Relentless
 		}
 
 		void ClearActiveDragDropOperation() noexcept;
+		void ClearDragOverTarget() noexcept;
 
 		void DestroyActiveContextMenu() noexcept;
 
@@ -57,6 +58,7 @@ namespace Relentless
 
 		void SetActiveContextMenu(Ref<ContextMenu> aContextMenu) noexcept;
 		void SetActiveDragDropOperation(Ref<DragDropOperationBase> aDragDropOperation) noexcept;
+		void SetDragOverTarget(IBaseWidget* aWidget, const WidgetGeometry& aGeometry) noexcept;
 
 		Broadcaster<void(const Ref<DragDropOperationBase>& aDragDropOperation)> OnDragDropOperationBegin;
 		Broadcaster<void(const Ref<DragDropOperationBase>& aDragDropOperation)> OnDragDropOperationEnd;
@@ -86,6 +88,12 @@ namespace Relentless
 		std::vector<UniquePtr<PanelBase>> m_PendingPanelsToOpen;
 		std::unordered_map<String, std::vector<bool>> m_Slots;
 
+		struct DragOverTarget
+		{
+			WidgetGeometry Geometry;
+			IBaseWidget* Widget = nullptr;
+		} m_CurrentDragOverTarget;
+
 		PanelBase* m_pHoveredPanel			= nullptr;
 		PanelBase* m_pFocusedPanel			= nullptr;
 		PanelBase* m_pCaptureTargetPanel	= nullptr;
@@ -107,5 +115,6 @@ namespace Relentless
 		inline static constexpr uint32 m_DragThreshold = 3u;
 		uint32 m_CurrentDragOffset = 0u;
 		bool m_IsDragging = false;
+		bool m_TargetClaimedThisFrame = false;
 	};
 }

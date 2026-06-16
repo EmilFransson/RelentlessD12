@@ -120,15 +120,23 @@ namespace Relentless
 		ImGui::TextWrapped("%s", m_DisplayName.c_str());
 		ImGui::PopTextWrapPos();
 		ImGui::SetWindowFontScale(1.0f);
-	}
 
-	void AssetTileItem::OnMouseButtonDown(MAYBE_UNUSED const WidgetGeometry& aGeometry, const PointerInfo& aPointerInfo) noexcept
-	{
-		m_OnClickedCallback(aPointerInfo);
-	}
+		if (m_IsHovered)
+		{
+			const SharedPtr<AssetThumbnailData>& pItem = m_pTileView->GetItemFromWidget(this);
 
-	void AssetTileItem::OnMouseButtonDoubleClick(MAYBE_UNUSED const WidgetGeometry& aGeometry, const PointerInfo& aPointerInfo) noexcept
-	{
-		m_OnDoubleClickedCallback(aPointerInfo, this);
+			const bool isSelected = m_pTileView->IsItemSelected(pItem);
+
+			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
+				m_OnDoubleClickedCallback.ExecuteIfSet(Mouse::CreatePointerInfo(), this);
+			else if (!isSelected && ImGui::IsMouseClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
+				m_OnClickedCallback.ExecuteIfSet(Mouse::CreatePointerInfo());
+			else if (isSelected && !Keyboard::IsKeyDown(RLS_Key::LCtrl) && ImGui::IsMouseReleased(ImGuiMouseButton_::ImGuiMouseButton_Left))
+				m_OnClickedCallback.ExecuteIfSet(Mouse::CreatePointerInfo());
+			else if (isSelected && Keyboard::IsKeyDown(RLS_Key::LCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
+				m_OnClickedCallback.ExecuteIfSet(Mouse::CreatePointerInfo());
+			else if (ImGui::IsMouseReleased(ImGuiMouseButton_::ImGuiMouseButton_Right))
+				m_OnClickedCallback.ExecuteIfSet(Mouse::CreatePointerInfo());
+		}
 	}
 }

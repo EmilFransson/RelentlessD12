@@ -11,6 +11,8 @@ namespace Relentless
 		
 		static bool ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept;
 	private:
+		NO_DISCARD Reply OnCanvasDragOver(MAYBE_UNUSED const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept;
+		NO_DISCARD Reply OnDropOnCanvas(MAYBE_UNUSED const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept;
 		void OnPanelClose(PanelBase* aPanel) noexcept;
 		void OnPanelOpen(PanelBase* aPanel) noexcept;
 		void OnUpdate(MAYBE_UNUSED float aDeltaTime) noexcept;

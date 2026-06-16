@@ -80,9 +80,10 @@ namespace Relentless
 		}
 	}
 
-	void EditableTextBox::SetText(const String& aText) noexcept
+	EditableTextBox* EditableTextBox::SetText(const String& aText) noexcept
 	{
 		m_Buffer = aText;
+		return this;
 	}
 
 	Vector2 EditableTextBox::ReportSize() const noexcept

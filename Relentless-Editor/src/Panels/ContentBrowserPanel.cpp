@@ -255,6 +255,13 @@ namespace Relentless
 			.TextColor(Colors::TextInactive)
 			.Thickness(0.5f);
 
+		builder.AddItem("New Folder")
+			.Icon(ICON_FA_FOLDER_PLUS)
+			.OnClicked([this]() { m_pPathView->CreateFolder(m_CurrentPath); });
+
+		builder.AddSeparator()
+			.Color(Color(1.0f, 1.0f, 1.0f, 0.25f));
+
 		for (auto& pDefinition : pAssetDefinitionRegistry->GetAllAssetDefinitions()
 			| std::views::filter([](const auto& aDefinition) { return aDefinition->SupportsCreateNew(); }))
 		{
@@ -638,7 +645,8 @@ namespace Relentless
 	{
 		const uint32 numItems = m_pAssetsView->GetNumItems();
 		const uint32 numSelectedItems = m_pAssetsView->GetNumSelectedItems();
-		m_pItemsLabel->SetText(std::format("{} item{} {}", numItems, numItems != 1 ? "s" : "", numSelectedItems > 0 ? std::format("({} selected)", numSelectedItems) : ""));
+		const String text = std::format("{} item{} {}", numItems, numItems != 1 ? "s" : "", numSelectedItems > 0 ? std::format("({} selected)", numSelectedItems) : "");
+		m_pItemsLabel->SetText(text);
 	}
 
 	void ContentBrowserPanel::UpdateNavigationButtons() noexcept

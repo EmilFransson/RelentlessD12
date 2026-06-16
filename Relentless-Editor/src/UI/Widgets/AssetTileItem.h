@@ -26,9 +26,6 @@ namespace Relentless
 
 		virtual void OnRenderColumn(MAYBE_UNUSED uint32 aColumn) noexcept override;
 	private:
-		virtual void OnMouseButtonDown(MAYBE_UNUSED const WidgetGeometry& aGeometry, const PointerInfo& aPointerInfo) noexcept override;
-		virtual void OnMouseButtonDoubleClick(MAYBE_UNUSED const WidgetGeometry& aGeometry, const PointerInfo& aPointerInfo) noexcept override;
-	private:
 		Color m_BackgroundColor;
 		Color m_TypeColor = Colors::White;
 		String m_DisplayName = "";

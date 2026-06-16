@@ -3,9 +3,16 @@
 
 #include "Assets/AssetManager.h"
 #include "Assets/AssetMeta.h"
+
 #include "Core/Application.h"
+
+#include "File/File.h"
+
+#include "Platform/Utility.h"
 #include "Project/Project.h"
+
 #include "Threading/ThreadPool.h"
+
 #include "Utility/FilepathUtils.h"
 #include "Utility/StringUtils.h"
 
@@ -51,6 +58,36 @@ namespace Relentless
 		folder += "/";
 
 		return prefix + folder;
+	}
+
+	bool AssetRegistryModule::AddPath(const String& aVirtualPath, String& aOutChildVirtualFolderPath) noexcept
+	{
+		const String uniqueFolderName = GenerateUniqueFolderName(aVirtualPath, "NewFolder");
+		if (uniqueFolderName.empty())
+		{
+			RLS_CORE_WARN("[AssetRegistryModule::AddPath]: Virtual path '{0}' is invalid.", aVirtualPath);
+			return false;
+		}
+
+		const String fullPath = VirtualPathToAbsolutePath(aVirtualPath) + "/" + uniqueFolderName;
+		if (!File::CreateDirectory(fullPath))
+		{
+			RLS_CORE_WARN("[AssetRegistryModule::AddPath]: Failed to create directory '{0}'.", fullPath);
+			return false;
+		}
+
+		const String virtualFolderPath = aVirtualPath + uniqueFolderName + "/";
+
+		{
+			std::unique_lock<std::shared_mutex> lock(m_Mutex);
+
+			m_PathToFolders[aVirtualPath].insert(uniqueFolderName);
+			m_PathToFolders.try_emplace(virtualFolderPath);
+		}
+
+		OnPathAdded(virtualFolderPath);
+		aOutChildVirtualFolderPath = virtualFolderPath;
+		return true;
 	}
 
 	void AssetRegistryModule::AssetCreated(AssetData aAssetData) noexcept
@@ -256,6 +293,20 @@ namespace Relentless
 		}
 	}
 
+	String AssetRegistryModule::GenerateUniqueFolderName(const String& aVirtualPath, const String& aBaseName) const noexcept
+	{
+		const String absolutePath = VirtualPathToAbsolutePath(aVirtualPath);
+		if (absolutePath.empty())
+			return String();
+
+		String name = aBaseName;
+
+		for (uint32 accumulator = 1u; File::ExistsDir(absolutePath + "/" + name + "/"); ++accumulator)
+			name = std::format("{}{}", aBaseName, accumulator);
+
+		return name;
+	}
+
 	std::vector<const AssetData*> AssetRegistryModule::GetAllAssetsOfType(const TypeIndex& aTypeIndex) const noexcept
 	{
 		std::vector<const AssetData*> assetDatas;
@@ -296,6 +347,48 @@ namespace Relentless
 		return m_IsLoadingAssets;
 	}
 
+	FolderOpResult AssetRegistryModule::MovePath(const String& aFromPath, const String& aToPath) noexcept
+	{
+		if (!m_PathToFolders.contains(aFromPath))
+			return FolderOpResult::Fail(EFolderOpError::SourceNotFound);
+
+		if (aToPath.starts_with(aFromPath))
+			return FolderOpResult::Fail(EFolderOpError::InvalidTarget);
+
+		if (!Platform::IsValidFileName(LeafOf(aToPath)))
+			return FolderOpResult::Fail(EFolderOpError::InvalidName);
+
+		if (m_PathToFolders.contains(aToPath))
+			return FolderOpResult::Fail(EFolderOpError::NameTaken);
+
+		const String fromAbsolutePath = VirtualPathToAbsolutePath(aFromPath);
+		const String toAbsolutePath = VirtualPathToAbsolutePath(aToPath);
+
+		if (!File::Move(fromAbsolutePath, toAbsolutePath, EFileMoveMode::NoOverWrite))
+			return FolderOpResult::Fail(EFolderOpError::IOFailure);
+
+		const String fromParent = ParentOf(aFromPath);
+		const String toParent = ParentOf(aToPath);
+		const String fromLeaf = LeafOf(aFromPath);
+		const String toLeaf = LeafOf(aToPath);
+
+		{
+			std::unique_lock<std::shared_mutex> lock(m_Mutex);
+
+			if (auto it = m_PathToFolders.find(fromParent); it != m_PathToFolders.end())
+				it->second.erase(fromLeaf);
+
+			if (auto it = m_PathToFolders.find(toParent); it != m_PathToFolders.end())
+				it->second.insert(toLeaf);
+
+			RenamePathKeys(aFromPath, aToPath);
+		}
+
+		OnPathRenamed(aFromPath, aToPath);
+
+		return FolderOpResult::Success(aToPath);
+	}
+
 	void AssetRegistryModule::ScanForAssets(const Path& aPath, bool aRecursive) noexcept
 	{
 		namespace fs = std::filesystem;
@@ -332,6 +425,26 @@ namespace Relentless
 						OnFileScanDone(); 
 					});
 			});
+	}
+
+	ENameStatus AssetRegistryModule::ValidateFolderName(const String& aParentVirtualPath, const String& aCurrentName, const String& aNameToValidate) const noexcept
+	{
+		if (aNameToValidate.empty())
+			return ENameStatus::Empty;
+
+		if (aNameToValidate == aCurrentName)
+			return ENameStatus::Unchanged;
+
+		if (!Platform::IsValidFileName(aNameToValidate))
+			return ENameStatus::Invalid;
+
+		if (auto it = m_PathToFolders.find(aParentVirtualPath); it != m_PathToFolders.end())
+		{
+			if (it->second.contains(aNameToValidate))
+				return ENameStatus::Taken;
+		}
+
+		return ENameStatus::Ok;
 	}
 
 	String AssetRegistryModule::VirtualPathToAbsolutePath(const String& aVirtualPath) const noexcept
@@ -461,9 +574,25 @@ namespace Relentless
 		}
 	}
 
+	String AssetRegistryModule::LeafOf(const String& aVirtualPath) const noexcept
+	{
+		return StringUtils::Split(aVirtualPath, '/').back();
+	}
+
 	String AssetRegistryModule::MakeRootVirtualPath(const AssetRoot& aRoot) const
 	{
 		return "/" + aRoot.MountName + "/";
+	}
+
+	String AssetRegistryModule::ParentOf(const String& aVirtualPath) const noexcept
+	{
+		const std::vector<String> pathComponents = StringUtils::Split(aVirtualPath, '/');
+
+		String parentPath = "/";
+		for (uint32 i = 0u; i < pathComponents.size() - 1u; ++i)
+			parentPath += pathComponents[i] + "/";
+
+		return parentPath;
 	}
 
 	void AssetRegistryModule::ProcessAssetFile(const Path& aPath) noexcept
@@ -533,9 +662,34 @@ namespace Relentless
 		String parentPath = prefix;
 		for (size_t i = 0; i + 1 < tokens.size(); ++i)
 			parentPath += (tokens[i] + "/");
+		
+		const String directoryVirtualPath = AbsolutePathToVirtualPath(aPath);
 
 		std::unique_lock<std::shared_mutex> lock(m_Mutex);
 		m_PathToFolders[parentPath].insert(tokens.back());
+		m_PathToFolders.try_emplace(directoryVirtualPath);
+	}
+
+	void AssetRegistryModule::RenamePathKeys(const String& aOldPath, const String& aNewPath) noexcept
+	{
+		std::vector<std::pair<String, std::unordered_set<String>>> reinserted;
+
+		for (auto it = m_PathToFolders.begin(); it != m_PathToFolders.end(); )
+		{
+			const String& key = it->first;
+
+			if (key == aOldPath || key.starts_with(aOldPath))
+			{
+				String newKey = aNewPath + key.substr(aOldPath.size());   // swap the prefix
+				reinserted.emplace_back(std::move(newKey), std::move(it->second));
+				it = m_PathToFolders.erase(it);
+			}
+			else
+				++it;
+		}
+
+		for (auto& [k, v] : reinserted)
+			m_PathToFolders.emplace(std::move(k), std::move(v));
 	}
 
 	bool AssetRegistryModule::RootExists(const String& aMountName) const noexcept
@@ -564,5 +718,10 @@ namespace Relentless
 		}
 
 		m_Roots.push_back(AssetRoot{ .MountName = aMountName, .DisplayName = aDisplayName, .BaseDirectory = normalized, .SourceType = aSourceType });
+	}
+
+	FolderOpResult AssetRegistryModule::RenameFolder(const String& aVirtualPath, const String& aNewName) noexcept
+	{
+		return MovePath(aVirtualPath, ParentOf(aVirtualPath) + aNewName + "/");
 	}
 }

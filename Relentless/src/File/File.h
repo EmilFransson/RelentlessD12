@@ -9,6 +9,7 @@ namespace Relentless
 	{
 	public:
 		static bool ClearAttributes(const Path& aPath) noexcept;
+		static bool CreateDirectory(const Path& aPath) noexcept;
 
 		NO_DISCARD static bool Exists(const Path& aPath) noexcept;
 		NO_DISCARD static bool ExistsDir(const Path& aPath) noexcept;

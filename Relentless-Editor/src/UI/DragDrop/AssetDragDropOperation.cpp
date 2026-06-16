@@ -10,8 +10,9 @@
 
 namespace Relentless
 {
-	AssetDragDropOperation::AssetDragDropOperation(const std::vector<AssetData>& someAssetDatas) noexcept
-		: m_AssetDatas{ someAssetDatas }
+	AssetDragDropOperation::AssetDragDropOperation(const std::vector<AssetData>& someAssetDatas, const String& aPreviewText) noexcept
+		:m_AssetDatas{ someAssetDatas },
+		 m_PreviewText{ aPreviewText }
 	{
 	}
 
@@ -26,7 +27,7 @@ namespace Relentless
 
 		pBox->AddWidget(RLS_NEW AssetThumbnail(m_pAssetThumbnailData->GetWeakPtr(), Vector2(50.0f, 50.0f)))
 			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
-		pBox->AddWidget(RLS_NEW Label(BuildPreviewText()))
+		pBox->AddWidget(RLS_NEW Label(m_PreviewText))
 			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
 		m_pPreviewWidget = pBox;
@@ -41,16 +42,4 @@ namespace Relentless
 	{
 		return static_cast<uint32>(m_AssetDatas.size());
 	}
-
-	String AssetDragDropOperation::BuildPreviewText() const noexcept
-	{
-		const size_t numAssets = m_AssetDatas.size();
-		const String& name = m_AssetDatas.front().Name;
-
-		if (numAssets == 1u)
-			return name;
-
-		return std::format("{} (+ {} {})", name, numAssets - 1, numAssets > 2 ? "others" : "other");
-	}
-
 }

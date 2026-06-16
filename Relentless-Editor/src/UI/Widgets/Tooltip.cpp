@@ -4,13 +4,19 @@
 namespace Relentless
 {
 	Tooltip::Tooltip(StringView aText) noexcept
-		: m_Text{ aText }
 	{
+		SetText(aText);
+	}
+
+	String Tooltip::GetText() const noexcept
+	{
+		return m_TooltipProvider.IsSet() ? m_TooltipProvider() : String();
 	}
 
 	void Tooltip::OnRender() noexcept
 	{
-		if (m_Text.empty())
+		const String text = GetText();
+		if (text.empty())
 			return;
 
 		ImGui::PushID((const void*)this);
@@ -20,7 +26,7 @@ namespace Relentless
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
 		ImGui::BeginTooltip();
 
-		ImGui::Text("%s", m_Text.c_str());
+		ImGui::Text("%s", text.c_str());
 		
 		ImGui::EndTooltip();
 
@@ -30,13 +36,13 @@ namespace Relentless
 		ImGui::PopID();
 	}
 
-	const String& Tooltip::GetText() const noexcept
-	{
-		return m_Text;
-	}
-
 	void Tooltip::SetText(StringView aText) noexcept
 	{
-		m_Text = aText;
+		m_TooltipProvider = [text = String(aText)]() { return text; };
+	}
+
+	void Tooltip::SetText(Callback<String()>&& aTextCallback) noexcept
+	{
+		m_TooltipProvider = std::move(aTextCallback);
 	}
 }

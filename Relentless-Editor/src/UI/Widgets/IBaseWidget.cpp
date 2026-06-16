@@ -214,17 +214,17 @@ namespace Relentless
 					uiModule.SetActiveDragDropOperation(reply.GetDragDropOperation());
 			}
 
-			if (uiModule.HasActiveDragDrop())
-			{
-				Ref<DragDropOperationBase> pDragDropOperation = uiModule.GetActiveDragDropOperation();
-				if (Ref<IBaseWidget> pPreview = pDragDropOperation->GetPreview())
-				{
-					if (pPreview->IsContainer() || pPreview->RequiresAssignedSize())
-						pPreview->AssignSize(pPreview->ReportSize());
-
-					pPreview->Render();
-				}
-			}
+// 			if (uiModule.HasActiveDragDrop())
+// 			{
+// 				Ref<DragDropOperationBase> pDragDropOperation = uiModule.GetActiveDragDropOperation();
+// 				if (Ref<IBaseWidget> pPreview = pDragDropOperation->GetPreview())
+// 				{
+// 					if (pPreview->IsContainer() || pPreview->RequiresAssignedSize())
+// 						pPreview->AssignSize(pPreview->ReportSize());
+// 
+// 					pPreview->Render();
+// 				}
+// 			}
 
 			ImGui::SetDragDropPayload("RLS_DRAGOP", nullptr, 0);
 			ImGui::EndDragDropSource();

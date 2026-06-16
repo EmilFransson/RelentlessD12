@@ -15,14 +15,17 @@ namespace Relentless
 	public:
 		Callback() noexcept = default;
 
-		template<typename Func, typename = std::enable_if_t<!std::is_same_v<std::decay_t<Func>, Callback>>>
+		template<typename Func>
+			requires (!std::is_same_v<std::decay_t<Func>, Callback> &&
+					 std::is_invocable_r_v<RetVal, std::decay_t<Func>&, Args...>)
 		Callback(Func&& func)
 			: m_CallbackFunc(std::make_shared<std::function<RetVal(Args...)>>(std::forward<Func>(func)))
 		{
 		}
 
-		template<typename Func,
-			typename = std::enable_if_t<!std::is_same_v<std::decay_t<Func>, Callback>>>
+		template<typename Func>
+			requires (!std::is_same_v<std::decay_t<Func>, Callback> &&
+					 std::is_invocable_r_v<RetVal, std::decay_t<Func>&, Args...>)
 		Callback& operator=(Func&& func)
 		{
 			m_CallbackFunc = std::make_shared<std::function<RetVal(Args...)>>(std::forward<Func>(func));
@@ -70,6 +73,17 @@ namespace Relentless
 		static Callback Bind(Func&& aFunction)
 		{
 			return Callback(std::forward<Func>(aFunction));
+		}
+
+		template<class Obj, class MemFn, class... BoundArgs>
+			requires std::is_invocable_r_v<RetVal, MemFn, Obj*, BoundArgs&..., Args...>
+		static Callback Bind(Obj* aInstance, MemFn aMethod, BoundArgs... aBoundArgs)
+		{
+			return Callback(
+				[aInstance, aMethod, ...boundArgs = std::move(aBoundArgs)](Args... args) -> RetVal
+				{
+					return std::invoke(aMethod, aInstance, boundArgs..., std::forward<Args>(args)...);
+				});
 		}
 
 		[[nodiscard]] bool IsSet() const noexcept { return (bool)m_CallbackFunc; }

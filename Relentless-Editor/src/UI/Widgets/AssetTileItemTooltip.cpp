@@ -41,7 +41,15 @@ namespace Relentless
 			->SetTextColor(Colors::TextInactive)
 			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
-		pPathBox->AddWidget(RLS_NEW Label(aAssetData.PackagePath.string()))
+		pPathBox->AddWidget(RLS_NEW Label())
+			->SetText([uuid = aAssetData.Uuid]() -> String
+				{
+					AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+					if (const AssetData* pAssetData = assetRegistryModule.FindAsset(uuid))
+						return pAssetData->PackagePath.string();
+
+					return "Invalid.";
+				})
 			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 	}
 

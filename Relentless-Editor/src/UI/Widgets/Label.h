@@ -7,21 +7,22 @@ namespace Relentless
 	class Label : public IStylableWidget<Label>
 	{
 	public:
-		Label(std::string_view text = "", ImFont* pFont = nullptr) noexcept;
+		Label(StringView aText = "", ImFont* aFont = nullptr) noexcept;
 
-		NO_DISCARD const String& GetText() const noexcept;
+		NO_DISCARD String GetText() const noexcept;
 
 		virtual void OnRender() noexcept override;
 
 		NO_DISCARD Vector2 ReportSize() const noexcept override;
 
-		Label* SetHighlightedSubstring(std::string_view text) noexcept;
-		Label* SetText(std::string_view text) noexcept;
+		Label* SetHighlightedSubstring(StringView aText) noexcept;
+		Label* SetText(StringView aText) noexcept;
+		Label* SetText(Callback<String()>&& aTextCallback) noexcept;
 	private:
 		void RenderHighlight() noexcept;
 		void RenderText() noexcept;
 	private:
-		String m_Text;
+		Callback<String()> m_TextProvider;
 		String m_HighlightedSubstring;
 	};
 

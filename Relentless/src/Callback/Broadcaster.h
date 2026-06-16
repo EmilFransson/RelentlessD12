@@ -60,6 +60,16 @@ namespace Relentless
 			m_ObjectCallbacks.clear();
 		}
 
+		NO_DISCARD uint32 NumConnected() const noexcept
+		{
+			uint32 numConnections = static_cast<uint32>(m_Callbacks.size());
+			
+			for (const auto& [obj, callbackList] : m_ObjectCallbacks)
+				numConnections += static_cast<uint32>(callbackList.size());
+
+			return numConnections;
+		}
+
 		NO_DISCARD bool IsConnected(CallbackID aID) const noexcept
 		{
 			return m_Callbacks.contains(aID);
