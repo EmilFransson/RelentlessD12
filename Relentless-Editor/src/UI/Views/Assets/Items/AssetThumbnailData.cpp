@@ -1,16 +1,18 @@
 #include "AssetThumbnailData.h"
-#include "AssetThumbnailPool.h"
 
 #include "Core/Editor.h"
 
 #include "Subsystem/AssetDefinitionRegistry.h"
+
+#include "Thumbnail/AssetThumbnailPool.h"
 
 #include "UI/Widgets/AssetThumbnail.h"
 
 namespace Relentless
 {
 	AssetThumbnailData::AssetThumbnailData(const AssetData& aAssetData, const SharedPtr<AssetThumbnailPool>& aAssetThumbnailPool) noexcept
-		:m_AssetData(aAssetData)
+		: AssetViewItem{EAssetViewItemType::Asset}
+		, m_AssetData(aAssetData)
 	{
 		aAssetThumbnailPool->OnThumbnailRegenerated.Connect(this, &AssetThumbnailData::OnThumbnailRegenerated);
 		m_pAssetThumbnailPool = aAssetThumbnailPool->GetWeakPtr();
@@ -34,6 +36,11 @@ namespace Relentless
 	const ThumbnailBrush& AssetThumbnailData::GetBrush() const noexcept
 	{
 		return m_Brush;
+	}
+
+	const String& AssetThumbnailData::GetName() const noexcept
+	{
+		return m_AssetData.Name;
 	}
 
 	Ref<AssetThumbnail> AssetThumbnailData::MakeThumbnailWidget(const Vector2& aSize) const noexcept
@@ -73,6 +80,6 @@ namespace Relentless
 
 		const Ref<IAssetDefinition>& pAssetDefinition = pAssetDefinitionRegistry->GetDefinitionForAsset(m_AssetData);
 		RLS_VERIFY(pAssetDefinition, "[AssetThumbnailData::QueryAssetColor]: Asset Definition for asset {0} Is Invalid.", m_AssetData.Name.c_str());
-		m_Brush.TypeColor = pAssetDefinition->GetAssetColor();
+		m_Brush.LineColor = pAssetDefinition->GetAssetColor();
 	}
 }

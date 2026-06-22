@@ -268,7 +268,10 @@ namespace Relentless
 
 		const entity skyBoxAndLightEntity = m_pActiveScene->CreateEntity("SkyBoxAndLight");
 		SkyLightComponent& skyLightComponent = m_pActiveScene->GetEntityManager().Add<SkyLightComponent>(skyBoxAndLightEntity);
+		skyLightComponent.SetIntensity(100.0f);
+
 		SkyBoxComponent& skyBoxComponent = m_pActiveScene->GetEntityManager().Add<SkyBoxComponent>(skyBoxAndLightEntity);
+		skyBoxComponent.SetIntensity(100.0f);
 
 		m_pActiveScene->SetActiveSkyLight(skyBoxAndLightEntity);
 		m_pActiveScene->SetActiveSkyBox(skyBoxAndLightEntity);

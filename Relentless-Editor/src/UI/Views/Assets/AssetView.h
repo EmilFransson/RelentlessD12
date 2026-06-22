@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Thumbnail/AssetThumbnailData.h"
-
+#include "UI/Views/Assets/Items/AssetViewItem.h"
 #include "UI/Widgets/IWidget.h"
 #include "Utility/Filter/AssetFilterCollection.h"
 
@@ -9,7 +8,7 @@ namespace Relentless
 {
 	enum class ESelectionType : uint8;
 
-	class AssetTileItem;
+	class AssetViewTile;
 	class Button;
 	class ContextMenu;
 	class ITableRow;
@@ -19,7 +18,7 @@ namespace Relentless
 	template<typename T> class TileView;
 	class VerticalBox;
 
-	enum class EAssetThumbnailSize : uint8 { Small = 0u, Medium, Large };
+	enum class EAssetViewThumbnailSize : uint8 { Small = 0u, Medium, Large, Count };
 
 	class AssetView : public IWidget<AssetView>
 	{
@@ -32,58 +31,80 @@ namespace Relentless
 		void Clear() noexcept;
 		
 		NO_DISCARD AssetFilterCollection& GetAssetFilterCollection() noexcept;
-		NO_DISCARD EAssetThumbnailSize GetAssetThumbnailSize() const noexcept;
+		NO_DISCARD EAssetViewThumbnailSize GetThumbnailSize() const noexcept;
 		NO_DISCARD uint32 GetNumItems() const noexcept;
 		NO_DISCARD uint32 GetNumSelectedItems() const noexcept;
 
 		NO_DISCARD bool IsMainViewFocused() const noexcept;
 		NO_DISCARD bool IsMainViewHovered() const noexcept;
+		NO_DISCARD bool IsShowingFolders() const noexcept;
 
 		void SelectAll() noexcept;
-		void SetAssetThumbnailSize(EAssetThumbnailSize aAssetThumbnailSize) noexcept;
+		void SetAssetThumbnailSize(EAssetViewThumbnailSize aThumbnailSize) noexcept;
 		void SetSourceFolders(const std::vector<String>& someVirtualPaths) noexcept;
+		void ShowFolders(bool aShow) noexcept;
+		void ShowSelectedInExplorer() noexcept;
 
+		Broadcaster<void(const String&)> OnEnterFolderRequested;
 		Broadcaster<void()> OnSelectionChanged;
 		Broadcaster<void()> OnRefresh;
 	private:
-		NO_DISCARD Vector2 AssetThumbnailSizeEnumToSize(EAssetThumbnailSize aAssetThumbnailSize) const noexcept;
+		NO_DISCARD Vector2 AssetThumbnailSizeEnumToSize(EAssetViewThumbnailSize aThumbnailSize) const noexcept;
 
 		NO_DISCARD Ref<Button> BuildFilterButton() noexcept;
 		NO_DISCARD Ref<SearchBar> BuildSearchBar() noexcept;
 		NO_DISCARD Ref<Button> BuildSortingButton() noexcept;
 
+		NO_DISCARD Ref<AssetViewTile> CreateAssetTile(const SharedPtr<AssetViewItem>& aItem) noexcept;
+		NO_DISCARD Ref<AssetViewTile> CreateFolderTile(const SharedPtr<AssetViewItem>& aItem) noexcept;
+
+		NO_DISCARD Ref<Thumbnail> GetFolderThumbnail() noexcept;
+
 		void InitializeFromAssetRegistry() noexcept;
 
 		void OnAssetAdded(const AssetData& aAssetData) noexcept;
-		NO_DISCARD Reply OnAssetTileItemDragDetected(AssetTileItem* aAssetTileItem) noexcept;
-		void OnAssetTileItemDoubleClicked(const SharedPtr<AssetThumbnailData>& aThumbnailData) noexcept;
+		NO_DISCARD Reply OnAssetTileDragDetected(AssetViewTile* aAssetViewTile) noexcept;
+		void OnAssetTileDoubleClicked(const SharedPtr<AssetViewItem>& aItem) noexcept;
+		NO_DISCARD Ref<ContextMenu> OnContextMenuOpening(const SharedPtr<AssetViewItem>& aItem) noexcept;
+		NO_DISCARD String OnDebugItemToString(const SharedPtr<AssetViewItem>& aItem) const noexcept;
+		void OnEditSelectedAssetsClicked() noexcept;
 		void OnFilterButtonClicked() noexcept;
-		NO_DISCARD Ref<ITableRow> OnGenerateItem(const SharedPtr<AssetThumbnailData>& aItem) noexcept;
-		void OnPathAdded(MAYBE_UNUSED const String& aVirtualPath, MAYBE_UNUSED const String& aDisplayName, MAYBE_UNUSED EAssetSourceType aSourceType) noexcept;
-		NO_DISCARD const std::vector<SharedPtr<AssetThumbnailData>>* OnRequestSource() noexcept;
+		NO_DISCARD Reply OnFolderTileDragDetected(AssetViewTile* aAssetViewTile) noexcept;
+		void OnFolderTileDoubleClick(const SharedPtr<AssetViewItem>& aItem) noexcept;
+		NO_DISCARD Ref<ITableRow> OnGenerateItem(const SharedPtr<AssetViewItem>& aItem) noexcept;
+		void OnNewFolderItemClicked(const String& aParentVirtualPath) noexcept;
+		void OnPathAdded(const String& aVirtualPath, const String& aDisplayName, MAYBE_UNUSED EAssetSourceType aSourceType) noexcept;
+		NO_DISCARD const std::vector<SharedPtr<AssetViewItem>>* OnRequestSource() noexcept;
 		void OnRender() noexcept override;
 		void OnSearchBarTextChanged(const char* aText) noexcept;
-		void OnSelectionChangedInternal(MAYBE_UNUSED const SharedPtr<AssetThumbnailData>& aItem, MAYBE_UNUSED ESelectionType aSelectionType) noexcept;
+		void OnSelectionChangedInternal(MAYBE_UNUSED const SharedPtr<AssetViewItem>& aItem, MAYBE_UNUSED ESelectionType aSelectionType) noexcept;
+		void OnShowInExplorerItemClicked() noexcept;
 		void OnSortingButtonClicked() noexcept;
+		void OnTileItemDoubleClicked(const SharedPtr<AssetViewItem>& aItem) noexcept;
+
+		NO_DISCARD String ParentOf(const String& aVirtualPath) const noexcept;
 
 		NO_DISCARD bool RequiresAssignedSize() const noexcept override;
 		void Repopulate() noexcept;
 
 		void UpdateSearchBarHintText() noexcept;
 	private:
-		std::vector<SharedPtr<AssetThumbnailData>> m_Items;
+		std::vector<SharedPtr<AssetViewItem>> m_Items;
 		std::vector<String> m_SourceFolders;
 		
 		AssetFilterCollection m_AssetFilters;
 		
-		Ref<TileView<SharedPtr<AssetThumbnailData>>> m_pAssetsTreeView = nullptr;
+		Ref<TileView<SharedPtr<AssetViewItem>>> m_pAssetsTileView = nullptr;
 		Ref<VerticalBox> m_pRoot = nullptr;
 		HorizontalBox* m_pTileViewBox = nullptr;
 		Button* m_pSortingButton = nullptr;
 		SearchBar* m_pSearchBar = nullptr;
 		
 		bool m_SortAscending = true;
+		bool m_ShowFolders = true;
 		CallbackID m_AssetRegistryFileScanDoneID = -1;
-		EAssetThumbnailSize m_AssetThumbnailSize = EAssetThumbnailSize::Medium;
+		EAssetViewThumbnailSize m_ThumbnailSize = EAssetViewThumbnailSize::Medium;
+
+		Ref<Texture2D> m_pFolderThumbnailTexture = nullptr;
 	};
 }

@@ -8,6 +8,8 @@ namespace Relentless
 	public:
 		AssetTextFilter() noexcept;
 
+		NO_DISCARD const String& GetFilterText() const noexcept;
+
 		NO_DISCARD virtual bool IsActive() const override;
 		
 		NO_DISCARD virtual bool PassesFilter(const AssetData& aAssetData) const override;

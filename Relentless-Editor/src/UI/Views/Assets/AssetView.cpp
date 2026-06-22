@@ -12,10 +12,13 @@
 #include "Thumbnail/AssetThumbnailPool.h"
 
 #include "UI/DragDrop/AssetDragDropOperation.h"
+#include "UI/Views/Assets/Items/AssetThumbnailData.h"
+#include "UI/Views/Assets/Items/FolderThumbnailData.h"
 #include "UI/Views/Details/LayoutBuilders/ContextMenuBuilder.h"
 #include "UI/Views/TileView.h"
-#include "UI/Widgets/AssetTileItem.h"
+#include "UI/Widgets/AssetThumbnail.h"
 #include "UI/Widgets/AssetTileItemTooltip.h"
+#include "UI/Widgets/AssetViewTile.h"
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/ITableRow.h"
 #include "UI/Widgets/Label.h"
@@ -51,17 +54,19 @@ namespace Relentless
 		m_pTileViewBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		m_pTileViewBox->SetScrollBarsVisible(true);
 
-		const Vector2 size = AssetThumbnailSizeEnumToSize(m_AssetThumbnailSize);
+		const Vector2 size = AssetThumbnailSizeEnumToSize(m_ThumbnailSize);
 		
-		m_pAssetsTreeView = m_pTileViewBox->AddWidget(RLS_NEW TileView<SharedPtr<AssetThumbnailData>>());
+		m_pAssetsTileView = m_pTileViewBox->AddWidget(RLS_NEW TileView<SharedPtr<AssetViewItem>>());
 
-		m_pAssetsTreeView
+		m_pAssetsTileView
 			->SetItemWidth(size.x)
 			->SetItemHeight(size.y)
+			->OnDebugItemToString(this, &AssetView::OnDebugItemToString)
 			->OnRequestSource(this, &AssetView::OnRequestSource)
 			->OnGenerateRow(this, &AssetView::OnGenerateItem)
 			->OnSelectionChanged(this, &AssetView::OnSelectionChangedInternal)
-			->OnDoubleClick(this, &AssetView::OnAssetTileItemDoubleClicked)
+			->OnDoubleClick(this, &AssetView::OnTileItemDoubleClicked)
+			->OnContextMenuOpening(this, &AssetView::OnContextMenuOpening)
 			->SetHorizontalSizePolicy(ESizePolicy::Stretch)
 			->SetVerticalSizePolicy(ESizePolicy::Stretch);
 
@@ -102,9 +107,9 @@ namespace Relentless
 	void AssetView::Clear() noexcept
 	{
 		m_Items.clear();
-		m_pAssetsTreeView->ClearItemsSource();
-		m_pAssetsTreeView->ClearSelection();
-		m_pAssetsTreeView->RequestRefresh();
+		m_pAssetsTileView->ClearItemsSource();
+		m_pAssetsTileView->ClearSelection();
+		m_pAssetsTileView->RequestRefresh();
 	}
 
 	AssetFilterCollection& AssetView::GetAssetFilterCollection() noexcept
@@ -112,9 +117,9 @@ namespace Relentless
 		return m_AssetFilters;
 	}
 
-	EAssetThumbnailSize AssetView::GetAssetThumbnailSize() const noexcept
+	EAssetViewThumbnailSize AssetView::GetThumbnailSize() const noexcept
 	{
-		return m_AssetThumbnailSize;
+		return m_ThumbnailSize;
 	}
 
 	uint32 AssetView::GetNumItems() const noexcept
@@ -124,7 +129,7 @@ namespace Relentless
 
 	uint32 AssetView::GetNumSelectedItems() const noexcept
 	{
-		return m_pAssetsTreeView->GetNumItemsSelected();
+		return m_pAssetsTileView->GetNumItemsSelected();
 	}
 
 	bool AssetView::IsMainViewFocused() const noexcept
@@ -137,21 +142,26 @@ namespace Relentless
 		return m_pTileViewBox->IsHovered();
 	}
 
-	void AssetView::SelectAll() noexcept
+	bool AssetView::IsShowingFolders() const noexcept
 	{
-		m_pAssetsTreeView->SelectAll();
+		return m_ShowFolders;
 	}
 
-	void AssetView::SetAssetThumbnailSize(EAssetThumbnailSize aAssetThumbnailSize) noexcept
+	void AssetView::SelectAll() noexcept
 	{
-		if (m_AssetThumbnailSize == aAssetThumbnailSize)
+		m_pAssetsTileView->SelectAll();
+	}
+
+	void AssetView::SetAssetThumbnailSize(EAssetViewThumbnailSize aThumbnailSize) noexcept
+	{
+		if (m_ThumbnailSize == aThumbnailSize)
 			return;
 
-		m_AssetThumbnailSize = aAssetThumbnailSize;
+		m_ThumbnailSize = aThumbnailSize;
 
-		const Vector2 size = AssetThumbnailSizeEnumToSize(m_AssetThumbnailSize);
-		m_pAssetsTreeView->SetItemWidth(size.x);
-		m_pAssetsTreeView->SetItemHeight(size.y);
+		const Vector2 size = AssetThumbnailSizeEnumToSize(m_ThumbnailSize);
+		m_pAssetsTileView->SetItemWidth(size.x);
+		m_pAssetsTileView->SetItemHeight(size.y);
 		Repopulate();
 	}
 
@@ -163,13 +173,48 @@ namespace Relentless
 		UpdateSearchBarHintText();
 	}
 
-	Vector2 AssetView::AssetThumbnailSizeEnumToSize(EAssetThumbnailSize aAssetThumbnailSize) const noexcept
+	void AssetView::ShowFolders(bool aShow) noexcept
 	{
-		switch (aAssetThumbnailSize)
+		if (m_ShowFolders == aShow)
+			return;
+
+		m_ShowFolders = aShow;
+		Repopulate();
+	}
+
+	void AssetView::ShowSelectedInExplorer() noexcept
+	{
+		std::vector<SharedPtr<AssetViewItem>> selectedItems;
+		if (m_pAssetsTileView->GetSelectedItems(selectedItems) == 0u)
+			return;
+
+		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+
+		for (const SharedPtr<AssetViewItem>& pItem : selectedItems)
 		{
-		case EAssetThumbnailSize::Small: return Vector2(75.0f, 127.5f);
-		case EAssetThumbnailSize::Medium: return Vector2(100.0f, 170.0f);
-		case EAssetThumbnailSize::Large: return Vector2(125.0f, 212.5f);
+			if (pItem->GetType() == EAssetViewItemType::Folder)
+			{
+				FolderThumbnailData* pFolderThumbnailData = static_cast<FolderThumbnailData*>(pItem.get());
+				Platform::ShowInExplorer(assetRegistryModule.VirtualPathToAbsolutePath(pFolderThumbnailData->GetVirtualPath()));
+			}
+			else
+			{
+				AssetThumbnailData* pAssetThumbnailData = static_cast<AssetThumbnailData*>(pItem.get());
+				const AssetData& assetData = pAssetThumbnailData->GetAssetData();
+				const String absolutePath = assetRegistryModule.VirtualPathToAbsolutePath(assetData.PackagePath.string());
+				const String fileLocation = absolutePath + "\\" + assetData.Name + ".rasset";
+				Platform::ShowInExplorer(fileLocation);
+			}
+		}
+	}
+
+	Vector2 AssetView::AssetThumbnailSizeEnumToSize(EAssetViewThumbnailSize aThumbnailSize) const noexcept
+	{
+		switch (aThumbnailSize)
+		{
+		case EAssetViewThumbnailSize::Small: return Vector2(75.0f, 127.5f);
+		case EAssetViewThumbnailSize::Medium: return Vector2(100.0f, 170.0f);
+		case EAssetViewThumbnailSize::Large: return Vector2(125.0f, 212.5f);
 		default: RLS_ASSERT(false, "[AssetView::AssetThumbnailSizeEnumToSize]: Unknown asset thumbnail size encountered."); return Vector2(100.0f, 170.0f);
 		}
 	}
@@ -218,6 +263,99 @@ namespace Relentless
 		return pSortingButton;
 	}
 
+	Ref<AssetViewTile> AssetView::CreateAssetTile(const SharedPtr<AssetViewItem>& aItem) noexcept
+	{
+		const AssetThumbnailData* pAssetThumbnailData = static_cast<const AssetThumbnailData*>(aItem.get());
+		const AssetData& assetData = pAssetThumbnailData->GetAssetData();
+
+		const AssetDefinitionRegistry* pAssetDefinitionRegistry = Editor::Get()->GetSubsystem<AssetDefinitionRegistry>();
+		const IAssetDefinition* pAssetDefinition = pAssetDefinitionRegistry->GetDefinitionForAsset(assetData);
+		RLS_ASSERT(pAssetDefinition, "[AssetView::CreateAssetTile]: Asset Definition is invalid for asset.");
+
+		const Vector2 tileSize = AssetThumbnailSizeEnumToSize(m_ThumbnailSize);
+		const Vector2 thumbnailSize = Vector2(tileSize.x - 10.0f, (tileSize.y * 0.5f) - 4.0f);
+
+		AssetViewTileCreateInfo createInfo
+		{
+			.DisplayName = pAssetDefinition->GetAssetDisplayName(),
+			.Name = assetData.Name,
+			.HighlightedSubstring = m_AssetFilters.Get<AssetTextFilter>()->GetFilterText(),
+			.Size = tileSize,
+			.Thumbnail = pAssetThumbnailData->MakeThumbnailWidget(thumbnailSize),
+			.IsAssetTile = true
+		};
+
+		Ref<AssetViewTile> pAssetTile = RLS_NEW AssetViewTile(createInfo, m_pAssetsTileView);
+		pAssetTile->SetTooltip(RLS_NEW AssetTileItemTooltip(assetData));
+		pAssetTile->OnDragDetected([this, pItem = pAssetTile.Get()](MAYBE_UNUSED const WidgetGeometry& aGeometry, MAYBE_UNUSED const PointerInfo& aPointerInfo)
+			{
+				return OnAssetTileDragDetected(pItem);
+			});
+
+		return pAssetTile;
+	}
+
+	Ref<AssetViewTile> AssetView::CreateFolderTile(const SharedPtr<AssetViewItem>& aItem) noexcept
+	{
+		const Vector2 tileSize = AssetThumbnailSizeEnumToSize(m_ThumbnailSize);
+
+		FolderThumbnailData* pFolderThumbnailData = static_cast<FolderThumbnailData*>(aItem.get());
+
+		AssetViewTileCreateInfo createInfo
+		{
+			.DisplayName = "",
+			.Name = pFolderThumbnailData->GetName(),
+			.HighlightedSubstring = m_AssetFilters.Get<AssetTextFilter>()->GetFilterText(),
+			.Size = tileSize,
+			.Thumbnail = GetFolderThumbnail(),
+			.IsAssetTile = false
+		};
+
+		Ref<AssetViewTile> pFolderTile = RLS_NEW AssetViewTile(createInfo, m_pAssetsTileView);
+		pFolderTile->SetTooltipText(pFolderThumbnailData->GetVirtualPath());
+		pFolderTile->OnDragDetected([this, pItem = pFolderTile.Get()](MAYBE_UNUSED const WidgetGeometry& aGeometry, MAYBE_UNUSED const PointerInfo& aPointerInfo)
+			{
+				return OnFolderTileDragDetected(pItem);
+			});
+
+		return pFolderTile;
+	}
+
+	Ref<Thumbnail> AssetView::GetFolderThumbnail() noexcept
+	{
+		if (!m_pFolderThumbnailTexture)
+		{
+			std::vector<AssetImportTask> importTasks;
+
+			AssetImportTask& task = importTasks.emplace_back();
+			task.FilePath = FilepathUtils::Combine(EDITOR_ASSET_DIRECTORY, "Textures/folder_256x256.png");
+			task.ShouldSave = false;
+
+			Ref<TextureFactory> pFactory = RLS_NEW TextureFactory();
+			pFactory->SetImportAsSRGB(true);
+			pFactory->SetGenerateMipmaps(true);
+			task.pFactory = pFactory;
+
+			AssetToolsModule& assetTools = ModuleManager::LoadModuleChecked<AssetToolsModule>();
+			std::vector<AssetImportResult> result = assetTools.Import(importTasks);
+			m_pFolderThumbnailTexture = AssetManager::Get<Texture2D>(result[0].Handle);
+			m_pFolderThumbnailTexture->CreateResource();
+		}
+
+		ThumbnailBrush brush;
+		brush.BackingTexture = m_pFolderThumbnailTexture->GetResource();
+		brush.TintColor = Colors::FolderDefault;
+
+		const Vector2 tileSize = AssetThumbnailSizeEnumToSize(m_ThumbnailSize);
+		const Vector2 thumbnailSize = Vector2(tileSize.x - 10.0f, (tileSize.y * 0.5f) - 4.0f);
+
+		Ref<Thumbnail> pFolderThumbnail = RLS_NEW Thumbnail();
+		pFolderThumbnail->SetBrush(brush);
+		pFolderThumbnail->SetSize(thumbnailSize);
+
+		return pFolderThumbnail;
+	}
+
 	void AssetView::InitializeFromAssetRegistry() noexcept
 	{
 		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
@@ -238,12 +376,6 @@ namespace Relentless
 					return true;
 				},
 				true);
-
-			assetRegistry.ForEachDescendantFolder(root, [this](const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType) 
-				{
-					OnPathAdded(aVirtualPath, aDisplayName, aSourceType);
-					return true;
-				});
 		}
 
 		assetRegistry.OnAssetAdded.Connect(this, &AssetView::OnAssetAdded);
@@ -260,39 +392,165 @@ namespace Relentless
 		const SharedPtr<AssetThumbnailPool>& pThumbnailPool = contentBrowser.GetAssetThumbnailPool();
 
 		m_Items.push_back(MakeShared<AssetThumbnailData>(aAssetData, pThumbnailPool));
-		m_pAssetsTreeView->RequestRefresh();
+		m_pAssetsTileView->RequestRefresh();
 	}
 
-	Reply AssetView::OnAssetTileItemDragDetected(AssetTileItem* aAssetTileItem) noexcept
+	Reply AssetView::OnAssetTileDragDetected(AssetViewTile* aAssetViewTile) noexcept
 	{
-		std::vector<SharedPtr<AssetThumbnailData>> selectedItems;
-		if (m_pAssetsTreeView->GetSelectedItems(selectedItems) == 0u)
+		std::vector<SharedPtr<AssetViewItem>> selectedItems;
+		if (m_pAssetsTileView->GetSelectedItems(selectedItems) == 0u)
 			return Reply::Unhandled();
 
-		const SharedPtr<AssetThumbnailData>& pDragInitiatorItem = m_pAssetsTreeView->GetItemFromWidget(aAssetTileItem);
+		const SharedPtr<AssetViewItem>& pDragInitiatorItem = m_pAssetsTileView->GetItemFromWidget(aAssetViewTile);
+		const AssetThumbnailData* pAssetThumbnailData = static_cast<const AssetThumbnailData*>(pDragInitiatorItem.get());
 
 		std::vector<AssetData> assetDatas;
 		assetDatas.reserve(selectedItems.size());
 
-		for (const auto& thumbnailData : selectedItems)
-			assetDatas.push_back(thumbnailData->GetAssetData());
+		auto itemView = selectedItems | std::views::filter([this, aAssetViewTile](const SharedPtr<AssetViewItem>& aItem)
+			{
+				return aItem->GetType() == EAssetViewItemType::Asset && m_pAssetsTileView->GetRowWidget(aItem) != aAssetViewTile;
+			});
 
-		String previewText = pDragInitiatorItem->GetAssetData().Name;
+		for (const auto& pItem : itemView)
+			assetDatas.push_back(static_cast<AssetThumbnailData*>(pItem.get())->GetAssetData());
+
+		assetDatas.push_back(pAssetThumbnailData->GetAssetData());
+
+		String previewText = pAssetThumbnailData->GetAssetData().Name;
 		if (selectedItems.size() > 1)
 			previewText += std::format(" and {} other{}", selectedItems.size() - 1, selectedItems.size() > 2 ? "s" : "");
 
 		return Reply::Handled().BeginDragDrop(RLS_NEW AssetDragDropOperation(assetDatas, previewText));
 	}
 
-	void AssetView::OnAssetTileItemDoubleClicked(const SharedPtr<AssetThumbnailData>& aThumbnailData) noexcept
+	void AssetView::OnAssetTileDoubleClicked(const SharedPtr<AssetViewItem>& aItem) noexcept
 	{
-		if (const Ref<IAssetDefinition>& pAssetDefinition = Editor::Get()->GetSubsystem<AssetDefinitionRegistry>()->GetDefinitionForAsset(aThumbnailData->GetAssetData()))
+		AssetThumbnailData* pAssetThumbnailData = static_cast<AssetThumbnailData*>(aItem.get());
+
+		if (const Ref<IAssetDefinition>& pAssetDefinition = Editor::Get()->GetSubsystem<AssetDefinitionRegistry>()->GetDefinitionForAsset(pAssetThumbnailData->GetAssetData()))
 		{
-			const AssetHandle assetHandle = AssetManager::LoadAsset(aThumbnailData->GetAssetData());
+			const AssetHandle assetHandle = AssetManager::LoadAsset(pAssetThumbnailData->GetAssetData());
 			if (!assetHandle.IsValid())
 				return;
 
 			pAssetDefinition->OpenAssets({ assetHandle });
+		}
+	}
+
+	Ref<ContextMenu> AssetView::OnContextMenuOpening(const SharedPtr<AssetViewItem>& aItem) noexcept
+	{
+		std::vector<SharedPtr<AssetViewItem>> selectedItems;
+		m_pAssetsTileView->GetSelectedItems(selectedItems);
+		
+		RLS_ASSERT(!selectedItems.empty(), "[AssetView::OnContextMenuOpening]: Selection empty on opening context menu.");
+
+		ContextMenuBuilder builder;
+		
+		const bool anyIsFolder = std::ranges::any_of(selectedItems, [](const SharedPtr<AssetViewItem>& aItem) { return aItem->GetType() == EAssetViewItemType::Folder; });
+
+		if (anyIsFolder)
+		{
+			auto folderItems = selectedItems
+				| std::views::filter([](const SharedPtr<AssetViewItem>& aItem) { return aItem->GetType() == EAssetViewItemType::Folder; })
+				| std::views::transform([](const SharedPtr<AssetViewItem>& aItem) -> FolderThumbnailData* { return static_cast<FolderThumbnailData*>(aItem.get()); })
+				| std::ranges::to<std::vector<FolderThumbnailData*>>();
+
+			builder.AddItem("New Folder")
+				.Icon(ICON_FA_FOLDER_PLUS)
+				.Tooltip(std::format("Create a new folder in {}.", folderItems.front()->GetVirtualPath()))
+				.DisabledTooltip("Can only create folders when there is a single path selected.")
+				.OnClicked(Callback<void()>::Bind(this, &AssetView::OnNewFolderItemClicked, folderItems.front()->GetVirtualPath()))
+				.Enabled(folderItems.size() == 1u);
+			
+			builder.AddSection("Folder Options")
+				.Font(UI::Fonts::Get("Small"))
+				.SeparatorColor(Color(1.0f, 1.0f, 1.0f, 0.25f))
+				.TextColor(Colors::TextInactive)
+				.Thickness(0.5f);
+
+			builder.AddItem("Show in Explorer")
+				.Icon(ICON_FA_MAGNIFYING_GLASS_LOCATION)
+				.Tooltip("Finds this folder on disk.")
+				.OnClicked(Callback<void()>::Bind(this, &AssetView::OnShowInExplorerItemClicked));
+		}
+		else
+		{
+			builder.AddSection("Common")
+				.Font(UI::Fonts::Get("Small"))
+				.SeparatorColor(Color(1.0f, 1.0f, 1.0f, 0.25f))
+				.TextColor(Colors::TextInactive)
+				.Thickness(0.5f);
+
+			builder.AddItem("Edit...")
+				.Icon(ICON_FA_PEN)
+				.Tooltip("Opens the selected asset(s) for edit.")
+				.Shortcut("Enter")
+				.OnClicked(Callback<void()>::Bind(this, &AssetView::OnEditSelectedAssetsClicked));
+
+			builder.AddSection("Explore")
+				.Font(UI::Fonts::Get("Small"))
+				.SeparatorColor(Color(1.0f, 1.0f, 1.0f, 0.25f))
+				.TextColor(Colors::TextInactive)
+				.Thickness(0.5f);
+
+			builder.AddItem("Show in Explorer")
+				.Icon(ICON_FA_MAGNIFYING_GLASS_LOCATION)
+				.Tooltip("Finds this folder on disk.")
+				.OnClicked(Callback<void()>::Bind(this, &AssetView::OnShowInExplorerItemClicked));
+		}
+
+		return builder.BuildContextMenu();
+	}
+
+	String AssetView::OnDebugItemToString(const SharedPtr<AssetViewItem>& aItem) const noexcept
+	{
+		const String typeString = aItem->GetType() == EAssetViewItemType::Asset ? "Asset" : "Folder";
+		return std::format("{} ({})", aItem->GetName(), typeString);
+	}
+
+	//Note: can only trigger if all selected items are assets.
+	void AssetView::OnEditSelectedAssetsClicked() noexcept
+	{
+		std::vector<SharedPtr<AssetViewItem>> selectedItems;
+		if (m_pAssetsTileView->GetSelectedItems(selectedItems) == 0u)
+			return;
+
+		auto assetDataView = selectedItems | std::views::transform([](const SharedPtr<AssetViewItem> aItem) -> const AssetData& 
+			{  
+				RLS_ASSERT(aItem->GetType() == EAssetViewItemType::Asset, "[AssetView::OnEditSelectedAssetsClicked ]: Invoked with a non-asset item.");
+				return static_cast<AssetThumbnailData*>(aItem.get())->GetAssetData();
+			});
+
+		AssetDefinitionRegistry* pAssetDefinitionRegistry = Editor::Get()->GetSubsystem<AssetDefinitionRegistry>();
+		for (const AssetData& assetData : assetDataView)
+		{
+			if (const Ref<IAssetDefinition>& pAssetDefinition = pAssetDefinitionRegistry->GetDefinitionForAsset(assetData))
+			{
+				const AssetHandle assetHandle = AssetManager::LoadAsset(assetData);
+				if (!assetHandle.IsValid())
+					continue;
+
+				pAssetDefinition->OpenAssets({ assetHandle });
+			}
+		}
+
+		ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
+	}
+
+	void AssetView::OnTileItemDoubleClicked(const SharedPtr<AssetViewItem>& aItem) noexcept
+	{
+		switch (aItem->GetType())
+		{
+		case EAssetViewItemType::Asset:
+			OnAssetTileDoubleClicked(aItem);
+			break;
+		case EAssetViewItemType::Folder:
+			OnFolderTileDoubleClick(aItem);
+			break;
+		default:
+			RLS_ASSERT(false, "[AssetView::OnTileItemDoubleClicked]: Unknown asset view type encountered.");
+			break;
 		}
 	}
 
@@ -324,46 +582,74 @@ namespace Relentless
 		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(contextMenuBuilder.BuildContextMenu());
 	}
 
-	Ref<ITableRow> AssetView::OnGenerateItem(const SharedPtr<AssetThumbnailData>& aItem) noexcept
+	Reply AssetView::OnFolderTileDragDetected(AssetViewTile* aAssetViewTile) noexcept
 	{
-		const Vector2 size = AssetThumbnailSizeEnumToSize(m_AssetThumbnailSize);
-		Ref<AssetTileItem> pAssetTileItem = RLS_NEW AssetTileItem(*aItem, Vector2(size.x, size.y), m_pAssetsTreeView);
-		pAssetTileItem->OnDragDetected([this, pItem = pAssetTileItem.Get()](MAYBE_UNUSED const WidgetGeometry& aGeometry, MAYBE_UNUSED const PointerInfo& aPointerInfo)
+		return Reply::Unhandled();
+	}
+
+	void AssetView::OnFolderTileDoubleClick(const SharedPtr<AssetViewItem>& aItem) noexcept
+	{
+		const FolderThumbnailData* pFolderThumbnailData = static_cast<const FolderThumbnailData*>(aItem.get());
+		Application::Get().SubmitToMainThread([this, path = pFolderThumbnailData->GetVirtualPath()]() 
 			{
-				return OnAssetTileItemDragDetected(pItem);
+				OnEnterFolderRequested(path);
 			});
-		pAssetTileItem->SetTooltip(RLS_NEW AssetTileItemTooltip(aItem->GetAssetData()));
-
-		return pAssetTileItem;
 	}
 
-	void AssetView::OnPathAdded(MAYBE_UNUSED const String& aVirtualPath, MAYBE_UNUSED const String& aDisplayName, MAYBE_UNUSED EAssetSourceType aSourceType) noexcept
+	Ref<ITableRow> AssetView::OnGenerateItem(const SharedPtr<AssetViewItem>& aItem) noexcept
 	{
-		//Uh ohh... (this function UNDER CONSTRUCTION!)
+		switch (aItem->GetType())
+		{
+		case EAssetViewItemType::Asset:
+			return CreateAssetTile(aItem);
+		case EAssetViewItemType::Folder:
+			return CreateFolderTile(aItem);
+		}
 
-		//if (!m_Filters.PassesAll(aAssetData))
-		//	return;
-
-		//TODO: Should probably be the parent path here...
-		//if (!BelongsToCurrentView(aVirtualPath))
-		//	return;
-		//
-		//ContentBrowserModule& contentBrowser = ModuleManager::LoadModuleChecked<ContentBrowserModule>();
-		//const SharedPtr<AssetThumbnailPool>& pThumbnailPool = contentBrowser.GetAssetThumbnailPool();
-		//
-		////Should resolve a folder thumbnail data, oops
-		//m_Items.push_back(MakeShared<AssetThumbnailData>(aAssetData, pThumbnailPool));
-		//m_pAssetsTreeView->RequestRefresh();
+		RLS_ASSERT(false, "[AssetView::OnGenerateItem]: Unknown asset view type encountered.");
+		return nullptr;
 	}
 
-	const std::vector<SharedPtr<AssetThumbnailData>>* AssetView::OnRequestSource() noexcept
+	void AssetView::OnNewFolderItemClicked(const String& aParentVirtualPath) noexcept
 	{
-		std::ranges::sort(m_Items, [this](SharedPtr<AssetThumbnailData>& aAssetThumbnailDataA, SharedPtr<AssetThumbnailData>& aAssetThumbnailDataB)
+
+	}
+
+	void AssetView::OnPathAdded(const String& aVirtualPath, const String& aDisplayName, MAYBE_UNUSED EAssetSourceType aSourceType) noexcept
+	{
+		if (!m_ShowFolders)
+			return;
+
+		TextFilterExpressionEvaluator evaluator;
+		evaluator.SetFilterText(m_AssetFilters.Get<AssetTextFilter>()->GetFilterText());
+
+		if (!evaluator.TestTextFilter(aDisplayName, ETextFilterTextComparisonMode::Partial))
+			return;
+		if (!BelongsToCurrentView(ParentOf(aVirtualPath)))
+			return;
+
+		m_Items.push_back(MakeShared<FolderThumbnailData>(aVirtualPath, aDisplayName));
+		m_pAssetsTileView->RequestRefresh();
+	}
+
+	const std::vector<SharedPtr<AssetViewItem>>* AssetView::OnRequestSource() noexcept
+	{
+		std::ranges::sort(m_Items, [this](SharedPtr<AssetViewItem>& aItemA, SharedPtr<AssetViewItem>& aItemB)
 			{	
 				if (m_SortAscending)
-					return StringUtils::ToLower(aAssetThumbnailDataA->GetAssetData().Name) < StringUtils::ToLower(aAssetThumbnailDataB->GetAssetData().Name);
-				else 
-					return StringUtils::ToLower(aAssetThumbnailDataA->GetAssetData().Name) > StringUtils::ToLower(aAssetThumbnailDataB->GetAssetData().Name);
+				{
+					if (aItemA->GetType() != aItemB->GetType())
+						return aItemA->GetType() > aItemB->GetType();
+
+					return StringUtils::ToLower(aItemA->GetName()) < StringUtils::ToLower(aItemB->GetName());
+				}
+				else
+				{
+					if (aItemA->GetType() != aItemB->GetType())
+						return aItemA->GetType() < aItemB->GetType();
+
+					return StringUtils::ToLower(aItemA->GetName()) > StringUtils::ToLower(aItemB->GetName());
+				}
 			});
 
 		OnRefresh();
@@ -381,9 +667,15 @@ namespace Relentless
 		m_AssetFilters.Get<AssetTextFilter>()->SetTextFilter(aText);
 	}
 
-	void AssetView::OnSelectionChangedInternal(MAYBE_UNUSED const SharedPtr<AssetThumbnailData>& aItem, MAYBE_UNUSED ESelectionType aSelectionType) noexcept
+	void AssetView::OnSelectionChangedInternal(MAYBE_UNUSED const SharedPtr<AssetViewItem>& aItem, MAYBE_UNUSED ESelectionType aSelectionType) noexcept
 	{
 		OnSelectionChanged();
+	}
+
+	void AssetView::OnShowInExplorerItemClicked() noexcept
+	{
+		ShowSelectedInExplorer();
+		ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
 	}
 
 	void AssetView::OnSortingButtonClicked() noexcept
@@ -402,7 +694,7 @@ namespace Relentless
 				{ 
 					m_SortAscending = true;
 					m_pSortingButton->SetText(std::format("{} {}", ICON_FA_ARROW_DOWN_SHORT_WIDE, ICON_FA_CHEVRON_DOWN));
-					m_pAssetsTreeView->RequestRefresh();
+					m_pAssetsTileView->RequestRefresh();
 
 					ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
 				})
@@ -414,13 +706,24 @@ namespace Relentless
 				{
 					m_SortAscending = false;
 					m_pSortingButton->SetText(std::format("{} {}", ICON_FA_ARROW_UP_SHORT_WIDE, ICON_FA_CHEVRON_DOWN));
-					m_pAssetsTreeView->RequestRefresh();
+					m_pAssetsTileView->RequestRefresh();
 
 					ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
 				})
 			.Tooltip("Sort the items in Descending order");
 
 		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(contextMenuBuilder.BuildContextMenu());
+	}
+
+	String AssetView::ParentOf(const String& aVirtualPath) const noexcept
+	{
+		size_t end = aVirtualPath.size();
+		if (end > 1u && aVirtualPath[end - 1u] == '/')
+			--end;
+
+		const size_t lastSlash = aVirtualPath.find_last_of('/', end - 1u);
+
+		return aVirtualPath.substr(0u, lastSlash + 1u);
 	}
 
 	bool AssetView::RequiresAssignedSize() const noexcept
@@ -433,19 +736,40 @@ namespace Relentless
 		Clear();
 		
 		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-		
+
 		if (m_SourceFolders.empty())
 		{
-			assetRegistry.ForEachAsset([this](const AssetData& aAssetData)
+			std::vector<String> roots;
+
+			assetRegistry.ForEachRoot([&roots](const String& aVirtualPath, const String&, EAssetSourceType)
 				{
-					OnAssetAdded(aAssetData);
+					roots.push_back(aVirtualPath);
 					return true;
 				});
+
+			for (const String& root : roots)
+			{
+				assetRegistry.ForEachAssetWithPath(root, [this](const AssetData& aData)
+					{
+						OnAssetAdded(aData);
+						return true;
+					},
+					true);
+			}
 		}
 		else
 		{
 			for (const auto& aAssetData : assetRegistry.GetAssetsUnderPaths(m_SourceFolders))
 				OnAssetAdded(aAssetData);
+
+			for (const String& sourceFolder : m_SourceFolders)
+			{
+				assetRegistry.ForEachChildFolder(sourceFolder, [this](const String& aVirtualPath, const String& aDisplayName, EAssetSourceType aSourceType)
+					{
+						OnPathAdded(aVirtualPath, aDisplayName, aSourceType);
+						return true;
+					});
+			}
 		}
 	}
 

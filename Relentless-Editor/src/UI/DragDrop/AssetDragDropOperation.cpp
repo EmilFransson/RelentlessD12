@@ -2,7 +2,7 @@
 
 #include "Module/ContentBrowserModule.h"
 
-#include "Thumbnail/AssetThumbnailData.h"
+#include "UI/Views/Assets/Items/AssetThumbnailData.h"
 
 #include "UI/Widgets/HorizontalBox.h"
 #include "UI/Widgets/Label.h"
@@ -19,7 +19,7 @@ namespace Relentless
 	void AssetDragDropOperation::CreatePreview() noexcept
 	{
 		ContentBrowserModule& contentBrowserModule = ModuleManager::LoadModuleChecked<ContentBrowserModule>();
-		m_pAssetThumbnailData = MakeShared<AssetThumbnailData>(m_AssetDatas.front(), contentBrowserModule.GetAssetThumbnailPool());
+		m_pAssetThumbnailData = MakeShared<AssetThumbnailData>(m_AssetDatas.back(), contentBrowserModule.GetAssetThumbnailPool());
 
 		Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
 		pBox->SetPadding({5.0f, 5.0f, 5.0f, 5.0f});

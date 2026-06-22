@@ -91,7 +91,7 @@ namespace Relentless
 		std::array<MaterialTextureEntry, (size_t)ETextureType::Count> m_Textures;
 
 		Vector4 m_AlbedoColor				= Vector4(0.5f, 0.5f, 0.5f, 1.0f);
-		Vector4 m_EmissiveColor				= Vector4::Zero;
+		Vector4 m_EmissiveColor				= Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
 		UVTransform m_GlobalUVTransform;
 

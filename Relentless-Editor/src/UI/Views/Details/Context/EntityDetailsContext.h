@@ -1,7 +1,7 @@
 #pragma once
 #include <Relentless.h>
 
-#include "Thumbnail/AssetThumbnailData.h"
+#include "UI/Views/Assets/Items/AssetThumbnailData.h"
 
 namespace Relentless
 {

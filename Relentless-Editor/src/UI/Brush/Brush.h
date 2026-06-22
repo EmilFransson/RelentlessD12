@@ -5,7 +5,9 @@ namespace Relentless
 {
 	struct ThumbnailBrush
 	{
-		Color TypeColor				= Colors::Black;
+		Color LineColor				= Colors::Transparent;
+		Color BackgroundColor		= Colors::Transparent;
+		Color TintColor				= Colors::White;
 		Ref<Texture> BackingTexture = nullptr;
 	};
 }

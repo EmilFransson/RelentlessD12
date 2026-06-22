@@ -48,8 +48,10 @@ namespace Relentless
 		void ImportToCurrentFolder() noexcept;
 
 		void OnAddAssetButtonClicked() noexcept;
+		void OnAssetViewEnterFolderRequested(const String& aVirtualPath) noexcept;
 		NO_DISCARD bool OnFilterRoots(EAssetSourceType aAssetSourceType, MAYBE_UNUSED const String& aVirtualPath) noexcept;
 		void OnImportAssetButtonClicked() noexcept;
+		NO_DISCARD bool OnMouseWheelScrolledEvent(MouseWheelScrolledEvent& aMouseWheelScrolledEvent) noexcept override;
 		void OnNavigateBackButtonClicked() noexcept;
 		void OnNavigateForwardButtonClicked() noexcept;
 		void OnPathViewSelectionChanged() noexcept;

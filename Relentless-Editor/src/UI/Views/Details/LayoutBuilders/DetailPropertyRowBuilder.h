@@ -5,10 +5,9 @@
 
 #include "SlotBuilder.h"
 
-#include "Thumbnail/AssetThumbnailData.h"
-
 #include "UI/Nodes/AssetDetailNode.h"
 #include "UI/Nodes/DetailNode.h"
+#include "UI/Views/Assets/Items/AssetThumbnailData.h"
 #include "UI/Views/Details/TableRows/DetailPropertyRow.h"
 #include "UI/Views/TreeView.h"
 

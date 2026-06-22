@@ -1,6 +1,8 @@
 #pragma once
 #include <Relentless.h>
 
+#include "AssetViewItem.h"
+
 #include "UI/Brush/Brush.h"
 
 namespace Relentless
@@ -8,7 +10,7 @@ namespace Relentless
 	class AssetThumbnail;
 	class AssetThumbnailPool;
 
-	class AssetThumbnailData : public SharedFromThis<AssetThumbnailData>
+	class AssetThumbnailData : public AssetViewItem, public SharedFromThis<AssetThumbnailData>
 	{
 	public:
 		AssetThumbnailData(const AssetData& aAssetData, const SharedPtr<AssetThumbnailPool>& aAssetThumbnailPool) noexcept;
@@ -16,6 +18,7 @@ namespace Relentless
 
 		NO_DISCARD const AssetData& GetAssetData() const noexcept;
 		NO_DISCARD const ThumbnailBrush& GetBrush() const noexcept;
+		NO_DISCARD const String& GetName() const noexcept override;
 
 		NO_DISCARD Ref<AssetThumbnail> MakeThumbnailWidget(const Vector2& aSize) const noexcept;
 

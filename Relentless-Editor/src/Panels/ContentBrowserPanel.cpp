@@ -64,6 +64,7 @@ namespace Relentless
 		m_pAssetsView->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		m_pAssetsView->OnSelectionChanged.Connect(this, &ContentBrowserPanel::UpdateItemsLabel);
 		m_pAssetsView->OnRefresh.Connect(this, &ContentBrowserPanel::UpdateItemsLabel);
+		m_pAssetsView->OnEnterFolderRequested.Connect(this, &ContentBrowserPanel::OnAssetViewEnterFolderRequested);
 
 		pRightBottomBox->AddWidget(RLS_NEW Separator())
 			->SetActiveColor(Colors::Black)
@@ -309,6 +310,11 @@ namespace Relentless
 		OpenContextMenu();
 	}
 
+	void ContentBrowserPanel::OnAssetViewEnterFolderRequested(const String& aVirtualPath) noexcept
+	{
+		m_pPathView->SetSelectedItemByVirtualPath(aVirtualPath);
+	}
+
 	bool ContentBrowserPanel::OnFilterRoots(EAssetSourceType aAssetSourceType, MAYBE_UNUSED const String& aVirtualPath) noexcept
 	{
 		return m_ShowEngineContent || aAssetSourceType != EAssetSourceType::Engine;
@@ -317,6 +323,24 @@ namespace Relentless
 	void ContentBrowserPanel::OnImportAssetButtonClicked() noexcept
 	{
 		ImportToCurrentFolder();
+	}
+
+	bool ContentBrowserPanel::OnMouseWheelScrolledEvent(MouseWheelScrolledEvent& aMouseWheelScrolledEvent) noexcept
+	{
+		if (!Keyboard::IsKeyDown(RLS_Key::LCtrl))
+			return false;
+
+		if (!m_pAssetsView->IsMainViewHovered())
+			return false;
+
+		const int32 currentThumbnailSizeEnum = static_cast<int32>(m_pAssetsView->GetThumbnailSize());
+		const int32 maxSizeEnum = static_cast<int32>(EAssetViewThumbnailSize::Count) - 1;
+		const int32 newThumbnailSizeEnum = Math::Max(0, Math::Min(currentThumbnailSizeEnum + static_cast<int32>(aMouseWheelScrolledEvent.Delta), maxSizeEnum));
+
+		if (newThumbnailSizeEnum != currentThumbnailSizeEnum)
+			m_pAssetsView->SetAssetThumbnailSize(static_cast<EAssetViewThumbnailSize>(newThumbnailSizeEnum));
+
+		return true;
 	}
 
 	bool ContentBrowserPanel::AcceptsMouseInput() const noexcept
@@ -482,6 +506,15 @@ namespace Relentless
 			.TextColor(Colors::TextInactive)
 			.Thickness(0.5f);
 
+		builder.AddCheckBox("Path View")
+			.Tooltip("Show or hide the Path View")
+			.Value([this]() { return m_pPathViewBox->IsVisible(); })
+			.OnCheckStateChanged([this](bool aState) 
+				{ 
+					m_pPathViewBox->SetIsVisible(aState);
+					m_pViewSeparator->SetIsVisible(aState);
+				});
+
 		builder.AddCheckBox("Engine Content")
 			.Tooltip("Show engine content in the view.")
 			.Value([this]() { return m_ShowEngineContent; })
@@ -491,6 +524,11 @@ namespace Relentless
 					m_pPathView->Refresh();
 					m_pAssetsView->GetAssetFilterCollection().Get<AssetSourceFilter>()->SetSourceVisible(EAssetSourceType::Engine, aState);
 				});
+
+		builder.AddCheckBox("Folders")
+			.Tooltip("Show folders in the view.")
+			.Value([this]() { return m_pAssetsView->IsShowingFolders(); })
+			.OnCheckStateChanged([this](bool aState) { m_pAssetsView->ShowFolders(aState); });
 
 		builder.AddSection("Thumbnails")
 			.Font(UI::Fonts::Get("Small"))
@@ -502,16 +540,16 @@ namespace Relentless
 			.OnOpen([this](ContextMenuBuilder& aBuilder) 
 				{
 					aBuilder.AddRadioButton("Small")
-						.Value([this]() { return m_pAssetsView->GetAssetThumbnailSize() == EAssetThumbnailSize::Small; })
-						.OnValueChanged([this](bool) { m_pAssetsView->SetAssetThumbnailSize(EAssetThumbnailSize::Small); });
+						.Value([this]() { return m_pAssetsView->GetThumbnailSize() == EAssetViewThumbnailSize::Small; })
+						.OnValueChanged([this](bool) { m_pAssetsView->SetAssetThumbnailSize(EAssetViewThumbnailSize::Small); });
 
 					aBuilder.AddRadioButton("Medium")
-						.Value([this]() { return m_pAssetsView->GetAssetThumbnailSize() == EAssetThumbnailSize::Medium; })
-						.OnValueChanged([this](bool) { m_pAssetsView->SetAssetThumbnailSize(EAssetThumbnailSize::Medium); });
+						.Value([this]() { return m_pAssetsView->GetThumbnailSize() == EAssetViewThumbnailSize::Medium; })
+						.OnValueChanged([this](bool) { m_pAssetsView->SetAssetThumbnailSize(EAssetViewThumbnailSize::Medium); });
 
 					aBuilder.AddRadioButton("Large")
-						.Value([this]() { return m_pAssetsView->GetAssetThumbnailSize() == EAssetThumbnailSize::Large; })
-						.OnValueChanged([this](bool) { m_pAssetsView->SetAssetThumbnailSize(EAssetThumbnailSize::Large); });
+						.Value([this]() { return m_pAssetsView->GetThumbnailSize() == EAssetViewThumbnailSize::Large; })
+						.OnValueChanged([this](bool) { m_pAssetsView->SetAssetThumbnailSize(EAssetViewThumbnailSize::Large); });
 				});
 
 		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(builder.BuildContextMenu());

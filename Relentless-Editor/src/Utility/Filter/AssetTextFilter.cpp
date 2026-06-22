@@ -7,6 +7,11 @@ namespace Relentless
 		m_pEvaluator = MakeUnique<TextFilterExpressionEvaluator>();
 	}
 
+	const String& AssetTextFilter::GetFilterText() const noexcept
+	{
+		return m_pEvaluator->GetFilterText();
+	}
+
 	bool AssetTextFilter::IsActive() const
 	{
 		return !m_pEvaluator->GetFilterText().empty();

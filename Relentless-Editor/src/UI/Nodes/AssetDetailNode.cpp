@@ -1,9 +1,10 @@
 #include "AssetDetailNode.h"
 
 #include "Module/ContentBrowserModule.h"
+
 #include "Property/AssetPropertyHandle.h"
 
-#include "Thumbnail/AssetThumbnailData.h"
+#include "UI/Views/Assets/Items/AssetThumbnailData.h"
 
 namespace Relentless
 {
