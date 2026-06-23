@@ -277,8 +277,8 @@ namespace Relentless
 
 		AssetViewTileCreateInfo createInfo
 		{
-			.DisplayName = pAssetDefinition->GetAssetDisplayName(),
 			.Name = assetData.Name,
+			.DisplayName = pAssetDefinition->GetAssetDisplayName(),
 			.HighlightedSubstring = m_AssetFilters.Get<AssetTextFilter>()->GetFilterText(),
 			.Size = tileSize,
 			.Thumbnail = pAssetThumbnailData->MakeThumbnailWidget(thumbnailSize),
@@ -303,8 +303,8 @@ namespace Relentless
 
 		AssetViewTileCreateInfo createInfo
 		{
-			.DisplayName = "",
 			.Name = pFolderThumbnailData->GetName(),
+			.DisplayName = "",
 			.HighlightedSubstring = m_AssetFilters.Get<AssetTextFilter>()->GetFilterText(),
 			.Size = tileSize,
 			.Thumbnail = GetFolderThumbnail(),
@@ -438,7 +438,7 @@ namespace Relentless
 		}
 	}
 
-	Ref<ContextMenu> AssetView::OnContextMenuOpening(const SharedPtr<AssetViewItem>& aItem) noexcept
+	Ref<ContextMenu> AssetView::OnContextMenuOpening(MAYBE_UNUSED const SharedPtr<AssetViewItem>& aItem) noexcept
 	{
 		std::vector<SharedPtr<AssetViewItem>> selectedItems;
 		m_pAssetsTileView->GetSelectedItems(selectedItems);
@@ -582,7 +582,7 @@ namespace Relentless
 		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(contextMenuBuilder.BuildContextMenu());
 	}
 
-	Reply AssetView::OnFolderTileDragDetected(AssetViewTile* aAssetViewTile) noexcept
+	Reply AssetView::OnFolderTileDragDetected(MAYBE_UNUSED AssetViewTile* aAssetViewTile) noexcept
 	{
 		return Reply::Unhandled();
 	}
@@ -604,13 +604,15 @@ namespace Relentless
 			return CreateAssetTile(aItem);
 		case EAssetViewItemType::Folder:
 			return CreateFolderTile(aItem);
+		default:
+			break;
 		}
 
 		RLS_ASSERT(false, "[AssetView::OnGenerateItem]: Unknown asset view type encountered.");
 		return nullptr;
 	}
 
-	void AssetView::OnNewFolderItemClicked(const String& aParentVirtualPath) noexcept
+	void AssetView::OnNewFolderItemClicked(MAYBE_UNUSED const String& aParentVirtualPath) noexcept
 	{
 
 	}

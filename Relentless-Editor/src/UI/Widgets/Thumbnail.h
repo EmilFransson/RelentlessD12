@@ -9,7 +9,7 @@ namespace Relentless
 	public:
 		virtual ~Thumbnail() noexcept = default;
 	
-		NO_DISCARD Vector2 ReportSize() const noexcept;
+		NO_DISCARD Vector2 ReportSize() const noexcept override;
 
 		void SetBrush(const ThumbnailBrush& aBrush) noexcept;
 		void SetSize(const Vector2& aSize) noexcept;

@@ -69,7 +69,7 @@ namespace Relentless
 		pNameBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
 		pNameBox->SetMargin(FloatRect(2.0f, 0.0f, 2.0f, 0.0f));
 
-		Label* pLabel = pNameBox->AddWidget(RLS_NEW Label(aCreateInfo.Name))
+		pNameBox->AddWidget(RLS_NEW Label(aCreateInfo.Name))
 			->SetWrap(m_IsAssetTile)
 			->SetTextAlign(m_IsAssetTile ? ETextAlign::Left : ETextAlign::Center)
 			->SetHighlightedSubstring(aCreateInfo.HighlightedSubstring);

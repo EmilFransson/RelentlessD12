@@ -65,14 +65,14 @@ namespace Relentless
 		void OnAssetAdded(const AssetData& aAssetData) noexcept;
 		NO_DISCARD Reply OnAssetTileDragDetected(AssetViewTile* aAssetViewTile) noexcept;
 		void OnAssetTileDoubleClicked(const SharedPtr<AssetViewItem>& aItem) noexcept;
-		NO_DISCARD Ref<ContextMenu> OnContextMenuOpening(const SharedPtr<AssetViewItem>& aItem) noexcept;
+		NO_DISCARD Ref<ContextMenu> OnContextMenuOpening(MAYBE_UNUSED const SharedPtr<AssetViewItem>& aItem) noexcept;
 		NO_DISCARD String OnDebugItemToString(const SharedPtr<AssetViewItem>& aItem) const noexcept;
 		void OnEditSelectedAssetsClicked() noexcept;
 		void OnFilterButtonClicked() noexcept;
-		NO_DISCARD Reply OnFolderTileDragDetected(AssetViewTile* aAssetViewTile) noexcept;
+		NO_DISCARD Reply OnFolderTileDragDetected(MAYBE_UNUSED AssetViewTile* aAssetViewTile) noexcept;
 		void OnFolderTileDoubleClick(const SharedPtr<AssetViewItem>& aItem) noexcept;
 		NO_DISCARD Ref<ITableRow> OnGenerateItem(const SharedPtr<AssetViewItem>& aItem) noexcept;
-		void OnNewFolderItemClicked(const String& aParentVirtualPath) noexcept;
+		void OnNewFolderItemClicked(MAYBE_UNUSED const String& aParentVirtualPath) noexcept;
 		void OnPathAdded(const String& aVirtualPath, const String& aDisplayName, MAYBE_UNUSED EAssetSourceType aSourceType) noexcept;
 		NO_DISCARD const std::vector<SharedPtr<AssetViewItem>>* OnRequestSource() noexcept;
 		void OnRender() noexcept override;
