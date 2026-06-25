@@ -31,10 +31,6 @@ namespace Relentless
 		m_Tiled = true;
 		m_HasHoverRect = true;
 
-		m_Style.SetStyleColor(ImGuiCol_Button, ImVec4(Colors::Transparent.R(), Colors::Transparent.G(), Colors::Transparent.B(), Colors::Transparent.A()));
-		m_Style.SetStyleColor(ImGuiCol_ButtonHovered, ImVec4(Colors::Transparent.R(), Colors::Transparent.G(), Colors::Transparent.B(), Colors::Transparent.A()));
-		m_Style.SetStyleColor(ImGuiCol_ButtonActive, ImVec4(Colors::Transparent.R(), Colors::Transparent.G(), Colors::Transparent.B(), Colors::Transparent.A()));
-
 		m_DefaultBackgroundColor = m_IsAssetTile ? DEFAULT_BACKGROUND_COLOR : Colors::Transparent;
 
 		m_pRoot = RLS_NEW VerticalBox();
@@ -126,7 +122,13 @@ namespace Relentless
 	{
 		UIModule& uiModule = ModuleManager::LoadModuleChecked<UIModule>();
 
-		if (SupportsDrag() && m_HoverRect.Contains(ImGui::GetMousePos()) && !uiModule.HasActiveDragDrop() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+		const ImVec2 mouse = ImGui::GetMousePos();
+		const bool cursorOverTile = m_HasHoverRect && m_HoverRect.Contains(mouse);
+
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && cursorOverTile)
+			m_PressOriginatedHere = true;
+
+		if (SupportsDrag() && m_PressOriginatedHere && !uiModule.HasActiveDragDrop() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 		{
 			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceExtern | ImGuiDragDropFlags_SourceNoPreviewTooltip))
 			{
@@ -138,6 +140,9 @@ namespace Relentless
 				ImGui::EndDragDropSource();
 			}
 		}
+
+		if (Mouse::IsButtonReleased(RLS_Button::Left))
+			m_PressOriginatedHere = false;
 
 		if (uiModule.HasActiveDragDrop())
 		{

@@ -188,7 +188,7 @@ namespace Relentless
 			entity dirLight = m_pPreviewScene->CreateLight("Directional Light", ELightType::Directional);
 			auto& dlc = entityManager.Get<DirectionalLightComponent>(dirLight);
 			dlc.SetColor(Math::MakeFromColorTemperature(5'900.0f));
-			dlc.SetIntensityLux(2'000.0f);
+			dlc.SetIntensityLux(500.0f);
 
 			auto& tc = entityManager.Get<TransformComponent>(dirLight);
 			tc.SetWorldRotationEulerDegrees(Vector3(-90.0f, 0.0f, 0.0f));

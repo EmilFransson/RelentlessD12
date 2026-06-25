@@ -69,7 +69,8 @@ namespace Relentless
 
 	void SelectionSubsystem::SelectEntity(entity aEntityToSelect) noexcept
 	{
-		RLS_ASSERT(!IsEntitySelected(aEntityToSelect), "Entity is already selected.");
+		if (IsEntitySelected(aEntityToSelect))
+			return;
 
 		m_SelectedEntities.push_back(aEntityToSelect);
 		OnSelectionChanged(aEntityToSelect, ESelectionState::Selected);

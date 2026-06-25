@@ -57,5 +57,6 @@ namespace Relentless
 
 		bool m_IsSelected = false;
 		bool m_IsAssetTile = true;
+		bool m_PressOriginatedHere = false;
 	};
 }

@@ -2,6 +2,13 @@
 
 namespace Relentless
 {
+	Thumbnail::Thumbnail() noexcept
+	{
+		m_Style.SetStyleColor(ImGuiCol_Button, ImVec4(Colors::Transparent.R(), Colors::Transparent.G(), Colors::Transparent.B(), Colors::Transparent.A()));
+		m_Style.SetStyleColor(ImGuiCol_ButtonHovered, ImVec4(Colors::Transparent.R(), Colors::Transparent.G(), Colors::Transparent.B(), Colors::Transparent.A()));
+		m_Style.SetStyleColor(ImGuiCol_ButtonActive, ImVec4(Colors::Transparent.R(), Colors::Transparent.G(), Colors::Transparent.B(), Colors::Transparent.A()));
+	}
+
 	Vector2 Thumbnail::ReportSize() const noexcept
 	{
 		return m_Size;

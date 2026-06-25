@@ -7,6 +7,7 @@ namespace Relentless
 	class Thumbnail : public IStylableWidget<Thumbnail>
 	{
 	public:
+		Thumbnail() noexcept;
 		virtual ~Thumbnail() noexcept = default;
 	
 		NO_DISCARD Vector2 ReportSize() const noexcept override;

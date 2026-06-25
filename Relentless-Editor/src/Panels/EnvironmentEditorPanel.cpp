@@ -4,7 +4,7 @@
 
 #include "Scene/Scene.h"
 
-#include "UI/DragDrop/AssetDragDropOperation.h"
+#include "UI/DragDrop/AssetViewDragDropOperation.h"
 #include "UI/Views/Details/EnvironmentDetailsView.h"
 #include "UI/Widgets/VerticalBox.h"
 
@@ -141,14 +141,14 @@ namespace Relentless
 
 	Reply EnvironmentEditorPanel::OnCanvasDragOver(MAYBE_UNUSED const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
 	{
-		if (!aDragDropOperation->IsOfType<AssetDragDropOperation>())
+		if (!aDragDropOperation->IsOfType<AssetViewDragDropOperation>())
 			return Reply::Unhandled();
 
-		AssetDragDropOperation& assetDragDropOperation = aDragDropOperation->AsType<AssetDragDropOperation>();
-		if (assetDragDropOperation.GetNumDraggedAssets() != 1u)
+		AssetViewDragDropOperation& assetViewDragDropOperation = aDragDropOperation->AsType<AssetViewDragDropOperation>();
+		if (assetViewDragDropOperation.GetNumDraggedAssets() != 1u)
 			return Reply::Unhandled();
 
-		if (assetDragDropOperation.GetAssets().front().Type != Environment::StaticType())
+		if (assetViewDragDropOperation.GetAssets().front().Type != Environment::StaticType())
 			return Reply::Unhandled();
 
 		return Reply::Handled();
@@ -156,10 +156,10 @@ namespace Relentless
 
 	Reply EnvironmentEditorPanel::OnDropOnCanvas(MAYBE_UNUSED const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
 	{
-		if (!aDragDropOperation->IsOfType<AssetDragDropOperation>())
+		if (!aDragDropOperation->IsOfType<AssetViewDragDropOperation>())
 			return Reply::Unhandled();
 
-		AssetDragDropOperation& assetDragDropOperation = aDragDropOperation->AsType<AssetDragDropOperation>();
+		AssetViewDragDropOperation& assetDragDropOperation = aDragDropOperation->AsType<AssetViewDragDropOperation>();
 		if (assetDragDropOperation.GetNumDraggedAssets() != 1u)
 			return Reply::Unhandled();
 
@@ -190,5 +190,4 @@ namespace Relentless
 	{
 		RebuildName();
 	}
-
 }

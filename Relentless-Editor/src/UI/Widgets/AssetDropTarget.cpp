@@ -2,7 +2,7 @@
 
 #include "Module/UIModule.h"
 
-#include "UI/DragDrop/AssetDragDropOperation.h"
+#include "UI/DragDrop/AssetViewDragDropOperation.h"
 
 namespace Relentless
 {
@@ -54,15 +54,15 @@ namespace Relentless
 		if (!m_OnAreAssetsAcceptableCallback.IsSet())
 			return;
 
-		if (!aDragDropOperation->IsOfType<AssetDragDropOperation>())
+		if (!aDragDropOperation->IsOfType<AssetViewDragDropOperation>())
 		{
 			m_DropAreaOverlayColor = Colors::Red;
 			m_DrawDropAreaOverlay = true;
 			return;
 		}
 
-		AssetDragDropOperation& assetDragDropOperation = aDragDropOperation->AsType<AssetDragDropOperation>();
-		if (!m_OnAreAssetsAcceptableCallback(assetDragDropOperation.GetAssets()))
+		AssetViewDragDropOperation& assetViewDragDropOperation = aDragDropOperation->AsType<AssetViewDragDropOperation>();
+		if (!m_OnAreAssetsAcceptableCallback(assetViewDragDropOperation.GetAssets()))
 		{
 			m_DropAreaOverlayColor = Colors::Red;
 			m_DrawDropAreaOverlay = true;
@@ -74,14 +74,14 @@ namespace Relentless
 		if (!m_OnAreAssetsAcceptableCallback.IsSet())
 			return;
 
-		if (!aDragDropOperation->IsOfType<AssetDragDropOperation>())
+		if (!aDragDropOperation->IsOfType<AssetViewDragDropOperation>())
 		{
 			m_DrawDropAreaOverlay = false;
 			return;
 		}
 
-		AssetDragDropOperation& assetDragDropOperation = aDragDropOperation->AsType<AssetDragDropOperation>();
-		if (!m_OnAreAssetsAcceptableCallback(assetDragDropOperation.GetAssets()))
+		AssetViewDragDropOperation& assetViewDragDropOperation = aDragDropOperation->AsType<AssetViewDragDropOperation>();
+		if (!m_OnAreAssetsAcceptableCallback(assetViewDragDropOperation.GetAssets()))
 			m_DrawDropAreaOverlay = false;
 	}
 
@@ -90,32 +90,32 @@ namespace Relentless
 		if (!m_OnAreAssetsAcceptableCallback.IsSet())
 			return Reply::Unhandled();
 
-		if (!aDragDropOperation->IsOfType<AssetDragDropOperation>())
+		if (!aDragDropOperation->IsOfType<AssetViewDragDropOperation>())
 			return Reply::Unhandled();
 
-		AssetDragDropOperation& assetDragDropOperation = aDragDropOperation->AsType<AssetDragDropOperation>();
-		return m_OnAreAssetsAcceptableCallback(assetDragDropOperation.GetAssets()) ? Reply::Handled() : Reply::Unhandled();
+		AssetViewDragDropOperation& assetViewDragDropOperation = aDragDropOperation->AsType<AssetViewDragDropOperation>();
+		return m_OnAreAssetsAcceptableCallback(assetViewDragDropOperation.GetAssets()) ? Reply::Handled() : Reply::Unhandled();
 	}
 
 	Reply AssetDropTarget::OnSlotDrop(MAYBE_UNUSED const WidgetGeometry& aGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
 	{
-		if (!aDragDropOperation->IsOfType<AssetDragDropOperation>())
+		if (!aDragDropOperation->IsOfType<AssetViewDragDropOperation>())
 			return Reply::Unhandled();
 
 		if (!m_OnAssetsDroppedCallback.IsSet())
 			return Reply::Unhandled();
 
-		AssetDragDropOperation& assetDragDropOperation = aDragDropOperation->AsType<AssetDragDropOperation>();
-		m_OnAssetsDroppedCallback(assetDragDropOperation.GetAssets());
+		AssetViewDragDropOperation& assetViewDragDropOperation = aDragDropOperation->AsType<AssetViewDragDropOperation>();
+		m_OnAssetsDroppedCallback(assetViewDragDropOperation.GetAssets());
 
 		return Reply::Handled();
 	}
 
 	void AssetDropTarget::OnDragDropOperationBegin(const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
 	{
-		m_DrawDropAreaOverlay = aDragDropOperation->IsOfType<AssetDragDropOperation>() &&
+		m_DrawDropAreaOverlay = aDragDropOperation->IsOfType<AssetViewDragDropOperation>() &&
 			m_OnAreAssetsAcceptableCallback.IsSet() &&
-			m_OnAreAssetsAcceptableCallback(aDragDropOperation->AsType<AssetDragDropOperation>().GetAssets());
+			m_OnAreAssetsAcceptableCallback(aDragDropOperation->AsType<AssetViewDragDropOperation>().GetAssets());
 	}
 
 	void AssetDropTarget::OnDragDropOperationEnd(MAYBE_UNUSED const Ref<DragDropOperationBase>& aDragDropOperation) noexcept

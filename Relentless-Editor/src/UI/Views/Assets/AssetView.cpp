@@ -11,7 +11,7 @@
 
 #include "Thumbnail/AssetThumbnailPool.h"
 
-#include "UI/DragDrop/AssetDragDropOperation.h"
+#include "UI/DragDrop/AssetViewDragDropOperation.h"
 #include "UI/Views/Assets/Items/AssetThumbnailData.h"
 #include "UI/Views/Assets/Items/FolderThumbnailData.h"
 #include "UI/Views/Details/LayoutBuilders/ContextMenuBuilder.h"
@@ -289,7 +289,7 @@ namespace Relentless
 		pAssetTile->SetTooltip(RLS_NEW AssetTileItemTooltip(assetData));
 		pAssetTile->OnDragDetected([this, pItem = pAssetTile.Get()](MAYBE_UNUSED const WidgetGeometry& aGeometry, MAYBE_UNUSED const PointerInfo& aPointerInfo)
 			{
-				return OnAssetTileDragDetected(pItem);
+				return OnTileDragDetected(pItem);
 			});
 
 		return pAssetTile;
@@ -307,7 +307,7 @@ namespace Relentless
 			.DisplayName = "",
 			.HighlightedSubstring = m_AssetFilters.Get<AssetTextFilter>()->GetFilterText(),
 			.Size = tileSize,
-			.Thumbnail = GetFolderThumbnail(),
+			.Thumbnail = GetFolderThumbnail(GetGridThumbnailSize()),
 			.IsAssetTile = false
 		};
 
@@ -315,13 +315,13 @@ namespace Relentless
 		pFolderTile->SetTooltipText(pFolderThumbnailData->GetVirtualPath());
 		pFolderTile->OnDragDetected([this, pItem = pFolderTile.Get()](MAYBE_UNUSED const WidgetGeometry& aGeometry, MAYBE_UNUSED const PointerInfo& aPointerInfo)
 			{
-				return OnFolderTileDragDetected(pItem);
+				return OnTileDragDetected(pItem);
 			});
 
 		return pFolderTile;
 	}
 
-	Ref<Thumbnail> AssetView::GetFolderThumbnail() noexcept
+	Ref<Thumbnail> AssetView::GetFolderThumbnail(const Vector2& aSize) noexcept
 	{
 		if (!m_pFolderThumbnailTexture)
 		{
@@ -346,14 +346,20 @@ namespace Relentless
 		brush.BackingTexture = m_pFolderThumbnailTexture->GetResource();
 		brush.TintColor = Colors::FolderDefault;
 
-		const Vector2 tileSize = AssetThumbnailSizeEnumToSize(m_ThumbnailSize);
-		const Vector2 thumbnailSize = Vector2(tileSize.x - 10.0f, (tileSize.y * 0.5f) - 4.0f);
-
 		Ref<Thumbnail> pFolderThumbnail = RLS_NEW Thumbnail();
 		pFolderThumbnail->SetBrush(brush);
-		pFolderThumbnail->SetSize(thumbnailSize);
+		pFolderThumbnail->SetSize(aSize);
 
 		return pFolderThumbnail;
+	}
+
+	Vector2 AssetView::GetGridThumbnailSize() const noexcept
+	{
+		const Vector2 tileSize = AssetThumbnailSizeEnumToSize(m_ThumbnailSize);
+		constexpr float WIDTH_OFFSET = 10.0f;
+		constexpr float HEIGHT_OFFSET = 4.0f;
+
+		return Vector2(tileSize.x - WIDTH_OFFSET, (tileSize.y * 0.5f) - HEIGHT_OFFSET);
 	}
 
 	void AssetView::InitializeFromAssetRegistry() noexcept
@@ -393,35 +399,6 @@ namespace Relentless
 
 		m_Items.push_back(MakeShared<AssetThumbnailData>(aAssetData, pThumbnailPool));
 		m_pAssetsTileView->RequestRefresh();
-	}
-
-	Reply AssetView::OnAssetTileDragDetected(AssetViewTile* aAssetViewTile) noexcept
-	{
-		std::vector<SharedPtr<AssetViewItem>> selectedItems;
-		if (m_pAssetsTileView->GetSelectedItems(selectedItems) == 0u)
-			return Reply::Unhandled();
-
-		const SharedPtr<AssetViewItem>& pDragInitiatorItem = m_pAssetsTileView->GetItemFromWidget(aAssetViewTile);
-		const AssetThumbnailData* pAssetThumbnailData = static_cast<const AssetThumbnailData*>(pDragInitiatorItem.get());
-
-		std::vector<AssetData> assetDatas;
-		assetDatas.reserve(selectedItems.size());
-
-		auto itemView = selectedItems | std::views::filter([this, aAssetViewTile](const SharedPtr<AssetViewItem>& aItem)
-			{
-				return aItem->GetType() == EAssetViewItemType::Asset && m_pAssetsTileView->GetRowWidget(aItem) != aAssetViewTile;
-			});
-
-		for (const auto& pItem : itemView)
-			assetDatas.push_back(static_cast<AssetThumbnailData*>(pItem.get())->GetAssetData());
-
-		assetDatas.push_back(pAssetThumbnailData->GetAssetData());
-
-		String previewText = pAssetThumbnailData->GetAssetData().Name;
-		if (selectedItems.size() > 1)
-			previewText += std::format(" and {} other{}", selectedItems.size() - 1, selectedItems.size() > 2 ? "s" : "");
-
-		return Reply::Handled().BeginDragDrop(RLS_NEW AssetDragDropOperation(assetDatas, previewText));
 	}
 
 	void AssetView::OnAssetTileDoubleClicked(const SharedPtr<AssetViewItem>& aItem) noexcept
@@ -582,11 +559,6 @@ namespace Relentless
 		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(contextMenuBuilder.BuildContextMenu());
 	}
 
-	Reply AssetView::OnFolderTileDragDetected(MAYBE_UNUSED AssetViewTile* aAssetViewTile) noexcept
-	{
-		return Reply::Unhandled();
-	}
-
 	void AssetView::OnFolderTileDoubleClick(const SharedPtr<AssetViewItem>& aItem) noexcept
 	{
 		const FolderThumbnailData* pFolderThumbnailData = static_cast<const FolderThumbnailData*>(aItem.get());
@@ -605,16 +577,16 @@ namespace Relentless
 		case EAssetViewItemType::Folder:
 			return CreateFolderTile(aItem);
 		default:
+			RLS_ASSERT(false, "[AssetView::OnGenerateItem]: Unknown asset view type encountered.");
 			break;
 		}
 
-		RLS_ASSERT(false, "[AssetView::OnGenerateItem]: Unknown asset view type encountered.");
 		return nullptr;
 	}
 
 	void AssetView::OnNewFolderItemClicked(MAYBE_UNUSED const String& aParentVirtualPath) noexcept
 	{
-
+		RLS_ASSERT(false, "TODO");
 	}
 
 	void AssetView::OnPathAdded(const String& aVirtualPath, const String& aDisplayName, MAYBE_UNUSED EAssetSourceType aSourceType) noexcept
@@ -715,6 +687,47 @@ namespace Relentless
 			.Tooltip("Sort the items in Descending order");
 
 		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(contextMenuBuilder.BuildContextMenu());
+	}
+
+	Reply AssetView::OnTileDragDetected(MAYBE_UNUSED AssetViewTile* aAssetViewTile) noexcept
+	{
+		std::vector<SharedPtr<AssetViewItem>> selectedItems;
+		if (m_pAssetsTileView->GetSelectedItems(selectedItems) == 0u)
+			return Reply::Unhandled();
+
+		std::vector<AssetData> assetDatas;
+		std::vector<String> paths;
+		assetDatas.reserve(selectedItems.size());
+		paths.reserve(selectedItems.size());
+
+		AssetThumbnailData* pFirstAsset = nullptr;
+
+		for (const SharedPtr<AssetViewItem>& pItem : selectedItems)
+		{
+			if (pItem->GetType() == EAssetViewItemType::Asset)
+			{
+				auto* pAsset = static_cast<AssetThumbnailData*>(pItem.get());
+				assetDatas.push_back(pAsset->GetAssetData());
+				
+				if (!pFirstAsset)
+					pFirstAsset = pAsset;
+			}
+			else // Path
+				paths.push_back(static_cast<FolderThumbnailData*>(pItem.get())->GetVirtualPath());
+		}
+
+		// Strategy: if ANY assets are dragged they ALWAYS take prio for the preview.
+		// The preview is based on the first selected asset, else the first folder.
+		const bool hasAssets = pFirstAsset != nullptr;
+
+		String previewText = hasAssets ? assetDatas.front().Name : paths.front();
+		if (const auto count = selectedItems.size(); count > 1)
+			previewText += std::format(" and {} other{}", count - 1, count > 2 ? "s" : "");
+
+		Ref<Thumbnail> pThumbnail = hasAssets ? Ref<Thumbnail>{ RLS_NEW AssetThumbnail(pFirstAsset->GetWeakPtr(), Vector2(50.0f, 50.0f)) } : GetFolderThumbnail(Vector2(50.0f, 50.0f));
+
+		return Reply::Handled().BeginDragDrop(
+			RLS_NEW AssetViewDragDropOperation(assetDatas, paths, pThumbnail, previewText));
 	}
 
 	String AssetView::ParentOf(const String& aVirtualPath) const noexcept

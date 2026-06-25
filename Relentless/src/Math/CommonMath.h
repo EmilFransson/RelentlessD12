@@ -66,6 +66,12 @@ namespace Relentless
 
 		constexpr float PhotopicEfficacy = 683.0f; // lm per watt
 
+		struct Ray
+		{
+			Vector3 Origin		= Vector3::Zero;
+			Vector3 Direction	= Vector3::Zero;
+		};
+
 		template<typename T>
 		T AlignUp(T value, T alignment) noexcept
 		{
@@ -287,7 +293,7 @@ namespace Relentless
 			return std::cos(aRadians);
 		}
 
-		constexpr inline Quaternion EulerDegreesToQuaternion_YawPitchRoll(const Vector3& aEulerDegrees) noexcept
+		NO_DISCARD constexpr inline Quaternion EulerDegreesToQuaternion_YawPitchRoll(const Vector3& aEulerDegrees) noexcept
 		{
 			const float yaw = Math::DegToRad(aEulerDegrees.y);
 			const float pitch = Math::DegToRad(aEulerDegrees.x);
@@ -296,6 +302,29 @@ namespace Relentless
 			Quaternion quat = Quaternion::CreateFromYawPitchRoll(yaw, pitch, roll);
 			quat.Normalize();
 			return quat;
+		}
+
+		NO_DISCARD constexpr inline Ray ScreenPointToRay(const Vector2& aPixel, const Vector2& aViewportSize, const Matrix& aInverseViewMatrix, const Matrix& aInverseProjectionMatrix) noexcept
+		{
+			// Pixel -> NDC. Note the Y flip: pixel y is down, NDC y is up.
+			const float ndcX = (2.0f * aPixel.x / aViewportSize.x) - 1.0f;
+			const float ndcY = 1.0f - (2.0f * aPixel.y / aViewportSize.y);
+
+			// NDC -> view. D3D12 clip-space z is [0,1]: near plane z=0, far z=1.
+			const Vector4 nearH = Vector4::Transform(Vector4(ndcX, ndcY, 0.0f, 1.0f), aInverseProjectionMatrix);
+			const Vector4 farH = Vector4::Transform(Vector4(ndcX, ndcY, 1.0f, 1.0f), aInverseProjectionMatrix);
+
+			const Vector3 nearV = Vector3(nearH.x, nearH.y, nearH.z) / nearH.w;
+			const Vector3 farV = Vector3(farH.x, farH.y, farH.z) / farH.w;
+
+			// view -> world
+			const Vector3 originW = Vector3::Transform(nearV, aInverseViewMatrix);
+			const Vector3 farW = Vector3::Transform(farV, aInverseViewMatrix);
+
+			Vector3 dirW = farW - originW;
+			dirW.Normalize();
+
+			return Ray{ originW, dirW };
 		}
 
 		namespace Photometry

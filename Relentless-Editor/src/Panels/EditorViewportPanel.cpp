@@ -13,6 +13,8 @@ namespace Relentless
 	{
 		SetRoot(BuildDefaultWindowLayout());
 		
+		m_pCanvas->OnDragEnter(this, &EditorViewportPanel::OnCanvasDragEnterInternal);
+		m_pCanvas->OnDragLeave(this, &EditorViewportPanel::OnCanvasDragLeaveInternal);
 		m_pCanvas->OnDragOver(this, &EditorViewportPanel::OnCanvasDragOverInternal);
 		m_pCanvas->OnDrop(this, &EditorViewportPanel::OnDropOnCanvasInternal);
 
@@ -67,7 +69,17 @@ namespace Relentless
 		return "Scene Viewport";
 	}
 
-	Reply EditorViewportPanel::OnCanvasDragOverInternal(MAYBE_UNUSED const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
+	void EditorViewportPanel::OnCanvasDragEnterInternal(const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
+	{
+		OnCanvasDragEnter(aWidgetGeometry, aDragDropOperation);
+	}
+
+	void EditorViewportPanel::OnCanvasDragLeaveInternal(const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
+	{
+		OnCanvasDragLeave(aWidgetGeometry, aDragDropOperation);
+	}
+
+	Reply EditorViewportPanel::OnCanvasDragOverInternal(const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
 	{
 		const std::vector<Reply> replies = OnCanvasDragOver(aWidgetGeometry, aDragDropOperation);
 		
@@ -77,7 +89,7 @@ namespace Relentless
 		return Reply::Unhandled();
 	}
 
-	Reply EditorViewportPanel::OnDropOnCanvasInternal(MAYBE_UNUSED const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
+	Reply EditorViewportPanel::OnDropOnCanvasInternal(const WidgetGeometry& aWidgetGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept
 	{
 		const std::vector<Reply> replies = OnCanvasDrop(aWidgetGeometry, aDragDropOperation);
 
