@@ -17,7 +17,7 @@ namespace Relentless
 		, m_MeshHandle(aOther.m_MeshHandle)
 	{
 		aOther.DetachMesh();
-		aOther.m_MeshHandle = NULL_HANDLE;
+		aOther.m_MeshHandle = AssetHandle::INVALID;
 		ConnectMesh();
 	}
 
@@ -28,7 +28,7 @@ namespace Relentless
 			DetachMesh();
 			aOther.DetachMesh();
 			m_MeshHandle = std::move(aOther.m_MeshHandle);
-			aOther.m_MeshHandle = NULL_HANDLE;
+			aOther.m_MeshHandle = AssetHandle::INVALID;
 			ConnectMesh();
 		}
 		return *this;

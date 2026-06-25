@@ -6,6 +6,7 @@ namespace Relentless
 #define NOTIFY_NESTED_PROPERTY_CHANGED(parent_path, member) \
    ((void)(this->member), this->NotifyOwner(HashString(parent_path "." #member)))
 
+	class Texture2D;
 	struct PostProcessVolumeComponent;
 
 	template<typename TOwner>
@@ -15,6 +16,7 @@ namespace Relentless
 		explicit SubObject(TOwner* aOwner) noexcept
 			: m_pOwner{ aOwner }{}
 
+		virtual ~SubObject() noexcept = default;
 	protected:
 		TOwner* m_pOwner = nullptr;
 
@@ -68,6 +70,44 @@ namespace Relentless
 		EAmbientOcclusionStepcount m_StepCount = EAmbientOcclusionStepcount::_8;
 		bool m_BlurEnabled = true;
 		bool m_IsEnabled = true;
+	};
+
+	struct RLS_API BloomSettings : public SubObject<PostProcessVolumeComponent>
+	{
+	public:
+		explicit BloomSettings(PostProcessVolumeComponent* aOwner) noexcept;
+		BloomSettings(const BloomSettings& aOther) noexcept;
+		BloomSettings& operator=(const BloomSettings&) noexcept;
+		BloomSettings(BloomSettings&&) noexcept;
+		BloomSettings& operator=(BloomSettings&&) noexcept;
+		virtual ~BloomSettings() noexcept override;
+
+		NO_DISCARD Ref<Texture2D> GetDirtMask() const noexcept;
+		NO_DISCARD const AssetHandle& GetDirtMaskHandle() const noexcept;
+		NO_DISCARD float GetDirtMaskIntensity() const noexcept;
+		NO_DISCARD const Color& GetDirtMaskTint() const noexcept;
+		NO_DISCARD float GetIntensity() const noexcept;
+
+		NO_DISCARD bool HasAssignedDirtMask() const noexcept;
+
+		void RemoveDirtMask() noexcept;
+
+		void SetDirtMaskIntensity(float aIntensity) noexcept;
+		void SetDirtMask(const AssetHandle& aDirtMaskHandle) noexcept;
+		void SetDirtMaskTint(const Color& aColor) noexcept;
+		void SetIntensity(float aIntensity) noexcept;
+	private:
+		void ConnectDirtMask() noexcept;
+
+		void DetachDirtMask() noexcept;
+
+		void OnDirtMaskAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept;
+		void OnDirtMaskAssetPropertyChanged(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty) noexcept;
+	private:
+		AssetHandle m_DirtMaskHandle = AssetHandle::INVALID;
+		Color m_DirtMaskTint = Colors::White;
+		float m_Intensity = 1.0f;
+		float m_DirtMaskIntensity = 0.0f;
 	};
 
 	struct RLS_API ExposureSettings : public SubObject<PostProcessVolumeComponent>
@@ -129,6 +169,7 @@ namespace Relentless
 	private:
 		ExposureSettings m_ExposureSettings{ this };
 		AmbientOcclusionSettings m_AmbientOcclusionSettings{ this };
+		BloomSettings m_BloomSettings{ this };
 		bool m_InfiniteExtent = true;
 	};
 }

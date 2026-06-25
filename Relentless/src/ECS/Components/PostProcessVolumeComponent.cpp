@@ -1,5 +1,8 @@
 #include "PostProcessVolumeComponent.h"
 
+#include "Assets/AssetManager.h"
+#include "Assets/CoreTypes/Texture2D.h"
+
 #include "ECS/EntityManager.h"
 
 #include "Utility/StringUtils.h"
@@ -135,6 +138,186 @@ namespace Relentless
 
 		m_StepCount = aStepCount;
 		NOTIFY_NESTED_PROPERTY_CHANGED("m_AmbientOcclusionSettings", m_StepCount);
+	}
+
+	BloomSettings::BloomSettings(PostProcessVolumeComponent* aOwner) noexcept
+		: SubObject<PostProcessVolumeComponent>{ aOwner }
+	{
+	}
+
+	BloomSettings::BloomSettings(const BloomSettings& aOther) noexcept
+		: SubObject<PostProcessVolumeComponent>{ aOther.m_pOwner }
+		, m_DirtMaskHandle{ aOther.m_DirtMaskHandle }
+		, m_DirtMaskTint{ aOther.m_DirtMaskTint }
+		, m_Intensity{ aOther.m_Intensity }
+		, m_DirtMaskIntensity{ aOther.m_DirtMaskIntensity }
+	{
+		ConnectDirtMask();
+	}
+
+	BloomSettings& BloomSettings::operator=(const BloomSettings& aOther) noexcept
+	{
+		if (this != &aOther)
+		{
+			DetachDirtMask();
+
+			m_DirtMaskHandle = aOther.m_DirtMaskHandle;
+			m_DirtMaskTint = aOther.m_DirtMaskTint;
+			m_Intensity = aOther.m_Intensity;
+			m_DirtMaskIntensity = aOther.m_DirtMaskIntensity;
+
+			ConnectDirtMask();
+		}
+		return *this;
+	}
+
+	BloomSettings::BloomSettings(BloomSettings&& aOther) noexcept
+		: SubObject<PostProcessVolumeComponent>{ std::move(aOther.m_pOwner) }
+		, m_DirtMaskHandle{ aOther.m_DirtMaskHandle }
+		, m_DirtMaskTint{ aOther.m_DirtMaskTint }
+		, m_Intensity{ aOther.m_Intensity }
+		, m_DirtMaskIntensity{ aOther.m_DirtMaskIntensity }
+	{
+		aOther.DetachDirtMask();
+		aOther.m_DirtMaskHandle = AssetHandle::INVALID;
+		ConnectDirtMask();
+	}
+
+	BloomSettings& BloomSettings::operator=(BloomSettings&& aOther) noexcept
+	{
+		if (this != &aOther)
+		{
+			DetachDirtMask();
+			aOther.DetachDirtMask();
+			
+			m_pOwner = std::move(aOther.m_pOwner);
+			m_DirtMaskHandle = std::move(aOther.m_DirtMaskHandle);
+			m_DirtMaskTint = std::move(aOther.m_DirtMaskTint);
+			m_Intensity = std::move(aOther.m_Intensity);
+			m_DirtMaskIntensity = std::move(aOther.m_DirtMaskIntensity);
+
+			aOther.m_DirtMaskHandle = AssetHandle::INVALID;
+			aOther.m_pOwner = nullptr;
+
+			ConnectDirtMask();
+		}
+		return *this;
+	}
+
+	BloomSettings::~BloomSettings() noexcept
+	{
+		DetachDirtMask();
+	}
+
+	Ref<Texture2D> BloomSettings::GetDirtMask() const noexcept
+	{
+		RLS_ASSERT(m_DirtMaskHandle.IsValid(), "[BloomSettings::GetDirtMask]: Dirt mask handle is invalid.");
+		return AssetManager::Get<Texture2D>(m_DirtMaskHandle);
+	}
+
+	const AssetHandle& BloomSettings::GetDirtMaskHandle() const noexcept
+	{
+		return m_DirtMaskHandle;
+	}
+
+	float BloomSettings::GetDirtMaskIntensity() const noexcept
+	{
+		return m_DirtMaskIntensity;
+	}
+
+	const Color& BloomSettings::GetDirtMaskTint() const noexcept
+	{
+		return m_DirtMaskTint;
+	}
+
+	float BloomSettings::GetIntensity() const noexcept
+	{
+		return m_Intensity;
+	}
+
+	void BloomSettings::SetDirtMaskIntensity(float aIntensity) noexcept
+	{
+		if (Math::AreValuesClose(m_DirtMaskIntensity, aIntensity))
+			return;
+
+		m_DirtMaskIntensity = aIntensity;
+		NOTIFY_NESTED_PROPERTY_CHANGED("m_BloomSettings", m_DirtMaskIntensity);
+	}
+
+	void BloomSettings::SetDirtMask(const AssetHandle& aDirtMaskHandle) noexcept
+	{
+		RLS_ASSERT(aDirtMaskHandle.Type == Texture2D::StaticType(), "[BloomSettings::SetDirtMask]: Asset handle is not of texture2D type.");
+
+		if (m_DirtMaskHandle == aDirtMaskHandle)
+			return;
+
+		DetachDirtMask();
+		m_DirtMaskHandle = aDirtMaskHandle;
+		ConnectDirtMask();
+
+		NOTIFY_NESTED_PROPERTY_CHANGED("m_BloomSettings", m_DirtMaskHandle);
+	}
+
+	void BloomSettings::SetDirtMaskTint(const Color& aColor) noexcept
+	{
+		if (m_DirtMaskTint == aColor)
+			return;
+
+		m_DirtMaskTint = aColor;
+		NOTIFY_NESTED_PROPERTY_CHANGED("m_BloomSettings", m_DirtMaskTint);
+	}
+
+	void BloomSettings::SetIntensity(float aIntensity) noexcept
+	{
+		if (Math::AreValuesClose(m_Intensity, aIntensity))
+			return;
+
+		m_Intensity = aIntensity;
+		NOTIFY_NESTED_PROPERTY_CHANGED("m_BloomSettings", m_Intensity);
+	}
+
+	void BloomSettings::ConnectDirtMask() noexcept
+	{
+		if (!m_DirtMaskHandle.IsValid())
+			return;
+
+		Ref<Texture2D> pDirtMask = AssetManager::Get<Texture2D>(m_DirtMaskHandle);
+		pDirtMask->OnDestroy.Connect(this, &BloomSettings::OnDirtMaskAssetDestroy);
+		pDirtMask->OnPropertyChanged.Connect(this, &BloomSettings::OnDirtMaskAssetPropertyChanged);
+	}
+
+	void BloomSettings::OnDirtMaskAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept
+	{
+		RemoveDirtMask();
+	}
+
+	void BloomSettings::OnDirtMaskAssetPropertyChanged(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty) noexcept
+	{
+		NOTIFY_NESTED_PROPERTY_CHANGED("m_BloomSettings", m_DirtMaskHandle);
+	}
+
+	void BloomSettings::RemoveDirtMask() noexcept
+	{
+		if (!m_DirtMaskHandle.IsValid())
+			return;
+
+		m_DirtMaskHandle = AssetHandle::INVALID;
+		NOTIFY_NESTED_PROPERTY_CHANGED("m_BloomSettings", m_DirtMaskHandle);
+	}
+
+	bool BloomSettings::HasAssignedDirtMask() const noexcept
+	{
+		return m_DirtMaskHandle.IsValid();
+	}
+
+	void BloomSettings::DetachDirtMask() noexcept
+	{
+		if (!m_DirtMaskHandle.IsValid())
+			return;
+
+		Ref<Texture2D> pDirtMask = AssetManager::Get<Texture2D>(m_DirtMaskHandle);
+		pDirtMask->OnDestroy.Detach(this);
+		pDirtMask->OnPropertyChanged.Detach(this);
 	}
 
 	ExposureSettings::ExposureSettings(PostProcessVolumeComponent* aOwner) noexcept
@@ -292,6 +475,8 @@ namespace Relentless
 	{
 		m_AmbientOcclusionSettings = aOtherComponent.m_AmbientOcclusionSettings;
 		m_ExposureSettings = aOtherComponent.m_ExposureSettings;
+		m_BloomSettings = aOtherComponent.m_BloomSettings;
+
 		InjectSelf();
 		
 		m_Self = aThisEntity;
@@ -322,4 +507,5 @@ namespace Relentless
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 		BroadcastPropertyChanged(aPropertyHash);
 	}
+
 }

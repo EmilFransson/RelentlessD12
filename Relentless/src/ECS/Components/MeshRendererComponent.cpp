@@ -17,7 +17,7 @@ namespace Relentless
 		, m_MaterialHandle(aOther.m_MaterialHandle)
 	{
 		aOther.DetachMaterial();
-		aOther.m_MaterialHandle = NULL_HANDLE;
+		aOther.m_MaterialHandle = AssetHandle::INVALID;
 		ConnectMaterial();
 	}
 
@@ -28,7 +28,7 @@ namespace Relentless
 			DetachMaterial();
 			aOther.DetachMaterial();
 			m_MaterialHandle = std::move(aOther.m_MaterialHandle);
-			aOther.m_MaterialHandle = NULL_HANDLE;
+			aOther.m_MaterialHandle = AssetHandle::INVALID;
 			ConnectMaterial();
 		}
 		return *this;
@@ -72,7 +72,7 @@ namespace Relentless
 			return;
 
 		DetachMaterial();
-		m_MaterialHandle = NULL_HANDLE;
+		m_MaterialHandle = AssetHandle::INVALID;
 
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_MaterialHandle);
