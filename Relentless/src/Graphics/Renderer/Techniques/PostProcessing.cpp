@@ -16,6 +16,7 @@ namespace Relentless
 	{
 		aCommandContext.InsertResourceBarrier(aSceneTextures.pHDRColorTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		aCommandContext.InsertResourceBarrier(aAverageLuminanceBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		aCommandContext.InsertResourceBarrier(aSceneTextures.pBloomUpscaleTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 		aCommandContext.SetPipelineState(m_pDevice->GetOrCreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "PostProcessShader", "cs_main"));
 		aCommandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());
@@ -25,12 +26,19 @@ namespace Relentless
 			uint32 SourceIndex;
 			uint32 TargetIndex;
 			uint32 AverageLuminanceIndex;
-			float Padding;
+			uint32 BloomIndex;
+
+			float BloomIntensity;
+			float BloomBlendFactor;
+			float Padding[2];
 		} params;
 
 		params.SourceIndex = aSceneTextures.pHDRColorTarget->GetSRVIndex();
 		params.TargetIndex = aSceneTextures.pLDRColorTarget->GetUAVIndex();
 		params.AverageLuminanceIndex = aAverageLuminanceBuffer->GetSRVIndex();
+		params.BloomIndex = aSceneTextures.pBloomUpscaleTarget->GetSRVIndex();
+		params.BloomIntensity = 1.0f;
+		params.BloomBlendFactor = 0.3f;
 
 		aCommandContext.BindRootCBV(BindingSlot::PerPass, &params, sizeof(params));
 		Renderer::BindViewData(aCommandContext, aRenderView);

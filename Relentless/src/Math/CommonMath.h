@@ -97,6 +97,12 @@ namespace Relentless
 			return value;
 		}
 
+		template<typename T>
+		constexpr inline T Floor(const T& v)
+		{
+			return (T)std::floor(v);
+		}
+
 		constexpr inline uint32 DivideAndRoundUp(uint32 nominator, uint32 denominator) noexcept
 		{
 			return (nominator + denominator - 1) / denominator;

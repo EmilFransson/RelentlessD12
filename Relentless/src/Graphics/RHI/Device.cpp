@@ -398,7 +398,9 @@ namespace Relentless
 
 		Ref<Texture> pTexture = new Texture(this, desc, pResource);
 		pTexture->SetName(pName);
-		pTexture->SetResourceState(resourceState);
+
+		const uint32 numSlices = (desc.Type == TextureType::TextureCube) ? 6u : 1u;
+		pTexture->SetResourceState(resourceState, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
 
 		{
 			//TEMP: Required because of issues when loading assets in parallel:
@@ -469,8 +471,6 @@ namespace Relentless
 			for (uint8 mip = 0; mip < desc.Mips; ++mip)
 				pTexture->SetUAV(CreateUAV(pTexture, TextureUAVDesc(mip)), mip);
 		}
-
-		const uint32 numSlices = desc.Type == TextureType::TextureCube ? 6u : 1u;
 
 		if (EnumHasAnyFlags(desc.Flags, TextureFlag::RenderTarget))
 		{

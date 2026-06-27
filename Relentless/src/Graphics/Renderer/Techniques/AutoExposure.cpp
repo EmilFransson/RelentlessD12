@@ -75,8 +75,8 @@ namespace Relentless
 
 			parameters.Width = aSceneTextures.pAutoExposureDownscaleTarget->GetWidth();
 			parameters.Height = aSceneTextures.pAutoExposureDownscaleTarget->GetHeight();
-			parameters.MinLogLuminance = exposureSettings.HistogramMinEV100;//aMinLogLuminance;
-			parameters.OneOverLogLuminanceRange = 1.0f / (exposureSettings.HistogramMaxEV100 - exposureSettings.HistogramMinEV100); //(20.0f - aMinLogLuminance);
+			parameters.MinLogLuminance = exposureSettings.HistogramMinEV100;
+			parameters.OneOverLogLuminanceRange = 1.0f / (exposureSettings.HistogramMaxEV100 - exposureSettings.HistogramMinEV100);
 			parameters.HDRTextureIndex = aSceneTextures.pAutoExposureDownscaleTarget->GetSRVIndex();
 			parameters.LuminanceHistogramIndex = aSceneBuffers.LuminanceHistogramBuffer.pBuffer->GetUAVIndex();
 			aCommandContext.BindRootCBV(BindingSlot::PerInstance, &parameters, sizeof(parameters));
@@ -114,16 +114,16 @@ namespace Relentless
 			} parameters;
 
 			parameters.PixelCount = aSceneTextures.pAutoExposureDownscaleTarget->GetWidth() * aSceneTextures.pAutoExposureDownscaleTarget->GetHeight();
-			parameters.MinLogLuminance = exposureSettings.HistogramMinEV100; //aMinLogLuminance;
-			parameters.LogLuminanceRange = exposureSettings.HistogramMaxEV100 - exposureSettings.HistogramMinEV100;//20.0f - aMinLogLuminance;
+			parameters.MinLogLuminance = exposureSettings.HistogramMinEV100; 
+			parameters.LogLuminanceRange = exposureSettings.HistogramMaxEV100 - exposureSettings.HistogramMinEV100;
 			parameters.TimeDelta = Time::GetDeltaTime();
-			parameters.SpeedUp = exposureSettings.SpeedUp; //6.0f;
-			parameters.SpeedDown = exposureSettings.SpeedDown; //5.0f;
-			parameters.ExposureCompensation = exposureSettings.Compensation; //aExposureCompensation;
-			parameters.MinEV100 = exposureSettings.MinEV100; //aMinEV100;
-			parameters.MaxEV100 = exposureSettings.MaxEV100; //aMaxEV100;
-			parameters.LowPercent = exposureSettings.LowPercent; //0.1f;
-			parameters.HighPercent = exposureSettings.HighPercent; //0.90f;
+			parameters.SpeedUp = exposureSettings.SpeedUp;
+			parameters.SpeedDown = exposureSettings.SpeedDown;
+			parameters.ExposureCompensation = exposureSettings.Compensation;
+			parameters.MinEV100 = exposureSettings.MinEV100;
+			parameters.MaxEV100 = exposureSettings.MaxEV100;
+			parameters.LowPercent = exposureSettings.LowPercent;
+			parameters.HighPercent = exposureSettings.HighPercent;
 			parameters.LuminanceHistogramIndex = aSceneBuffers.LuminanceHistogramBuffer.pBuffer->GetSRVIndex();
 			parameters.LuminanceOutputIndex = aSceneBuffers.AverageLuminanceBuffer.pBuffer->GetUAVIndex();
 

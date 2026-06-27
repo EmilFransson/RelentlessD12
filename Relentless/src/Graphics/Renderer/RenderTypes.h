@@ -114,6 +114,9 @@ namespace Relentless
 		Ref<Texture> pAutoExposureDownscaleTarget		= nullptr;
 
 		Ref<Texture> pOpaqueAlphaMaskedColorTargetCopy	= nullptr;
+
+		Ref<Texture> pBloomDownsampleTarget				= nullptr;
+		Ref<Texture> pBloomUpscaleTarget				= nullptr;
 	};
 
 	struct SceneBuffer

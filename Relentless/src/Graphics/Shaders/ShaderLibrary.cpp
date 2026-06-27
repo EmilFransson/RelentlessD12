@@ -48,6 +48,10 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::Compute, "ResolveDepthShader.hlsl", "cs_main"));
 		Add(Shader::Create(ShaderType::Compute, "BlitShader.hlsl", "cs_main"));
 		Add(Shader::Create(ShaderType::Compute, "SelectionOutlinesCompositeShader.hlsl", "cs_main"));
+
+		Add(Shader::Create(ShaderType::Compute, "Bloom.hlsl", "cs_downsample"));
+		Add(Shader::Create(ShaderType::Compute, "Bloom.hlsl", "cs_downsample", { "KARIS_AVERAGE=1" }));
+		Add(Shader::Create(ShaderType::Compute, "Bloom.hlsl", "cs_upscale"));
 	}
 
 	void ShaderLibrary::Add(const std::shared_ptr<Shader>& pShader) noexcept

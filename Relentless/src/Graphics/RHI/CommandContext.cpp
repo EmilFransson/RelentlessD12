@@ -493,6 +493,9 @@ namespace Relentless
 
 			// Retrieve the last known resource state
 			const D3D12_RESOURCE_STATES beforeState = pResource->GetResourceState(subResource);
+
+			RLS_ASSERT(beforeState != D3D12_RESOURCE_STATE_UNKNOWN, "[CommandContext::ResolvePendingBarriers] Resource ({0}) sub {1} has UNKNOWN global state at resolve — seed all subresources at creation.", pResource->GetName(), subResource);
+
 			RLS_ASSERT(D3D::IsTransitionAllowed(m_Type, beforeState),
 				"[ommandContext::ResolvePendingBarriers] Resource ({0}) Can Not Be Transitioned From This State On This Queue ({1}). Insert A Barrier On Another Queue Before Executing This One.",
 				pResource->GetName(), D3D::CommandListTypeToString(m_Type));

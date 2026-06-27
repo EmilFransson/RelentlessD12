@@ -8,6 +8,7 @@
 
 #include "Graphics/Renderer/Techniques/AutoExposure.h"
 #include "Graphics/Renderer/Techniques/BlitPass.h"
+#include "Graphics/Renderer/Techniques/Bloom.h"
 #include "Graphics/Renderer/Techniques/DepthPrePass.h"
 #include "Graphics/Renderer/Techniques/EditorGrid.h"
 #include "Graphics/Renderer/Techniques/ForwardAlphaBlend.h"
@@ -52,6 +53,7 @@ namespace Relentless
 		m_pResolveDepthPass					= MakeUnique<ResolveDepthPass>(pDevice);
 		m_pSelectionOutlinesCompositePass	= MakeUnique<SelectionOutlinesCompositePass>(pDevice);
 		m_pBlitPass							= MakeUnique<BlitPass>(pDevice);
+		m_pBloom							= MakeUnique<Bloom>(pDevice);
 	}
 
 	Renderer::~Renderer() noexcept
@@ -259,7 +261,7 @@ namespace Relentless
 				sceneTextures.pOutlinesBlurTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_FLOAT, 1u, TextureFlag::UnorderedAccess | TextureFlag::ShaderResource), "Outlines Blur Target");
 		}
 
-		//Autoexposure:
+		//Auto exposure:
 		const uint32 downscaleWidth = Math::DivideAndRoundUp(width, 4u);
 		const uint32 downscaleHeight = Math::DivideAndRoundUp(height, 4u);
 		if (!sceneTextures.pAutoExposureDownscaleTarget || sceneTextures.pAutoExposureDownscaleTarget->GetWidth() != downscaleWidth || sceneTextures.pAutoExposureDownscaleTarget->GetHeight() != downscaleHeight)
@@ -269,6 +271,18 @@ namespace Relentless
 		if (!sceneTextures.pOpaqueAlphaMaskedColorTargetCopy || sceneTextures.pOpaqueAlphaMaskedColorTargetCopy->GetWidth() != width || sceneTextures.pOpaqueAlphaMaskedColorTargetCopy->GetHeight() != height)
 			sceneTextures.pOpaqueAlphaMaskedColorTargetCopy = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource), "Opaque & Alpha Masked Color Target Copy");
 
+		//Bloom:
+		auto ComputeNumMips = [](uint32 width, uint32 height) -> uint32 { return (uint32)Math::Floor(std::log2f((float)Math::Max(width, height))) + 1u; };
+		const Vector2u bloomDimensions = Vector2u(width >> 1, height >> 1);
+		constexpr uint32 mipBias = 3;
+		const uint32 numMips = ComputeNumMips(bloomDimensions.x, bloomDimensions.y) - mipBias;
+		if (!sceneTextures.pBloomDownsampleTarget || sceneTextures.pBloomDownsampleTarget->GetWidth() != bloomDimensions.x || sceneTextures.pBloomDownsampleTarget->GetHeight() != bloomDimensions.y || sceneTextures.pBloomDownsampleTarget->GetMipLevels() != numMips)
+			sceneTextures.pBloomDownsampleTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(bloomDimensions.x, bloomDimensions.y, ResourceFormat::RGBA16_FLOAT, numMips, TextureFlag::UnorderedAccess | TextureFlag::ShaderResource), "Bloom Downscale Target");
+
+		if (!sceneTextures.pBloomUpscaleTarget || sceneTextures.pBloomUpscaleTarget->GetWidth() != bloomDimensions.x || sceneTextures.pBloomUpscaleTarget->GetHeight() != bloomDimensions.y || sceneTextures.pBloomUpscaleTarget->GetMipLevels() != (Math::Max(2u, numMips) - 1u))
+			sceneTextures.pBloomUpscaleTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(bloomDimensions.x, bloomDimensions.y, ResourceFormat::RGBA16_FLOAT, Math::Max(2u, numMips) - 1, TextureFlag::UnorderedAccess | TextureFlag::ShaderResource), "Bloom Upscale Target");
+
+		//Environment:
 		sceneTextures.pEnvironmentTarget = GraphicsCommon::GetDefaultTexture(DefaultTextureType::BlackCube);
 
 		return sceneTextures;
@@ -689,9 +703,16 @@ namespace Relentless
 		//Histogram Auto Exposure:
 		{
 			PROFILE_SCOPE("Renderer::Render::AutoExposure");
-
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			m_pAutoExposure->Render(*pCommandContext, aRenderView, aSceneTextures, aSceneBuffers);
+			commandContexts.push_back(pCommandContext);
+		}
+
+		//Bloom:
+		{
+			PROFILE_SCOPE("Renderer::Render::Bloom");
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			m_pBloom->Render(*pCommandContext, aRenderView, aSceneTextures);
 			commandContexts.push_back(pCommandContext);
 		}
 

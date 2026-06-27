@@ -19,6 +19,7 @@ namespace Relentless
 {
 	class AutoExposure;
 	class BlitPass;
+	class Bloom;
 	class DepthPrePass;
 	class EditorGrid;
 	class ForwardRenderer;
@@ -142,6 +143,7 @@ namespace Relentless
 		UniquePtr<ResolveDepthPass> m_pResolveDepthPass;
 		UniquePtr<SelectionOutlinesCompositePass> m_pSelectionOutlinesCompositePass;
 		UniquePtr<BlitPass> m_pBlitPass;
+		UniquePtr<Bloom> m_pBloom;
 
 		AssetHandle m_BRDFLutTextureHandle = AssetHandle::INVALID;
 		
