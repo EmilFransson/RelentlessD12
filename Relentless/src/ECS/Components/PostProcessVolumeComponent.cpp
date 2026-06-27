@@ -461,6 +461,16 @@ namespace Relentless
 		return m_AmbientOcclusionSettings;
 	}
 
+	BloomSettings& PostProcessVolumeComponent::GetBloom() noexcept
+	{
+		return m_BloomSettings;
+	}
+
+	const BloomSettings& PostProcessVolumeComponent::GetBloom() const noexcept
+	{
+		return m_BloomSettings;
+	}
+
 	ExposureSettings& PostProcessVolumeComponent::GetExposure() noexcept
 	{
 		return m_ExposureSettings;

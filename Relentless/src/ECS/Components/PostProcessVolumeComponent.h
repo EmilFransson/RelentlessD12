@@ -105,7 +105,7 @@ namespace Relentless
 		void OnDirtMaskAssetPropertyChanged(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty) noexcept;
 	private:
 		AssetHandle m_DirtMaskHandle = AssetHandle::INVALID;
-		Color m_DirtMaskTint = Colors::White;
+		Color m_DirtMaskTint = Colors::Gray;
 		float m_Intensity = 1.0f;
 		float m_DirtMaskIntensity = 0.0f;
 	};
@@ -154,6 +154,8 @@ namespace Relentless
 
 		NO_DISCARD AmbientOcclusionSettings& GetAmbientOcclusion() noexcept;
 		NO_DISCARD const AmbientOcclusionSettings& GetAmbientOcclusion() const noexcept;
+		NO_DISCARD BloomSettings& GetBloom() noexcept;
+		NO_DISCARD const BloomSettings& GetBloom() const noexcept;
 		NO_DISCARD ExposureSettings& GetExposure() noexcept;
 		NO_DISCARD const ExposureSettings& GetExposure() const noexcept;
 

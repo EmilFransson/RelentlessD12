@@ -1,5 +1,7 @@
 #include "PostProcessRenderDispatchSystem.h"
 
+#include "Assets/CoreTypes/Texture2D.h"
+
 #include "ECS/Components/PostProcessVolumeComponent.h"
 
 #include "Graphics/Renderer/Renderer.h"
@@ -25,6 +27,7 @@ namespace Relentless
 			{
 				const ExposureSettings& exposureSettings = aPostProcessVolumeComponent.GetExposure();
 				const AmbientOcclusionSettings& ambientOcclusionSettings = aPostProcessVolumeComponent.GetAmbientOcclusion();
+				const BloomSettings& bloomSettings = aPostProcessVolumeComponent.GetBloom();
 
 				PostProcessRenderProxy& renderProxy = postProcessRenderProxies.emplace_back();
 				renderProxy.ID = aEntity;
@@ -50,6 +53,12 @@ namespace Relentless
 				renderProxy.ExposureRenderProxySettings.HighPercent = exposureSettings.GetHighPercent();
 				renderProxy.ExposureRenderProxySettings.HistogramMinEV100 = exposureSettings.GetHistogramMinEV100();
 				renderProxy.ExposureRenderProxySettings.HistogramMaxEV100 = exposureSettings.GetHistogramMaxEV100();
+
+				//Bloom:
+				renderProxy.BloomProxySettings.Intensity = bloomSettings.GetIntensity();
+				renderProxy.BloomProxySettings.DirtMaskIntensity = bloomSettings.GetDirtMaskIntensity();
+				renderProxy.BloomProxySettings.DirtMaskTint = bloomSettings.GetDirtMaskTint().ToVector4();
+				renderProxy.BloomProxySettings.DirtMask = bloomSettings.HasAssignedDirtMask() ? bloomSettings.GetDirtMask()->GetResource() : nullptr;
 
 				aSceneState.EntityManager.Remove<PostProcessVolumeComponent::DirtyRenderState>(aEntity);
 			});

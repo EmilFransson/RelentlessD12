@@ -28,10 +28,19 @@ namespace Relentless
 		bool IsEnabled			= true;
 	};
 
+	struct BloomProxySettings
+	{
+		Vector4 DirtMaskTint	= Vector4(0.5f, 0.5f, 0.5f, 1.0f);
+		float Intensity			= 1.0f;
+		float DirtMaskIntensity = 0.0f;
+		Ref<Texture> DirtMask	= nullptr;
+	};
+
 	struct PostProcessRenderProxy
 	{
 		ExposureRenderProxySettings ExposureRenderProxySettings{};
 		AmbientOcclusionProxySettings AmbientOcclusionProxySettings{};
+		BloomProxySettings BloomProxySettings{};
 
 		uint32 ID = std::numeric_limits<uint32>::max();
 	};

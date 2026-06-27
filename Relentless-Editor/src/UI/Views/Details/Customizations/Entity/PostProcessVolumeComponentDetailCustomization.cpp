@@ -2,6 +2,8 @@
 
 #include <Relentless.h>
 
+#include "Core/Editor.h"
+
 #include "UI/Views/Details/IDetailsView.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailLayoutBuilder.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailCategoryBuilder.h"
@@ -9,11 +11,14 @@
 
 #include "Property/EntityPropertyHandle.h"
 
+#include "Subsystem/EngineContentSubsystem.h"
+
 namespace Relentless
 {
 	void PostProcessVolumeComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
-		EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
+		IDetailsView* pDetailsView = aDetailLayoutBuilder.GetDetailsView();
+		EntityDetailsContext& context = pDetailsView->GetContext<EntityDetailsContext>();
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(ICON_FA_PAINTBRUSH "  Post Process");
 
 		Ref<EntityPropertyHandle<bool, PostProcessVolumeComponent>> pInfiniteExtentHandle = RLS_NEW EntityPropertyHandle<bool, PostProcessVolumeComponent>(
@@ -28,7 +33,8 @@ namespace Relentless
 			.NameSlot().Label("Infinite Extent")
 			.ValueSlot().CheckBox().Enabled(false);
 
-		CustomizeAmbientOcclusionDetails(categoryBuilder, context, aDetailLayoutBuilder.GetDetailsView());
+		CustomizeAmbientOcclusionDetails(categoryBuilder, context, pDetailsView);
+		CustomizeBloomDetails(categoryBuilder, context, pDetailsView);
 		CustomizeExposureDetails(categoryBuilder, context);
 	}
 
@@ -183,6 +189,104 @@ namespace Relentless
 			aoGroupBuilder.AddProperty<int>("Step Count", pHandle)
 				.NameSlot().Label("Step Count")
 				.ValueSlot().ComboBox().Options({ "4", "8" });
+		}
+	}
+
+	void PostProcessVolumeComponentDetailCustomization::CustomizeBloomDetails(IDetailCategoryBuilder& aCategoryBuilder, EntityDetailsContext& aContext, IDetailsView* aDetailsView) noexcept
+	{
+		IDetailGroupBuilder bloomGroupBuilder = aCategoryBuilder.EditGroup("Bloom");
+		bloomGroupBuilder.m_IsExpanded = false;
+
+		//Intensity:
+		{
+			Ref<EntityPropertyHandle<float, PostProcessVolumeComponent>> pIntensityHandle = RLS_NEW EntityPropertyHandle<float, PostProcessVolumeComponent>(
+				*aContext.EntityManager,
+				aContext.Entities,
+				[](const PostProcessVolumeComponent& aPPVC) { return aPPVC.GetBloom().GetIntensity(); },
+				[](entity, PostProcessVolumeComponent& aPPVC, const float& aIntensity) { aPPVC.GetBloom().SetIntensity(aIntensity); },
+				1.0f
+			);
+
+			bloomGroupBuilder.AddProperty<float>("Intensity", pIntensityHandle)
+				.NameSlot().Label("Intensity")
+				.ValueSlot().Slider().Range(0.0f, 8.0f);
+		}
+
+		//Dirt Mask:
+		{
+			AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+			EngineContentSubsystem* pEngineContentSubsystem = Editor::Get()->GetSubsystem<EngineContentSubsystem>();
+
+			PostProcessVolumeComponent& postProcessComponent = aContext.EntityManager->Get<PostProcessVolumeComponent>(aContext.Entities.front());
+			const AssetHandle& assetHandle = postProcessComponent.GetBloom().GetDirtMaskHandle();
+			AssetData* pAssetData = assetRegistry.FindAsset(assetHandle.Uuid);
+
+			const bool isNone = pAssetData == nullptr;
+			if (isNone)
+				pAssetData = assetRegistry.FindAsset(pEngineContentSubsystem->GetNoneTexture2DHandle().Uuid);
+
+			bloomGroupBuilder.AddAssetProperty("Dirt Mask", *pAssetData)
+				.AcceptableAssetTypes({ Texture2D::StaticType() })
+				.OnAssetsDropped([&aContext, aDetailsView](Span<const AssetData> someAssetDatas)
+					{
+						const AssetHandle assetHandle = AssetManager::LoadAsset(someAssetDatas[0]);
+						std::ranges::for_each(aContext.Entities, [&aContext, &assetHandle](entity aEntity) { aContext.EntityManager->Get<PostProcessVolumeComponent>(aEntity).GetBloom().SetDirtMask(assetHandle); });
+						Application::Get().SubmitToMainThread([aDetailsView]() { aDetailsView->RequestRefresh(); });
+					})
+				.NameSlot().Label("Dirt Mask")
+				.ValueSlot().AssetThumbnail().Row()
+				.RevertSlot().Widget([isNone, aDetailsView, &aContext]()
+					{
+						Ref<HorizontalBox> pRevertBox = RLS_NEW HorizontalBox();
+						pRevertBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+
+						if (!isNone)
+						{
+							Button* pButton = pRevertBox->AddWidget( Button::CreateTransparent(ICON_FA_ARROW_ROTATE_LEFT));
+							pButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f));
+							pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+
+							pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 1.0f)); });
+							pButton->OnMouseExit([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f)); });
+							pButton->OnClicked([aDetailsView, &aContext]()
+								{
+									std::ranges::for_each(aContext.Entities, [&aContext](entity aEntity) { aContext.EntityManager->Get<PostProcessVolumeComponent>(aEntity).GetBloom().RemoveDirtMask(); });
+									Application::Get().SubmitToMainThread([aDetailsView]() { aDetailsView->RequestRefresh(); });
+								});
+						}
+
+						return pRevertBox;
+					});
+		}
+
+		//Dirt Mask Intensity:
+		{
+			Ref<EntityPropertyHandle<float, PostProcessVolumeComponent>> pDirtMaskIntensityHandle = RLS_NEW EntityPropertyHandle<float, PostProcessVolumeComponent>(
+				*aContext.EntityManager,
+				aContext.Entities,
+				[](const PostProcessVolumeComponent& aPPVC) { return aPPVC.GetBloom().GetDirtMaskIntensity(); },
+				[](entity, PostProcessVolumeComponent& aPPVC, const float& aIntensity) { aPPVC.GetBloom().SetDirtMaskIntensity(aIntensity); },
+				0.0f
+			);
+
+			bloomGroupBuilder.AddProperty<float>("Dirt Mask Intensity", pDirtMaskIntensityHandle)
+				.NameSlot().Label("Dirt Mask Intensity")
+				.ValueSlot().Slider().Range(0.0f, 8.0f);
+		}
+
+		//Dirt Mask Tint
+		{
+			Ref<EntityPropertyHandle<Color, PostProcessVolumeComponent>> pDirtMaskTintHandle = RLS_NEW EntityPropertyHandle<Color, PostProcessVolumeComponent>(
+				*aContext.EntityManager,
+				aContext.Entities,
+				[](const PostProcessVolumeComponent& aPPVC) { return aPPVC.GetBloom().GetDirtMaskTint(); },
+				[](entity, PostProcessVolumeComponent& aPPVC, const Color& aColor) { aPPVC.GetBloom().SetDirtMaskTint(aColor); },
+				Colors::Gray
+			);
+
+			bloomGroupBuilder.AddProperty<Color>("Dirt Mask Tint", pDirtMaskTintHandle)
+				.NameSlot().Label("Dirt Mask Tint")
+				.ValueSlot().ColorPicker();
 		}
 	}
 

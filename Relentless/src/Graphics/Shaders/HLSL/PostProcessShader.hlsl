@@ -10,7 +10,10 @@ struct PassParameters
     
     float BloomIntensity;
     float BloomBlendFactor;
-    float2 Padding;
+    uint BloomDirtMaskIndex;
+    float BloomDirtMaskIntensity;
+    
+    float4 BloomDirtMaskTint;
 };
 
 float3 ToneMapACES(float3 hdrColor)
@@ -62,6 +65,30 @@ float3 ACESFitted(float3 color)
     return color;
 }
 
+float3 Bloom(float2 aUV)
+{
+    Texture2D<float4> bloomTexture = ResourceDescriptorHeap[passData.BloomIndex];
+    Texture2D<float4> bloomDirtMask = ResourceDescriptorHeap[passData.BloomDirtMaskIndex];
+    
+    const float3 bloom = bloomTexture.SampleLevel(sLinearClamp, aUV, 0.0f).rgb * passData.BloomIntensity;
+    const float4 lensDirt = bloomDirtMask.SampleLevel(sLinearClamp, aUV, 0.0f) * passData.BloomDirtMaskTint * passData.BloomDirtMaskIntensity;
+    
+    const float3 finalBloom = bloom + bloom * lensDirt.rgb;
+    return finalBloom;
+}
+
+float Exposure()
+{
+    StructuredBuffer<float> averageLuminanceBuffer = ResourceDescriptorHeap[passData.AverageLuminanceIndex];
+    const float exposure = averageLuminanceBuffer[2];
+    return exposure;
+}
+
+float3 ToneMap(float3 aHDRColor)
+{
+    return ACESFitted(aHDRColor);
+}
+
 [numthreads(16, 16, 1)]
 void cs_main(uint3 threadId : SV_DispatchThreadID)
 {
@@ -70,20 +97,14 @@ void cs_main(uint3 threadId : SV_DispatchThreadID)
 
     const float2 uv = TexelToUV(threadId.xy, cView.ViewportDimensionsInv);
     
-    Texture2D sourceHDRTexture = ResourceDescriptorHeap[passData.SourceIndex];
+    Texture2D<float4> sourceHDRTexture = ResourceDescriptorHeap[passData.SourceIndex];
     RWTexture2D<float4> targetTexture = ResourceDescriptorHeap[passData.TargetIndex];
-    Texture2D<float4> bloomTexture = ResourceDescriptorHeap[passData.BloomIndex];
     
     float3 hdrTextureColor = sourceHDRTexture.Load(int3(threadId.xy, 0)).rgb;
-    const float3 bloom = bloomTexture.SampleLevel(sLinearClamp, uv, 0.0f).rgb * passData.BloomIntensity;
+    hdrTextureColor += Bloom(uv);
+    hdrTextureColor *= Exposure();
     
-    hdrTextureColor = lerp(hdrTextureColor, bloom, passData.BloomBlendFactor);
-    
-    StructuredBuffer<float> averageLuminanceBuffer = ResourceDescriptorHeap[passData.AverageLuminanceIndex];
-    const float exposure = averageLuminanceBuffer[2];
-    hdrTextureColor *= exposure;
-    
-    const float3 sdr = ACESFitted(hdrTextureColor);
+    const float3 sdr = ToneMap(hdrTextureColor);
     
     targetTexture[threadId.xy] = float4(sdr, 1.0f);
 }

@@ -5,6 +5,8 @@
 #include "Graphics/RHI/Device.h"
 #include "Graphics/RHI/PipelineState.h"
 
+#include "Subsystem/CoreTypes/PostProcessRenderSubsystem.h"
+
 namespace Relentless
 {
 	PostProcessing::PostProcessing(GraphicsDevice* aGraphicsDevice) noexcept
@@ -21,6 +23,9 @@ namespace Relentless
 		aCommandContext.SetPipelineState(m_pDevice->GetOrCreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "PostProcessShader", "cs_main"));
 		aCommandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());
 
+		PostProcessRenderSubsystem* pPostProcessRenderSubsystem = aRenderView.pRenderScene->GetSubsystem<PostProcessRenderSubsystem>();
+		const PostProcessRenderProxy& renderProxy = pPostProcessRenderSubsystem->GetRenderProxy();
+
 		struct
 		{
 			uint32 SourceIndex;
@@ -30,15 +35,21 @@ namespace Relentless
 
 			float BloomIntensity;
 			float BloomBlendFactor;
-			float Padding[2];
+			uint32 BloomDirtMaskIndex;
+			float BloomDirtMaskIntensity;
+
+			Vector4 BloomDirtMaskTint;
 		} params;
 
 		params.SourceIndex = aSceneTextures.pHDRColorTarget->GetSRVIndex();
 		params.TargetIndex = aSceneTextures.pLDRColorTarget->GetUAVIndex();
 		params.AverageLuminanceIndex = aAverageLuminanceBuffer->GetSRVIndex();
 		params.BloomIndex = aSceneTextures.pBloomUpscaleTarget->GetSRVIndex();
-		params.BloomIntensity = 1.0f;
+		params.BloomIntensity = renderProxy.BloomProxySettings.Intensity;
 		params.BloomBlendFactor = 0.3f;
+		params.BloomDirtMaskIndex = renderProxy.BloomProxySettings.DirtMask ? renderProxy.BloomProxySettings.DirtMask->GetSRVIndex() : GraphicsCommon::GetDefaultTexture(DefaultTextureType::Black2D)->GetSRVIndex();
+		params.BloomDirtMaskIntensity = renderProxy.BloomProxySettings.DirtMaskIntensity;
+		params.BloomDirtMaskTint = renderProxy.BloomProxySettings.DirtMaskTint;
 
 		aCommandContext.BindRootCBV(BindingSlot::PerPass, &params, sizeof(params));
 		Renderer::BindViewData(aCommandContext, aRenderView);
