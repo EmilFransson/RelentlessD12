@@ -1,6 +1,11 @@
 #ifndef COMMON_HLSLI
 #define COMMON_HLSLI
 
+float2 ClipToUV(float2 aClip)
+{
+    return aClip * float2(0.5f, -0.5f) + 0.5f;
+}
+
 template<typename T>
 T Lerp(T a, T b, T t)
 {

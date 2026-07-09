@@ -5,6 +5,7 @@ namespace Relentless
 {
 	struct LightRenderProxy
 	{
+		Matrix WorldMatrix = Matrix::Identity;
 		Vector3 Color = Vector3::Zero;
 		Vector3 Direction = Vector3::Zero;
 		Vector3 Position = Vector3::Zero;

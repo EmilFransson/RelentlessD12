@@ -249,7 +249,9 @@ namespace Relentless
 			DXGI_FORMAT_D32_FLOAT_S8X24_UINT,
 
 			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
-			DXGI_FORMAT_B8G8R8A8_UNORM_SRGB
+			DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
+
+			DXGI_FORMAT_R16_TYPELESS
 		};
 
 		NO_DISCARD constexpr ResourceFormat ConvertFormat(DXGI_FORMAT format) noexcept
@@ -322,6 +324,9 @@ namespace Relentless
 
 			case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return ResourceFormat::RGBA8_UNORM_SRGB;
 			case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:   return ResourceFormat::BGRA8_UNORM_SRGB;
+
+			case DXGI_FORMAT_R16_TYPELESS:			return ResourceFormat::R16_TYPELESS;
+
 			default:
 			{
 				RLS_ASSERT(false, "[D3D::ConvertFormat] Unkown DXGI Format Encountered.");

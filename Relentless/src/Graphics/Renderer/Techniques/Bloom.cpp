@@ -11,7 +11,7 @@ namespace Relentless
 		: m_pDevice{ pDevice }
 	{}
 
-	void Bloom::Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures) noexcept
+	void Bloom::Render(CommandContext& aCommandContext, SceneTextures& aSceneTextures) noexcept
 	{
 		uint32 numMips = aSceneTextures.pBloomDownsampleTarget->GetMipLevels();
 		const uint32 width = aSceneTextures.pBloomDownsampleTarget->GetWidth();

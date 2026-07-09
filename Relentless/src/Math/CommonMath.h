@@ -97,10 +97,33 @@ namespace Relentless
 			return value;
 		}
 
+		constexpr inline Matrix CreateOrthographicOffCenterMatrix(float left, float right, float bottom, float top, float nearZ, float farZ)
+		{
+			float rcpWidth = 1.0f / (right - left);
+			float rcpHeight = 1.0f / (top - bottom);
+			float rcpZRange = 1.0f / (farZ - nearZ);
+
+			float A = -(left + right) * rcpWidth;
+			float B = -(top + bottom) * rcpHeight;
+
+			return Matrix(
+				2.0f * rcpWidth, 0, 0, 0,
+				0, 2.0f * rcpHeight, 0, 0,
+				0, 0, rcpZRange, 0,
+				A, B, -nearZ * rcpZRange, 1
+			);
+		}
+
 		template<typename T>
 		constexpr inline T Floor(const T& v)
 		{
 			return (T)std::floor(v);
+		}
+
+		template<>
+		inline Vector3 Floor(const Vector3& v)
+		{
+			return Vector3(Floor(v.x), Floor(v.y), Floor(v.z));
 		}
 
 		constexpr inline uint32 DivideAndRoundUp(uint32 nominator, uint32 denominator) noexcept

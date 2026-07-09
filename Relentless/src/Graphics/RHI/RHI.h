@@ -102,6 +102,8 @@ namespace Relentless
 		RGBA8_UNORM_SRGB,
 		BGRA8_UNORM_SRGB,
 
+		R16_TYPELESS,
+
 		Count
 	};
 

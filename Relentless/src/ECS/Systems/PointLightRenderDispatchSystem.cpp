@@ -37,6 +37,7 @@ namespace Relentless
 			const Color& color = pointLightComponent.GetColor();
 
 			LightRenderProxy& renderProxy = lightRenderProxies.emplace_back();
+			renderProxy.WorldMatrix = transformComponent.GetWorldMatrix();
 			renderProxy.Color = Vector3(color.R(), color.G(), color.B());
 			renderProxy.Position = transformComponent.GetWorldLocation();
 			renderProxy.AttenuationRadius = pointLightComponent.GetAttenuationRadius() > 0.0f ? (1.0f / (pointLightComponent.GetAttenuationRadius() * pointLightComponent.GetAttenuationRadius())) : 0.0f;

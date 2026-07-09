@@ -19,6 +19,8 @@ namespace Relentless
 		void OnRenderBegin(const ViewRenderDesc& aViewRenderDesc) noexcept;
 
 		void SortBatches(const ViewRenderDesc& aViewRenderDesc) noexcept;
+
+		Broadcaster<void(RenderView&)> OnViewPrepare;
 	private:
 		std::vector<Batch> m_Batches;
 		UUID m_UUID;

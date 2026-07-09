@@ -371,7 +371,7 @@ namespace Relentless
 
 		D3D12_CLEAR_VALUE* pClearValue = nullptr;
 		D3D12_CLEAR_VALUE clearValue = {};
-		clearValue.Format = desc.Format == ResourceFormat::R32_TYPELESS ? DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT : D3D::ConvertFormat(desc.Format); //TODO, CHANGE!
+		clearValue.Format = desc.Format == ResourceFormat::R32_TYPELESS ? DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT : desc.Format == ResourceFormat::R16_TYPELESS ? DXGI_FORMAT::DXGI_FORMAT_D16_UNORM : D3D::ConvertFormat(desc.Format); //TODO, CHANGE!
 
 		if (EnumHasAnyFlags(desc.Flags, TextureFlag::RenderTarget))
 		{
@@ -552,7 +552,7 @@ namespace Relentless
 		const TextureDesc& desc = pTexture->GetDesc();
 
 		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
-		dsvDesc.Format = desc.Format == ResourceFormat::R32_TYPELESS ? DXGI_FORMAT_D32_FLOAT : D3D::ConvertFormat(desc.Format);
+		dsvDesc.Format = desc.Format == ResourceFormat::R32_TYPELESS ? DXGI_FORMAT_D32_FLOAT : desc.Format == ResourceFormat::R16_TYPELESS ? DXGI_FORMAT_D16_UNORM : D3D::ConvertFormat(desc.Format);
 		dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 
 		if (EnumHasAnyFlags(textureDSVDesc.Flags, DepthTargetAccessFlags::ReadOnlyDepth))
@@ -638,7 +638,7 @@ namespace Relentless
 		const TextureDesc& desc = pTexture->GetDesc();
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = desc.Format == ResourceFormat::R32_TYPELESS ? DXGI_FORMAT_R32_FLOAT : D3D::ConvertFormat(desc.Format);
+		srvDesc.Format = desc.Format == ResourceFormat::R32_TYPELESS ? DXGI_FORMAT_R32_FLOAT : desc.Format == ResourceFormat::R16_TYPELESS ? DXGI_FORMAT_R16_UNORM : D3D::ConvertFormat(desc.Format);
 		srvDesc.Shader4ComponentMapping = D3D::IsSingleChannel(D3D::ConvertFormat(srvDesc.Format)) ? D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(
 			D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0,
 			D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0,

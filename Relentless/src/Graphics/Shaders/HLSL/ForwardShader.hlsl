@@ -52,6 +52,7 @@ float4 ps_main(VS_OUT psIn, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
     const InstanceData instanceData = GetInstance(psIn.InstanceID);
     const Material material = GetMaterial(instanceData.MaterialIndex);
     const float faceFactor = ((float)isFrontFace * 2.0f) - 1.0f;
+    const float linearDepth = psIn.PositionCS.w;
     
     MaterialEvaluationInputs inputs = (MaterialEvaluationInputs)0;
     inputs.UV = psIn.TexCoords;
@@ -60,10 +61,10 @@ float4 ps_main(VS_OUT psIn, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
     inputs.BitangentWS = psIn.BiTangentWS * faceFactor;
     
     const MaterialSurface surface = EvaluateMaterial(material, inputs);
-    const float3 outgoingRadiance = EvaluateLights(surface, psIn.PositionWS);
+    const float3 outgoingRadiance = EvaluateLights(surface, psIn.PositionWS, linearDepth);
     const float3 ibl = EvaluateIBL(surface, psIn.PositionWS);
     const float3 ambientColor = (ibl * surface.AmbientOcclusion) + surface.EmissiveColor;
-    float3 outColor = ambientColor + outgoingRadiance;
+    float3 outColor = /*ambientColor + */outgoingRadiance;
     
     #ifdef ALPHA_BLEND
     const float2 screenUV = psIn.PositionCS.xy * cView.ViewportDimensionsInv;

@@ -22,6 +22,8 @@ SamplerState sAnisoBorder :									register(s9, space1);
 SamplerState sMaterialSampler :							 	register(s10, space1);
 SamplerComparisonState sLinearClampComparisonGreater :		register(s11, space1);
 SamplerComparisonState sLinearWrapComparisonGreater :		register(s12, space1);
+SamplerComparisonState sLinearClampComparisonLessEqual :    register(s13, space1);
+
 
 InstanceData GetInstance(uint index)
 {
@@ -45,6 +47,12 @@ Light GetLight(uint index)
 {
     StructuredBuffer<Light> lightDatas = ResourceDescriptorHeap[cView.LightsIndex];
     return lightDatas[NonUniformResourceIndex(index)];
+}
+
+ShadowViewData GetShadowView(uint aIndex)
+{
+    StructuredBuffer<ShadowViewData> shadowViewDatas = ResourceDescriptorHeap[cView.ShadowViewsIndex];
+    return shadowViewDatas[NonUniformResourceIndex(aIndex)];
 }
 
 SkyLightData GetSkyLight()

@@ -37,6 +37,7 @@ namespace Relentless
 			const Color& color = directionalLightComponent.GetColor();
 
 			LightRenderProxy& renderProxy = lightRenderProxies.emplace_back();
+			renderProxy.WorldMatrix = transformComponent.GetWorldMatrix();
 			renderProxy.Color = Vector3(color.R(), color.G(), color.B());
 			renderProxy.Direction = transformComponent.GetWorldForward();
 			renderProxy.Intensity = directionalLightComponent.GetIntensity();

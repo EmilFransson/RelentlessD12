@@ -29,6 +29,24 @@
 //    return invDistSq * windowing;
 //}
 
+int GetCascadeIndex(Light aLight, float aViewDepth)
+{
+    const float4 mask = aViewDepth > aLight.CascadeSplits;
+    return min(dot(mask, float4(1, 1, 1, 1)), aLight.ShadowViewCount - 1);
+}
+
+uint GetShadowMapIndex(Light aLight, float aViewDepth)
+{
+    if (aLight.IsDirectional)
+    {
+        const int cascade = GetCascadeIndex(aLight, aViewDepth);
+        const ShadowViewData shadowView = GetShadowView(aLight.ShadowViewBaseIndex + cascade);
+        return shadowView.ShadowMapIndex;
+    }
+    
+    return 0u;
+}
+
 float GetSquareFalloffAttenuation(float aDistanceSquare, float aFalloff)
 {
     const float factor = aDistanceSquare * aFalloff;
@@ -59,7 +77,24 @@ float DirectionalAttenuation(float3 L, float3 direction, float cosUmbra, float c
     return falloff * falloff;
 }
 
-float3 EvaluateLights(MaterialSurface aSurface, float3 aWorldPosition)
+float ShadowNoPCF(float3 aWorldPosition, uint aShadowViewIndex)
+{
+    const ShadowViewData shadowView = GetShadowView(aShadowViewIndex);
+    
+    float4x4 lightViewProjection = shadowView.WorldToClip;
+    float4 lightPos = mul(float4(aWorldPosition, 1.0f), lightViewProjection);
+    lightPos.xyz /= lightPos.w;
+    float2 uv = ClipToUV(lightPos.xy);
+    
+    if (any(uv < 0.0f) || any(uv > 1.0f))
+        return 0.5f; // gray = "outside cascade" so you can distinguish it from map contents
+
+    Texture2D shadowTexture = ResourceDescriptorHeap[NonUniformResourceIndex(shadowView.ShadowMapIndex)];
+    float stored = shadowTexture.SampleLevel(sLinearClamp, uv, 0).r;
+    return stored; // return the raw depth
+}
+
+float3 EvaluateLights(MaterialSurface aSurface, float3 aWorldPosition, float aLinearDepth)
 {
     const float3 viewDirection = normalize(cView.ViewLocation - aWorldPosition);
     const float f0Scalar = pow((1.0f - aSurface.IOR) / (1.0f + aSurface.IOR), 2.0f); //IOR of 1.5 produces the typical base reflectivity (0.04)
@@ -79,9 +114,32 @@ float3 EvaluateLights(MaterialSurface aSurface, float3 aWorldPosition)
         float3 toLightDirection = float3(0.0f, 0.0f, 0.0f);
         float attenuation = 1.0f;
         
+        //if (light.IsDirectional)
+        //{
+        //    int cascade = GetCascadeIndex(light, aLinearDepth);
+        //    ShadowViewData v = GetShadowView(light.ShadowViewBaseIndex + cascade);
+        //    float4 lp = mul(float4(aWorldPosition, 1), v.WorldToClip);
+        //    lp.xyz /= lp.w;
+        //    float2 uv = float2(lp.x * 0.5f + 0.5f, lp.y * -0.5f + 0.5f);
+        //    static const float3 COLORS[] = { float3(1, 0, 0), float3(0, 1, 0), float3(0, 0, 1), float3(0, 1, 1) };
+        //    float3 color = COLORS[cascade];
+        //    if (any(uv < -0.01) || any(uv > 1.01))
+        //        color = float3(1, 0, 1);
+        //    return color;
+        //}
+        
+        
+        
         if (light.IsDirectional)
         {
             toLightDirection = normalize(-light.Direction);
+            
+            //int cascade = GetCascadeIndex(light, aLinearDepth);
+            //attenuation *= ShadowNoPCF(aWorldPosition, light.ShadowViewBaseIndex + cascade);
+            
+            int cascade = GetCascadeIndex(light, aLinearDepth);
+            float stored = ShadowNoPCF(aWorldPosition, light.ShadowViewBaseIndex + cascade);
+            return float3(stored, stored, stored);
         }
         else if (light.IsPoint || light.IsSpot)
         {
@@ -94,6 +152,9 @@ float3 EvaluateLights(MaterialSurface aSurface, float3 aWorldPosition)
                 attenuation *= DirectionalAttenuation(surfaceToLight, light.Direction, light.SpotlightAngles.y, light.SpotlightAngles.x);
             }
         }
+        
+        if (attenuation <= 0.0f)
+            return float3(0.0f, 0.0f, 0.0f);
         
         const float NoL = dot(aSurface.Normal, toLightDirection);
         if (NoL > 0.0f && attenuation > 0.0f)

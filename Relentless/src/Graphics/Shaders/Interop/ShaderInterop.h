@@ -124,15 +124,27 @@ using float4x4 = Matrix;
 		float3 Direction;
 		float Range;
 		float3 Color;
-		uint Padding;
+		uint MatrixIndex;
 
 		float2 SpotlightAngles;
+		uint ShadowViewBaseIndex;
+		uint ShadowViewCount;
+
+		float4 CascadeSplits;
 
 		// flags
 		uint IsEnabled : 1;
 		uint IsSpot : 1;
 		uint IsPoint : 1;
 		uint IsDirectional : 1;
+	};
+
+	struct ShadowViewData
+	{
+		float4x4 WorldToClip;
+		uint ShadowMapIndex;
+
+		float3 Padding;
 	};
 
 	struct ViewUniforms
@@ -164,6 +176,9 @@ using float4x4 = Matrix;
 		uint MeshesIndex;
 		uint MaterialsIndex;
 		uint LightsIndex;
+
+		uint ShadowViewsIndex;
+		float3 Padding;
 	};
 
 	static const uint INVALID_DESCRIPTOR_INDEX = 0xFFFFFFFF;

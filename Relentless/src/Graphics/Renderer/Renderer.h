@@ -32,6 +32,7 @@ namespace Relentless
 	class ResolveDepthPass;
 	class Scene;
 	class SelectionOutlinesCompositePass;
+	class ShadowMapping;
 	class SkyBoxRenderer;
 
 	enum class ERenderJobType : uint8 { None = 0u, Raster, Compute };
@@ -83,6 +84,8 @@ namespace Relentless
 		NO_DISCARD SceneBuffers& ValidateAndGetViewBuffers(const ViewRenderDesc& aViewRenderDesc) noexcept;
 
 		Broadcaster<void(uint32 aReadbackResult, const UUID& aSceneUUID)> OnEntityIDReadbackDone;
+
+		constexpr static ResourceFormat ShadowFormat = ResourceFormat::D16_UNORM;
 	private:
 		void GetViewUniforms(const RenderView& renderView, ShaderInterop::ViewUniforms& outViewUniform) noexcept;
 
@@ -144,9 +147,17 @@ namespace Relentless
 		UniquePtr<SelectionOutlinesCompositePass> m_pSelectionOutlinesCompositePass;
 		UniquePtr<BlitPass> m_pBlitPass;
 		UniquePtr<Bloom> m_pBloom;
+		UniquePtr<ShadowMapping> m_pShadowMapping;
 
 		AssetHandle m_BRDFLutTextureHandle = AssetHandle::INVALID;
 		
+		struct PreparedView
+		{
+			RenderView* pView		= nullptr;
+			ViewRenderDesc Desc;
+			RenderScene* pScene		= nullptr;
+		};
+
 		struct EntityIDReadbackData
 		{
 			SyncPoint Sync;

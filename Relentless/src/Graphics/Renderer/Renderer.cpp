@@ -19,6 +19,7 @@
 #include "Graphics/Renderer/Techniques/PostProcessing.h"
 #include "Graphics/Renderer/Techniques/ResolveDepthPass.h"
 #include "Graphics/Renderer/Techniques/SelectionOutlinesCompositePass.h"
+#include "Graphics/Renderer/Techniques/ShadowMapping.h"
 #include "Graphics/Renderer/Techniques/SkyBoxRenderer.h"
 
 #include "Graphics/RHI/CommandContext.h"
@@ -54,6 +55,7 @@ namespace Relentless
 		m_pSelectionOutlinesCompositePass	= MakeUnique<SelectionOutlinesCompositePass>(pDevice);
 		m_pBlitPass							= MakeUnique<BlitPass>(pDevice);
 		m_pBloom							= MakeUnique<Bloom>(pDevice);
+		m_pShadowMapping					= MakeUnique<ShadowMapping>(pDevice);
 	}
 
 	Renderer::~Renderer() noexcept
@@ -71,36 +73,48 @@ namespace Relentless
 		NotifySubsystemsOfBRDFLut_Temp();
 		InvokeFrameBeginCallbacks();
 		InvokeRenderJobs();
+
+		std::vector<PreparedView> preparedViews;
+		preparedViews.reserve(m_PendingViews.size());
+
+		for (const ViewRenderDesc& desc : m_PendingViews)
+		{
+			if (!desc.RenderTarget)            
+				continue;
+
+			if (!ExistRenderScene(desc.SceneID)) 
+				continue;
+
+			if (!ExistView(desc.ViewID))       
+				continue;
+
+			RenderScene* pScene = GetRenderScene(desc.SceneID);
+			pScene->OnRenderBegin(desc);
+
+			RenderView& view = BuildRenderView(desc);
+			pScene->OnViewPrepare(view);
+
+			preparedViews.push_back({ &view, desc, pScene });
+		}
+
+		m_PendingViews.clear();
+
 		InvokeEntityReadbackCallbacks();
 		InvokeUploadCallbacks();
 		SyncRingBuffer();
 
-		for (const ViewRenderDesc& viewRenderDesc : m_PendingViews)
+		for (PreparedView& aPreparedView : preparedViews)
 		{
-			if (!viewRenderDesc.RenderTarget)
-				continue;
+			SceneTextures& viewTextures = ValidateAndGetViewTextures(aPreparedView.Desc);
+			SceneBuffers& viewBuffers = ValidateAndGetViewBuffers(aPreparedView.Desc);
 
-			if (!ExistRenderScene(viewRenderDesc.SceneID))
-				continue;
+			CommandContext* pCtx = m_pDevice->AllocateCommandContext();
+			UploadViewUniforms(*pCtx, *aPreparedView.pView);
+			pCtx->Execute();
 
-			if (!ExistView(viewRenderDesc.ViewID))
-				continue;
-
-			RenderScene* pRenderScene = GetRenderScene(viewRenderDesc.SceneID);
-			pRenderScene->OnRenderBegin(viewRenderDesc);
-
-			RenderView& renderView = BuildRenderView(viewRenderDesc);
-			SceneTextures& viewTextures = ValidateAndGetViewTextures(viewRenderDesc);
-			SceneBuffers& viewBuffers = ValidateAndGetViewBuffers(viewRenderDesc);
-
-			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			UploadViewUniforms(*pCommandContext, renderView);
-			pCommandContext->Execute();
-
-			Render(renderView, viewTextures, viewBuffers, viewRenderDesc.RenderTarget);
+			Render(*aPreparedView.pView, viewTextures, viewBuffers, aPreparedView.Desc.RenderTarget);
 		}
 
-		m_PendingViews.clear();
 		m_Frame++;
 	}
 
@@ -462,13 +476,14 @@ namespace Relentless
 		outViewUniform.InstancesIndex			= pPrimitiveRenderSubsystem->GetRenderData()->GetSRVIndex();
 		outViewUniform.MeshesIndex				= pMeshRenderSubsystem->GetRenderData()->GetSRVIndex();
 		outViewUniform.MaterialsIndex			= pMaterialRenderSubsystem->GetRenderData()->GetSRVIndex();
-		outViewUniform.LightsIndex				= pLightRenderSubsystem->GetRenderData()->GetSRVIndex();
+		outViewUniform.LightsIndex				= pLightRenderSubsystem->GetLightRenderData()->GetSRVIndex();
 
 		outViewUniform.SkyLightIndex			= pSkyLightRenderSubsystem->GetRenderData()->GetSRVIndex();
 		outViewUniform.SkyBoxIndex				= pSkyBoxRenderSubsystem->GetRenderData()->GetSRVIndex();
+		outViewUniform.ShadowViewsIndex			= pLightRenderSubsystem->GetShadowViewsRenderData()->GetSRVIndex();
 
 		//TODO: Consider how this is made available:
-		outViewUniform.SceneColorCopyIndex		= m_ViewTextures.at(aRenderView.ViewID).pOpaqueAlphaMaskedColorTargetCopy->GetSRVIndex();
+		//outViewUniform.SceneColorCopyIndex		= m_ViewTextures.at(aRenderView.ViewID).pOpaqueAlphaMaskedColorTargetCopy->GetSRVIndex();
 	}
 
 	void Renderer::InvokeDispatchRequests() noexcept
@@ -615,6 +630,16 @@ namespace Relentless
 
 		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
 		
+		//Shadow maps:
+		{
+			PROFILE_SCOPE("Renderer::Render::ShadowMap");
+		
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			m_pShadowMapping->Render(*pCommandContext, aRenderView);
+		
+			commandContexts.push_back(pCommandContext);
+		}
+
 		//Forward Opaque + Alpha Masked
 		{
 			PROFILE_SCOPE("Renderer::Render::ForwardOpaqueAlphaMask");
@@ -712,7 +737,7 @@ namespace Relentless
 		{
 			PROFILE_SCOPE("Renderer::Render::Bloom");
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			m_pBloom->Render(*pCommandContext, aRenderView, aSceneTextures);
+			m_pBloom->Render(*pCommandContext, aSceneTextures);
 			commandContexts.push_back(pCommandContext);
 		}
 

@@ -37,6 +37,7 @@ namespace Relentless
 			const Color& color = spotLightComponent.GetColor();
 
 			LightRenderProxy& renderProxy = lightRenderProxies.emplace_back();
+			renderProxy.WorldMatrix = transformComponent.GetWorldMatrix();
 			renderProxy.Color = Vector3(color.R(), color.G(), color.B());
 			renderProxy.Position = transformComponent.GetWorldLocation();
 			renderProxy.Direction = transformComponent.GetWorldForward();

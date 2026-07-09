@@ -57,6 +57,11 @@ namespace Relentless
 		uint32 FrameIndex							= 0u;
 	};
 
+	struct ShadowView : public RenderView
+	{
+		Texture* DepthTexture = nullptr;
+	};
+
 	struct ViewRenderDesc
 	{
 		ViewTransform ViewTransform					= {};
