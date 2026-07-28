@@ -8,6 +8,7 @@
 #include "UI/Views/Details/IDetailsView.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailLayoutBuilder.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailCategoryBuilder.h"
+#include "UI/Views/Details/DetailHelpers.h"
 
 namespace Relentless
 {
@@ -19,6 +20,11 @@ namespace Relentless
 
 	void MeshRendererComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
+		using MRC = MeshRendererComponent;
+		
+		EntityDetailsContext& detailsContext = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
+		DetailHelpers::EntityHandleFactory<MRC> handleFactory({ .Entities = detailsContext.Entities, .EntityManager = *detailsContext.EntityManager });
+
 		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnMeshRendererComponentPropertyChangedCallbackID))
 			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnMeshRendererComponentPropertyChangedCallbackID);
 
@@ -32,7 +38,6 @@ namespace Relentless
 					aDetailLayoutBuilder.ForceRefreshDetails();
 			});
 
-		EntityDetailsContext& detailsContext = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
 		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
 		EngineContentSubsystem* pEngineContentSubsystem = Editor::Get()->GetSubsystem<EngineContentSubsystem>();
 
@@ -110,14 +115,7 @@ namespace Relentless
 					return pRevertBox;
 				});
 
-		Ref<EntityPropertyHandle<bool, MeshRendererComponent>> pCastShadowsHandle = RLS_NEW EntityPropertyHandle<bool, MeshRendererComponent>(
-			*detailsContext.EntityManager,
-			detailsContext.Entities,
-			[](const MeshRendererComponent& aMRC) { return aMRC.IsCastingShadows(); },
-			[](entity, MeshRendererComponent& aMRC, const bool& aCastShadows) { aMRC.SetCastShadows(aCastShadows); },
-			true
-		);
-
+		auto pCastShadowsHandle = handleFactory.Make(&MRC::IsCastingShadows, &MRC::SetCastShadows, true);
 		categoryBuilder.AddProperty<bool>("Cast Shadows", pCastShadowsHandle)
 			.NameSlot().Label("Cast Shadows")
 			.ValueSlot().CheckBox();

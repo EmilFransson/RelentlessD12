@@ -2,6 +2,7 @@
 
 #include <Relentless.h>
 
+#include "UI/Views/Details/DetailHelpers.h"
 #include "UI/Views/Details/IDetailsView.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailLayoutBuilder.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailCategoryBuilder.h"
@@ -19,6 +20,11 @@ namespace Relentless
 
 	void SkyLightComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
+		using SLC = SkyLightComponent;
+		EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
+		DetailHelpers::EntityHandleFactory<SLC> handleFactory{ .Entities = context.Entities, .EntityManager = *context.EntityManager };
+		const bool multiSelection = context.Entities.size() > 1u;
+
 		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnSkyLightComponentPropertyChangedCallbackID))
 			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnSkyLightComponentPropertyChangedCallbackID);
 
@@ -32,8 +38,6 @@ namespace Relentless
 					aDetailLayoutBuilder.ForceRefreshDetails();
 			});
 
-		EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
-		const bool multiSelection = context.Entities.size() > 1u;
 
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(ICON_FA_CLOUD_SUN "  Sky Light");
 
@@ -107,38 +111,17 @@ namespace Relentless
 			.NameSlot().Label("Cubemap Resolution")
 			.ValueSlot().SpinBox().Range(SkyLightComponent::MIN_RADIANCE_MAP_SIZE, SkyLightComponent::MAX_RADIANCE_MAP_SIZE);
 
-		Ref<EntityPropertyHandle<uint32, SkyLightComponent>> pRealtimeMipsPerFrameHandle = RLS_NEW EntityPropertyHandle<uint32, SkyLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SkyLightComponent& aSLC) { return aSLC.GetRealtimeMipsPerFrame(); },
-			[](entity, SkyLightComponent& aSLC, const uint32& aNumMips) { aSLC.SetRealtimeMipsPerFrame(aNumMips); },
-			1u
-		);
-
+		auto pRealtimeMipsPerFrameHandle = handleFactory.Make(&SLC::GetRealtimeMipsPerFrame, &SLC::SetRealtimeMipsPerFrame, 1u);
 		categoryBuilder.AddProperty<uint32>("Realtime Mips Per Frame", pRealtimeMipsPerFrameHandle)
 			.NameSlot().Label("Realtime Mips Per Frame")
 			.ValueSlot().SpinBox().Delta(1u).Range(0u, 1'000'000u);
 
-		Ref<EntityPropertyHandle<float, SkyLightComponent>> pIntensityHandle = RLS_NEW EntityPropertyHandle<float, SkyLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SkyLightComponent& aSLC) { return aSLC.GetIntensity(); },
-			[](entity, SkyLightComponent& aSLC, const float& aIntensity) { aSLC.SetIntensity(aIntensity); },
-			1.0f
-		);
-		
+		auto pIntensityHandle = handleFactory.Make(&SLC::GetIntensity, &SLC::SetIntensity, 1.0f);
 		categoryBuilder.AddProperty<float>("Intensity", pIntensityHandle)
 			.NameSlot().Label("Intensity")
 			.ValueSlot().SpinBox().Range(0.0f, FLT_MAX).Delta(0.01f);
 
-		Ref<EntityPropertyHandle<Color, SkyLightComponent>> pColorHandle = RLS_NEW EntityPropertyHandle<Color, SkyLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SkyLightComponent& aSLC) { return aSLC.GetTintColor(); },
-			[](entity, SkyLightComponent& aSLC, const Color& aColor){ aSLC.SetTintColor(aColor); },
-			Colors::White
-		);
-
+		auto pColorHandle = handleFactory.Make(&SLC::GetTintColor, &SLC::SetTintColor, Colors::White);
 		categoryBuilder.AddProperty<Color>("Color", pColorHandle)
 			.NameSlot().Label("Color")
 			.ValueSlot().ColorPicker();
@@ -196,14 +179,7 @@ namespace Relentless
 			.NameSlot().Label("Blend Environment")
 			.ValueSlot().AssetThumbnail();
 
-		Ref<EntityPropertyHandle<float, SkyLightComponent>> pBlendHandle = RLS_NEW EntityPropertyHandle<float, SkyLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SkyLightComponent& aSLC) { return aSLC.GetBlendFactor(); },
-			[](entity, SkyLightComponent& aSLC, const float& aBlendFactor) { aSLC.SetBlendFactor(aBlendFactor); },
-			0.0f
-		);
-
+		auto pBlendHandle = handleFactory.Make(&SLC::GetBlendFactor, &SLC::SetBlendFactor, 0.0f);
 		groupBuilder.AddProperty<float>("Blend Factor", pBlendHandle)
 			.NameSlot().Label("Blend Factor")
 			.ValueSlot().Slider().Range(0.0f, 1.0f);
@@ -220,14 +196,7 @@ namespace Relentless
 			.NameSlot().Label("Lower Hemisphere Mode")
 			.ValueSlot().ComboBox().Options({ "Environment", "Solid Color" });
 
-		Ref<EntityPropertyHandle<Color, SkyLightComponent>> pLowerHemisphereColorHandle = RLS_NEW EntityPropertyHandle<Color, SkyLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SkyLightComponent& aSLC) { return aSLC.GetLowerHemisphereColor(); },
-			[](entity, SkyLightComponent& aSLC, const Color& aLowerHemisphereColor) { aSLC.SetLowerHemisphereColor(aLowerHemisphereColor); },
-			Colors::Black
-		);
-
+		auto pLowerHemisphereColorHandle = handleFactory.Make(&SLC::GetLowerHemisphereColor, &SLC::SetLowerHemisphereColor, Colors::Black);
 		groupBuilder.AddProperty<Color>("Lower Hemisphere Color", pLowerHemisphereColorHandle)
 			.NameSlot().Label("Lower Hemisphere Color")
 			.ValueSlot().ColorPicker();

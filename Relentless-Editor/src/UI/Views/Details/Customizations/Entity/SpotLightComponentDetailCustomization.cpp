@@ -2,6 +2,7 @@
 
 #include <Relentless.h>
 
+#include "UI/Views/Details/DetailHelpers.h"
 #include "UI/Views/Details/IDetailsView.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailLayoutBuilder.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailCategoryBuilder.h"
@@ -13,7 +14,10 @@ namespace Relentless
 {
 	void SpotLightComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
+		using SLC = SpotLightComponent;
+
 		EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
+		DetailHelpers::EntityHandleFactory<SLC> handleFactory({ .Entities = context.Entities, .EntityManager = *context.EntityManager });
 		const bool multiSelection = context.Entities.size() > 1u;
 
 		Ref<EntityPropertyHandle<int, SpotLightComponent>> pTypeHandle = RLS_NEW EntityPropertyHandle<int, SpotLightComponent>(
@@ -107,26 +111,12 @@ namespace Relentless
 			.NameSlot().Label("Intensity Units")
 			.ValueSlot().ComboBox().Options({ "Candelas", "Lumens" }).Selected(static_cast<int>(context.LightIntensityType));
 
-		Ref<EntityPropertyHandle<Color, SpotLightComponent>> pColorHandle = RLS_NEW EntityPropertyHandle<Color, SpotLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SpotLightComponent& aSLC) { return aSLC.GetColor(); },
-			[](entity, SpotLightComponent& aSLC, const Color& aColor) { return aSLC.SetColor(aColor); },
-			Colors::White
-		);
-
+		auto pColorHandle = handleFactory.Make(&SLC::GetColor, &SLC::SetColor, Colors::White);
 		categoryBuilder.AddProperty<Color>("Light Color", pColorHandle)
 			.NameSlot().Label("Light Color")
 			.ValueSlot().ColorPicker();
 
-		Ref<EntityPropertyHandle<float, SpotLightComponent>> pAttenuationRadiusHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SpotLightComponent& aSLC) { return aSLC.GetAttenuationRadius(); },
-			[](entity, SpotLightComponent& aSLC, const float& aAttenuationRadius) { return aSLC.SetAttenuationRadius(aAttenuationRadius); },
-			10.0f
-		);
-
+		auto pAttenuationRadiusHandle = handleFactory.Make(&SLC::GetAttenuationRadius, &SLC::SetAttenuationRadius, 10.0f);
 		auto attenuationBuilder = categoryBuilder.AddProperty<float>("Attenuation Radius", pAttenuationRadiusHandle);
 		attenuationBuilder.NameSlot().Label("Attenuation Radius");
 		if (multiSelection)
@@ -134,62 +124,28 @@ namespace Relentless
 		else
 			attenuationBuilder.ValueSlot().Slider().Range(0.08f, 163.48f).Unit(" m").Logarithmic(true);
 
-		//Inner Cone angle:
-		{
-			Ref<EntityPropertyHandle<float, SpotLightComponent>> pInnerConeAngleHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
-				*context.EntityManager,
-				context.Entities,
-				[](const SpotLightComponent& aSLC) { return aSLC.GetInnerConeAngleDegrees(); },
-				[](entity, SpotLightComponent& aSLC, const float& aInnerConeAngleDegrees) { return aSLC.SetInnerConeAngleDegrees(aInnerConeAngleDegrees); },
-				0.0f
-			);
+		auto pInnerConeAngleHandle = handleFactory.Make(&SLC::GetInnerConeAngleDegrees, &SLC::SetInnerConeAngleDegrees, 0.0f);
+		auto innerConeAngleBuilder = categoryBuilder.AddProperty<float>("Inner Cone Angle", pInnerConeAngleHandle);
+		innerConeAngleBuilder.NameSlot().Label("Inner Cone Angle");
+		if (multiSelection)
+			innerConeAngleBuilder.ValueSlot().NumericEntryBox().Range(0.0f, 80.0f).Unit("\xC2\xB0");
+		else
+			innerConeAngleBuilder.ValueSlot().Slider().Range(0.0f, 80.0f).Unit("\xC2\xB0");
 
-			auto innerConeAngleBuilder = categoryBuilder.AddProperty<float>("Inner Cone Angle", pInnerConeAngleHandle);
-			innerConeAngleBuilder.NameSlot().Label("Inner Cone Angle");
-			if (multiSelection)
-				innerConeAngleBuilder.ValueSlot().NumericEntryBox().Range(0.0f, 80.0f).Unit("\xC2\xB0");
-			else
-				innerConeAngleBuilder.ValueSlot().Slider().Range(0.0f, 80.0f).Unit("\xC2\xB0");
-		}
+		auto pOuterConeAngleHandle = handleFactory.Make(&SLC::GetOuterConeAngleDegrees, &SLC::SetOuterConeAngleDegrees, 44.0f);
+		auto builder = categoryBuilder.AddProperty<float>("Outer Cone Angle", pOuterConeAngleHandle);
+		builder.NameSlot().Label("Outer Cone Angle");
+		if (multiSelection)
+			builder.ValueSlot().NumericEntryBox().Range(0.0f, 80.0f).Unit("\xC2\xB0");
+		else
+			builder.ValueSlot().Slider().Range(0.0f, 80.0f).Unit("\xC2\xB0");
 
-		//Outer Cone Angle:
-		{
-			Ref<EntityPropertyHandle<float, SpotLightComponent>> pOuterConeAngleHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
-				*context.EntityManager,
-				context.Entities,
-				[](const SpotLightComponent& aSLC) { return aSLC.GetOuterConeAngleDegrees(); },
-				[](entity, SpotLightComponent& aSLC, const float& aOuterConeAngleDegrees) { return aSLC.SetOuterConeAngleDegrees(aOuterConeAngleDegrees); },
-				44.0f
-			);
-
-			auto builder = categoryBuilder.AddProperty<float>("Outer Cone Angle", pOuterConeAngleHandle);
-			builder.NameSlot().Label("Outer Cone Angle");
-			if (multiSelection)
-				builder.ValueSlot().NumericEntryBox().Range(0.0f, 80.0f).Unit("\xC2\xB0");
-			else
-				builder.ValueSlot().Slider().Range(0.0f, 80.0f).Unit("\xC2\xB0");
-		}
-
-		Ref<EntityPropertyHandle<bool, SpotLightComponent>> pUseTemperatureHandle = RLS_NEW EntityPropertyHandle<bool, SpotLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SpotLightComponent& aSLC) { return aSLC.IsUsingTemperature(); },
-			[](entity, SpotLightComponent& aSLC, const bool& aState) { return aSLC.SetUseTemperature(aState); },
-			false
-		);
-
+		auto pUseTemperatureHandle = handleFactory.Make(&SLC::IsUsingTemperature, &SLC::SetUseTemperature, false);
 		categoryBuilder.AddProperty<bool>("Use Temperature", pUseTemperatureHandle)
 			.NameSlot().Label("Use Temperature")
 			.ValueSlot().CheckBox();
 
-		Ref<EntityPropertyHandle<float, SpotLightComponent>> pTemperatureHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SpotLightComponent& aSLC) { return aSLC.GetTemperature(); },
-			[](entity, SpotLightComponent& aSLC, const float& aTemperature) { return aSLC.SetTemperature(aTemperature); },
-			6'500.0f
-		);
-
+		auto pTemperatureHandle = handleFactory.Make(&SLC::GetTemperature, &SLC::SetTemperature, 6'500.0f);
 		auto temperatureBuilder = categoryBuilder.AddProperty<float>("Temperature", pTemperatureHandle);
 		temperatureBuilder.NameSlot().Label("Temperature");
 
@@ -245,62 +201,27 @@ namespace Relentless
 
 		IDetailGroupBuilder shadowsGroupBuilder = categoryBuilder.EditGroup("Shadows");
 
-		Ref<EntityPropertyHandle<bool, SpotLightComponent>> pCastShadowsHandle = RLS_NEW EntityPropertyHandle<bool, SpotLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SpotLightComponent& aSLC) { return aSLC.IsCastingShadows(); },
-			[](entity, SpotLightComponent& aSLC, const bool& aCastShadows) { aSLC.SetCastShadows(aCastShadows); },
-			true
-		);
-
+		auto pCastShadowsHandle = handleFactory.Make(&SLC::IsCastingShadows, &SLC::SetCastShadows, true);
 		shadowsGroupBuilder.AddProperty<bool>("Cast Shadows", pCastShadowsHandle)
 			.NameSlot().Label("Cast Shadows")
 			.ValueSlot().CheckBox();
 
-		Ref<EntityPropertyHandle<float, SpotLightComponent>> pShadowAmountHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SpotLightComponent& aSLC) { return aSLC.GetShadowAmount(); },
-			[](entity, SpotLightComponent& aSLC, const float& aShadowAmount) { aSLC.SetShadowAmount(aShadowAmount); },
-			1.0f
-		);
-
+		auto pShadowAmountHandle = handleFactory.Make(&SLC::GetShadowAmount, &SLC::SetShadowAmount, 1.0f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Amount", pShadowAmountHandle)
 			.NameSlot().Label("Shadow Amount")
 			.ValueSlot().Slider().Range(0.0f, 1.0f);
 
-		Ref<EntityPropertyHandle<float, SpotLightComponent>> pShadowResolutionScaleHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SpotLightComponent& aSLC) { return aSLC.GetShadowResolutionScale(); },
-			[](entity, SpotLightComponent& aSLC, const float& aShadowResolutionScale) { aSLC.SetShadowResolutionScale(aShadowResolutionScale); },
-			1.0f
-		);
-
+		auto pShadowResolutionScaleHandle = handleFactory.Make(&SLC::GetShadowResolutionScale, &SLC::SetShadowResolutionScale, 1.0f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Resolution Scale", pShadowResolutionScaleHandle)
 			.NameSlot().Label("Shadow Resolution Scale")
 			.ValueSlot().Slider().Range(0.125f, 8.0f);
 
-		Ref<EntityPropertyHandle<float, SpotLightComponent>> pShadowBiasHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SpotLightComponent& aSLC) { return aSLC.GetShadowBias(); },
-			[](entity, SpotLightComponent& aSLC, const float& aShadowBias) { aSLC.SetShadowBias(aShadowBias); },
-			0.0001f
-		);
-
+		auto pShadowBiasHandle = handleFactory.Make(&SLC::GetShadowBias, &SLC::SetShadowBias, 0.0001f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Bias", pShadowBiasHandle)
 			.NameSlot().Label("Shadow Bias")
 			.ValueSlot().Slider().Logarithmic(true).Range(0.0f, 5.0f);
 
-		Ref<EntityPropertyHandle<float, SpotLightComponent>> pShadowSlopeBiasHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SpotLightComponent& aSLC) { return aSLC.GetShadowSlopeBias(); },
-			[](entity, SpotLightComponent& aSLC, const float& aShadowSlopeBias) { aSLC.SetShadowSlopeBias(aShadowSlopeBias); },
-			0.0005f
-		);
-
+		auto pShadowSlopeBiasHandle = handleFactory.Make(&SLC::GetShadowSlopeBias, &SLC::SetShadowSlopeBias, 0.0005f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Slope Bias", pShadowSlopeBiasHandle)
 			.NameSlot().Label("Shadow Slope Bias")
 			.ValueSlot().Slider().Logarithmic(true).Range(0.0f, 5.0f);

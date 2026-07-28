@@ -518,4 +518,14 @@ namespace Relentless
 		BroadcastPropertyChanged(aPropertyHash);
 	}
 
+	void PostProcessVolumeComponent::SetHasInfiniteExtent(bool aHasInfiniteExtent) noexcept
+	{
+		if (m_InfiniteExtent == aHasInfiniteExtent)
+			return;
+
+		m_InfiniteExtent = aHasInfiniteExtent;
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_InfiniteExtent);
+	}
+
 }

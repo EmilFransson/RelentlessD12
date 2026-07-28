@@ -2,6 +2,7 @@
 
 #include <Relentless.h>
 
+#include "UI/Views/Details/DetailHelpers.h"
 #include "UI/Views/Details/IDetailsView.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailLayoutBuilder.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailCategoryBuilder.h"
@@ -13,7 +14,10 @@ namespace Relentless
 {
 	void DirectionalLightComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
+		using DLC = DirectionalLightComponent;
+
 		EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
+		DetailHelpers::EntityHandleFactory<DLC> handleFactory{ .Entities = context.Entities, .EntityManager = *context.EntityManager };
 		const bool multiSelection = context.Entities.size() > 1u;
 
 		Ref<EntityPropertyHandle<int, DirectionalLightComponent>> pTypeHandle = RLS_NEW EntityPropertyHandle<int, DirectionalLightComponent>(
@@ -62,14 +66,7 @@ namespace Relentless
 			.NameSlot().Label("Type")
 			.ValueSlot().ComboBox().Options({ "Directional", "Point", "Spot" }).Selected(0);
 
-		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pIntensityHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.GetIntensity(); },
-			[](entity, DirectionalLightComponent& aDLC, const float& aIntensity) { aDLC.SetIntensityLux(aIntensity); },
-			100'000.0f
-		);
-
+		auto pIntensityHandle = handleFactory.Make(&DLC::GetIntensity, &DLC::SetIntensityLux, 100'000.0f);
 		auto intensityBuilder = categoryBuilder.AddProperty<float>("Intensity", pIntensityHandle);
 		intensityBuilder.NameSlot().Label("Intensity");
 		if (multiSelection)
@@ -77,38 +74,17 @@ namespace Relentless
 		else 
 			intensityBuilder.ValueSlot().Slider().Range(0.0f, 120'000.0f).Unit(" lux");
 
-		Ref<EntityPropertyHandle<Color, DirectionalLightComponent>> pColorHandle = RLS_NEW EntityPropertyHandle<Color, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.GetColor(); },
-			[](entity, DirectionalLightComponent& aDLC, const Color& aColor) { aDLC.SetColor(aColor); },
-			Colors::White
-		);
-
+		auto pColorHandle = handleFactory.Make(&DLC::GetColor, &DLC::SetColor, Colors::White);
 		categoryBuilder.AddProperty<Color>("Light Color", pColorHandle)
 			.NameSlot().Label("Light Color")
 			.ValueSlot().ColorPicker();
 
-		Ref<EntityPropertyHandle<bool, DirectionalLightComponent>> pUseTemperatureHandle = RLS_NEW EntityPropertyHandle<bool, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.IsUsingTemperature(); },
-			[](entity, DirectionalLightComponent& aDLC, const bool& aState) { aDLC.SetUseTemperature(aState); },
-			false
-		);
-
+		auto pUseTemperatureHandle = handleFactory.Make(&DLC::IsUsingTemperature, &DLC::SetUseTemperature, false);
 		categoryBuilder.AddProperty<bool>("Use Temperature", pUseTemperatureHandle)
 			.NameSlot().Label("Use Temperature")
 			.ValueSlot().CheckBox();
 
-		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pTemperatureHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.GetTemperature(); },
-			[](entity, DirectionalLightComponent& aDLC, const float& aTemperature) { aDLC.SetTemperature(aTemperature); },
-			6'500.0f
-		);
-
+		auto pTemperatureHandle = handleFactory.Make(&DLC::GetTemperature, &DLC::SetTemperature, 6'500.0f);
 		auto temperatureBuilder = categoryBuilder.AddProperty<float>("Temperature", pTemperatureHandle);
 		temperatureBuilder.NameSlot().Label("Temperature");
 		
@@ -226,86 +202,37 @@ namespace Relentless
 
 		IDetailGroupBuilder shadowsGroupBuilder = categoryBuilder.EditGroup("Shadows");
 
-		Ref<EntityPropertyHandle<bool, DirectionalLightComponent>> pCastShadowsHandle = RLS_NEW EntityPropertyHandle<bool, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.IsCastingShadows(); },
-			[](entity, DirectionalLightComponent& aDLC, const bool& aCastShadows) { aDLC.SetCastShadows(aCastShadows); },
-			true
-		);
-
+		auto pCastShadowsHandle = handleFactory.Make(&DLC::IsCastingShadows, &DLC::SetCastShadows, true);
 		shadowsGroupBuilder.AddProperty<bool>("Cast Shadows", pCastShadowsHandle)
 			.NameSlot().Label("Cast Shadows")
 			.ValueSlot().CheckBox();
 
-		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pShadowAmountHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.GetShadowAmount(); },
-			[](entity, DirectionalLightComponent& aDLC, const float& aShadowAmount) { aDLC.SetShadowAmount(aShadowAmount); },
-			1.0f
-		);
-
+		auto pShadowAmountHandle = handleFactory.Make(&DLC::GetShadowAmount, &DLC::SetShadowAmount, 1.0f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Amount", pShadowAmountHandle)
 			.NameSlot().Label("Shadow Amount")
 			.ValueSlot().Slider().Range(0.0f, 1.0f);
 
-		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pShadowResolutionScaleHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.GetShadowResolutionScale(); },
-			[](entity, DirectionalLightComponent& aDLC, const float& aShadowResolutionScale) { aDLC.SetShadowResolutionScale(aShadowResolutionScale); },
-			1.0f
-		);
-
+		auto pShadowResolutionScaleHandle = handleFactory.Make(&DLC::GetShadowResolutionScale, &DLC::SetShadowResolutionScale, 1.0f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Resolution Scale", pShadowResolutionScaleHandle)
 			.NameSlot().Label("Shadow Resolution Scale")
 			.ValueSlot().Slider().Range(0.125f, 8.0f);
 
-		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pShadowBiasHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.GetShadowBias(); },
-			[](entity, DirectionalLightComponent& aDLC, const float& aShadowBias) { aDLC.SetShadowBias(aShadowBias); },
-			0.0001f
-		);
-
+		auto pShadowBiasHandle = handleFactory.Make(&DLC::GetShadowBias, &DLC::SetShadowBias, 0.0001f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Bias", pShadowBiasHandle)
 			.NameSlot().Label("Shadow Bias")
 			.ValueSlot().Slider().Logarithmic(true).Range(0.0f, 0.1f);
 
-		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pShadowSlopeBiasHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.GetShadowSlopeBias(); },
-			[](entity, DirectionalLightComponent& aDLC, const float& aShadowSlopeBias) { aDLC.SetShadowSlopeBias(aShadowSlopeBias); },
-			0.0005f
-		);
-
+		auto pShadowSlopeBiasHandle = handleFactory.Make(&DLC::GetShadowSlopeBias, &DLC::SetShadowSlopeBias, 0.0005f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Slope Bias", pShadowSlopeBiasHandle)
 			.NameSlot().Label("Shadow Slope Bias")
 			.ValueSlot().Slider().Logarithmic(true).Range(0.0f, 0.1f);
 
-		Ref<EntityPropertyHandle<uint32, DirectionalLightComponent>> pNumCascadesHandle = RLS_NEW EntityPropertyHandle<uint32, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.GetNumCascades(); },
-			[](entity, DirectionalLightComponent& aDLC, const uint32& aNumCascades) { aDLC.SetNumCascades(aNumCascades); },
-			4u
-		);
-
+		auto pNumCascadesHandle = handleFactory.Make(&DLC::GetNumCascades, &DLC::SetNumCascades, 4u);
 		shadowsGroupBuilder.AddProperty<uint32>("Number of Cascades", pNumCascadesHandle)
 			.NameSlot().Label("Number of Cascades")
 			.ValueSlot().Slider().Range(1u, 4u);
 
-		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pCascadeDistributionHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const DirectionalLightComponent& aDLC) { return aDLC.GetCascadeDistribution(); },
-			[](entity, DirectionalLightComponent& aDLC, const float& aCascadeDistribution) { aDLC.SetCascadeDistribution(aCascadeDistribution); },
-			0.85f
-		);
-
+		auto pCascadeDistributionHandle = handleFactory.Make(&DLC::GetCascadeDistribution, &DLC::SetCascadeDistribution, 0.85f);
 		shadowsGroupBuilder.AddProperty<float>("Cascade Distribution", pCascadeDistributionHandle)
 			.NameSlot().Label("Cascade Distribution")
 			.ValueSlot().Slider().Range(0.0f, 1.0f);

@@ -164,6 +164,8 @@ namespace Relentless
 		NO_DISCARD bool HasInfiniteExtent() const noexcept;
 
 		void OnBound() noexcept override;
+
+		void SetHasInfiniteExtent(bool aHasInfiniteExtent) noexcept;
 	private:
 		void InjectSelf() noexcept;
 

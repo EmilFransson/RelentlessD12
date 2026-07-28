@@ -2,6 +2,7 @@
 
 #include <Relentless.h>
 
+#include "UI/Views/Details/DetailHelpers.h"
 #include "UI/Views/Details/IDetailsView.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailLayoutBuilder.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailCategoryBuilder.h"
@@ -13,7 +14,10 @@ namespace Relentless
 {
 	void PointLightComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
+		using PLC = PointLightComponent;
+
 		EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
+		DetailHelpers::EntityHandleFactory<PLC> handleFactory({ .Entities = context.Entities, .EntityManager = *context.EntityManager });
 		const bool multiSelection = context.Entities.size() > 1u;
 
 		Ref<EntityPropertyHandle<int, PointLightComponent>> pTypeHandle = RLS_NEW EntityPropertyHandle<int, PointLightComponent>(
@@ -107,26 +111,12 @@ namespace Relentless
 			.NameSlot().Label("Intensity Units")
 			.ValueSlot().ComboBox().Options({"Candelas", "Lumens"}).Selected(static_cast<int>(context.LightIntensityType));
 
-		Ref<EntityPropertyHandle<Color, PointLightComponent>> pColorHandle = RLS_NEW EntityPropertyHandle<Color, PointLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const PointLightComponent& aPLC) { return aPLC.GetColor(); },
-			[](entity, PointLightComponent& aPLC, const Color& aColor) { return aPLC.SetColor(aColor); },
-			Colors::White
-		);
-
+		auto pColorHandle = handleFactory.Make(&PLC::GetColor, &PLC::SetColor, Colors::White);
 		categoryBuilder.AddProperty<Color>("Light Color", pColorHandle)
 			.NameSlot().Label("Light Color")
 			.ValueSlot().ColorPicker();
 
-		Ref<EntityPropertyHandle<float, PointLightComponent>> pAttenuationRadiusHandle = RLS_NEW EntityPropertyHandle<float, PointLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const PointLightComponent& aPLC) { return aPLC.GetAttenuationRadius(); },
-			[](entity, PointLightComponent& aPLC, const float& aAttenuationRadius) { return aPLC.SetAttenuationRadius(aAttenuationRadius); },
-			10.0f
-		);
-
+		auto pAttenuationRadiusHandle = handleFactory.Make(&PLC::GetAttenuationRadius, &PLC::SetAttenuationRadius, 10.0f);
 		auto attenuationBuilder = categoryBuilder.AddProperty<float>("Attenuation Radius", pAttenuationRadiusHandle);
 		attenuationBuilder.NameSlot().Label("Attenuation Radius");
 		if (multiSelection)
@@ -134,26 +124,12 @@ namespace Relentless
 		else
 			attenuationBuilder.ValueSlot().Slider().Range(0.08f, 163.48f).Unit(" m").Logarithmic(true);
 
-		Ref<EntityPropertyHandle<bool, PointLightComponent>> pUseTemperatureHandle = RLS_NEW EntityPropertyHandle<bool, PointLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const PointLightComponent& aPLC) { return aPLC.IsUsingTemperature(); },
-			[](entity, PointLightComponent& aPLC, const bool& aState) { return aPLC.SetUseTemperature(aState); },
-			false
-		);
-
+		auto pUseTemperatureHandle = handleFactory.Make(&PLC::IsUsingTemperature, &PLC::SetUseTemperature, false);
 		categoryBuilder.AddProperty<bool>("Use Temperature", pUseTemperatureHandle)
 			.NameSlot().Label("Use Temperature")
 			.ValueSlot().CheckBox();
 
-		Ref<EntityPropertyHandle<float, PointLightComponent>> pTemperatureHandle = RLS_NEW EntityPropertyHandle<float, PointLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const PointLightComponent& aPLC) { return aPLC.GetTemperature(); },
-			[](entity, PointLightComponent& aPLC, const float& aTemperature) { return aPLC.SetTemperature(aTemperature); },
-			6'500.0f
-		);
-
+		auto pTemperatureHandle = handleFactory.Make(&PLC::GetTemperature, &PLC::SetTemperature, 6'500.0f);
 		auto temperatureBuilder = categoryBuilder.AddProperty<float>("Temperature", pTemperatureHandle);
 		temperatureBuilder.NameSlot().Label("Temperature");
 
@@ -209,62 +185,27 @@ namespace Relentless
 
 		IDetailGroupBuilder shadowsGroupBuilder = categoryBuilder.EditGroup("Shadows");
 
-		Ref<EntityPropertyHandle<bool, PointLightComponent>> pCastShadowsHandle = RLS_NEW EntityPropertyHandle<bool, PointLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const PointLightComponent& aPLC) { return aPLC.IsCastingShadows(); },
-			[](entity, PointLightComponent& aPLC, const bool& aCastShadows) { aPLC.SetCastShadows(aCastShadows); },
-			true
-		);
-
+		auto pCastShadowsHandle = handleFactory.Make(&PLC::IsCastingShadows, &PLC::SetCastShadows, true);
 		shadowsGroupBuilder.AddProperty<bool>("Cast Shadows", pCastShadowsHandle)
 			.NameSlot().Label("Cast Shadows")
 			.ValueSlot().CheckBox();
 
-		Ref<EntityPropertyHandle<float, PointLightComponent>> pShadowAmountHandle = RLS_NEW EntityPropertyHandle<float, PointLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const PointLightComponent& aPLC) { return aPLC.GetShadowAmount(); },
-			[](entity, PointLightComponent& aPLC, const float& aShadowAmount) { aPLC.SetShadowAmount(aShadowAmount); },
-			1.0f
-		);
-
+		auto pShadowAmountHandle = handleFactory.Make(&PLC::GetShadowAmount, &PLC::SetShadowAmount, 1.0f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Amount", pShadowAmountHandle)
 			.NameSlot().Label("Shadow Amount")
 			.ValueSlot().Slider().Range(0.0f, 1.0f);
 
-		Ref<EntityPropertyHandle<float, PointLightComponent>> pShadowResolutionScaleHandle = RLS_NEW EntityPropertyHandle<float, PointLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const PointLightComponent& aPLC) { return aPLC.GetShadowResolutionScale(); },
-			[](entity, PointLightComponent& aPLC, const float& aShadowResolutionScale) { aPLC.SetShadowResolutionScale(aShadowResolutionScale); },
-			1.0f
-		);
-
+		auto pShadowResolutionScaleHandle = handleFactory.Make(&PLC::GetShadowResolutionScale, &PLC::SetShadowResolutionScale, 1.0f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Resolution Scale", pShadowResolutionScaleHandle)
 			.NameSlot().Label("Shadow Resolution Scale")
 			.ValueSlot().Slider().Range(0.125f, 8.0f);
 
-		Ref<EntityPropertyHandle<float, PointLightComponent>> pShadowBiasHandle = RLS_NEW EntityPropertyHandle<float, PointLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const PointLightComponent& aPLC) { return aPLC.GetShadowBias(); },
-			[](entity, PointLightComponent& aPLC, const float& aShadowBias) { aPLC.SetShadowBias(aShadowBias); },
-			0.0001f
-		);
-
+		auto pShadowBiasHandle = handleFactory.Make(&PLC::GetShadowBias, &PLC::SetShadowBias, 0.0001f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Bias", pShadowBiasHandle)
 			.NameSlot().Label("Shadow Bias")
 			.ValueSlot().Slider().Logarithmic(true).Range(0.0f, 0.5f);
 
-		Ref<EntityPropertyHandle<float, PointLightComponent>> pShadowSlopeBiasHandle = RLS_NEW EntityPropertyHandle<float, PointLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const PointLightComponent& aPLC) { return aPLC.GetShadowSlopeBias(); },
-			[](entity, PointLightComponent& aPLC, const float& aShadowSlopeBias) { aPLC.SetShadowSlopeBias(aShadowSlopeBias); },
-			0.0005f
-		);
-
+		auto pShadowSlopeBiasHandle = handleFactory.Make(&PLC::GetShadowSlopeBias, &PLC::SetShadowSlopeBias, 0.0005f);
 		shadowsGroupBuilder.AddProperty<float>("Shadow Slope Bias", pShadowSlopeBiasHandle)
 			.NameSlot().Label("Shadow Slope Bias")
 			.ValueSlot().Slider().Logarithmic(true).Range(0.0f, 0.5f);
