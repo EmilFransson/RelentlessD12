@@ -35,9 +35,6 @@ namespace Relentless
 		template<typename DataType>
 		DetailPropertyRowBuilder<DataType> AddProperty(const char* aPropertyName, Callback<DataType()> aGetter, Callback<void(const DataType&)> aSetter, Callback<DataType()> aDefaultGetter) noexcept;
 
-		//NO_DISCARD bool ExistsProperty(const char* aPropertyName) const noexcept;
-		//
-		//NO_DISCARD const std::vector<Ref<DetailNode>>& GetNodes() const noexcept;
 		bool m_IsExpanded = true;
 	private:
 		String m_Name;

@@ -174,6 +174,7 @@ namespace Relentless
 			outSkyLightData.Tint = Vector3::One;
 			outSkyLightData.WorldRotation = Matrix::Identity;
 			outSkyLightData.LowerHemisphereColor = Vector4::Zero;
+			outSkyLightData.LightChannelMask = static_cast<uint32>(ELightChannel::None);
 			return;
 		}
 
@@ -187,6 +188,7 @@ namespace Relentless
 		outSkyLightData.LowerHemisphereColor = proxy.LowerHemisphereColor.ToVector4();
 		outSkyLightData.EnvironmentATintColor = proxy.TintColor.ToVector3();
 		outSkyLightData.EnvironmentBTintColor = proxy.TintColor.ToVector3();
+		outSkyLightData.LightChannelMask = static_cast<uint32>(proxy.LightChannelMask);
 
 		const uint32 fallbackSRVBlackCube = GraphicsCommon::GetDefaultTexture(DefaultTextureType::BlackCube)->GetSRVIndex();
 		const uint32 fallbackSRVWhiteCube = GraphicsCommon::GetDefaultTexture(DefaultTextureType::WhiteCube)->GetSRVIndex();

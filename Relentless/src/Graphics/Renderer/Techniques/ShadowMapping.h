@@ -11,9 +11,10 @@ namespace Relentless
 
 		void Render(CommandContext& aCommandContext, const RenderView& aRenderView) noexcept;
 	private:
-		void RenderAlphaMasked(CommandContext& aCommandContext, const RenderView& aRenderView) noexcept;
-		void RenderOpaque(CommandContext& aCommandContext, const RenderView& aRenderView) noexcept;
-		void RenderOpaqueTwoSided(CommandContext& aCommandContext, const RenderView& aRenderView) noexcept;
+		void RenderAlphaMasked(CommandContext& aCommandContext, const ShadowView& aShadowView) noexcept;
+		void RenderAlphaMaskedTwoSided(CommandContext& aCommandContext, const ShadowView& aShadowView) noexcept;
+		void RenderOpaque(CommandContext& aCommandContext, const ShadowView& aShadowView) noexcept;
+		void RenderOpaqueTwoSided(CommandContext& aCommandContext, const ShadowView& aShadowView) noexcept;
 	private:
 		GraphicsDevice* m_pGraphicsDevice = nullptr;
 	};

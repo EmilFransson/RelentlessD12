@@ -66,7 +66,7 @@ namespace Relentless
 			*context.EntityManager,
 			context.Entities,
 			[](const DirectionalLightComponent& aDLC) { return aDLC.GetIntensity(); },
-			[](entity, DirectionalLightComponent& aDLC, const float& aIntensity) { return aDLC.SetIntensityLux(aIntensity); },
+			[](entity, DirectionalLightComponent& aDLC, const float& aIntensity) { aDLC.SetIntensityLux(aIntensity); },
 			100'000.0f
 		);
 
@@ -81,7 +81,7 @@ namespace Relentless
 			*context.EntityManager,
 			context.Entities,
 			[](const DirectionalLightComponent& aDLC) { return aDLC.GetColor(); },
-			[](entity, DirectionalLightComponent& aDLC, const Color& aColor) { return aDLC.SetColor(aColor); },
+			[](entity, DirectionalLightComponent& aDLC, const Color& aColor) { aDLC.SetColor(aColor); },
 			Colors::White
 		);
 
@@ -93,7 +93,7 @@ namespace Relentless
 			*context.EntityManager,
 			context.Entities,
 			[](const DirectionalLightComponent& aDLC) { return aDLC.IsUsingTemperature(); },
-			[](entity, DirectionalLightComponent& aDLC, const bool& aState) { return aDLC.SetUseTemperature(aState); },
+			[](entity, DirectionalLightComponent& aDLC, const bool& aState) { aDLC.SetUseTemperature(aState); },
 			false
 		);
 
@@ -105,7 +105,7 @@ namespace Relentless
 			*context.EntityManager,
 			context.Entities,
 			[](const DirectionalLightComponent& aDLC) { return aDLC.GetTemperature(); },
-			[](entity, DirectionalLightComponent& aDLC, const float& aTemperature) { return aDLC.SetTemperature(aTemperature); },
+			[](entity, DirectionalLightComponent& aDLC, const float& aTemperature) { aDLC.SetTemperature(aTemperature); },
 			6'500.0f
 		);
 
@@ -161,6 +161,154 @@ namespace Relentless
 					return pSlider;
 				});
 		}
+
+		categoryBuilder.AddProperty<bool>("Lighting Channels", nullptr)
+			.NameSlot().Label("Lighting Channels")
+			.ValueSlot().Widget([&context]()
+				{
+					auto&& AllHaveChannelsSet = [&context](ELightChannel aLightChannel) -> bool
+						{
+							return std::ranges::all_of(context.Entities, [&context, aLightChannel](entity aEntity)
+								{
+									const DirectionalLightComponent& directionalLightComponent = context.EntityManager->Get<DirectionalLightComponent>(aEntity);
+									return directionalLightComponent.HasAnyChannel(aLightChannel);
+								});
+						};
+
+					Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
+					pBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+					pBox->SetSpacing(5.0f);
+
+					for (uint32 i = 0; i <= 5; ++i)
+					{
+						const ELightChannel lightChannel = static_cast<ELightChannel>(1u << i);
+
+						Button* pButton = pBox->AddWidget(RLS_NEW Button(std::format("{}", i)));
+						pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+						pButton->SetHorizontalSizePolicy(ESizePolicy::Fixed);
+						pButton->SetVerticalSizePolicy(ESizePolicy::Fixed);
+						pButton->SetSize({ 20.0f, 20.0f });
+						pButton->OnClicked([&context, lightChannel, pButton, AllHaveChannelsSet]()
+							{
+								const bool setChannel = !AllHaveChannelsSet(lightChannel);
+
+								std::ranges::for_each(context.Entities, [&context, lightChannel, setChannel](entity aEntity)
+									{
+										DirectionalLightComponent& directionalLightComponent = context.EntityManager->Get<DirectionalLightComponent>(aEntity);
+										directionalLightComponent.SetChannelEnabled(lightChannel, setChannel);
+									});
+								
+								pButton->SetBackgroundColor(setChannel ? Colors::Blue : Colors::Black);
+								pButton->SetHoverColor(setChannel ? Colors::Blue : Colors::Black);
+
+								if (setChannel)
+									pButton->SetTextColor(Colors::White);
+							});
+
+						pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Colors::White); });
+						pButton->OnMouseExit([lightChannel, AllHaveChannelsSet](Button* aButton)
+							{ 
+								if (AllHaveChannelsSet(lightChannel))
+									return;
+
+								aButton->SetTextColor(Colors::Gray); 
+							});
+
+						const bool allSet = AllHaveChannelsSet(lightChannel);
+						pButton->SetBackgroundColor(allSet ? Colors::Blue : Colors::Black);
+						pButton->SetHoverColor(allSet ? Colors::Blue : Colors::Black);
+						pButton->SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
+						pButton->SetTextColor(allSet ? Colors::White : Colors::Gray);
+					}
+
+					return pBox;
+				});
+
+		IDetailGroupBuilder shadowsGroupBuilder = categoryBuilder.EditGroup("Shadows");
+
+		Ref<EntityPropertyHandle<bool, DirectionalLightComponent>> pCastShadowsHandle = RLS_NEW EntityPropertyHandle<bool, DirectionalLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const DirectionalLightComponent& aDLC) { return aDLC.IsCastingShadows(); },
+			[](entity, DirectionalLightComponent& aDLC, const bool& aCastShadows) { aDLC.SetCastShadows(aCastShadows); },
+			true
+		);
+
+		shadowsGroupBuilder.AddProperty<bool>("Cast Shadows", pCastShadowsHandle)
+			.NameSlot().Label("Cast Shadows")
+			.ValueSlot().CheckBox();
+
+		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pShadowAmountHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const DirectionalLightComponent& aDLC) { return aDLC.GetShadowAmount(); },
+			[](entity, DirectionalLightComponent& aDLC, const float& aShadowAmount) { aDLC.SetShadowAmount(aShadowAmount); },
+			1.0f
+		);
+
+		shadowsGroupBuilder.AddProperty<float>("Shadow Amount", pShadowAmountHandle)
+			.NameSlot().Label("Shadow Amount")
+			.ValueSlot().Slider().Range(0.0f, 1.0f);
+
+		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pShadowResolutionScaleHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const DirectionalLightComponent& aDLC) { return aDLC.GetShadowResolutionScale(); },
+			[](entity, DirectionalLightComponent& aDLC, const float& aShadowResolutionScale) { aDLC.SetShadowResolutionScale(aShadowResolutionScale); },
+			1.0f
+		);
+
+		shadowsGroupBuilder.AddProperty<float>("Shadow Resolution Scale", pShadowResolutionScaleHandle)
+			.NameSlot().Label("Shadow Resolution Scale")
+			.ValueSlot().Slider().Range(0.125f, 8.0f);
+
+		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pShadowBiasHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const DirectionalLightComponent& aDLC) { return aDLC.GetShadowBias(); },
+			[](entity, DirectionalLightComponent& aDLC, const float& aShadowBias) { aDLC.SetShadowBias(aShadowBias); },
+			0.0001f
+		);
+
+		shadowsGroupBuilder.AddProperty<float>("Shadow Bias", pShadowBiasHandle)
+			.NameSlot().Label("Shadow Bias")
+			.ValueSlot().Slider().Logarithmic(true).Range(0.0f, 0.1f);
+
+		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pShadowSlopeBiasHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const DirectionalLightComponent& aDLC) { return aDLC.GetShadowSlopeBias(); },
+			[](entity, DirectionalLightComponent& aDLC, const float& aShadowSlopeBias) { aDLC.SetShadowSlopeBias(aShadowSlopeBias); },
+			0.0005f
+		);
+
+		shadowsGroupBuilder.AddProperty<float>("Shadow Slope Bias", pShadowSlopeBiasHandle)
+			.NameSlot().Label("Shadow Slope Bias")
+			.ValueSlot().Slider().Logarithmic(true).Range(0.0f, 0.1f);
+
+		Ref<EntityPropertyHandle<uint32, DirectionalLightComponent>> pNumCascadesHandle = RLS_NEW EntityPropertyHandle<uint32, DirectionalLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const DirectionalLightComponent& aDLC) { return aDLC.GetNumCascades(); },
+			[](entity, DirectionalLightComponent& aDLC, const uint32& aNumCascades) { aDLC.SetNumCascades(aNumCascades); },
+			4u
+		);
+
+		shadowsGroupBuilder.AddProperty<uint32>("Number of Cascades", pNumCascadesHandle)
+			.NameSlot().Label("Number of Cascades")
+			.ValueSlot().Slider().Range(1u, 4u);
+
+		Ref<EntityPropertyHandle<float, DirectionalLightComponent>> pCascadeDistributionHandle = RLS_NEW EntityPropertyHandle<float, DirectionalLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const DirectionalLightComponent& aDLC) { return aDLC.GetCascadeDistribution(); },
+			[](entity, DirectionalLightComponent& aDLC, const float& aCascadeDistribution) { aDLC.SetCascadeDistribution(aCascadeDistribution); },
+			0.85f
+		);
+
+		shadowsGroupBuilder.AddProperty<float>("Cascade Distribution", pCascadeDistributionHandle)
+			.NameSlot().Label("Cascade Distribution")
+			.ValueSlot().Slider().Range(0.0f, 1.0f);
 	}
 
 	bool DirectionalLightComponentDetailCustomization::ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept

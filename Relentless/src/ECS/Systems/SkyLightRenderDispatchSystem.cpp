@@ -62,6 +62,7 @@ namespace Relentless
 			renderProxy.BlendFactor = skyLightComponent.GetBlendFactor();
 			renderProxy.LowerHemisphereColor = skyLightComponent.GetLowerHemisphereColor();
 			renderProxy.TintColor = skyLightComponent.GetTintColor();
+			renderProxy.LightChannelMask = skyLightComponent.GetLightChannels();
 			
 			if (hasValidPrimaryEnvironment)
 			{

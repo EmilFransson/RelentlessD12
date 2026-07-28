@@ -12,24 +12,29 @@ namespace Relentless
 		DetachMaterial();
 	}
 
-	MeshRendererComponent::MeshRendererComponent(MeshRendererComponent&& aOther) noexcept
-		: ManagedComponent<MeshRendererComponent>(std::move(aOther))
-		, m_MaterialHandle(aOther.m_MaterialHandle)
+	MeshRendererComponent::MeshRendererComponent(MeshRendererComponent&& aOtherComponent) noexcept
+		: ManagedComponent<MeshRendererComponent>(std::move(aOtherComponent))
+		, m_MaterialHandle(aOtherComponent.m_MaterialHandle)
+		, m_LightChannels(aOtherComponent.m_LightChannels)
+		, m_CastShadows(aOtherComponent.m_CastShadows)
 	{
-		aOther.DetachMaterial();
-		aOther.m_MaterialHandle = AssetHandle::INVALID;
+		aOtherComponent.DetachMaterial();
+		aOtherComponent.m_MaterialHandle = AssetHandle::INVALID;
 		ConnectMaterial();
 	}
 
-	MeshRendererComponent& MeshRendererComponent::operator=(MeshRendererComponent&& aOther) noexcept
+	MeshRendererComponent& MeshRendererComponent::operator=(MeshRendererComponent&& aOtherComponent) noexcept
 	{
-		if (this != &aOther)
+		if (this != &aOtherComponent)
 		{
 			DetachMaterial();
-			aOther.DetachMaterial();
-			m_MaterialHandle = std::move(aOther.m_MaterialHandle);
-			aOther.m_MaterialHandle = AssetHandle::INVALID;
+			aOtherComponent.DetachMaterial();
+			m_MaterialHandle = std::move(aOtherComponent.m_MaterialHandle);
+			aOtherComponent.m_MaterialHandle = AssetHandle::INVALID;
 			ConnectMaterial();
+			
+			m_LightChannels = aOtherComponent.m_LightChannels;
+			m_CastShadows = aOtherComponent.m_CastShadows;
 		}
 		return *this;
 	}
@@ -40,9 +45,17 @@ namespace Relentless
 		m_MaterialHandle = aOtherComponent.m_MaterialHandle;
 		ConnectMaterial();
 
+		m_LightChannels = aOtherComponent.m_LightChannels;
+		m_CastShadows = aOtherComponent.m_CastShadows;
+
 		m_Self = aThisEntity;
 		m_EntityManager = &aEntityManager;
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
+	}
+
+	ELightChannel MeshRendererComponent::GetLightChannels() const noexcept
+	{
+		return m_LightChannels;
 	}
 
 	Ref<Material> MeshRendererComponent::GetMaterial() const noexcept
@@ -56,9 +69,19 @@ namespace Relentless
 		return m_MaterialHandle;
 	}
 
+	bool MeshRendererComponent::HasLightChannelsEnabled(ELightChannel aChannels) const noexcept
+	{
+		return EnumHasAnyFlags(m_LightChannels, aChannels);
+	}
+
 	bool MeshRendererComponent::HasAssignedMaterial() const noexcept
 	{
 		return m_MaterialHandle.IsValid();
+	}
+
+	bool MeshRendererComponent::IsCastingShadows() const noexcept
+	{
+		return m_CastShadows;
 	}
 
 	void MeshRendererComponent::OnBound() noexcept
@@ -78,6 +101,21 @@ namespace Relentless
 		NOTIFY_PROPERTY_CHANGED(m_MaterialHandle);
 	}
 
+	void MeshRendererComponent::SetCastShadows(bool aCastShadows) noexcept
+	{
+		if (m_CastShadows == aCastShadows)
+			return;
+
+		m_CastShadows = aCastShadows;
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_CastShadows);
+	}
+
+	void MeshRendererComponent::SetLightChannelEnabled(ELightChannel aChannel, bool aEnabled) noexcept
+	{
+		ApplyChannelMask(aEnabled ? m_LightChannels | aChannel : m_LightChannels & ~aChannel);
+	}
+
 	void MeshRendererComponent::SetMaterial(const AssetHandle& aAssetHandle) noexcept
 	{
 		RLS_ASSERT(aAssetHandle.Type == Material::StaticType(), "[MeshRendererComponent::SetMaterial]: Asset handle is not of material type.");
@@ -91,6 +129,16 @@ namespace Relentless
 
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_MaterialHandle);
+	}
+
+	void MeshRendererComponent::ApplyChannelMask(ELightChannel aNewMask) noexcept
+	{
+		if (m_LightChannels == aNewMask)
+			return;
+		
+		m_LightChannels = aNewMask;
+		this->m_EntityManager->template AddOrReplace<DirtyRenderState>(this->m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_LightChannels);
 	}
 
 	void MeshRendererComponent::ConnectMaterial() noexcept

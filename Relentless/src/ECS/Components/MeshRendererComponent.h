@@ -1,6 +1,8 @@
 #pragma once
 #include "ECS/Component.h"
 
+#include "Graphics/Renderer/RenderTypes.h"
+
 namespace Relentless
 {
 	class Material;
@@ -17,17 +19,25 @@ namespace Relentless
 
 		void CopyFrom(const MeshRendererComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager) override;
 
+		NO_DISCARD ELightChannel GetLightChannels() const noexcept;
 		NO_DISCARD Ref<Material> GetMaterial() const noexcept;
 		NO_DISCARD const AssetHandle& GetMaterialHandle() const noexcept;
 
+		NO_DISCARD bool HasLightChannelsEnabled(ELightChannel aChannels) const noexcept;
 		NO_DISCARD bool HasAssignedMaterial() const noexcept;
+
+		NO_DISCARD bool IsCastingShadows() const noexcept;
 
 		void OnBound() noexcept override;
 		
 		void RemoveMaterial() noexcept;
 
+		void SetCastShadows(bool aCastShadows) noexcept;
+		void SetLightChannelEnabled(ELightChannel aChannel, bool aEnabled) noexcept;
 		void SetMaterial(const AssetHandle& aAssetHandle) noexcept;
 	private:
+		void ApplyChannelMask(ELightChannel aNewMask) noexcept;
+		
 		void ConnectMaterial() noexcept;
 
 		void DetachMaterial() noexcept;
@@ -35,6 +45,8 @@ namespace Relentless
 		void OnMaterialAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept;
 		void OnMaterialAssetPropertyChanged(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty) noexcept;
 	private:
-		AssetHandle m_MaterialHandle = NULL_HANDLE;
+		AssetHandle m_MaterialHandle = AssetHandle::INVALID;
+		ELightChannel m_LightChannels = ELightChannel::Default;
+		bool m_CastShadows = true;
 	};
 }

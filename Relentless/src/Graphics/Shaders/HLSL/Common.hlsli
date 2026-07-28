@@ -41,6 +41,25 @@ float2 TexelToUV(uint2 texel, float2 texelSize)
     return ((float2) texel + 0.5f) * texelSize;
 }
 
+uint GetCubeFaceIndex(const float3 v)
+{
+    const float3 vAbs = abs(v);
+    uint faceIndex = 0;
+    if (vAbs.z >= vAbs.x && vAbs.z >= vAbs.y)
+    {
+        faceIndex = v.z < 0 ? 5 : 4;
+    }
+    else if (vAbs.y >= vAbs.x)
+    {
+        faceIndex = v.y < 0 ? 3 : 2;
+    }
+    else
+    {
+        faceIndex = v.x < 0 ? 1 : 0;
+    }
+    return faceIndex;
+}
+
 float GetLuminance(float3 color)
 {
     return dot(color, float3(0.2126729, 0.7151522, 0.0721750));

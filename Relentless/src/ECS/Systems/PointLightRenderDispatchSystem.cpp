@@ -35,15 +35,23 @@ namespace Relentless
 			const auto& [pointLightComponent, transformComponent] = aSceneState.EntityManager.Get<PointLightComponent, TransformComponent>(aEntity);
 
 			const Color& color = pointLightComponent.GetColor();
+			const float shadowAmount = pointLightComponent.GetShadowAmount();
+			const float shadowResolutionScale = pointLightComponent.GetShadowResolutionScale();
 
 			LightRenderProxy& renderProxy = lightRenderProxies.emplace_back();
 			renderProxy.WorldMatrix = transformComponent.GetWorldMatrix();
 			renderProxy.Color = Vector3(color.R(), color.G(), color.B());
 			renderProxy.Position = transformComponent.GetWorldLocation();
-			renderProxy.AttenuationRadius = pointLightComponent.GetAttenuationRadius() > 0.0f ? (1.0f / (pointLightComponent.GetAttenuationRadius() * pointLightComponent.GetAttenuationRadius())) : 0.0f;
+			renderProxy.AttenuationRadius = pointLightComponent.GetAttenuationRadius();
 			renderProxy.Intensity = pointLightComponent.GetIntensity();
 			renderProxy.IsEnabled = renderProxy.Intensity > 0.0f && aSceneState.Scene.IsEntityVisible(aEntity);
+			renderProxy.CastShadows = pointLightComponent.IsCastingShadows() && shadowAmount > 0.0f && shadowResolutionScale > 0.0f;
+			renderProxy.ShadowAmount = shadowAmount;
+			renderProxy.ShadowResolutionScale = shadowResolutionScale;
+			renderProxy.ShadowBias = pointLightComponent.GetShadowBias();
+			renderProxy.ShadowSlopeBias = pointLightComponent.GetShadowSlopeBias();
 			renderProxy.LightType = ELightType::Point;
+			renderProxy.ChannelMask = pointLightComponent.GetChannel();
 			renderProxy.ID = aEntity;
 
 			if (pointLightComponent.IsUsingTemperature())

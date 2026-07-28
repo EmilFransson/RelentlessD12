@@ -35,6 +35,7 @@ VS_OUT vs_main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
     
     #ifdef ALPHA_MASK
         vsOut.TexCoords = adjustedTexCoords;
+        vsOut.InstanceID = instanceIndex;
     #endif
     
     return vsOut;
@@ -46,9 +47,8 @@ void ps_main(VS_OUT psIn)
     const InstanceData instanceData = GetInstance(psIn.InstanceID);
     const Material material = GetMaterial(instanceData.MaterialIndex);
     
-    Texture2D albedoTexture = ResourceDescriptorHeap[material.AlbedoIndex];
-    const float4 albedoColor = albedoTexture.Sample(sAnisoWrap, psIn.TexCoords) * material.BaseColorFactor;
-    
-    clip(albedoColor.a < material.AlphaCutOff ? -1 : 1);
+    const float4 albedoColor = EvaluateAlbedo(material, psIn.TexCoords);
+    const float alpha = EvaluateOpacity(material, albedoColor.a, psIn.TexCoords);
+    clip(alpha < material.AlphaCutOff ? -1 : 1);
 #endif
 }

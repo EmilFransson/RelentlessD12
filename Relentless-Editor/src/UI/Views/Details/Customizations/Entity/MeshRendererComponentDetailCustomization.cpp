@@ -109,6 +109,59 @@ namespace Relentless
 
 					return pRevertBox;
 				});
+
+		Ref<EntityPropertyHandle<bool, MeshRendererComponent>> pCastShadowsHandle = RLS_NEW EntityPropertyHandle<bool, MeshRendererComponent>(
+			*detailsContext.EntityManager,
+			detailsContext.Entities,
+			[](const MeshRendererComponent& aMRC) { return aMRC.IsCastingShadows(); },
+			[](entity, MeshRendererComponent& aMRC, const bool& aCastShadows) { aMRC.SetCastShadows(aCastShadows); },
+			true
+		);
+
+		categoryBuilder.AddProperty<bool>("Cast Shadows", pCastShadowsHandle)
+			.NameSlot().Label("Cast Shadows")
+			.ValueSlot().CheckBox();
+
+		categoryBuilder.AddProperty<bool>("Lighting Channels", nullptr)
+			.NameSlot().Label("Lighting Channels")
+			.ValueSlot().Widget([&detailsContext]()
+				{
+					auto&& AllHaveChannelsSet = [&detailsContext](ELightChannel aLightChannel) -> bool
+						{
+							return std::ranges::all_of(detailsContext.Entities, [&detailsContext, aLightChannel](entity aEntity)
+								{
+									const MeshRendererComponent& directionalLightComponent = detailsContext.EntityManager->Get<MeshRendererComponent>(aEntity);
+									return directionalLightComponent.HasLightChannelsEnabled(aLightChannel);
+								});
+						};
+
+					Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
+					pBox->SetSpacing(5.0f);
+
+					for (uint32 i = 0; i < 4; ++i)
+					{
+						const ELightChannel lightChannel = static_cast<ELightChannel>(1u << i);
+
+						Button* pButton = pBox->AddWidget(RLS_NEW Button(std::format("{}", i)));
+						pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+						pButton->OnClicked([&detailsContext, lightChannel, pButton, AllHaveChannelsSet]()
+							{
+								const bool setChannel = !AllHaveChannelsSet(lightChannel);
+
+								std::ranges::for_each(detailsContext.Entities, [&detailsContext, lightChannel, setChannel](entity aEntity)
+									{
+										MeshRendererComponent& directionalLightComponent = detailsContext.EntityManager->Get<MeshRendererComponent>(aEntity);
+										directionalLightComponent.SetLightChannelEnabled(lightChannel, setChannel);
+									});
+
+								pButton->SetBackgroundColor(setChannel ? Colors::Blue : Colors::Black);
+							});
+
+						pButton->SetBackgroundColor(AllHaveChannelsSet(lightChannel) ? Colors::Blue : Colors::Black);
+					}
+
+					return pBox;
+				});
 	}
 
 	bool MeshRendererComponentDetailCustomization::ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept

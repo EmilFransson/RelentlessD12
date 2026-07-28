@@ -85,7 +85,7 @@ namespace Relentless
 
 		Broadcaster<void(uint32 aReadbackResult, const UUID& aSceneUUID)> OnEntityIDReadbackDone;
 
-		constexpr static ResourceFormat ShadowFormat = ResourceFormat::D16_UNORM;
+		constexpr static ResourceFormat ShadowFormat = ResourceFormat::D32_FLOAT;
 	private:
 		void GetViewUniforms(const RenderView& renderView, ShaderInterop::ViewUniforms& outViewUniform) noexcept;
 

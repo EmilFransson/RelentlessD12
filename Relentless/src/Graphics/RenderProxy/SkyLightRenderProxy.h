@@ -26,6 +26,7 @@ namespace Relentless
 		ESkyLightLowerHemisphereMode LowerHemisphereMode = ESkyLightLowerHemisphereMode::Environment;
 		EEnvironmentSourceType PrimaryEnvironmentSourceType = EEnvironmentSourceType::Cubemap;
 		EEnvironmentSourceType BlendEnvironmentSourceType = EEnvironmentSourceType::Cubemap;
+		ELightChannel LightChannelMask = ELightChannel::Default;
 		bool IsActive = false;
 	};
 }

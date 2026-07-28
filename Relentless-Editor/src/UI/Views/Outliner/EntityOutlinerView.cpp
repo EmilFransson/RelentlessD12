@@ -1417,7 +1417,12 @@ namespace Relentless
 			m_pOutlinerTreeView->SetItemSelection(m_EntityToItemMap.at(scene.GetEntityManager().Get<IDComponent>(aEntity).UuId), (ESelectionType)aSelectionState);
 		}
 
-		if (!m_pOutlinerTreeView->IsItemVisible(m_EntityToItemMap.at(scene.GetEntityManager().Get<IDComponent>(aEntity).UuId)))
+		const UUID uuid = scene.GetEntityManager().Get<IDComponent>(aEntity).UuId;
+
+		if (!m_EntityToItemMap.contains(uuid))
+			return;
+
+		if (!m_pOutlinerTreeView->IsItemVisible(m_EntityToItemMap.at(uuid)))
 			return;
 
 		OutlinerTableRow* pOutlinerTableRow = static_cast<OutlinerTableRow*>(m_pOutlinerTreeView->GetRowWidget(m_EntityToItemMap[scene.GetEntityManager().Get<IDComponent>(aEntity).UuId]).Get());

@@ -242,6 +242,68 @@ namespace Relentless
 					return pSlider;
 				});
 		}
+
+		IDetailGroupBuilder shadowsGroupBuilder = categoryBuilder.EditGroup("Shadows");
+
+		Ref<EntityPropertyHandle<bool, SpotLightComponent>> pCastShadowsHandle = RLS_NEW EntityPropertyHandle<bool, SpotLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const SpotLightComponent& aSLC) { return aSLC.IsCastingShadows(); },
+			[](entity, SpotLightComponent& aSLC, const bool& aCastShadows) { aSLC.SetCastShadows(aCastShadows); },
+			true
+		);
+
+		shadowsGroupBuilder.AddProperty<bool>("Cast Shadows", pCastShadowsHandle)
+			.NameSlot().Label("Cast Shadows")
+			.ValueSlot().CheckBox();
+
+		Ref<EntityPropertyHandle<float, SpotLightComponent>> pShadowAmountHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const SpotLightComponent& aSLC) { return aSLC.GetShadowAmount(); },
+			[](entity, SpotLightComponent& aSLC, const float& aShadowAmount) { aSLC.SetShadowAmount(aShadowAmount); },
+			1.0f
+		);
+
+		shadowsGroupBuilder.AddProperty<float>("Shadow Amount", pShadowAmountHandle)
+			.NameSlot().Label("Shadow Amount")
+			.ValueSlot().Slider().Range(0.0f, 1.0f);
+
+		Ref<EntityPropertyHandle<float, SpotLightComponent>> pShadowResolutionScaleHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const SpotLightComponent& aSLC) { return aSLC.GetShadowResolutionScale(); },
+			[](entity, SpotLightComponent& aSLC, const float& aShadowResolutionScale) { aSLC.SetShadowResolutionScale(aShadowResolutionScale); },
+			1.0f
+		);
+
+		shadowsGroupBuilder.AddProperty<float>("Shadow Resolution Scale", pShadowResolutionScaleHandle)
+			.NameSlot().Label("Shadow Resolution Scale")
+			.ValueSlot().Slider().Range(0.125f, 8.0f);
+
+		Ref<EntityPropertyHandle<float, SpotLightComponent>> pShadowBiasHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const SpotLightComponent& aSLC) { return aSLC.GetShadowBias(); },
+			[](entity, SpotLightComponent& aSLC, const float& aShadowBias) { aSLC.SetShadowBias(aShadowBias); },
+			0.0001f
+		);
+
+		shadowsGroupBuilder.AddProperty<float>("Shadow Bias", pShadowBiasHandle)
+			.NameSlot().Label("Shadow Bias")
+			.ValueSlot().Slider().Logarithmic(true).Range(0.0f, 5.0f);
+
+		Ref<EntityPropertyHandle<float, SpotLightComponent>> pShadowSlopeBiasHandle = RLS_NEW EntityPropertyHandle<float, SpotLightComponent>(
+			*context.EntityManager,
+			context.Entities,
+			[](const SpotLightComponent& aSLC) { return aSLC.GetShadowSlopeBias(); },
+			[](entity, SpotLightComponent& aSLC, const float& aShadowSlopeBias) { aSLC.SetShadowSlopeBias(aShadowSlopeBias); },
+			0.0005f
+		);
+
+		shadowsGroupBuilder.AddProperty<float>("Shadow Slope Bias", pShadowSlopeBiasHandle)
+			.NameSlot().Label("Shadow Slope Bias")
+			.ValueSlot().Slider().Logarithmic(true).Range(0.0f, 5.0f);
 	}
 
 	bool SpotLightComponentDetailCustomization::ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept

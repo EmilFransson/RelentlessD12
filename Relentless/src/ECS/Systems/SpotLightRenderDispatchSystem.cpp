@@ -35,18 +35,27 @@ namespace Relentless
 			const auto& [spotLightComponent, transformComponent] = aSceneState.EntityManager.Get<SpotLightComponent, TransformComponent>(aEntity);
 
 			const Color& color = spotLightComponent.GetColor();
+			const float shadowAmount = spotLightComponent.GetShadowAmount();
+			const float shadowResolutionScale = spotLightComponent.GetShadowResolutionScale();
 
 			LightRenderProxy& renderProxy = lightRenderProxies.emplace_back();
 			renderProxy.WorldMatrix = transformComponent.GetWorldMatrix();
 			renderProxy.Color = Vector3(color.R(), color.G(), color.B());
 			renderProxy.Position = transformComponent.GetWorldLocation();
 			renderProxy.Direction = transformComponent.GetWorldForward();
-			renderProxy.AttenuationRadius = spotLightComponent.GetAttenuationRadius() > 0.0f ? (1.0f / (spotLightComponent.GetAttenuationRadius() * spotLightComponent.GetAttenuationRadius())) : 0.0f;
+			renderProxy.AttenuationRadius = spotLightComponent.GetAttenuationRadius();
 			renderProxy.Intensity = spotLightComponent.GetIntensity();
 			renderProxy.InnerConeAngle = Math::Cos(spotLightComponent.GetInnerConeAngleRadians() * 0.5f);
 			renderProxy.OuterConeAngle = Math::Cos(spotLightComponent.GetOuterConeAngleRadians() * 0.5f);
+			renderProxy.OuterConeAngleRadians = spotLightComponent.GetOuterConeAngleRadians();
 			renderProxy.IsEnabled = renderProxy.Intensity > 0.0f && aSceneState.Scene.IsEntityVisible(aEntity);
+			renderProxy.CastShadows = spotLightComponent.IsCastingShadows() && shadowAmount > 0.0f && shadowResolutionScale > 0.0f;
+			renderProxy.ShadowAmount = shadowAmount;
+			renderProxy.ShadowResolutionScale = shadowResolutionScale;
+			renderProxy.ShadowBias = spotLightComponent.GetShadowBias();
+			renderProxy.ShadowSlopeBias = spotLightComponent.GetShadowSlopeBias();
 			renderProxy.LightType = ELightType::Spot;
+			renderProxy.ChannelMask = spotLightComponent.GetChannel();
 			renderProxy.ID = aEntity;
 
 			if (spotLightComponent.IsUsingTemperature())

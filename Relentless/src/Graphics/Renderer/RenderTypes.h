@@ -15,6 +15,19 @@ namespace Relentless
 	class Renderer;
 	class RenderScene;
 
+	enum class ELightChannel : uint32
+	{
+		None = 0u,
+		Channel1 = 1u << 0,
+		Channel2 = 1u << 1,
+		Channel3 = 1u << 2,
+		Channel4 = 1u << 3,
+
+		Default = Channel1,
+		All = 0xFFFFFFFFu
+	};
+	DECLARE_BITMASK_TYPE(ELightChannel);
+
 	struct ViewTransform
 	{
 		virtual ~ViewTransform() = default;
@@ -60,6 +73,10 @@ namespace Relentless
 	struct ShadowView : public RenderView
 	{
 		Texture* DepthTexture = nullptr;
+		float ShadowAmount = 1.0f;
+		float ConstantBiasWS = 0.0f;
+		float SlopeBiasWS = 0.0f;
+		ELightChannel LightChannels = ELightChannel::Default;
 	};
 
 	struct ViewRenderDesc
@@ -84,7 +101,9 @@ namespace Relentless
 		uint32 NumIndices = 0u;
 		uint32 InstanceCount = 0u;
 		entity EntityID = NULL_ENTITY;
+		ELightChannel LightChannels = ELightChannel::Default;
 		bool IsTwoSided = false;
+		bool CastShadow = true;
 	};
 	DECLARE_BITMASK_TYPE(Batch::Blending)
 

@@ -74,16 +74,18 @@ namespace Relentless
 		while (batchIndex < instances.size())
 		{
 			const ShaderInterop::InstanceData& baseInstanceData = instances[batchIndex];
-			const PrimitiveRenderProxy& primitiveProxy = pPrimitiveRenderSubsystem->GetProxy(baseInstanceData.EntityID);
-			const MaterialRenderProxy& baseMaterialProxy = pMaterialRenderSubsystem->GetProxy(primitiveProxy.MaterialUUID);
-			const MeshRenderProxy& meshProxy = pMeshRenderSubsystem->GetProxy(primitiveProxy.MeshUUID);
+			const PrimitiveRenderProxy& basePrimitiveProxy = pPrimitiveRenderSubsystem->GetProxy(baseInstanceData.EntityID);
+			const MaterialRenderProxy& baseMaterialProxy = pMaterialRenderSubsystem->GetProxy(basePrimitiveProxy.MaterialUUID);
+			const MeshRenderProxy& meshProxy = pMeshRenderSubsystem->GetProxy(basePrimitiveProxy.MeshUUID);
 
 			Batch& batch = m_Batches.emplace_back();
 			batch.BaseInstanceOffset = static_cast<uint32>(batchIndex);
 			batch.NumIndices = meshProxy.IndexBuffer->GetNrOfElements();
 			batch.BlendMode = GetBlendMode(baseMaterialProxy.BlendMode);
-			batch.Location = primitiveProxy.LocalToWorld.Translation(); //Purely relevant here for transparent meshes which are rendered one by one. (1 per batch)
+			batch.Location = basePrimitiveProxy.LocalToWorld.Translation(); //Purely relevant here for transparent meshes which are rendered one by one. (1 per batch)
 			batch.IsTwoSided = baseMaterialProxy.IsTwoSided;
+			batch.CastShadow = basePrimitiveProxy.CastShadows;
+			batch.LightChannels = static_cast<ELightChannel>(baseInstanceData.LightChannelMask);
 
 			while (batchIndex < instances.size())
 			{
@@ -100,10 +102,16 @@ namespace Relentless
 				if (instanceData.MeshDataIndex != baseInstanceData.MeshDataIndex)
 					break;
 
+				if (instanceData.LightChannelMask != baseInstanceData.LightChannelMask)
+					break;
+
 				if (materialProxy.BlendMode != baseMaterialProxy.BlendMode || materialProxy.BlendMode == EBlendMode::AlphaBlend)
 					break;
 
 				if (materialProxy.IsTwoSided != baseMaterialProxy.IsTwoSided)
+					break;
+
+				if (primitiveProxy.CastShadows != basePrimitiveProxy.CastShadows && materialProxy.BlendMode != EBlendMode::AlphaBlend)
 					break;
 
 				if (materialProxy.IsTwoSided && materialProxy.BlendMode == EBlendMode::AlphaMask)

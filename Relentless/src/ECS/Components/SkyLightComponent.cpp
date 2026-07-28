@@ -26,6 +26,7 @@ namespace Relentless
 		m_TintColor = aOtherComponent.m_TintColor;
 		m_RadianceMapSize = aOtherComponent.m_RadianceMapSize;
 		m_RealtimeMipsPerFrame = aOtherComponent.m_RealtimeMipsPerFrame;
+		m_LightChannels = aOtherComponent.m_LightChannels;
 		m_Intensity = aOtherComponent.m_Intensity;
 		m_CaptureMode = aOtherComponent.m_CaptureMode;
 		m_LowerHemisphereMode = aOtherComponent.m_LowerHemisphereMode;
@@ -86,6 +87,11 @@ namespace Relentless
 		return m_Intensity;
 	}
 
+	ELightChannel SkyLightComponent::GetLightChannels() const noexcept
+	{
+		return m_LightChannels;
+	}
+
 	uint32 SkyLightComponent::GetRadianceMapSize() const noexcept
 	{
 		return m_RadianceMapSize;
@@ -99,6 +105,11 @@ namespace Relentless
 	const Color& SkyLightComponent::GetTintColor() const noexcept
 	{
 		return m_TintColor;
+	}
+
+	bool SkyLightComponent::HasLightChannelsEnabled(ELightChannel aChannels) const noexcept
+	{
+		return EnumHasAnyFlags(m_LightChannels, aChannels);
 	}
 
 	bool SkyLightComponent::HasAssignedBlendEnvironment() const noexcept
@@ -200,6 +211,11 @@ namespace Relentless
 		NOTIFY_PROPERTY_CHANGED(m_Intensity);
 	}
 
+	void SkyLightComponent::SetLightChannelEnabled(ELightChannel aChannel, bool aEnabled) noexcept
+	{
+		ApplyLightChannelMask(aEnabled ? m_LightChannels | aChannel : m_LightChannels & ~aChannel);
+	}
+
 	void SkyLightComponent::SetLowerHemisphereColor(const Color& aColor) noexcept
 	{
 		if (m_LowerHemisphereColor == aColor)
@@ -250,6 +266,16 @@ namespace Relentless
 		m_TintColor = aTintColor;
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_TintColor);
+	}
+
+	void SkyLightComponent::ApplyLightChannelMask(ELightChannel aNewMask) noexcept
+	{
+		if (m_LightChannels == aNewMask)
+			return;
+
+		m_LightChannels = aNewMask;
+		this->m_EntityManager->template AddOrReplace<DirtyRenderState>(this->m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_LightChannels);
 	}
 
 	void SkyLightComponent::ConnectBlendEnvironment() noexcept

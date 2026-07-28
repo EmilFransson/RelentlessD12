@@ -35,6 +35,8 @@ namespace Relentless
 			const auto& [directionalLightComponent, transformComponent] = aSceneState.EntityManager.Get<DirectionalLightComponent, TransformComponent>(aEntity);
 
 			const Color& color = directionalLightComponent.GetColor();
+			const float shadowAmount = directionalLightComponent.GetShadowAmount();
+			const float shadowResolutionScale = directionalLightComponent.GetShadowResolutionScale();
 
 			LightRenderProxy& renderProxy = lightRenderProxies.emplace_back();
 			renderProxy.WorldMatrix = transformComponent.GetWorldMatrix();
@@ -42,7 +44,15 @@ namespace Relentless
 			renderProxy.Direction = transformComponent.GetWorldForward();
 			renderProxy.Intensity = directionalLightComponent.GetIntensity();
 			renderProxy.IsEnabled = renderProxy.Intensity > 0.0f && aSceneState.Scene.IsEntityVisible(aEntity);
+			renderProxy.CastShadows = directionalLightComponent.IsCastingShadows() && shadowAmount > 0.0f && shadowResolutionScale > 0.0f;
+			renderProxy.ShadowAmount = shadowAmount;
+			renderProxy.ShadowResolutionScale = shadowResolutionScale;
+			renderProxy.ShadowBias = directionalLightComponent.GetShadowBias();
+			renderProxy.ShadowSlopeBias = directionalLightComponent.GetShadowSlopeBias();
+			renderProxy.CascadeDistribution = directionalLightComponent.GetCascadeDistribution();
 			renderProxy.LightType = ELightType::Directional;
+			renderProxy.NumCascades = directionalLightComponent.GetNumCascades();
+			renderProxy.ChannelMask = directionalLightComponent.GetChannel();
 			renderProxy.ID = aEntity;
 
 			if (directionalLightComponent.IsUsingTemperature())

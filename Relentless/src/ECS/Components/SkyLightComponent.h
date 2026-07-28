@@ -3,6 +3,8 @@
 #include "Assets/AssetMeta.h"
 #include "ECS/Component.h"
 
+#include "Graphics/Renderer/RenderTypes.h"
+
 namespace Relentless
 {
 	class Environment;
@@ -35,10 +37,12 @@ namespace Relentless
 		NO_DISCARD const Color& GetLowerHemisphereColor() const noexcept;
 		NO_DISCARD ESkyLightLowerHemisphereMode GetLowerHemisphereMode() const noexcept;
 		NO_DISCARD float GetIntensity() const noexcept;
+		NO_DISCARD ELightChannel GetLightChannels() const noexcept;
 		NO_DISCARD uint32 GetRadianceMapSize() const noexcept;
 		NO_DISCARD uint32 GetRealtimeMipsPerFrame() const noexcept;
 		NO_DISCARD const Color& GetTintColor() const noexcept;
 
+		NO_DISCARD bool HasLightChannelsEnabled(ELightChannel aChannels) const noexcept;
 		NO_DISCARD bool HasAssignedBlendEnvironment() const noexcept;
 		NO_DISCARD bool HasAssignedPrimaryEnvironment() const noexcept;
 
@@ -51,6 +55,7 @@ namespace Relentless
 		void SetBlendFactor(float aBlendFactor) noexcept;
 		void SetCaptureMode(ESkyLightCaptureMode aCaptureMode) noexcept;
 		void SetIntensity(float aIntensity) noexcept;
+		void SetLightChannelEnabled(ELightChannel aChannel, bool aEnabled) noexcept;
 		void SetLowerHemisphereColor(const Color& aColor) noexcept;
 		void SetLowerHemisphereMode(ESkyLightLowerHemisphereMode aMode) noexcept;
 		void SetPrimaryEnvironment(const AssetHandle& aHandle) noexcept;
@@ -58,6 +63,8 @@ namespace Relentless
 		void SetRealtimeMipsPerFrame(uint32 aNumMips) noexcept;
 		void SetTintColor(const Color& aTintColor) noexcept;
 	private:
+		void ApplyLightChannelMask(ELightChannel aNewMask) noexcept;
+
 		void ConnectBlendEnvironment() noexcept;
 		void ConnectPrimaryEnvironment() noexcept;
 
@@ -74,6 +81,7 @@ namespace Relentless
 		Color m_TintColor = Colors::White;
 		uint32 m_RadianceMapSize = 256u;
 		uint32 m_RealtimeMipsPerFrame = 1u;
+		ELightChannel m_LightChannels = ELightChannel::Default;
 		float m_BlendFactor = 0.0f;
 		float m_Intensity = 1.0f;
 		ESkyLightCaptureMode m_CaptureMode = ESkyLightCaptureMode::Static;

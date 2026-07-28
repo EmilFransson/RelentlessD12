@@ -44,6 +44,8 @@ namespace Relentless
 			renderProxy.LocalToWorld = meshFilterComponent.HasAssignedMesh() ? meshFilterComponent.GetMesh()->GetOffsetTransform() * transformComponent.GetWorldMatrix() : transformComponent.GetWorldMatrix();
 			renderProxy.MeshUUID = meshFilterComponent.HasAssignedMesh() ? meshFilterComponent.GetMeshHandle().Uuid : NULL_UUID;
 			renderProxy.MaterialUUID = meshRenderComponent.HasAssignedMaterial() ? meshRenderComponent.GetMaterialHandle().Uuid : NULL_UUID;
+			renderProxy.CastShadows = meshRenderComponent.IsCastingShadows();
+			renderProxy.LightChannelMask = meshRenderComponent.GetLightChannels();
 			renderProxy.Visible = aSceneState.Scene.IsEntityVisible(dirtyEntity);
 		}
 

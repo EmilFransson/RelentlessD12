@@ -33,6 +33,7 @@ namespace Relentless
 			RenderOpaque(aCommandContext, shadowView);
 			RenderOpaqueTwoSided(aCommandContext, shadowView);
 			RenderAlphaMasked(aCommandContext, shadowView);
+			RenderAlphaMaskedTwoSided(aCommandContext, shadowView);
 
 			aCommandContext.EndRenderPass();
 			
@@ -40,14 +41,17 @@ namespace Relentless
 		}
 	}
 
-	void ShadowMapping::RenderAlphaMasked(CommandContext& aCommandContext, const RenderView& aRenderView) noexcept
+	void ShadowMapping::RenderAlphaMasked(CommandContext& aCommandContext, const ShadowView& aShadowView) noexcept
 	{
+		const bool isPerspective = aShadowView.IsPerspective;
+
 		PipelineStateInitializer psoDesc{};
 		psoDesc.SetBlendMode(BlendMode::Replace);
 		psoDesc.SetName("Shadow Mapping - Alpha Mask");
 		psoDesc.SetDepthWrite(true);
 		psoDesc.SetDepthEnabled(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER);
+		psoDesc.SetDepthBias(0, 0.0f, isPerspective ? -8.0f : 0);
 		psoDesc.SetRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
 		psoDesc.SetVertexShader("DepthPrePassShader", "vs_main", { "ALPHA_MASK" });
 		psoDesc.SetPixelShader("DepthPrePassShader", "ps_main", { "ALPHA_MASK" });
@@ -55,63 +59,131 @@ namespace Relentless
 
 		aCommandContext.SetPipelineState(m_pGraphicsDevice->GetOrCreatePipeline(psoDesc));
 
-		for (const Batch& batch : aRenderView.pRenderScene->GetBatches())
+		for (const Batch& batch : aShadowView.pRenderScene->GetBatches())
 		{
+			if (!batch.CastShadow)
+				continue;
+
 			if (batch.BlendMode != Batch::Blending::AlphaMask)
 				continue;
 
 			if (batch.IsTwoSided)
 				continue;
 
+			if (!EnumHasAnyFlags(batch.LightChannels, aShadowView.LightChannels))
+				continue;
+
 			Renderer::SubmitBatch(aCommandContext, batch);
 		}
 	}
 
-	void ShadowMapping::RenderOpaque(CommandContext& aCommandContext, const RenderView& aRenderView) noexcept
+	void ShadowMapping::RenderAlphaMaskedTwoSided(CommandContext& aCommandContext, const ShadowView& aShadowView) noexcept
 	{
+		const bool isPerspective = aShadowView.IsPerspective;
+
+		PipelineStateInitializer psoDesc{};
+		psoDesc.SetBlendMode(BlendMode::Replace);
+		psoDesc.SetDepthWrite(true);
+		psoDesc.SetDepthEnabled(true);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER);
+		psoDesc.SetDepthBias(0, 0.0f, isPerspective ? -8.0f : 0);
+		psoDesc.SetRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
+		psoDesc.SetVertexShader("DepthPrePassShader", "vs_main", { "ALPHA_MASK" });
+		psoDesc.SetPixelShader("DepthPrePassShader", "ps_main", { "ALPHA_MASK" });
+		psoDesc.SetDepthOnlyTarget(Renderer::ShadowFormat, 1u);
+
+		psoDesc.SetName("Shadow Mapping - Alpha Mask - TwoSided - Cull Front");
+		psoDesc.SetCullMode(D3D12_CULL_MODE_FRONT);
+		PipelineState* pAlphaMaskBackFace = m_pGraphicsDevice->GetOrCreatePipeline(psoDesc);
+
+		psoDesc.SetName("Shadow Mapping - Alpha Mask - TwoSided - Cull Back");
+		psoDesc.SetCullMode(D3D12_CULL_MODE_BACK);
+		PipelineState* pAlphaMaskFrontFace = m_pGraphicsDevice->GetOrCreatePipeline(psoDesc);
+
+		for (const Batch& batch : aShadowView.pRenderScene->GetBatches())
+		{
+			if (!batch.CastShadow)
+				continue;
+
+			if (batch.BlendMode != Batch::Blending::AlphaMask)
+				continue;
+
+			if (!batch.IsTwoSided)
+				continue;
+
+			if (!EnumHasAnyFlags(batch.LightChannels, aShadowView.LightChannels))
+				continue;
+
+			aCommandContext.SetPipelineState(pAlphaMaskBackFace);
+			Renderer::SubmitBatch(aCommandContext, batch);
+			aCommandContext.SetPipelineState(pAlphaMaskFrontFace);
+			Renderer::SubmitBatch(aCommandContext, batch);
+		}
+	}
+
+	void ShadowMapping::RenderOpaque(CommandContext& aCommandContext, const ShadowView& aShadowView) noexcept
+	{
+		const bool isPerspective = aShadowView.IsPerspective;
+
 		PipelineStateInitializer psoDesc{};
 		psoDesc.SetName("Shadow Mapping - Opaque");
 		psoDesc.SetDepthWrite(true);
 		psoDesc.SetDepthEnabled(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER);
+		psoDesc.SetDepthBias(0, 0.0f, isPerspective ? -8.0f: 0);
 		psoDesc.SetRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
 		psoDesc.SetVertexShader("DepthPrePassShader", "vs_main");
 		psoDesc.SetDepthOnlyTarget(Renderer::ShadowFormat, 1u);
 
 		aCommandContext.SetPipelineState(m_pGraphicsDevice->GetOrCreatePipeline(psoDesc));
 
-		for (const Batch& batch : aRenderView.pRenderScene->GetBatches())
+		for (const Batch& batch : aShadowView.pRenderScene->GetBatches())
 		{
+			if (!batch.CastShadow)
+				continue;
+
 			if (batch.BlendMode != Batch::Blending::Opaque)
 				continue;
 
 			if (batch.IsTwoSided)
 				continue;
 
+			if (!EnumHasAnyFlags(batch.LightChannels, aShadowView.LightChannels))
+				continue;
+
 			Renderer::SubmitBatch(aCommandContext, batch);
 		}
 	}
 
-	void ShadowMapping::RenderOpaqueTwoSided(CommandContext& aCommandContext, const RenderView& aRenderView) noexcept
+	void ShadowMapping::RenderOpaqueTwoSided(CommandContext& aCommandContext, const ShadowView& aShadowView) noexcept
 	{
+		const bool isPerspective = aShadowView.IsPerspective;
+
 		PipelineStateInitializer psoDesc{};
 		psoDesc.SetName("Shadow Mapping - Opaque - TwoSided");
 		psoDesc.SetCullMode(D3D12_CULL_MODE_NONE);
 		psoDesc.SetDepthWrite(true);
 		psoDesc.SetDepthEnabled(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthBias(0, 0.0f, isPerspective ? -8.0f : 0);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER);
 		psoDesc.SetRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
 		psoDesc.SetVertexShader("DepthPrePassShader", "vs_main");
 		psoDesc.SetDepthOnlyTarget(Renderer::ShadowFormat, 1u);
 
 		aCommandContext.SetPipelineState(m_pGraphicsDevice->GetOrCreatePipeline(psoDesc));
 
-		for (const Batch& batch : aRenderView.pRenderScene->GetBatches())
+		for (const Batch& batch : aShadowView.pRenderScene->GetBatches())
 		{
+			if (!batch.CastShadow)
+				continue;
+
 			if (batch.BlendMode != Batch::Blending::Opaque)
 				continue;
 
 			if (!batch.IsTwoSided)
+				continue;
+
+			if (!EnumHasAnyFlags(batch.LightChannels, aShadowView.LightChannels))
 				continue;
 
 			Renderer::SubmitBatch(aCommandContext, batch);

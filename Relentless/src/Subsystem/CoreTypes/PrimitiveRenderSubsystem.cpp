@@ -68,6 +68,9 @@ namespace Relentless
 	{
 		for (auto& id : someIDs)
 			m_RenderData.erase(id);
+
+		std::unordered_set<uint32> ids(someIDs.begin(), someIDs.end());
+		std::erase_if(m_InstanceCache, [&ids](const auto& d) { return ids.contains(d.EntityID); });
 	}
 
 	void PrimitiveRenderSubsystem::BuildInstanceData(ShaderInterop::InstanceData& outInstanceData, const PrimitiveRenderProxy& aRenderProxy) const noexcept
@@ -76,6 +79,7 @@ namespace Relentless
 		outInstanceData.MaterialIndex = m_pMaterialRenderSubsystem->GetSlotIndex(aRenderProxy.MaterialUUID);
 		outInstanceData.MeshDataIndex = m_pMeshRenderSubsystem->GetSlotIndex(aRenderProxy.MeshUUID);
 		outInstanceData.EntityID = aRenderProxy.EntityID;
+		outInstanceData.LightChannelMask = static_cast<uint32>(aRenderProxy.LightChannelMask);
 	}
 
 	void PrimitiveRenderSubsystem::OnUpload(CommandContext& aCommandContext) noexcept

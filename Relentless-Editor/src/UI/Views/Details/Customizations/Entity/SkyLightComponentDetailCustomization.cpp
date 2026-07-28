@@ -143,6 +143,47 @@ namespace Relentless
 			.NameSlot().Label("Color")
 			.ValueSlot().ColorPicker();
 
+		categoryBuilder.AddProperty<bool>("Lighting Channels", nullptr)
+			.NameSlot().Label("Lighting Channels")
+			.ValueSlot().Widget([&context]()
+				{
+					auto&& AllHaveChannelsSet = [&context](ELightChannel aLightChannel) -> bool
+						{
+							return std::ranges::all_of(context.Entities, [&context, aLightChannel](entity aEntity)
+								{
+									const SkyLightComponent& skyLightComponent = context.EntityManager->Get<SkyLightComponent>(aEntity);
+									return skyLightComponent.HasLightChannelsEnabled(aLightChannel);
+								});
+						};
+
+					Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
+					pBox->SetSpacing(5.0f);
+
+					for (uint32 i = 0; i < 4; ++i)
+					{
+						const ELightChannel lightChannel = static_cast<ELightChannel>(1u << i);
+
+						Button* pButton = pBox->AddWidget(RLS_NEW Button(std::format("{}", i)));
+						pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+						pButton->OnClicked([&context, lightChannel, pButton, AllHaveChannelsSet]()
+							{
+								const bool setChannel = !AllHaveChannelsSet(lightChannel);
+
+								std::ranges::for_each(context.Entities, [&context, lightChannel, setChannel](entity aEntity)
+									{
+										SkyLightComponent& skyLightComponent = context.EntityManager->Get<SkyLightComponent>(aEntity);
+										skyLightComponent.SetLightChannelEnabled(lightChannel, setChannel);
+									});
+
+								pButton->SetBackgroundColor(setChannel ? Colors::Blue : Colors::Black);
+							});
+
+						pButton->SetBackgroundColor(AllHaveChannelsSet(lightChannel) ? Colors::Blue : Colors::Black);
+					}
+
+					return pBox;
+				});
+
 		IDetailGroupBuilder groupBuilder = categoryBuilder.EditGroup("Advanced");
 
 		groupBuilder.AddAssetProperty("Blend Environment", *pAssetData)

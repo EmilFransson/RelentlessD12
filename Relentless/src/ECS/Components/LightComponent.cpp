@@ -5,18 +5,47 @@ namespace Relentless
 	void DirectionalLightComponent::CopyFrom(const DirectionalLightComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
 		m_Color = aOtherComponent.m_Color;
+		m_LightChannel = aOtherComponent.m_LightChannel;
 		m_Intensity = aOtherComponent.m_Intensity;
 		m_Temperature = aOtherComponent.m_Temperature;
+		m_ShadowAmount = aOtherComponent.m_ShadowAmount;
+		m_ShadowResolutionScale = aOtherComponent.m_ShadowResolutionScale;
+		m_ShadowBias = aOtherComponent.m_ShadowBias;
+		m_ShadowSlopeBias = aOtherComponent.m_ShadowSlopeBias;
 		m_UseTemperature = aOtherComponent.m_UseTemperature;
+		m_CastsShadows = aOtherComponent.m_CastsShadows;
+		m_CascadeDistribution = aOtherComponent.m_CascadeDistribution;
+		m_NumCascades = aOtherComponent.m_NumCascades;
 
 		this->m_Self = aThisEntity;
 		this->m_EntityManager = &aEntityManager;
 		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
 	}
 
+	float DirectionalLightComponent::GetCascadeDistribution() const noexcept
+	{
+		return m_CascadeDistribution;
+	}
+
+	uint32 DirectionalLightComponent::GetNumCascades() const noexcept
+	{
+		return m_NumCascades;
+	}
+
 	void DirectionalLightComponent::OnBound() noexcept
 	{
 		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+	}
+
+	void DirectionalLightComponent::SetCascadeDistribution(float aCascadeDistribution) noexcept
+	{
+		const float cascadeDistributionClamped = Math::Clamp(aCascadeDistribution, 0.0f, 1.0f);
+		if (Math::AreValuesClose(m_CascadeDistribution, cascadeDistributionClamped))
+			return;
+
+		m_CascadeDistribution = cascadeDistributionClamped;
+		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_CascadeDistribution);
 	}
 
 	void DirectionalLightComponent::SetIntensity(float aWatts, float aEfficiency) noexcept
@@ -34,12 +63,29 @@ namespace Relentless
 		NOTIFY_PROPERTY_CHANGED(m_Intensity);
 	}
 
+	void DirectionalLightComponent::SetNumCascades(uint32 aNumCascades) noexcept
+	{
+		const uint32 clampedNumCascades = Math::Clamp(aNumCascades, 1u, 4u);
+		if (m_NumCascades == clampedNumCascades)
+			return;
+
+		m_NumCascades = clampedNumCascades;
+		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_NumCascades);
+	}
+
 	void PointLightComponent::CopyFrom(const PointLightComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
 		m_Color = aOtherComponent.m_Color;
+		m_LightChannel = aOtherComponent.m_LightChannel;
 		m_Intensity = aOtherComponent.m_Intensity;
 		m_Temperature = aOtherComponent.m_Temperature;
+		m_ShadowAmount = aOtherComponent.m_ShadowAmount;
+		m_ShadowResolutionScale = aOtherComponent.m_ShadowResolutionScale;
+		m_ShadowBias = aOtherComponent.m_ShadowBias;
+		m_ShadowSlopeBias = aOtherComponent.m_ShadowSlopeBias;
 		m_UseTemperature = aOtherComponent.m_UseTemperature;
+		m_CastsShadows = aOtherComponent.m_CastsShadows;
 		m_AttenuationRadius = aOtherComponent.m_AttenuationRadius;
 
 		this->m_Self = aThisEntity;
@@ -90,9 +136,15 @@ namespace Relentless
 	void SpotLightComponent::CopyFrom(const SpotLightComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
 		m_Color = aOtherComponent.m_Color;
+		m_LightChannel = aOtherComponent.m_LightChannel;
 		m_Intensity = aOtherComponent.m_Intensity;
 		m_Temperature = aOtherComponent.m_Temperature;
+		m_ShadowAmount = aOtherComponent.m_ShadowAmount;
+		m_ShadowResolutionScale = aOtherComponent.m_ShadowResolutionScale;
+		m_ShadowBias = aOtherComponent.m_ShadowBias;
+		m_ShadowSlopeBias = aOtherComponent.m_ShadowSlopeBias;
 		m_UseTemperature = aOtherComponent.m_UseTemperature;
+		m_CastsShadows = aOtherComponent.m_CastsShadows;
 		m_AttenuationRadius = aOtherComponent.m_AttenuationRadius;
 		m_InnerConeAngle = aOtherComponent.m_InnerConeAngle;
 		m_OuterConeAngle = aOtherComponent.m_OuterConeAngle;

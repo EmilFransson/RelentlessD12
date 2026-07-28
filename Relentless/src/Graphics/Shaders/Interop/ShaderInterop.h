@@ -68,6 +68,9 @@ using float4x4 = Matrix;
 		uint MaterialIndex;
 		uint MeshDataIndex;
 		uint EntityID;
+
+		uint LightChannelMask;
+		float3 Padding;
 	};
 
 	struct SkyboxData
@@ -102,7 +105,8 @@ using float4x4 = Matrix;
 
 		uint BlendIrradianceMapIndex;
 		uint BlendRadianceMapIndex;
-		float2 Padding0;
+		uint LightChannelMask;
+		float Padding0;
 
 		float3 EnvironmentATintColor;
 		float Padding1;
@@ -124,7 +128,7 @@ using float4x4 = Matrix;
 		float3 Direction;
 		float Range;
 		float3 Color;
-		uint MatrixIndex;
+		uint ChannelMask;
 
 		float2 SpotlightAngles;
 		uint ShadowViewBaseIndex;
@@ -137,13 +141,19 @@ using float4x4 = Matrix;
 		uint IsSpot : 1;
 		uint IsPoint : 1;
 		uint IsDirectional : 1;
+		uint CastShadows : 1;
 	};
 
 	struct ShadowViewData
 	{
 		float4x4 WorldToClip;
+		
 		uint ShadowMapIndex;
+		float InverseShadowMapSize;
+		float ShadowAmount;
+		float ConstantBiasWS;
 
+		float SlopeBiasWS;
 		float3 Padding;
 	};
 

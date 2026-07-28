@@ -15,7 +15,7 @@ namespace Relentless::Platform
 
 		const COMDLG_FILTERSPEC filters[] = 
 		{
-			{ L"Textures", L"*.png;*.tga;*.dds;*.hdr" },
+			{ L"Textures", L"*.png;*.tga;*.dds;*.hdr;*.jpg;*.jpeg" },
 			{ L"Meshes",   L"*.fbx;*.gltf;*.glb;*.obj" },
 			{ L"All files", L"*.*" },
 		};
