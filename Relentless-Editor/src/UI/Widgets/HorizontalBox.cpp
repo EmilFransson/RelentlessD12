@@ -2,6 +2,11 @@
 
 namespace Relentless
 {
+	HorizontalBox::HorizontalBox() noexcept
+	{
+		SetMouseScrollingEnabled(false);
+	}
+
 	Vector2 HorizontalBox::ReportSize() const noexcept
 	{
 		const ESizePolicy horizontalSizePolicy = GetHorizontalSizePolicy();

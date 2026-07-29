@@ -52,6 +52,7 @@ namespace Relentless
 		m_pTileViewBox = m_pRoot->AddWidget(RLS_NEW HorizontalBox());
 		m_pTileViewBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
 		m_pTileViewBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
+		m_pTileViewBox->SetMouseScrollingEnabled(true);
 		m_pTileViewBox->SetScrollBarsVisible(true);
 
 		const Vector2 size = AssetThumbnailSizeEnumToSize(m_ThumbnailSize);

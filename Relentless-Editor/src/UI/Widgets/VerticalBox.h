@@ -6,7 +6,7 @@ namespace Relentless
 	class VerticalBox : public IWidgetContainer<VerticalBox>
 	{
 	public:
-		VerticalBox() noexcept = default;
+		VerticalBox() noexcept;
 		virtual ~VerticalBox() noexcept = default;
 
 		NO_DISCARD Vector2 ReportSize() const noexcept override;
