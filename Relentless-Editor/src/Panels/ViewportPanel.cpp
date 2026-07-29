@@ -427,6 +427,9 @@ namespace Relentless
 
 	bool ViewportPanel::OnMouseWheelScrolledEvent(MouseWheelScrolledEvent& event) noexcept
 	{
+		if (!IsCameraValidClientAreaHovered())		
+			return false;
+
 		const bool scrolledUp = event.Delta > 0.0f;
 
 		if (m_pCameraController->GetMode() == ECameraControllerNavigationMode::Orbit)

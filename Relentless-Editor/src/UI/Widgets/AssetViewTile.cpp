@@ -141,7 +141,7 @@ namespace Relentless
 			}
 		}
 
-		if (Mouse::IsButtonReleased(RLS_Button::Left))
+		if (!Mouse::IsButtonDown(RLS_Button::Left))
 			m_PressOriginatedHere = false;
 
 		if (uiModule.HasActiveDragDrop())
