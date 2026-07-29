@@ -134,13 +134,10 @@ namespace Relentless
 			.NameSlot().Label("Is Active")
 			.ValueSlot().CheckBox().Enabled(!multiSelection);
 
-		Ref<EntityPropertyHandle<int, SkyLightComponent>> pCaptureModeHandle = RLS_NEW EntityPropertyHandle<int, SkyLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SkyLightComponent& aSLC) { return static_cast<int>(aSLC.GetCaptureMode());},
+		auto pCaptureModeHandle = handleFactory.MakeCustom(
+			[](const SkyLightComponent& aSLC) { return static_cast<int>(aSLC.GetCaptureMode()); },
 			[](entity, SkyLightComponent& aSLC, const int& aCaptureMode) { aSLC.SetCaptureMode(static_cast<ESkyLightCaptureMode>(aCaptureMode)); },
-			0
-		);
+			static_cast<int>(ESkyLightCaptureMode::Static));
 
 		SkyLightComponent& skyLightComponent = context.EntityManager->Get<SkyLightComponent>(context.Entities.front());
 		const AssetHandle& assetHandle = skyLightComponent.GetPrimaryEnvironmentHandle();
@@ -160,12 +157,10 @@ namespace Relentless
 			.NameSlot().Label("Capture Mode")
 			.ValueSlot().ComboBox().Options({"Static", "Realtime"});
 
-		Ref<EntityPropertyHandle<uint32, SkyLightComponent>> pRadianceSizeHandle = RLS_NEW EntityPropertyHandle<uint32, SkyLightComponent>(
-			*context.EntityManager,
-			context.Entities,
+		auto pRadianceSizeHandle = handleFactory.MakeCustom(
 			[](const SkyLightComponent& aSLC) { return aSLC.GetRadianceMapSize(); },
 			[](entity, SkyLightComponent& aSLC, const uint32& aRadianceSize) 
-			{ 
+			{   
 				const uint32 oldSize = aSLC.GetRadianceMapSize();
 				uint32 newSize = aRadianceSize;
 
@@ -178,11 +173,8 @@ namespace Relentless
 				
 					newSize = Math::NearestPowerOfTwo(newSize);
 				}
-
-				aSLC.SetRadianceMapSize(newSize);
-			},
-			256u
-		);
+				aSLC.SetRadianceMapSize(newSize); },
+			256u);
 
 		categoryBuilder.AddProperty<uint32>("Cubemap Resolution", pRadianceSizeHandle)
 			.NameSlot().Label("Cubemap Resolution")
@@ -225,13 +217,10 @@ namespace Relentless
 			.NameSlot().Label("Blend Factor")
 			.ValueSlot().Slider().Range(0.0f, 1.0f);
 
-		Ref<EntityPropertyHandle<int, SkyLightComponent>> pLowerHemisphereHandle = RLS_NEW EntityPropertyHandle<int, SkyLightComponent>(
-			*context.EntityManager,
-			context.Entities,
-			[](const SkyLightComponent& aSLC) { return static_cast<int>(aSLC.GetLowerHemisphereMode()); },
-			[](entity, SkyLightComponent& aSLC, const int& aLowerHemisphereMode) { aSLC.SetLowerHemisphereMode(static_cast<ESkyLightLowerHemisphereMode>(aLowerHemisphereMode)); },
-			0
-		);
+		auto pLowerHemisphereHandle = handleFactory.MakeCustom(
+			[](const SkyLightComponent& aSLC){ return static_cast<int>(aSLC.GetLowerHemisphereMode()); },
+			[](entity, SkyLightComponent& aSLC, const int& aLowerHemisphereMode){ aSLC.SetLowerHemisphereMode(static_cast<ESkyLightLowerHemisphereMode>(aLowerHemisphereMode)); },
+			static_cast<int>(ESkyLightLowerHemisphereMode::Environment));
 
 		groupBuilder.AddProperty<int>("Lower Hemisphere Mode", pLowerHemisphereHandle)
 			.NameSlot().Label("Lower Hemisphere Mode")

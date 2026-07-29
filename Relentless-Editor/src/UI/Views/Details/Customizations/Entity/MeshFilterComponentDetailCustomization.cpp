@@ -66,11 +66,7 @@ namespace Relentless
 
 					if (!isNone)
 					{
-						Button* pButton = pRevertBox->AddWidget(RLS_NEW Button(ICON_FA_ARROW_ROTATE_LEFT));
-						pButton->SetBackgroundColor(Colors::Transparent);
-						pButton->SetBorderColor(Colors::Transparent);
-						pButton->SetHoverColor(Colors::Transparent);
-						pButton->SetActiveColor(Colors::Transparent);
+						Button* pButton = pRevertBox->AddWidget(Button::CreateTransparent(ICON_FA_ARROW_ROTATE_LEFT));
 						pButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f));
 						pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 

@@ -134,25 +134,19 @@ namespace Relentless
 			.NameSlot().Label("Type")
 			.ValueSlot().ComboBox().Options({ "Directional", "Point", "Spot" }).Selected(1);
 
-		Ref<EntityPropertyHandle<float, PointLightComponent>> pIntensityHandle = RLS_NEW EntityPropertyHandle<float, PointLightComponent>(
-			*context.EntityManager,
-			context.Entities,
+		auto pIntensityHandle = handleFactory.MakeCustom(
 			[&context](const PointLightComponent& aPLC) 
 			{ 
-				if (context.LightIntensityType == ELightIntensityType::Candelas)
-					return aPLC.GetIntensity();
-				else
-					return Math::Photometry::CandelaToLumen_Point(aPLC.GetIntensity());
+				return context.LightIntensityType == ELightIntensityType::Candelas ? aPLC.GetIntensity() : Math::Photometry::CandelaToLumen_Point(aPLC.GetIntensity()); 
 			},
 			[&context](entity, PointLightComponent& aPLC, const float& aIntensity)
-			{
+			{ 
 				if (context.LightIntensityType == ELightIntensityType::Candelas)
 					aPLC.SetIntensityCandela(aIntensity);
 				else
 					aPLC.SetIntensityLumen(aIntensity);
 			},
-			context.LightIntensityType == ELightIntensityType::Candelas ? 8.0f : Math::Photometry::CandelaToLumen_Point(8.0f)
-		);
+			context.LightIntensityType == ELightIntensityType::Candelas ? 8.0f : Math::Photometry::CandelaToLumen_Point(8.0f));
 
 		const char* unit = context.LightIntensityType == ELightIntensityType::Candelas ? " cd" : " lm";
 		const Vector2 range = context.LightIntensityType == ELightIntensityType::Candelas ? Vector2(0.0f, 160.0f) : Vector2(0.0f, 2'010.619263f);

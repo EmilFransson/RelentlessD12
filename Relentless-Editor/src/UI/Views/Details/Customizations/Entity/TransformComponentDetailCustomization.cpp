@@ -104,11 +104,8 @@ namespace Relentless
 
 	NO_DISCARD static Ref<Button> CreateRevertButton(bool aEnabled) noexcept
 	{
-		Ref<Button> pRevertButton = RLS_NEW Button(ICON_FA_ARROW_ROTATE_LEFT);
-		pRevertButton->SetBackgroundColor(Colors::Transparent);
-		pRevertButton->SetBorderColor(Colors::Transparent);
+		Ref<Button> pRevertButton = Button::CreateTransparent(ICON_FA_ARROW_ROTATE_LEFT);
 		pRevertButton->SetHoverColor(Colors::Transparent);
-		pRevertButton->SetActiveColor(Colors::Transparent);
 		pRevertButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 		pRevertButton->OnMouseEnter([](Button* aButton) 
 			{  
@@ -577,9 +574,7 @@ namespace Relentless
 						->AddSelectables({ "Scale", "Absolute Scale" })
 						->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
 
-					Button* pButton = pBox->AddWidget(RLS_NEW Button(aContext.ScaleLocked ? ICON_FA_LOCK : ICON_FA_LOCK_OPEN));
-					pButton->SetBackgroundColor(Colors::Transparent);
-					pButton->SetBorderColor(Colors::Transparent);
+					Button* pButton = pBox->AddWidget(Button::CreateTransparent(aContext.ScaleLocked ? ICON_FA_LOCK : ICON_FA_LOCK_OPEN));
 					pButton->SetHoverColor(Colors::Transparent);
 					pButton->SetActiveColor(Colors::Transparent);
 					pButton->SetTextColor(Colors::Gray);
