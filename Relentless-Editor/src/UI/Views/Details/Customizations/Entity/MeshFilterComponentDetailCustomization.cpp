@@ -11,26 +11,9 @@
 
 namespace Relentless
 {
-	MeshFilterComponentDetailCustomization::~MeshFilterComponentDetailCustomization() noexcept
-	{
-		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnMeshFilterComponentPropertyChangedCallbackID))
-			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnMeshFilterComponentPropertyChangedCallbackID);
-	}
-
 	void MeshFilterComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
-		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnMeshFilterComponentPropertyChangedCallbackID))
-			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnMeshFilterComponentPropertyChangedCallbackID);
-
-		m_OnMeshFilterComponentPropertyChangedCallbackID = CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Connect([&aDetailLayoutBuilder]
-		(MAYBE_UNUSED entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty)
-			{
-				if (aComponentType != MeshFilterComponent::StaticType())
-					return;
-
-				if (aProperty == "m_MeshHandle"_h)
-					aDetailLayoutBuilder.ForceRefreshDetails();
-			});
+		SetupConnections();
 
 		EntityDetailsContext& detailsContext = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
 		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
@@ -111,15 +94,20 @@ namespace Relentless
 				});
 	}
 
-	bool MeshFilterComponentDetailCustomization::ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept
+	void MeshFilterComponentDetailCustomization::SetupConnections() noexcept
 	{
-		const EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
-		if (context.Entities.empty())
-			return false;
-
-		if (!std::ranges::all_of(context.Entities, [&context](entity aEntity) { return context.EntityManager->Has<MeshFilterComponent>(aEntity); }))
-			return false;
-
-		return true;
+		m_OnMeshFilterComponentPropertyChangedConnection = ScopedConnection(CoreObjectBroadcasters::OnEntityComponentPropertyChanged,
+			[this](entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty)
+			{
+				if (aComponentType != MeshFilterComponent::StaticType())
+					return;
+				if (!IsEntityInspected(aEntity))
+					return;
+				if (aProperty == "m_MeshHandle"_h)
+				{
+					if (IDetailLayoutBuilder* pLayoutBuilder = GetDetailLayoutBuilder())
+						pLayoutBuilder->ForceRefreshDetails();
+				}
+			});
 	}
 }

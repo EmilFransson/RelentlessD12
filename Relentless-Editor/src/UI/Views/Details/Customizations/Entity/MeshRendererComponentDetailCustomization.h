@@ -1,21 +1,16 @@
 #pragma once
-#include <Relentless.h>
-
-#include "UI/Views/Details/Customizations/IDetailCustomization.h"
+#include "EntityDetailCustomization.h"
 
 namespace Relentless
 {
-	class IDetailLayoutBuilder;
-
-	class MeshRendererComponentDetailCustomization : public IDetailCustomization
+	class MeshRendererComponentDetailCustomization : public EntityDetailCustomization<MeshRendererComponent>
 	{
-	public:
-		virtual ~MeshRendererComponentDetailCustomization() noexcept override;
+		using IDetailCustomization::CustomizeDetails;
 	protected:
 		virtual void CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept override;
-
-		NO_DISCARD virtual bool ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept override;
 	private:
-		CallbackID m_OnMeshRendererComponentPropertyChangedCallbackID = INVALID_CALLBACK_ID;
+		void SetupConnections() noexcept;
+	private:
+		ScopedConnection<void(entity, TypeIndex, IComponent*, uint64)> m_OnMeshRendererComponentPropertyChangedConnection;
 	};
 }

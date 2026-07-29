@@ -21,6 +21,7 @@
 #include <src/Callback/Broadcaster.h>
 #include <src/Callback/Callback.h>
 #include <src/Callback/CoreBroadcasters.h>
+#include <src/Callback/ScopedConnection.h>
 
 //Utility:
 #include <src/Utility/FileDialogs.h>
@@ -89,6 +90,7 @@
 #include <src/ECS/Component.h>
 #include <src/ECS/EntityManager.h>
 #include <src/ECS/ECSCommon.h>
+#include <src/ECS/EntityUtils.h>
 #include <src/ECS/ISystem.h>
 #include <src/ECS/Components/LightComponent.h>
 #include <src/ECS/Components/MeshFilterComponent.h>

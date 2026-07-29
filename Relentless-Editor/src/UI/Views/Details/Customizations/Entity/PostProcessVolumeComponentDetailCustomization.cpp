@@ -36,15 +36,6 @@ namespace Relentless
 		CustomizeExposureDetails(categoryBuilder, context);
 	}
 
-	bool PostProcessVolumeComponentDetailCustomization::ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept
-	{
-		const EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
-		if (context.Entities.empty())
-			return false;
-
-		return std::ranges::all_of(context.Entities, [&context](entity aEntity) { return context.EntityManager->Has<PostProcessVolumeComponent>(aEntity); });
-	}
-
 	void PostProcessVolumeComponentDetailCustomization::CustomizeAmbientOcclusionDetails(IDetailCategoryBuilder& aCategoryBuilder, EntityDetailsContext& aContext, IDetailsView* aDetailsView) noexcept
 	{
 		using AO = AmbientOcclusionSettings;

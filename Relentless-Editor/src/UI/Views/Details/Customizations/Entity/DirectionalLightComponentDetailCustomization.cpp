@@ -1,7 +1,5 @@
 #include "DirectionalLightComponentDetailCustomization.h"
 
-#include <Relentless.h>
-
 #include "UI/Views/Details/DetailHelpers.h"
 #include "UI/Views/Details/IDetailsView.h"
 #include "UI/Views/Details/LayoutBuilders/IDetailLayoutBuilder.h"
@@ -12,54 +10,124 @@
 
 namespace Relentless
 {
+	//TODO: Go through property handle
+	static Ref<HorizontalBox> OnBuildLightingChannelsRequested(EntityDetailsContext& aContext) noexcept
+	{
+		auto AllHaveChannelsSet = [&aContext](ELightChannel aLightChannel) -> bool
+			{
+				return std::ranges::all_of(aContext.Entities, [&aContext, aLightChannel](entity aEntity)
+					{
+						const DirectionalLightComponent& directionalLightComponent = aContext.EntityManager->Get<DirectionalLightComponent>(aEntity);
+						return directionalLightComponent.HasAnyChannel(aLightChannel);
+					});
+			};
+
+		Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
+		pBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+		pBox->SetSpacing(5.0f);
+
+		for (uint32 i = 0; i <= 5; ++i)
+		{
+			const ELightChannel lightChannel = static_cast<ELightChannel>(1u << i);
+
+			Button* pButton = pBox->AddWidget(RLS_NEW Button(std::format("{}", i)));
+			pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+			pButton->SetHorizontalSizePolicy(ESizePolicy::Fixed);
+			pButton->SetVerticalSizePolicy(ESizePolicy::Fixed);
+			pButton->SetSize({ 20.0f, 20.0f });
+			pButton->OnClicked([&aContext, lightChannel, AllHaveChannelsSet]()
+				{
+					const bool setChannel = !AllHaveChannelsSet(lightChannel);
+
+					std::ranges::for_each(aContext.Entities, [&aContext, lightChannel, setChannel](entity aEntity)
+						{
+							DirectionalLightComponent& directionalLightComponent = aContext.EntityManager->Get<DirectionalLightComponent>(aEntity);
+							directionalLightComponent.SetChannelEnabled(lightChannel, setChannel);
+						});
+				});
+
+			pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Colors::White); });
+			pButton->OnMouseExit([lightChannel, AllHaveChannelsSet](Button* aButton)
+				{
+					if (AllHaveChannelsSet(lightChannel))
+						return;
+
+					aButton->SetTextColor(Colors::Gray);
+				});
+
+			const bool allSet = AllHaveChannelsSet(lightChannel);
+			pButton->SetBackgroundColor(allSet ? Colors::Blue : Colors::Black);
+			pButton->SetHoverColor(allSet ? Colors::Blue : Colors::Black);
+			pButton->SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
+			pButton->SetTextColor(allSet ? Colors::White : Colors::Gray);
+		}
+
+		return pBox;
+	}
+
+	static Ref<HorizontalBox> OnBuildLightingChannelsRevertButtonRequested(EntityDetailsContext& aContext) noexcept
+	{
+		auto AllHaveOnlyChannel1Set = [&aContext]() -> bool
+			{
+				return std::ranges::all_of(aContext.Entities, [&aContext](entity aEntity)
+					{
+						const DirectionalLightComponent& directionalLightComponent = aContext.EntityManager->Get<DirectionalLightComponent>(aEntity);
+						return directionalLightComponent.GetChannel() == ELightChannel::Channel1;
+					});
+			};
+
+		Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
+		pBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+		pBox->SetSpacing(5.0f);
+
+		Button* pButton = pBox->AddWidget(Button::CreateTransparent(ICON_FA_ARROW_ROTATE_LEFT));
+		pButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f));
+		pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+		pButton->SetIsVisible(!AllHaveOnlyChannel1Set());
+
+		pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 1.0f)); });
+		pButton->OnMouseExit([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f)); });
+		pButton->OnClicked([&aContext]()
+			{
+				std::ranges::for_each(aContext.Entities, [&aContext](const entity aEntity)
+					{
+						DirectionalLightComponent& directionalLightComponent = aContext.EntityManager->Get<DirectionalLightComponent>(aEntity);
+						directionalLightComponent.SetChannelEnabled(ELightChannel::All, false);
+						directionalLightComponent.SetChannelEnabled(ELightChannel::Channel1, true);
+					});
+			});
+		
+		return pBox;
+	}
+
 	void DirectionalLightComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
+		SetupConnections();
+
 		using DLC = DirectionalLightComponent;
 
-		EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
+		IDetailsView* pDetailsView = aDetailLayoutBuilder.GetDetailsView();
+		EntityDetailsContext& context = pDetailsView->GetContext<EntityDetailsContext>();
 		DetailHelpers::EntityHandleFactory<DLC> handleFactory{ .Entities = context.Entities, .EntityManager = *context.EntityManager };
 		const bool multiSelection = context.Entities.size() > 1u;
 
-		Ref<EntityPropertyHandle<int, DirectionalLightComponent>> pTypeHandle = RLS_NEW EntityPropertyHandle<int, DirectionalLightComponent>(
-			*context.EntityManager, 
-			context.Entities,
-			[](MAYBE_UNUSED const DirectionalLightComponent& aDLC) { return 0; },
-			[&context, pDetailsView = aDetailLayoutBuilder.GetDetailsView()](entity aEntity, DirectionalLightComponent&, const int& aSelection)
-			{  
-				if (aSelection == 1)
-				{
-					Application::Get().SubmitToMainThread([&context, pDetailsView, aEntity]()
-						{
-							const DirectionalLightComponent& directionalLightComponent = context.EntityManager->Get<DirectionalLightComponent>(aEntity);
+		auto pTypeHandle = handleFactory.MakeCustom<int>(
+			[](MAYBE_UNUSED const DirectionalLightComponent& aDLC) { return static_cast<int>(ELightType::Directional); },
+			[this, &context](entity aEntity, MAYBE_UNUSED DirectionalLightComponent& aDLC, const int& aSelection)
+			{
+				Application::Get().SubmitToMainThread([this, &context, aEntity, aSelection]()
+					{
+						const ELightType lightType = static_cast<ELightType>(aSelection);
 
-							PointLightComponent& pointLightComponent = context.EntityManager->Add<PointLightComponent>(aEntity);
-							pointLightComponent.SetColor(directionalLightComponent.GetColor());
-							pointLightComponent.SetIntensityCandela(Math::Min(160.0f, directionalLightComponent.GetIntensity()));
-							pointLightComponent.SetTemperature(directionalLightComponent.GetTemperature());
-							pointLightComponent.SetUseTemperature(directionalLightComponent.IsUsingTemperature());
+						if (lightType == ELightType::Point)
+							EntityUtils::ConvertLightType(aEntity, *context.EntityManager, ELightType::Directional, ELightType::Point);
+						else 
+							EntityUtils::ConvertLightType(aEntity, *context.EntityManager, ELightType::Directional, ELightType::Spot);
 
-							context.EntityManager->Remove<DirectionalLightComponent>(aEntity);
+						if (IDetailsView* pDetailsView = GetDetailsView())
 							pDetailsView->RequestRefresh();
-						});
-				}
-				else //2
-				{
-					Application::Get().SubmitToMainThread([&context, pDetailsView, aEntity]()
-						{
-							const DirectionalLightComponent& directionalLightComponent = context.EntityManager->Get<DirectionalLightComponent>(aEntity);
-
-							SpotLightComponent& spotLightComponent = context.EntityManager->Add<SpotLightComponent>(aEntity);
-							spotLightComponent.SetColor(directionalLightComponent.GetColor());
-							spotLightComponent.SetIntensityCandela(Math::Min(160.0f, directionalLightComponent.GetIntensity()));
-							spotLightComponent.SetTemperature(directionalLightComponent.GetTemperature());
-							spotLightComponent.SetUseTemperature(directionalLightComponent.IsUsingTemperature());
-
-							context.EntityManager->Remove<DirectionalLightComponent>(aEntity);
-							pDetailsView->RequestRefresh();
-						});
-				}
-			}
-			);
+					});
+			});
 
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(ICON_FA_LIGHTBULB "  Light");
 		categoryBuilder.AddProperty<int>("Type", pTypeHandle)
@@ -87,118 +155,15 @@ namespace Relentless
 		auto pTemperatureHandle = handleFactory.Make(&DLC::GetTemperature, &DLC::SetTemperature, 6'500.0f);
 		auto temperatureBuilder = categoryBuilder.AddProperty<float>("Temperature", pTemperatureHandle);
 		temperatureBuilder.NameSlot().Label("Temperature");
-		
 		if (multiSelection)
-		{
-			temperatureBuilder.ValueSlot().Widget([useTemperatureHandle = pUseTemperatureHandle.Get(), pTemperatureHandle]()
-				{
-					Ref<NumericEntryBox<float>> pNumericEntryBox = RLS_NEW NumericEntryBox<float>();
-					pNumericEntryBox->SetMinValue(1'700.0f);
-					pNumericEntryBox->SetMaxValue(12'000.0f);
-					pNumericEntryBox->SetSuffix(" K");
-					pNumericEntryBox->Bind(pTemperatureHandle);
-					pNumericEntryBox->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
-					pNumericEntryBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-					pNumericEntryBox->SetSteppingEnabled(false);
-
-					bool initialEnabledState = false;
-					useTemperatureHandle->GetValue(initialEnabledState);
-					pNumericEntryBox->SetIsEnabled(initialEnabledState);
-
-					useTemperatureHandle->OnValueChanged.Connect([slider = pNumericEntryBox.Get()](const bool& aState)
-						{
-							slider->SetIsEnabled(aState);
-						});
-
-					return pNumericEntryBox;
-				});
-		}
+			temperatureBuilder.ValueSlot().NumericEntryBox().Range(1'700.0f, 12'000.0f).Unit(" K").Enabled(pUseTemperatureHandle->AllEqualTo(true));
 		else
-		{
-			temperatureBuilder.ValueSlot().Widget([useTemperatureHandle = pUseTemperatureHandle.Get(), pTemperatureHandle]()
-				{
-					Ref<Slider<float>> pSlider = RLS_NEW Slider<float>();
-					pSlider->SetMinValue(1'700.0f);
-					pSlider->SetMaxValue(12'000.0f);
-					pSlider->SetSuffix(" K");
-					pSlider->Bind(pTemperatureHandle);
-					pSlider->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
-					pSlider->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-
-					bool initialEnabledState = false;
-					useTemperatureHandle->GetValue(initialEnabledState);
-					pSlider->SetIsEnabled(initialEnabledState);
-
-					useTemperatureHandle->OnValueChanged.Connect([slider = pSlider.Get()](const bool& aState)
-						{
-							slider->SetIsEnabled(aState);
-						});
-
-					return pSlider;
-				});
-		}
-
+			temperatureBuilder.ValueSlot().Slider().Range(1'700.0f, 12'000.0f).Unit(" K").Enabled(pUseTemperatureHandle->AllEqualTo(true));
+		
 		categoryBuilder.AddProperty<bool>("Lighting Channels", nullptr)
 			.NameSlot().Label("Lighting Channels")
-			.ValueSlot().Widget([&context]()
-				{
-					auto&& AllHaveChannelsSet = [&context](ELightChannel aLightChannel) -> bool
-						{
-							return std::ranges::all_of(context.Entities, [&context, aLightChannel](entity aEntity)
-								{
-									const DirectionalLightComponent& directionalLightComponent = context.EntityManager->Get<DirectionalLightComponent>(aEntity);
-									return directionalLightComponent.HasAnyChannel(aLightChannel);
-								});
-						};
-
-					Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
-					pBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
-					pBox->SetSpacing(5.0f);
-
-					for (uint32 i = 0; i <= 5; ++i)
-					{
-						const ELightChannel lightChannel = static_cast<ELightChannel>(1u << i);
-
-						Button* pButton = pBox->AddWidget(RLS_NEW Button(std::format("{}", i)));
-						pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
-						pButton->SetHorizontalSizePolicy(ESizePolicy::Fixed);
-						pButton->SetVerticalSizePolicy(ESizePolicy::Fixed);
-						pButton->SetSize({ 20.0f, 20.0f });
-						pButton->OnClicked([&context, lightChannel, pButton, AllHaveChannelsSet]()
-							{
-								const bool setChannel = !AllHaveChannelsSet(lightChannel);
-
-								std::ranges::for_each(context.Entities, [&context, lightChannel, setChannel](entity aEntity)
-									{
-										DirectionalLightComponent& directionalLightComponent = context.EntityManager->Get<DirectionalLightComponent>(aEntity);
-										directionalLightComponent.SetChannelEnabled(lightChannel, setChannel);
-									});
-								
-								pButton->SetBackgroundColor(setChannel ? Colors::Blue : Colors::Black);
-								pButton->SetHoverColor(setChannel ? Colors::Blue : Colors::Black);
-
-								if (setChannel)
-									pButton->SetTextColor(Colors::White);
-							});
-
-						pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Colors::White); });
-						pButton->OnMouseExit([lightChannel, AllHaveChannelsSet](Button* aButton)
-							{ 
-								if (AllHaveChannelsSet(lightChannel))
-									return;
-
-								aButton->SetTextColor(Colors::Gray); 
-							});
-
-						const bool allSet = AllHaveChannelsSet(lightChannel);
-						pButton->SetBackgroundColor(allSet ? Colors::Blue : Colors::Black);
-						pButton->SetHoverColor(allSet ? Colors::Blue : Colors::Black);
-						pButton->SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
-						pButton->SetTextColor(allSet ? Colors::White : Colors::Gray);
-					}
-
-					return pBox;
-				});
+			.ValueSlot().Widget([&context]() { return OnBuildLightingChannelsRequested(context); })
+			.RevertSlot().Widget([&context]() { return OnBuildLightingChannelsRevertButtonRequested(context); });
 
 		IDetailGroupBuilder shadowsGroupBuilder = categoryBuilder.EditGroup("Shadows");
 
@@ -238,16 +203,20 @@ namespace Relentless
 			.ValueSlot().Slider().Range(0.0f, 1.0f);
 	}
 
-	bool DirectionalLightComponentDetailCustomization::ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept
+	void DirectionalLightComponentDetailCustomization::SetupConnections() noexcept
 	{
-		const EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
-		if (context.Entities.empty())
-			return false;
-
-		if (!std::ranges::all_of(context.Entities, [&context](entity aEntity) { return context.EntityManager->Has<DirectionalLightComponent>(aEntity); }))
-			return false;
-
-		return true;
+		m_OnDirectionalLightComponentPropertyChangedConnection = ScopedConnection(CoreObjectBroadcasters::OnEntityComponentPropertyChanged,
+			[this](entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty)
+			{
+				if (aComponentType != DirectionalLightComponent::StaticType())
+					return;
+				if (!IsEntityInspected(aEntity))
+					return;
+				if (aProperty == "m_LightChannel"_h || aProperty == "m_UseTemperature"_h)
+				{
+					if (IDetailsView* pDetailsView = GetDetailsView())
+						pDetailsView->RequestRefresh();
+				}
+			});
 	}
-
 }

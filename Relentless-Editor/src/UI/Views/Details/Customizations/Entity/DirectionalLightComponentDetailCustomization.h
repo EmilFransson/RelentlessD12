@@ -1,16 +1,16 @@
 #pragma once
-
-#include "UI/Views/Details/Customizations/IDetailCustomization.h"
+#include "EntityDetailCustomization.h"
 
 namespace Relentless
 {
-	class IDetailLayoutBuilder;
-
-	class DirectionalLightComponentDetailCustomization : public IDetailCustomization
+	class DirectionalLightComponentDetailCustomization : public EntityDetailCustomization<DirectionalLightComponent>
 	{
+		using IDetailCustomization::CustomizeDetails;
 	protected:
 		virtual void CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept override;
-		
-		NO_DISCARD virtual bool ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept override;
+	private:
+		void SetupConnections() noexcept;
+	private:
+		ScopedConnection<void(entity, TypeIndex, IComponent*, uint64)> m_OnDirectionalLightComponentPropertyChangedConnection;
 	};
 }

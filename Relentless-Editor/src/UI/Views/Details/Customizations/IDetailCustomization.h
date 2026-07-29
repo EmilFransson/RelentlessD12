@@ -8,7 +8,8 @@ namespace Relentless
 	public:
 		virtual ~IDetailCustomization() noexcept = default;
 		
-		virtual void CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept = 0;
+		virtual void CustomizeDetails(MAYBE_UNUSED IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept {};
+		virtual void CustomizeDetails(MAYBE_UNUSED const SharedPtr<IDetailLayoutBuilder>& aDetailLayoutBuilder) noexcept {};
 
 		virtual void OnDestroy(IDetailLayoutBuilder&) noexcept {}
 

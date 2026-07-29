@@ -12,32 +12,15 @@
 
 namespace Relentless
 {
-	SkyBoxComponentDetailCustomization::~SkyBoxComponentDetailCustomization() noexcept
-	{
-		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnSkyBoxComponentPropertyChangedCallbackID))
-			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnSkyBoxComponentPropertyChangedCallbackID);
-	}
-
 	void SkyBoxComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
+		SetupConnections();
+
 		using SBC = SkyBoxComponent;
 		
 		EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
 		DetailHelpers::EntityHandleFactory<SBC> handleFactory{ .Entities = context.Entities, .EntityManager = *context.EntityManager };
 		const bool multiSelection = context.Entities.size() > 1u;
-
-		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnSkyBoxComponentPropertyChangedCallbackID))
-			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnSkyBoxComponentPropertyChangedCallbackID);
-
-		m_OnSkyBoxComponentPropertyChangedCallbackID = CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Connect([&aDetailLayoutBuilder]
-		(MAYBE_UNUSED entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty)
-			{
-				if (aComponentType != SkyBoxComponent::StaticType())
-					return;
-
-				if (aProperty ==  "m_PrimaryEnvironmentHandle"_h || aProperty == "m_BlendEnvironmentHandle"_h)
-					aDetailLayoutBuilder.ForceRefreshDetails();
-			});
 
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(ICON_FA_EARTH_AMERICAS "  Sky Box");
 
@@ -104,12 +87,20 @@ namespace Relentless
 			.ValueSlot().SpinBox().Range(0.0f, FLT_MAX).Delta(0.01f);
 	}
 
-	bool SkyBoxComponentDetailCustomization::ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept
+	void SkyBoxComponentDetailCustomization::SetupConnections() noexcept
 	{
-		const EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
-		if (context.Entities.empty())
-			return false;
-
-		return std::ranges::all_of(context.Entities, [&context](entity aEntity) { return context.EntityManager->Has<SkyBoxComponent>(aEntity); });
+		m_OnSkyBoxComponentPropertyChangedConnection = ScopedConnection(CoreObjectBroadcasters::OnEntityComponentPropertyChanged,
+			[this](entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty)
+			{
+				if (aComponentType != SkyBoxComponent::StaticType())
+					return;
+				if (!IsEntityInspected(aEntity))
+					return;
+				if (aProperty == "m_PrimaryEnvironmentHandle"_h || aProperty == "m_BlendEnvironmentHandle"_h)
+				{
+					if (IDetailLayoutBuilder* pLayoutBuilder = GetDetailLayoutBuilder())
+						pLayoutBuilder->ForceRefreshDetails();
+				}
+			});
 	}
 }

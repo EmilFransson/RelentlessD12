@@ -12,31 +12,103 @@
 
 namespace Relentless
 {
-	MeshRendererComponentDetailCustomization::~MeshRendererComponentDetailCustomization() noexcept
+	static Ref<HorizontalBox> OnBuildLightingChannelsRequested(EntityDetailsContext& aContext) noexcept
 	{
-		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnMeshRendererComponentPropertyChangedCallbackID))
-			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnMeshRendererComponentPropertyChangedCallbackID);
+		auto AllHaveChannelsSet = [&aContext](ELightChannel aLightChannel) -> bool
+			{
+				return std::ranges::all_of(aContext.Entities, [&aContext, aLightChannel](entity aEntity)
+					{
+						const MeshRendererComponent& meshRendererComponent = aContext.EntityManager->Get<MeshRendererComponent>(aEntity);
+						return meshRendererComponent.HasLightChannelsEnabled(aLightChannel);
+					});
+			};
+
+		Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
+		pBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+		pBox->SetSpacing(5.0f);
+
+		for (uint32 i = 0; i <= 5; ++i)
+		{
+			const ELightChannel lightChannel = static_cast<ELightChannel>(1u << i);
+
+			Button* pButton = pBox->AddWidget(RLS_NEW Button(std::format("{}", i)));
+			pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+			pButton->SetHorizontalSizePolicy(ESizePolicy::Fixed);
+			pButton->SetVerticalSizePolicy(ESizePolicy::Fixed);
+			pButton->SetSize({ 20.0f, 20.0f });
+			pButton->OnClicked([&aContext, lightChannel, AllHaveChannelsSet]()
+				{
+					const bool setChannel = !AllHaveChannelsSet(lightChannel);
+
+					std::ranges::for_each(aContext.Entities, [&aContext, lightChannel, setChannel](entity aEntity)
+						{
+							MeshRendererComponent& meshRendererComponent = aContext.EntityManager->Get<MeshRendererComponent>(aEntity);
+							meshRendererComponent.SetLightChannelEnabled(lightChannel, setChannel);
+						});
+				});
+
+			pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Colors::White); });
+			pButton->OnMouseExit([lightChannel, AllHaveChannelsSet](Button* aButton)
+				{
+					if (AllHaveChannelsSet(lightChannel))
+						return;
+
+					aButton->SetTextColor(Colors::Gray);
+				});
+
+			const bool allSet = AllHaveChannelsSet(lightChannel);
+			pButton->SetBackgroundColor(allSet ? Colors::Blue : Colors::Black);
+			pButton->SetHoverColor(allSet ? Colors::Blue : Colors::Black);
+			pButton->SetBorderColor(Colors::Normalize(50.0f, 50.0f, 50.0f, 255.0f));
+			pButton->SetTextColor(allSet ? Colors::White : Colors::Gray);
+		}
+
+		return pBox;
+	}
+
+	static Ref<HorizontalBox> OnBuildLightingChannelsRevertButtonRequested(EntityDetailsContext& aContext) noexcept
+	{
+		auto AllHaveOnlyChannel1Set = [&aContext]() -> bool
+			{
+				return std::ranges::all_of(aContext.Entities, [&aContext](entity aEntity)
+					{
+						const MeshRendererComponent& meshRendererComponent = aContext.EntityManager->Get<MeshRendererComponent>(aEntity);
+						return meshRendererComponent.GetLightChannels() == ELightChannel::Channel1;
+					});
+			};
+
+		Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
+		pBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
+		pBox->SetSpacing(5.0f);
+
+		Button* pButton = pBox->AddWidget(Button::CreateTransparent(ICON_FA_ARROW_ROTATE_LEFT));
+		pButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f));
+		pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+		pButton->SetIsVisible(!AllHaveOnlyChannel1Set());
+
+		pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 1.0f)); });
+		pButton->OnMouseExit([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f)); });
+		pButton->OnClicked([&aContext]()
+			{
+				std::ranges::for_each(aContext.Entities, [&aContext](const entity aEntity)
+					{
+						MeshRendererComponent& meshRendererComponent = aContext.EntityManager->Get<MeshRendererComponent>(aEntity);
+						meshRendererComponent.SetLightChannelEnabled(ELightChannel::All, false);
+						meshRendererComponent.SetLightChannelEnabled(ELightChannel::Channel1, true);
+					});
+			});
+
+		return pBox;
 	}
 
 	void MeshRendererComponentDetailCustomization::CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept
 	{
+		SetupConnections();
+		
 		using MRC = MeshRendererComponent;
 		
 		EntityDetailsContext& detailsContext = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
 		DetailHelpers::EntityHandleFactory<MRC> handleFactory({ .Entities = detailsContext.Entities, .EntityManager = *detailsContext.EntityManager });
-
-		if (CoreObjectBroadcasters::OnEntityComponentPropertyChanged.IsConnected(m_OnMeshRendererComponentPropertyChangedCallbackID))
-			CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Detach(m_OnMeshRendererComponentPropertyChangedCallbackID);
-
-		m_OnMeshRendererComponentPropertyChangedCallbackID = CoreObjectBroadcasters::OnEntityComponentPropertyChanged.Connect([&aDetailLayoutBuilder]
-		(MAYBE_UNUSED entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty)
-			{
-				if (aComponentType != MeshRendererComponent::StaticType())
-					return;
-
-				if (aProperty == "m_MaterialHandle"_h)
-					aDetailLayoutBuilder.ForceRefreshDetails();
-			});
 
 		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
 		EngineContentSubsystem* pEngineContentSubsystem = Editor::Get()->GetSubsystem<EngineContentSubsystem>();
@@ -122,55 +194,24 @@ namespace Relentless
 
 		categoryBuilder.AddProperty<bool>("Lighting Channels", nullptr)
 			.NameSlot().Label("Lighting Channels")
-			.ValueSlot().Widget([&detailsContext]()
-				{
-					auto&& AllHaveChannelsSet = [&detailsContext](ELightChannel aLightChannel) -> bool
-						{
-							return std::ranges::all_of(detailsContext.Entities, [&detailsContext, aLightChannel](entity aEntity)
-								{
-									const MeshRendererComponent& directionalLightComponent = detailsContext.EntityManager->Get<MeshRendererComponent>(aEntity);
-									return directionalLightComponent.HasLightChannelsEnabled(aLightChannel);
-								});
-						};
-
-					Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
-					pBox->SetSpacing(5.0f);
-
-					for (uint32 i = 0; i < 4; ++i)
-					{
-						const ELightChannel lightChannel = static_cast<ELightChannel>(1u << i);
-
-						Button* pButton = pBox->AddWidget(RLS_NEW Button(std::format("{}", i)));
-						pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
-						pButton->OnClicked([&detailsContext, lightChannel, pButton, AllHaveChannelsSet]()
-							{
-								const bool setChannel = !AllHaveChannelsSet(lightChannel);
-
-								std::ranges::for_each(detailsContext.Entities, [&detailsContext, lightChannel, setChannel](entity aEntity)
-									{
-										MeshRendererComponent& directionalLightComponent = detailsContext.EntityManager->Get<MeshRendererComponent>(aEntity);
-										directionalLightComponent.SetLightChannelEnabled(lightChannel, setChannel);
-									});
-
-								pButton->SetBackgroundColor(setChannel ? Colors::Blue : Colors::Black);
-							});
-
-						pButton->SetBackgroundColor(AllHaveChannelsSet(lightChannel) ? Colors::Blue : Colors::Black);
-					}
-
-					return pBox;
-				});
+			.ValueSlot().Widget([&detailsContext]() { return OnBuildLightingChannelsRequested(detailsContext); })
+			.RevertSlot().Widget([&detailsContext]() { return OnBuildLightingChannelsRevertButtonRequested(detailsContext); });
 	}
 
-	bool MeshRendererComponentDetailCustomization::ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept
+	void MeshRendererComponentDetailCustomization::SetupConnections() noexcept
 	{
-		const EntityDetailsContext& context = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
-		if (context.Entities.empty())
-			return false;
-
-		if (!std::ranges::all_of(context.Entities, [&context](entity aEntity) { return context.EntityManager->Has<MeshRendererComponent>(aEntity); }))
-			return false;
-
-		return true;
+		m_OnMeshRendererComponentPropertyChangedConnection = ScopedConnection(CoreObjectBroadcasters::OnEntityComponentPropertyChanged,
+			[this](entity aEntity, TypeIndex aComponentType, MAYBE_UNUSED IComponent* aComponent, uint64 aProperty)
+			{
+				if (aComponentType != MeshRendererComponent::StaticType())
+					return;
+				if (!IsEntityInspected(aEntity))
+					return;
+				if (aProperty == "m_MaterialHandle"_h || aProperty == "m_LightChannels"_h)
+				{
+					if (IDetailLayoutBuilder* pLayoutBuilder = GetDetailLayoutBuilder())
+						pLayoutBuilder->ForceRefreshDetails();
+				}
+			});
 	}
 }

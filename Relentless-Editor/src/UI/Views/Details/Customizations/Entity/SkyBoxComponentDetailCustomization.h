@@ -1,22 +1,16 @@
 #pragma once
-#include <Relentless.h>
-
-#include "UI/Views/Details/Customizations/IDetailCustomization.h"
+#include "EntityDetailCustomization.h"
 
 namespace Relentless
 {
-	class IDetailLayoutBuilder;
-
-	class SkyBoxComponentDetailCustomization : public IDetailCustomization
+	class SkyBoxComponentDetailCustomization : public EntityDetailCustomization<SkyBoxComponent>
 	{
-	public:
-		virtual ~SkyBoxComponentDetailCustomization() noexcept override;
-
+		using IDetailCustomization::CustomizeDetails;
 	protected:
 		virtual void CustomizeDetails(IDetailLayoutBuilder& aDetailLayoutBuilder) noexcept override;
-
-		NO_DISCARD virtual bool ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept override;
 	private:
-		CallbackID m_OnSkyBoxComponentPropertyChangedCallbackID = INVALID_CALLBACK_ID;
+		void SetupConnections() noexcept;
+	private:
+		ScopedConnection<void(entity, TypeIndex, IComponent*, uint64)> m_OnSkyBoxComponentPropertyChangedConnection;
 	};
 }

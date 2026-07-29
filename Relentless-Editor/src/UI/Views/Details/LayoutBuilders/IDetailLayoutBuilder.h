@@ -11,7 +11,7 @@ namespace Relentless
 {
 	class IDetailsView;
 
-	class IDetailLayoutBuilder
+	class IDetailLayoutBuilder : public SharedFromThis<IDetailLayoutBuilder>
 	{
 	public:
 		IDetailLayoutBuilder(IDetailsView* pDetailView) noexcept;
@@ -41,10 +41,15 @@ namespace Relentless
 		const DetailCustomizationRegistry& registry = ModuleManager::LoadModuleChecked<DetailsModule>().GetRegistry();
 		m_Customizations = registry.GetCustomizations<InspectedType>();
 
+		SharedPtr<IDetailLayoutBuilder> pSharedPtr = GetWeakPtr().lock();
+
 		for (const auto& customization : m_Customizations)
 		{
-			if (customization->ShouldCustomize(*this))
-				customization->CustomizeDetails(*this);
+			if (!customization->ShouldCustomize(*this))
+				continue;
+
+			customization->CustomizeDetails(pSharedPtr);
+			customization->CustomizeDetails(*this);
 		}
 
 		std::vector<Ref<DetailNode>> nodesToReturn;

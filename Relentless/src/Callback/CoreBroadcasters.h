@@ -4,6 +4,7 @@
 #include "Core/StaticTypeInfo.h"
 
 #include "ECS/ECSCommon.h"
+#include "Core/DLLExport.h"
 
 namespace Relentless
 {

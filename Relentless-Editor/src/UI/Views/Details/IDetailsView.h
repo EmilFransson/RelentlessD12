@@ -52,7 +52,7 @@ namespace Relentless
 		std::vector<Ref<DetailNode>> m_RootNodes;
 		Ref<TreeView<Ref<DetailNode>>> m_pDetailsTreeView = nullptr;
 	private:
-		UniquePtr<IDetailLayoutBuilder> m_pLayoutBuilder = nullptr;
+		SharedPtr<IDetailLayoutBuilder> m_pLayoutBuilder = nullptr;
 		Ref<VerticalBox> m_pMainBox = nullptr;
 		Ref<VerticalBox> m_pHeaderBox = nullptr;
 		void* m_pContext = nullptr;
@@ -70,7 +70,7 @@ namespace Relentless
 	void IDetailsView::Rebuild() noexcept
 	{
 		if (!m_pLayoutBuilder)
-			m_pLayoutBuilder = MakeUnique<IDetailLayoutBuilder>(this);
+			m_pLayoutBuilder = MakeShared<IDetailLayoutBuilder>(this);
 
 		m_RootNodes = m_pLayoutBuilder->Build<InspectedType>();
 	}
