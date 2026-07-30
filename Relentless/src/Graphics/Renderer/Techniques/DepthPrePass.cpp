@@ -14,10 +14,7 @@ namespace Relentless
 
 	void DepthPrePass::Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& sceneTextures) noexcept
 	{
-		RenderPassInfo info{};
-		info.DepthStencilTarget.BeginAccessFlags = DepthTargetAccessFlags::ClearDepth;
-		info.DepthStencilTarget.EndAccessFlags = DepthTargetAccessFlags::Preserve;
-		info.DepthStencilTarget.pTarget = sceneTextures.pDepthTarget;
+		const RenderPassInfo info = RenderPassInfo::DepthOnly(sceneTextures.pDepthTarget, DepthTargetAccessFlags::ClearDepth, DepthTargetAccessFlags::Preserve);
 
 		aCommandContext.InsertResourceBarrier(info.DepthStencilTarget.pTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 		aCommandContext.BeginRenderPass(info);
@@ -44,7 +41,7 @@ namespace Relentless
 		psoDesc.SetAlphaToCoverageEnable(numSamples > 1u);
 		psoDesc.SetDepthWrite(true);
 		psoDesc.SetDepthEnabled(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER_EQUAL);
 		psoDesc.SetRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
 		psoDesc.SetVertexShader("DepthPrePassShader", "vs_main", { "ALPHA_MASK" });
 		psoDesc.SetPixelShader("DepthPrePassShader", "ps_main", { "ALPHA_MASK" });
@@ -70,7 +67,7 @@ namespace Relentless
 		psoDesc.SetName("Depth Prepass - Opaque");
 		psoDesc.SetDepthWrite(true);
 		psoDesc.SetDepthEnabled(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER_EQUAL);
 		psoDesc.SetRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
 		psoDesc.SetVertexShader("DepthPrePassShader", "vs_main");
 		psoDesc.SetDepthOnlyTarget(ResourceFormat::D32_FLOAT, static_cast<uint32>(aRenderView.RenderQualitySettings.MSAASampleCount));
@@ -96,7 +93,7 @@ namespace Relentless
 		psoDesc.SetCullMode(D3D12_CULL_MODE_NONE);
 		psoDesc.SetDepthWrite(true);
 		psoDesc.SetDepthEnabled(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER_EQUAL);
 		psoDesc.SetRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
 		psoDesc.SetVertexShader("DepthPrePassShader", "vs_main");
 		psoDesc.SetDepthOnlyTarget(ResourceFormat::D32_FLOAT, static_cast<uint32>(aRenderView.RenderQualitySettings.MSAASampleCount));

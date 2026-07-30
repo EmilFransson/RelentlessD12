@@ -33,6 +33,8 @@ namespace Relentless
 
 		//Create a starting 1x1 render target:
 		m_pRenderTarget = Application::Get().GetGraphicsDevice()->CreateTexture(TextureDesc::Create2D(1u, 1u, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Canvas Render Target");
+	
+		OnLostFocus.Connect(this, &ViewportPanel::OnFocusLost);
 	}
 
 	ViewportPanel::~ViewportPanel() noexcept = default;
@@ -241,6 +243,13 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 		HandleTransformGizmoInteraction();
+	}
+
+	void ViewportPanel::OnFocusLost(MAYBE_UNUSED PanelBase* aPanelBase) noexcept
+	{
+		m_CameraInput.MoveAxis = Vector3::Zero;
+		m_CameraInput.MouseWheelDelta = 0.0f;
+		m_CameraInput.MouseDelta = Vector2i::Zero();
 	}
 
 	bool ViewportPanel::OnKeyPressedEvent(KeyPressedEvent& event) noexcept

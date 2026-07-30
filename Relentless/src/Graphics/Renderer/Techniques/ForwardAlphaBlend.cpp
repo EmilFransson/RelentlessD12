@@ -50,11 +50,11 @@ namespace Relentless
 		psoDesc.SetPixelShader("ForwardShader", "ps_main", { "ALPHA_BLEND" });
 		psoDesc.SetDepthWrite(false);
 		psoDesc.SetDepthEnabled(true);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER_EQUAL);
 		psoDesc.SetRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
 		psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, numSamples);
 		
 		psoDesc.SetName("Forward - AlphaBlend - BackFace");
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
 		PipelineState* pAlphaBlendBackFacePSO = m_pGraphicsDevice->GetOrCreatePipeline(psoDesc);
 
 		psoDesc.SetName("Forward - Transparent - FrontFace");

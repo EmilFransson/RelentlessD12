@@ -203,7 +203,7 @@ namespace Relentless
 			{
 				const ClearBinding& clearBinding = depthStencilTarget.pTarget->GetClearBinding();
 				depthStencilDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-				depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.Format = DXGI_FORMAT_D32_FLOAT;//D3D::ConvertFormat(depthStencilTarget.pTarget->GetFormat());
+				depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.Format = DXGI_FORMAT_D32_FLOAT;
 				depthStencilDesc.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth = clearBinding.DepthStencil.Depth;
 			}
 			else if (EnumHasAnyFlags(depthStencilTarget.BeginAccessFlags, DepthTargetAccessFlags::ReadOnlyDepth))

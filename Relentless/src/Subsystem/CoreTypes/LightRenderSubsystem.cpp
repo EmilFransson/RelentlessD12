@@ -100,14 +100,14 @@ namespace Relentless
 			// Compute the frustum corners for the cascade in view space
 			const Vector3 cornersVS[] =
 			{
-				Vector3::Transform(Vector3::Lerp(frustumCornersWS[1], frustumCornersWS[0], previousCascadeSplit), lightView),
-				Vector3::Transform(Vector3::Lerp(frustumCornersWS[1], frustumCornersWS[0], currentCascadeSplit), lightView),
-				Vector3::Transform(Vector3::Lerp(frustumCornersWS[3], frustumCornersWS[2], previousCascadeSplit), lightView),
-				Vector3::Transform(Vector3::Lerp(frustumCornersWS[3], frustumCornersWS[2], currentCascadeSplit), lightView),
-				Vector3::Transform(Vector3::Lerp(frustumCornersWS[5], frustumCornersWS[4], previousCascadeSplit), lightView),
-				Vector3::Transform(Vector3::Lerp(frustumCornersWS[5], frustumCornersWS[4], currentCascadeSplit), lightView),
-				Vector3::Transform(Vector3::Lerp(frustumCornersWS[7], frustumCornersWS[6], previousCascadeSplit), lightView),
-				Vector3::Transform(Vector3::Lerp(frustumCornersWS[7], frustumCornersWS[6], currentCascadeSplit), lightView),
+				Vector3::Transform(Vector3::Lerp(frustumCornersWS[0], frustumCornersWS[1], previousCascadeSplit), lightView),
+				Vector3::Transform(Vector3::Lerp(frustumCornersWS[0], frustumCornersWS[1], currentCascadeSplit), lightView),
+				Vector3::Transform(Vector3::Lerp(frustumCornersWS[2], frustumCornersWS[3], previousCascadeSplit), lightView),
+				Vector3::Transform(Vector3::Lerp(frustumCornersWS[2], frustumCornersWS[3], currentCascadeSplit), lightView),
+				Vector3::Transform(Vector3::Lerp(frustumCornersWS[4], frustumCornersWS[5], previousCascadeSplit), lightView),
+				Vector3::Transform(Vector3::Lerp(frustumCornersWS[4], frustumCornersWS[5], currentCascadeSplit), lightView),
+				Vector3::Transform(Vector3::Lerp(frustumCornersWS[6], frustumCornersWS[7], previousCascadeSplit), lightView),
+				Vector3::Transform(Vector3::Lerp(frustumCornersWS[6], frustumCornersWS[7], currentCascadeSplit), lightView),
 			};
 		
 			Vector3 center = Vector3::Zero;

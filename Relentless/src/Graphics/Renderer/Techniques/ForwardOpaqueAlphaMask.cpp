@@ -88,7 +88,7 @@ namespace Relentless
 
 		PipelineStateInitializer psoDesc{};
 		psoDesc.SetBlendMode(BlendMode::Replace);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER_EQUAL);
 		psoDesc.SetAlphaToCoverageEnable(numSamples > 1);
 		psoDesc.SetVertexShader("ForwardShader", "vs_main");
 		psoDesc.SetPixelShader("ForwardShader", "ps_main", { "ALPHA_MASK" });

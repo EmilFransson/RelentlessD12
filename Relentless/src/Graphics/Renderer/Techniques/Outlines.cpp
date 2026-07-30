@@ -57,7 +57,7 @@ namespace Relentless
 		psoDesc.SetBlendMode(BlendMode::Replace);
 		psoDesc.SetDepthEnabled(true);
 		psoDesc.SetDepthWrite(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER_EQUAL);
 		psoDesc.SetVertexShader("EntityOutputShader", "vs_main");
 		psoDesc.SetPixelShader("EntityOutputShader", "ps_main");
 		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());

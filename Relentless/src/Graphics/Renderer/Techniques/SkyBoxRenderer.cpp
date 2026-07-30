@@ -48,7 +48,7 @@ namespace Relentless
 		psoDesc.SetPixelShader("SkyboxShader", "ps_main", isBlending ? blendDefines : noDefines);
 		psoDesc.SetDepthWrite(false);
 		psoDesc.SetDepthEnabled(true);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER_EQUAL);
 		psoDesc.SetCullMode(D3D12_CULL_MODE_NONE);
 		psoDesc.SetRootSignature(m_pGraphicsDevice->GetGlobalRootSignature());
 		psoDesc.SetRenderTargetFormats(ResourceFormat::RGBA32_FLOAT, ResourceFormat::D32_FLOAT, static_cast<uint32>(aRenderView.RenderQualitySettings.MSAASampleCount));

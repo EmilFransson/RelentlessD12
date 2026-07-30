@@ -227,14 +227,14 @@ namespace Relentless
 				|| sceneTextureResources.pMSAADepthTarget->GetWidth() != width
 				|| sceneTextureResources.pMSAADepthTarget->GetHeight() != height)
 			{
-				sceneTextureResources.pMSAADepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil | TextureFlag::ShaderResource, ClearBinding(1.0f, 1u), static_cast<uint32>(aViewRenderDesc.RenderQualitySettings.MSAASampleCount)), "Depth MSAA Target");
+				sceneTextureResources.pMSAADepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil | TextureFlag::ShaderResource, ClearBinding(0.0f, 1u), static_cast<uint32>(aViewRenderDesc.RenderQualitySettings.MSAASampleCount)), "Depth MSAA Target");
 			}
 
 			if (!sceneTextures.pDepthIntermediateResolveTarget || sceneTextures.pDepthIntermediateResolveTarget->GetWidth() != width || sceneTextures.pDepthIntermediateResolveTarget->GetHeight() != height)
 				sceneTextures.pDepthIntermediateResolveTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_FLOAT, 1u, TextureFlag::UnorderedAccess | TextureFlag::ShaderResource), "Depth Intermediate Resolve Target");
 		
 			if (!sceneTextures.pDepthResolveTarget || sceneTextures.pDepthResolveTarget->GetWidth() != width || sceneTextures.pDepthResolveTarget->GetHeight() != height)
-				sceneTextures.pDepthResolveTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil | TextureFlag::ShaderResource, ClearBinding(1.0f, 1u)), "Depth Resolve Target");
+				sceneTextures.pDepthResolveTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil | TextureFlag::ShaderResource, ClearBinding(0.0f, 1u)), "Depth Resolve Target");
 
 			if (!sceneTextures.pColorResolveTarget || sceneTextures.pColorResolveTarget->GetWidth() != width || sceneTextures.pColorResolveTarget->GetHeight() != height)
 				sceneTextures.pColorResolveTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Color HDR Target");
@@ -244,7 +244,7 @@ namespace Relentless
 			sceneTextureResources.pColorTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGBA32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Color Target");
 
 		if (!sceneTextureResources.pDepthTarget || sceneTextureResources.pDepthTarget->GetWidth() != width || sceneTextureResources.pDepthTarget->GetHeight() != height)
-			sceneTextureResources.pDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil | TextureFlag::ShaderResource, ClearBinding(1.0f, 1u)), "Depth Target");
+			sceneTextureResources.pDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil | TextureFlag::ShaderResource, ClearBinding(0.0f, 1u)), "Depth Target");
 
 		if (!sceneTextures.pLDRColorTarget || sceneTextures.pLDRColorTarget->GetWidth() != width || sceneTextures.pLDRColorTarget->GetHeight() != height)
 			sceneTextures.pLDRColorTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "LDR Color Target");
@@ -257,7 +257,7 @@ namespace Relentless
 			sceneTextures.pEntityIDTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource), "Entity ID Target");
 
 		if (!sceneTextures.pEntityDepthTarget || sceneTextures.pEntityDepthTarget->GetWidth() != width || sceneTextures.pEntityDepthTarget->GetHeight() != height)
-			sceneTextures.pEntityDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil, ClearBinding(1.0f, 1u)), "Entity Depth Target");
+			sceneTextures.pEntityDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil, ClearBinding(0.0f, 1u)), "Entity Depth Target");
 
 		//Outlines:
 		if (aViewRenderDesc.RenderFeatures.IsEnabled(ERenderFeature::Outlines))
@@ -266,7 +266,7 @@ namespace Relentless
 				sceneTextures.pOutlinesSolidTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_FLOAT, 1u, TextureFlag::RenderTarget | TextureFlag::ShaderResource), "Outlines Solid Target");
 
 			if (!sceneTextures.pOutlinesDepthTarget || sceneTextures.pOutlinesDepthTarget->GetWidth() != width || sceneTextures.pOutlinesDepthTarget->GetHeight() != height)
-				sceneTextures.pOutlinesDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil, ClearBinding(1.0f, 1u)), "Outlines Depth Target");
+				sceneTextures.pOutlinesDepthTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_TYPELESS, 1u, TextureFlag::DepthStencil, ClearBinding(0.0f, 1u)), "Outlines Depth Target");
 
 			if (!sceneTextures.pOutlinesIntermediateBlurTarget || sceneTextures.pOutlinesIntermediateBlurTarget->GetWidth() != width || sceneTextures.pOutlinesIntermediateBlurTarget->GetHeight() != height)
 				sceneTextures.pOutlinesIntermediateBlurTarget = m_pDevice->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::R32_FLOAT, 1u, TextureFlag::UnorderedAccess | TextureFlag::ShaderResource), "Outlines Intermediate Blur Target");

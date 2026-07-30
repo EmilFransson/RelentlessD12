@@ -78,7 +78,7 @@ namespace Relentless
 		psoDesc.SetPixelShader("EditorGridShader", "ps_main");
 		psoDesc.SetDepthEnabled(true);
 		psoDesc.SetDepthWrite(false);
-		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
+		psoDesc.SetDepthFunc(D3D12_COMPARISON_FUNC_GREATER_EQUAL);
 		psoDesc.SetRootSignature(m_pDevice->GetGlobalRootSignature());
 		psoDesc.SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE);
 		psoDesc.SetRenderTargetFormats(ResourceFormat::RGB10A2_UNORM, ResourceFormat::D32_FLOAT, 1);

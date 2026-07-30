@@ -8,7 +8,7 @@ namespace Relentless
 		m_Transform.ViewToWorld = Matrix::CreateFromQuaternion(m_Rotation) * Matrix::CreateTranslation(m_Location);
 		m_Transform.WorldToView = m_Transform.ViewToWorld.Invert();
 
-		m_Transform.ViewToClip = Math::CreatePerspectiveMatrix(m_Transform.FoV, m_Transform.Viewport.GetAspect(), m_Transform.NearPlane, m_Transform.FarPlane);
+		m_Transform.ViewToClip = Math::CreatePerspectiveMatrix(m_Transform.FoV, m_Transform.Viewport.GetAspect(), m_Transform.FarPlane, m_Transform.NearPlane);
 		m_Transform.ClipToView = m_Transform.ViewToClip.Invert();
 
 		m_Transform.WorldToClipPrev = m_Transform.WorldToClip;

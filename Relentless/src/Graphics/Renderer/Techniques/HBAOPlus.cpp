@@ -65,7 +65,6 @@ namespace Relentless
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, FALSE);
 			infoQueue->SetMuteDebugOutput(true);
 		}
-		//#endif
 
 		GFSDK_SSAO_InputData_D3D12 inputData = {};
 		inputData.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;

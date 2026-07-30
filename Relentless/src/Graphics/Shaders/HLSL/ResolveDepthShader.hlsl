@@ -20,11 +20,11 @@ void cs_main(uint3 aDispatchID : SV_DispatchThreadID)
     Texture2DMS<float> msaaDepth = ResourceDescriptorHeap[passData.SourceIndex];
     RWTexture2D<float> resolvedDepth = ResourceDescriptorHeap[passData.TargetIndex];
     
-    float minDepth = 1.0f;
+    float nearestDepth = 0.0f;
     
     [loop]
     for (int sample = 0; sample < passData.NumSamples; ++sample)
-        minDepth = min(minDepth, msaaDepth.Load(texel, sample));
+        nearestDepth = max(nearestDepth, msaaDepth.Load(texel, sample));
     
-    resolvedDepth[texel] = minDepth;
+    resolvedDepth[texel] = nearestDepth;
 }

@@ -81,6 +81,7 @@ namespace Relentless
 		void OnCanvasResize(const Vector2i& newSize) noexcept;
 		NO_DISCARD Texture* OnCanvasTargetRequest() const noexcept;
 		void OnCanvasRenderEnd() noexcept;
+		void OnFocusLost(MAYBE_UNUSED PanelBase* aPanelBase) noexcept;
 		void OnSettingsButtonClicked();
 		void OnViewportResize(const Vector2i& newSize);
 

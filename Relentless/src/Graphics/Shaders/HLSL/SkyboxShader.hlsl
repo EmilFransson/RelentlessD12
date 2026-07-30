@@ -41,7 +41,7 @@ VS_OUT vs_main(uint vertexID : SV_VertexID)
     const float3 position = cubeVertices[cubeIndices[vertexID]];
     
     vsOut.PositionCS = mul(cView.ViewToClip, float4(position, 0.0f));
-    vsOut.PositionCS.z = vsOut.PositionCS.w;
+    vsOut.PositionCS.z = 0.0f;
     
     const SkyboxData skyBox = GetSkyBox();
     
