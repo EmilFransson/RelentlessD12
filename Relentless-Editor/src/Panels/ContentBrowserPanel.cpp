@@ -1,4 +1,7 @@
 #include "ContentBrowserPanel.h"
+
+#include "Assets/Factory/TextureFactory.h"
+
 #include "Core/Editor.h"
 
 #include "ImGui/ImGuiFonts.h"
@@ -299,6 +302,16 @@ namespace Relentless
 			AssetImportTask& importTask = importTasks.emplace_back();
 			importTask.FilePath = path;
 			importTask.DestinationPath = assetRegistryModule.VirtualPathToAbsolutePath(selectedItems.front()->VirtualPath);
+
+			const String extension = FilepathUtils::ExtractExtension(path);
+			if (extension == ".hdr" || extension == ".exr")
+			{
+				Ref<TextureFactory> pTextureFactory = RLS_NEW TextureFactory();
+				pTextureFactory->SetImportAsCubemap(true);
+				pTextureFactory->SetGenerateMipmaps(false);
+				pTextureFactory->SetMaxTextureSize(4096u);
+				importTask.pFactory = pTextureFactory;
+			}
 		}
 
 		AssetToolsModule& assetToolsModule = ModuleManager::LoadModuleChecked<AssetToolsModule>();

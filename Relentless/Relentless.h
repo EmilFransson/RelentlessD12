@@ -8,6 +8,7 @@
 #include <src/Core/CoreTypes.h>
 #include <src/Core/DLLExport.h>
 #include <src/Core/EngineMain.h>
+#include <src/Core/HashUtils.h>
 #include <src/Core/Log.h>
 #include <src/Core/Ref.h>
 #include <src/Core/StaticTypeInfo.h>

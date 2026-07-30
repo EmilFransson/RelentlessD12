@@ -15,7 +15,7 @@ namespace Relentless
 	{
 		VERIFY_HR_EX(pParent->GetDevice()->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_pFence.GetAddressOf())), pParent->GetDevice());
 		D3D::SetObjectName(m_pFence.Get(), pName);
-		m_EventHandle = ::CreateEventExA(nullptr, "Fence Event", 0, EVENT_ALL_ACCESS);
+		m_EventHandle = ::CreateEventExA(nullptr, nullptr, 0, EVENT_ALL_ACCESS);
 	}
 
 	void Fence::CPUWait() noexcept
