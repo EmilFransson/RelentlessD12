@@ -4,6 +4,7 @@
 #include "UI/Views/Details/Customizations/Assets/MaterialDetailCustomization.h"
 
 #include "UI/Views/Details/Customizations/Entity/DirectionalLightComponentDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Entity/ExponentialHeightFogComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/MeshFilterComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/MeshRendererComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/PointLightComponentDetailCustomization.h"
@@ -35,6 +36,7 @@ namespace Relentless
 		//Entity Details:
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, TransformComponentDetailCustomization>();
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, DirectionalLightComponentDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<EntityDetailsContext, ExponentialHeightFogComponentDetailCustomization>();
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, PointLightComponentDetailCustomization>();
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, SpotLightComponentDetailCustomization>();
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, SkyBoxComponentDetailCustomization>();

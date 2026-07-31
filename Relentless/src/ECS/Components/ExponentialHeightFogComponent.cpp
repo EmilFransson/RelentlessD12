@@ -77,6 +77,11 @@ namespace Relentless
 		return m_InscatterCubemapHandle;
 	}
 
+	const Color& ExponentialHeightFogComponent::GetInscatterTextureTintColor() const noexcept
+	{
+		return m_InscatteringTextureTintColor;
+	}
+
 	float ExponentialHeightFogComponent::GetMaxOpacity() const noexcept
 	{
 		return m_MaxOpacity;
@@ -84,6 +89,7 @@ namespace Relentless
 
 	void ExponentialHeightFogComponent::OnBound() noexcept
 	{
+		m_FogLayers[1].Density = 0.0f;
 		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
 	}
 
@@ -119,7 +125,7 @@ namespace Relentless
 
 	void ExponentialHeightFogComponent::SetInscatterTexture(const AssetHandle& aCubemapAssetHandle) noexcept
 	{
-		RLS_ASSERT(aCubemapAssetHandle.Type() == TextureCube::StaticType(), "[ExponentialHeightFogComponent::SetInscatterTexture]: Invalid cubemap asset handle.");
+		RLS_ASSERT(aCubemapAssetHandle.Type == TextureCube::StaticType(), "[ExponentialHeightFogComponent::SetInscatterTexture]: Invalid cubemap asset handle.");
 
 		if (m_InscatterCubemapHandle == aCubemapAssetHandle)
 			return;
@@ -127,6 +133,16 @@ namespace Relentless
 		m_InscatterCubemapHandle = aCubemapAssetHandle;
 		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_InscatterCubemapHandle);
+	}
+
+	void ExponentialHeightFogComponent::SetInscatterTextureTintColor(const Color& aTintColor) noexcept
+	{
+		if (m_InscatteringTextureTintColor == aTintColor)
+			return;
+
+		m_InscatteringTextureTintColor = aTintColor;
+		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_InscatteringTextureTintColor);
 	}
 
 	void ExponentialHeightFogComponent::SetLayerDensity(uint8 aLayerIndex, float aDensity) noexcept
@@ -151,6 +167,19 @@ namespace Relentless
 			return;
 
 		fogLayer.HeightFalloff = aHeightFalloff;
+		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_FogLayers);
+	}
+
+	void ExponentialHeightFogComponent::SetLayerEndDistance(uint8 aLayerIndex, float aEndDistance) noexcept
+	{
+		RLS_ASSERT(aLayerIndex < NUM_FOG_LAYERS, "[ExponentialHeightFogComponent::SetLayerEndDistance]: Invalid layer index.");
+
+		FogLayer& fogLayer = m_FogLayers[aLayerIndex];
+		if (Math::AreValuesClose(fogLayer.EndDistance, aEndDistance))
+			return;
+
+		fogLayer.EndDistance = aEndDistance;
 		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_FogLayers);
 	}

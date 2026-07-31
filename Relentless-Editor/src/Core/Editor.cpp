@@ -247,7 +247,7 @@ namespace Relentless
 		EntityManager& entityManager = m_pActiveScene->GetEntityManager();
 
 		{
-			entity dirEntity = m_pActiveScene->CreateLight("Directional Light", ELightType::Directional);
+			entity dirEntity = m_pActiveScene->CreateLight("DirectionalLight", ELightType::Directional);
 			auto& dlc = entityManager.Get<DirectionalLightComponent>(dirEntity);
 			dlc.SetColor(Math::MakeFromColorTemperature(5'900.0f));
 			dlc.SetIntensityLux(2'000.0f);
@@ -263,14 +263,14 @@ namespace Relentless
 		entityManager.Add<MeshFilterComponent>(cubeEntity).SetMesh(meshHandle);
 		entityManager.Add<MeshRendererComponent>(cubeEntity).SetMaterial(WhiteMaterialHandle);
 
-		const entity postProcessEntity = m_pActiveScene->CreateEntity("Post Process");
+		const entity postProcessEntity = m_pActiveScene->CreateEntity("PostProcess");
 		entityManager.Add<PostProcessVolumeComponent>(postProcessEntity);
 
 		const entity skyBoxAndLightEntity = m_pActiveScene->CreateEntity("SkyBoxAndLight");
-		SkyLightComponent& skyLightComponent = m_pActiveScene->GetEntityManager().Add<SkyLightComponent>(skyBoxAndLightEntity);
+		SkyLightComponent& skyLightComponent = entityManager.Add<SkyLightComponent>(skyBoxAndLightEntity);
 		skyLightComponent.SetIntensity(100.0f);
 
-		SkyBoxComponent& skyBoxComponent = m_pActiveScene->GetEntityManager().Add<SkyBoxComponent>(skyBoxAndLightEntity);
+		SkyBoxComponent& skyBoxComponent = entityManager.Add<SkyBoxComponent>(skyBoxAndLightEntity);
 		skyBoxComponent.SetIntensity(100.0f);
 
 		m_pActiveScene->SetActiveSkyLight(skyBoxAndLightEntity);
@@ -283,6 +283,9 @@ namespace Relentless
 		skyLightComponent.SetPrimaryEnvironment(citrusOrchardRoadEnvironmentHandle);
 		skyBoxComponent.SetBlendEnvironment(overcastSoilEnvironmentHandle);
 		skyLightComponent.SetBlendEnvironment(overcastSoilEnvironmentHandle);
+
+		const entity exponentialHeightFogEntity = m_pActiveScene->CreateEntity("ExponentialHeightFog");
+		entityManager.Add<ExponentialHeightFogComponent>(exponentialHeightFogEntity);
 	}
 
 	void Editor::UI_DrawMainMenuBar() noexcept
