@@ -71,7 +71,7 @@ namespace Relentless
 		if (!m_MeshHandle.IsValid())
 			return;
 
-		m_MeshHandle = NULL_HANDLE;
+		m_MeshHandle = AssetHandle::INVALID;
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_MeshHandle);
 	}

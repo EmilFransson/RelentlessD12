@@ -125,6 +125,15 @@ namespace Relentless
 				.Flags = EEntityComponentFlags::ShowInEditor 
 			});
 
+		Register<ExponentialHeightFogComponent>(
+			{
+				.DisplayName = "Exponential Height Fog",
+				.Category = "Rendering",
+				.Description = "A component that represents a global fog volume.",
+				.Icon = ICON_FA_SMOG,
+				.Flags = EEntityComponentFlags::ShowInEditor
+			});
+
 		//Post Process:
 		Register<PostProcessVolumeComponent>(
 			{ 
@@ -142,5 +151,4 @@ namespace Relentless
 	{
 		return dynamic_cast<Editor*>(aSystemManager) != nullptr;
 	}
-
 }

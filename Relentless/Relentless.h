@@ -93,6 +93,7 @@
 #include <src/ECS/ECSCommon.h>
 #include <src/ECS/EntityUtils.h>
 #include <src/ECS/ISystem.h>
+#include <src/ECS/Components/ExponentialHeightFogComponent.h>
 #include <src/ECS/Components/LightComponent.h>
 #include <src/ECS/Components/MeshFilterComponent.h>
 #include <src/ECS/Components/MeshRendererComponent.h>
