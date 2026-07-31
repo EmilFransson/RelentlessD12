@@ -35,6 +35,7 @@ namespace Relentless
 		entity CreateEntityWithUUID(const char* tag, const UUID& guid) noexcept;
 		entity CreateLight(const char* aName, ELightType aLightType) noexcept;
 
+		NO_DISCARD entity GetActiveExponentialHeightFog() const noexcept;
 		NO_DISCARD entity GetActiveSkyBox() const noexcept;
 		NO_DISCARD entity GetActiveSkyLight() const noexcept;
 
@@ -94,10 +95,12 @@ namespace Relentless
 
 		void MarkDirty() noexcept;
 
+		void RemoveActiveExponentialHeightFog() noexcept;
 		void RemoveActiveSkyBox() noexcept;
 		void RemoveActiveSkyLight() noexcept;
 
 		NO_DISCARD bool SerializeCore(IArchive&) noexcept override;
+		void SetActiveExponentialHeightFog(entity aExponentialHeightFogEntity) noexcept;
 		void SetActiveSkyBox(entity aSkyBoxEntity) noexcept;
 		void SetActiveSkyLight(entity aSkyLightEntity) noexcept;
 
@@ -111,6 +114,7 @@ namespace Relentless
 		Broadcaster<void(entity e, bool visibilityState)> OnEntityVisibilityChanged;
 		Broadcaster<void(Scene& aScene, entity aCurrentSkyLight, entity aNewSkyLight)> OnSkyLightChange;
 		Broadcaster<void(Scene& aScene, entity aCurrentSkyBox, entity aNewSkyBox)> OnSkyBoxChange;
+		Broadcaster<void(Scene& aScene, entity aCurrentExponentialHeightFog, entity aNewExponentialHeightFog)> OnExponentialHeightFogChange;
 	private:
 		friend class DeferredEntityDeletionSystem;
 
@@ -126,6 +130,7 @@ namespace Relentless
 
 		entity m_ActiveSkyBoxEntity = NULL_ENTITY;
 		entity m_ActiveSkyLightEntity = NULL_ENTITY;
+		entity m_ActiveExponentialHeightFogEntity = NULL_ENTITY;
 	};
 
 	struct SceneState

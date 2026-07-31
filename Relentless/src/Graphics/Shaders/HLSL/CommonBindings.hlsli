@@ -67,6 +67,12 @@ SkyboxData GetSkyBox()
     return skyBoxDatas[0];
 }
 
+FogData GetFog()
+{
+    StructuredBuffer<FogData> fogDatas = ResourceDescriptorHeap[cView.FogIndex];
+    return fogDatas[0];
+}
+
 struct Vertex
 {
     float3 inPositionLS;

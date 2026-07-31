@@ -41,10 +41,12 @@ namespace Relentless
 		NO_DISCARD const FogLayer& GetFogLayer(uint8 aLayerIndex) const noexcept;
 		NO_DISCARD const Color& GetInscatteringColor() const noexcept;
 		NO_DISCARD EFogInscatterMode GetInscatterMode() const noexcept;
-		NO_DISCARD Ref<TextureCube> GetInscatterTexture() noexcept;
+		NO_DISCARD Ref<TextureCube> GetInscatterTexture() const noexcept;
 		NO_DISCARD const AssetHandle& GetInscatterTextureHandle() noexcept;
 		NO_DISCARD const Color& GetInscatterTextureTintColor() const noexcept;
 		NO_DISCARD float GetMaxOpacity() const noexcept;
+
+		NO_DISCARD bool HasAssignedInScatterTexture() const noexcept;
 
 		void OnBound() noexcept override final;
 

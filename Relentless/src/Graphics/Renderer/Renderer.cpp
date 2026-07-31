@@ -27,6 +27,7 @@
 #include "Graphics/RHI/ResourceViews.h"
 #include "Graphics/RHI/RingBufferAllocator.h"
 
+#include "Subsystem/CoreTypes/FogRenderSubsystem.h"
 #include "Subsystem/CoreTypes/LightRenderSubsystem.h"
 #include "Subsystem/CoreTypes/MaterialRenderSubsystem.h"
 #include "Subsystem/CoreTypes/MeshRenderSubsystem.h"
@@ -452,6 +453,7 @@ namespace Relentless
 		PrimitiveRenderSubsystem* pPrimitiveRenderSubsystem = pRenderScene->GetSubsystem<PrimitiveRenderSubsystem>();
 		SkyLightRenderSubsystem* pSkyLightRenderSubsystem = pRenderScene->GetSubsystem<SkyLightRenderSubsystem>();
 		SkyBoxRenderSubsystem* pSkyBoxRenderSubsystem = pRenderScene->GetSubsystem<SkyBoxRenderSubsystem>();
+		FogRenderSubsystem* pFogRenderSubsystem = pRenderScene->GetSubsystem<FogRenderSubsystem>();
 
 		outViewUniform.WorldToView				= aRenderView.WorldToView;
 		outViewUniform.ViewToWorld				= aRenderView.ViewToWorld;
@@ -481,9 +483,7 @@ namespace Relentless
 		outViewUniform.SkyLightIndex			= pSkyLightRenderSubsystem->GetRenderData()->GetSRVIndex();
 		outViewUniform.SkyBoxIndex				= pSkyBoxRenderSubsystem->GetRenderData()->GetSRVIndex();
 		outViewUniform.ShadowViewsIndex			= pLightRenderSubsystem->GetShadowViewsRenderData()->GetSRVIndex();
-
-		//TODO: Consider how this is made available:
-		//outViewUniform.SceneColorCopyIndex		= m_ViewTextures.at(aRenderView.ViewID).pOpaqueAlphaMaskedColorTargetCopy->GetSRVIndex();
+		outViewUniform.FogIndex					= pFogRenderSubsystem->GetRenderData()->GetSRVIndex();
 	}
 
 	void Renderer::InvokeDispatchRequests() noexcept

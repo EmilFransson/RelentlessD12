@@ -115,11 +115,33 @@ using float4x4 = Matrix;
 		float Padding2;
 	};
 
-	struct Environment
+	struct FogData
 	{
-		SkyboxData Skybox;
-		SkyLightData SkyLight;
+		float3 InScatteringColor;
+		float MaxOpacity;
+		
+		float3 InScatteringTextureColorTint;
+		uint InScatteringTextureIndex;
+
+		float DensityLayer0;
+		float DensityLayer1;
+		float HeightFallOffLayer0;
+		float HeightFallOffLayer1;
+		float StartDistanceLayer0;
+		float StartDistanceLayer1;
+		float EndDistanceLayer0;
+		float EndDistanceLayer1;
+		float HeightOffsetLayer0;
+		float HeightOffsetLayer1;
+		float2 Padding;
 	};
+
+	//struct Environment
+	//{
+	//	SkyboxData Skybox;
+	//	SkyLightData SkyLight;
+	//	FogData FogData;
+	//};
 
 	struct Light
 	{
@@ -188,7 +210,8 @@ using float4x4 = Matrix;
 		uint LightsIndex;
 
 		uint ShadowViewsIndex;
-		float3 Padding;
+		uint FogIndex;
+		float2 Padding;
 	};
 
 	static const uint INVALID_DESCRIPTOR_INDEX = 0xFFFFFFFF;

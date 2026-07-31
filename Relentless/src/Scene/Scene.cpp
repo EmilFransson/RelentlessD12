@@ -4,6 +4,7 @@
 #include "Assets/CoreTypes/Material.h"
 
 #include "ECS/Component.h"
+#include "ECS/Components/ExponentialHeightFogComponent.h"
 #include "ECS/Components/LightComponent.h"
 #include "ECS/Components/MeshFilterComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
@@ -12,6 +13,7 @@
 #include "ECS/Components/SkyLightComponent.h"
 #include "ECS/Components/TransformComponent.h"
 
+#include "ECS/ObserverSystems/ExponentialHeightFogObserverSystem.h"
 #include "ECS/ObserverSystems/LightObserverSystem.h"
 #include "ECS/ObserverSystems/PostProcessObserverSystem.h"
 #include "ECS/ObserverSystems/PrimitiveObserverSystem.h"
@@ -20,6 +22,7 @@
 #include "ECS/ObserverSystems/SkyLightObserverSystem.h"
 
 #include "ECS/Systems/DeferredEntityDeletionSystem.h"
+#include "ECS/Systems/ExponentialHeightFogRenderDispatchSystem.h"
 #include "ECS/Systems/MeshFilterCleanupSystem.h"
 #include "ECS/Systems/MeshRendererCleanupSystem.h"
 #include "ECS/Systems/SkyBoxRenderDispatchSystem.h"
@@ -55,6 +58,7 @@ namespace Relentless
 		//ECS-Systems (Order must be preserved!):
 		RegisterSystem<SkyBoxRenderDispatchSystem>();
 		RegisterSystem<SkyLightRenderDispatchSystem>();
+		RegisterSystem<ExponentialHeightFogRenderDispatchSystem>();
 		RegisterSystem<DirectionalLightRenderDispatchSystem>();
 		RegisterSystem<PointLightRenderDispatchSystem>();
 		RegisterSystem<SpotLightRenderDispatchSystem>();
@@ -71,6 +75,7 @@ namespace Relentless
 		RegisterObserverSystem<LightObserverSystem>();
 		RegisterObserverSystem<SkyBoxObserverSystem>();
 		RegisterObserverSystem<SkyLightObserverSystem>();
+		RegisterObserverSystem<ExponentialHeightFogObserverSystem>();
 		RegisterObserverSystem<PrimitiveObserverSystem>();
 		RegisterObserverSystem<SelectionObserverSystem>();
 		RegisterObserverSystem<PostProcessObserverSystem>();
@@ -207,6 +212,11 @@ namespace Relentless
 		}
 		
 		return lightEntity;
+	}
+
+	entity Scene::GetActiveExponentialHeightFog() const noexcept
+	{
+		return m_ActiveExponentialHeightFogEntity;
 	}
 
 	entity Scene::GetActiveSkyBox() const noexcept
@@ -478,14 +488,29 @@ namespace Relentless
  		m_IsDirty = true;
  	}
 
+	void Scene::RemoveActiveExponentialHeightFog() noexcept
+	{
+		if (m_ActiveExponentialHeightFogEntity == NULL_ENTITY)
+			return;
+
+		OnExponentialHeightFogChange(*this, m_ActiveExponentialHeightFogEntity, NULL_ENTITY);
+		m_ActiveExponentialHeightFogEntity = NULL_ENTITY;
+	}
+
 	void Scene::RemoveActiveSkyBox() noexcept
 	{
+		if (m_ActiveSkyBoxEntity == NULL_ENTITY)
+			return;
+
 		OnSkyBoxChange(*this, m_ActiveSkyBoxEntity, NULL_ENTITY);
 		m_ActiveSkyBoxEntity = NULL_ENTITY;
 	}
 
 	void Scene::RemoveActiveSkyLight() noexcept
 	{
+		if (m_ActiveSkyLightEntity == NULL_ENTITY)
+			return;
+
 		OnSkyLightChange(*this, m_ActiveSkyLightEntity, NULL_ENTITY);
 		m_ActiveSkyLightEntity = NULL_ENTITY;
 	}
@@ -494,6 +519,25 @@ namespace Relentless
 	{
 		//TODO: Implement scene serialization
 		return true;
+	}
+
+	void Scene::SetActiveExponentialHeightFog(entity aExponentialHeightFogEntity) noexcept
+	{
+		RLS_ASSERT(m_EntityManager.Exists(aExponentialHeightFogEntity), "[Scene::SetActiveExponentialHeightFog]: Entity does not exist.");
+
+		if (m_ActiveExponentialHeightFogEntity == aExponentialHeightFogEntity)
+			return;
+
+		if (!m_EntityManager.Has<ExponentialHeightFogComponent>(aExponentialHeightFogEntity))
+		{
+			RLS_CORE_WARN("[Scene::SetActiveExponentialHeightFog]: Entity is not a valid exponential height fog.");
+			OnExponentialHeightFogChange(*this, m_ActiveExponentialHeightFogEntity, NULL_ENTITY);
+			m_ActiveExponentialHeightFogEntity = NULL_ENTITY;
+			return;
+		}
+
+		OnExponentialHeightFogChange(*this, m_ActiveExponentialHeightFogEntity, aExponentialHeightFogEntity);
+		m_ActiveExponentialHeightFogEntity = aExponentialHeightFogEntity;
 	}
 
 	void Scene::SetActiveSkyBox(entity aSkyBoxEntity) noexcept

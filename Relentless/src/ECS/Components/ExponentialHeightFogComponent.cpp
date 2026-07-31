@@ -66,7 +66,7 @@ namespace Relentless
 		return m_InscatterMode;
 	}
 
-	Ref<TextureCube> ExponentialHeightFogComponent::GetInscatterTexture() noexcept
+	Ref<TextureCube> ExponentialHeightFogComponent::GetInscatterTexture() const noexcept
 	{
 		RLS_ASSERT(m_InscatterCubemapHandle.IsValid(), "[ExponentialHeightFogComponent::GetInscatterTexture]: Invalid cubemap asset handle.");
 		return AssetManager::Get<TextureCube>(m_InscatterCubemapHandle);
@@ -85,6 +85,11 @@ namespace Relentless
 	float ExponentialHeightFogComponent::GetMaxOpacity() const noexcept
 	{
 		return m_MaxOpacity;
+	}
+
+	bool ExponentialHeightFogComponent::HasAssignedInScatterTexture() const noexcept
+	{
+		return m_InscatterCubemapHandle.IsValid();
 	}
 
 	void ExponentialHeightFogComponent::OnBound() noexcept

@@ -21,6 +21,19 @@ namespace Relentless
 		Ref<IEntityComponentDefinition> pEntityComponentDefinition = pEntityComponentDefinitionRegistry->GetDefinition<EHFC>();
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(std::format("{}  {}", pEntityComponentDefinition->GetIcon(), pEntityComponentDefinition->GetDisplayName()).c_str());
 
+		categoryBuilder.AddProperty<bool>(
+			"Is Active",
+			[&context](){ return context.Scene->GetActiveExponentialHeightFog() == context.Entities.front(); },
+			[&context](const bool& aIsChecked)
+			{  
+				if (aIsChecked)
+					context.Scene->SetActiveExponentialHeightFog(context.Entities.front());
+				else
+					context.Scene->RemoveActiveExponentialHeightFog();
+			})
+			.NameSlot().Label("Is Active")
+			.ValueSlot().CheckBox().Enabled(context.Entities.size() == 1u);
+
 		//Layer 0:
 		{
 			auto pDensityHandle = handleFactory.MakeCustom(

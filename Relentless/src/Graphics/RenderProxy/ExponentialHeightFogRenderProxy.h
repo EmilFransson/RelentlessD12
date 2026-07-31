@@ -7,6 +7,7 @@ namespace Relentless
 	{
 		Vector3 InScatteringColor				= Vector3::Zero;
 		Vector3 InScatteringTextureColorTint	= Vector3::One;
+		uint32 ID								= 0xFFFFFFFF;
 		float DensityLayer0						= 0.0f;
 		float DensityLayer1						= 0.0f;
 		float HeightFallOffLayer0				= 0.0f;
@@ -19,6 +20,7 @@ namespace Relentless
 		float HeightOffsetLayer1				= 0.0f;
 		float MaxOpacity						= 0.0f;
 		bool UseUniformInscatter				= true;
+		bool IsActive							= false;
 		Ref<Texture> InScatterTexture			= nullptr;
 	};
 }

@@ -47,7 +47,7 @@ namespace Relentless
 				if (aSceneState.EntityManager.Has<SkyLightComponent::DirtyRenderState>(aEntity))
 					aSceneState.EntityManager.Remove<SkyLightComponent::DirtyRenderState>(aEntity);
 
-				return;
+				continue;
 			}
 
 			SkyLightRenderProxy& renderProxy = skyLightRenderProxies.emplace_back();

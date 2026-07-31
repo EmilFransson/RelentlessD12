@@ -286,6 +286,7 @@ namespace Relentless
 
 		const entity exponentialHeightFogEntity = m_pActiveScene->CreateEntity("ExponentialHeightFog");
 		entityManager.Add<ExponentialHeightFogComponent>(exponentialHeightFogEntity);
+		m_pActiveScene->SetActiveExponentialHeightFog(exponentialHeightFogEntity);
 	}
 
 	void Editor::UI_DrawMainMenuBar() noexcept
