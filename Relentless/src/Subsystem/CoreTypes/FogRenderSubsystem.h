@@ -15,6 +15,8 @@ namespace Relentless
 
 		NO_DISCARD const Buffer* GetRenderData() const;
 
+		NO_DISCARD bool IsInscatteringTextureUsed() const noexcept;
+
 		NO_DISCARD bool OnLoad(ISystemManager* aSystemManager) noexcept override;
 		void OnUnload(ISystemManager* aSystemManager) noexcept override;
 

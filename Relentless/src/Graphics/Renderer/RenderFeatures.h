@@ -4,7 +4,7 @@ namespace Relentless
 {
 	inline static constexpr uint32 MAX_RENDER_FEATURES = 128u;
 
-	enum class ERenderFeature : uint32 { EntityPicking = 0u, Grid, HBAOPlus, Outlines, Skybox, Count };
+	enum class ERenderFeature : uint32 { EntityPicking = 0u, Grid, HBAOPlus, Outlines, Skybox, ExponentialHeightFog, Count };
 	static_assert((uint32)ERenderFeature::Count <= MAX_RENDER_FEATURES, "ERenderFeature exceeds bitset capacity.");
 
 	class RLS_API RenderFeatures

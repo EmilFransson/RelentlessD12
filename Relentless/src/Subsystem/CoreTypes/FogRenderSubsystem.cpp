@@ -13,6 +13,11 @@ namespace Relentless
 		return m_pFogDataBuffer;
 	}
 
+	bool FogRenderSubsystem::IsInscatteringTextureUsed() const noexcept
+	{
+		return m_ActiveID != INVALID_ID && m_RenderData.at(m_ActiveID).InScatterTexture != nullptr;
+	}
+
 	bool FogRenderSubsystem::OnLoad(ISystemManager* aSystemManager) noexcept
 	{
 		RenderScene* pRenderScene = static_cast<RenderScene*>(aSystemManager);
@@ -71,6 +76,7 @@ namespace Relentless
 			outFogData.DensityLayer0 = 0.0f;
 			outFogData.DensityLayer1 = 0.0f;
 			outFogData.InScatteringTextureIndex = INVALID_ID;
+			outFogData.InscatteringColorIntensity = 0.0f;
 			return;
 		}
 
@@ -91,6 +97,11 @@ namespace Relentless
 		outFogData.EndDistanceLayer1 = renderProxy.EndDistanceLayer1;
 		outFogData.HeightOffsetLayer0 = renderProxy.HeightOffsetLayer0;
 		outFogData.HeightOffsetLayer1 = renderProxy.HeightOffsetLayer1;
+
+		outFogData.InScatteringTextureMaxMip = renderProxy.InScatterTexture ? static_cast<float>(renderProxy.InScatterTexture->GetMipLevels() - 1) : 0.0f;
+		outFogData.FullyDirectionalDistance = renderProxy.FullyDirectionalDistance;
+		outFogData.NonDirectionalDistance = renderProxy.NonDirectionalDistance;
+		outFogData.InscatteringColorIntensity = renderProxy.InscatteringColorIntensity;
 	}
 
 	void FogRenderSubsystem::OnUpload(CommandContext& aCommandContext) noexcept

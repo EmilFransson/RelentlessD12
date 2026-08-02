@@ -11,6 +11,7 @@
 #include "Graphics/Renderer/Techniques/Bloom.h"
 #include "Graphics/Renderer/Techniques/DepthPrePass.h"
 #include "Graphics/Renderer/Techniques/EditorGrid.h"
+#include "Graphics/Renderer/Techniques/ExponentialHeightFog.h"
 #include "Graphics/Renderer/Techniques/ForwardAlphaBlend.h"
 #include "Graphics/Renderer/Techniques/ForwardOpaqueAlphaMask.h"
 #include "Graphics/Renderer/Techniques/HBAOPlus.h"
@@ -57,6 +58,7 @@ namespace Relentless
 		m_pBlitPass							= MakeUnique<BlitPass>(pDevice);
 		m_pBloom							= MakeUnique<Bloom>(pDevice);
 		m_pShadowMapping					= MakeUnique<ShadowMapping>(pDevice);
+		m_pExponentialHeightFog				= MakeUnique<ExponentialHeightFog>(pDevice);
 	}
 
 	Renderer::~Renderer() noexcept
@@ -691,6 +693,16 @@ namespace Relentless
 				m_pResolveDepthPass->Render(*pCommandContext, aRenderView, aSceneTextures);
 				commandContexts.push_back(pCommandContext);
 			}
+		}
+
+		//Exponential Height Fog
+		if (aRenderView.RenderFeatures.IsEnabled(ERenderFeature::ExponentialHeightFog))
+		{
+			PROFILE_SCOPE("Renderer::Render::ExponentialHeightFog");
+
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			m_pExponentialHeightFog->Render(*pCommandContext, aRenderView, aSceneTextures);
+			commandContexts.push_back(pCommandContext);
 		}
 
 		//HBAO+

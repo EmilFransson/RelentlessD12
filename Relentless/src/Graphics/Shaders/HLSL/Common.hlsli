@@ -65,6 +65,13 @@ float GetLuminance(float3 color)
     return dot(color, float3(0.2126729, 0.7151522, 0.0721750));
 }
 
+float3 WorldPositionFromDepth(float2 uv, float depth, float4x4 viewProjectionInverse)
+{
+    float4 clip = float4(float2(uv.x, 1.0f - uv.y) * 2.0f - 1.0f, depth, 1.0f);
+    float4 world = mul(viewProjectionInverse, clip);
+    return world.xyz / world.w;
+}
+
 static const float PI = 3.14159265359f;
 static const float TwoPI = 2.0f * PI;
 static const float RECIPROCAL_PI = 0.3183098861837907f;

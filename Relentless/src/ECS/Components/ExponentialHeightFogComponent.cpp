@@ -56,9 +56,19 @@ namespace Relentless
 		return m_FogLayers[aLayerIndex];
 	}
 
+	float ExponentialHeightFogComponent::GetFullyDirectionalInScatteringColorDistance() const noexcept
+	{
+		return m_FullyDirectionalInScatteringColorDistance;
+	}
+
 	const Color& ExponentialHeightFogComponent::GetInscatteringColor() const noexcept
 	{
 		return m_InscatteringColor;
+	}
+
+	float ExponentialHeightFogComponent::GetInscatteringColorIntensity() const noexcept
+	{
+		return m_InscatteringColorIntensity;
 	}
 
 	EFogInscatterMode ExponentialHeightFogComponent::GetInscatterMode() const noexcept
@@ -87,6 +97,11 @@ namespace Relentless
 		return m_MaxOpacity;
 	}
 
+	float ExponentialHeightFogComponent::GetNonDirectionalInScatteringColorDistance() const noexcept
+	{
+		return m_NonDirectionalInScatteringColorDistance;
+	}
+
 	bool ExponentialHeightFogComponent::HasAssignedInScatterTexture() const noexcept
 	{
 		return m_InscatterCubemapHandle.IsValid();
@@ -108,6 +123,16 @@ namespace Relentless
 		NOTIFY_PROPERTY_CHANGED(m_InscatterCubemapHandle);
 	}
 
+	void ExponentialHeightFogComponent::SetFullyDirectionalInScatteringColorDistance(float aDistance) noexcept
+	{
+		if (Math::AreValuesClose(m_FullyDirectionalInScatteringColorDistance, aDistance))
+			return;
+
+		m_FullyDirectionalInScatteringColorDistance = aDistance;
+		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_FullyDirectionalInScatteringColorDistance);
+	}
+
 	void ExponentialHeightFogComponent::SetInscatteringColor(const Color& aColor) noexcept
 	{
 		if (m_InscatteringColor == aColor)
@@ -116,6 +141,16 @@ namespace Relentless
 		m_InscatteringColor = aColor;
 		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_InscatteringColor);	
+	}
+
+	void ExponentialHeightFogComponent::SetInscatteringColorIntensity(float aIntensity) noexcept
+	{
+		if (Math::AreValuesClose(m_InscatteringColorIntensity, aIntensity))
+			return;
+
+		m_InscatteringColorIntensity = aIntensity;
+		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_InscatteringColorIntensity);
 	}
 
 	void ExponentialHeightFogComponent::SetInscatterMode(EFogInscatterMode aInscatterMode) noexcept
@@ -217,12 +252,22 @@ namespace Relentless
 
 	void ExponentialHeightFogComponent::SetMaxOpacity(float aMaxOpacity) noexcept
 	{
-		if (m_MaxOpacity == aMaxOpacity)
+		if (Math::AreValuesClose(m_MaxOpacity, aMaxOpacity))
 			return;
 
 		m_MaxOpacity = aMaxOpacity;
 		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_MaxOpacity);
+	}
+
+	void ExponentialHeightFogComponent::SetNonDirectionalInScatteringColorDistance(float aDistance) noexcept
+	{
+		if (Math::AreValuesClose(m_NonDirectionalInScatteringColorDistance, aDistance))
+			return;
+
+		m_NonDirectionalInScatteringColorDistance = aDistance;
+		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+		NOTIFY_PROPERTY_CHANGED(m_NonDirectionalInScatteringColorDistance);
 	}
 
 	void ExponentialHeightFogComponent::ConnectTextureCube() noexcept

@@ -19,6 +19,9 @@ namespace Relentless
 		float HeightOffsetLayer0				= 0.0f;
 		float HeightOffsetLayer1				= 0.0f;
 		float MaxOpacity						= 0.0f;
+		float FullyDirectionalDistance			= 0.0f;
+		float NonDirectionalDistance			= 0.0f;
+		float InscatteringColorIntensity		= 0.0f;
 		bool UseUniformInscatter				= true;
 		bool IsActive							= false;
 		Ref<Texture> InScatterTexture			= nullptr;

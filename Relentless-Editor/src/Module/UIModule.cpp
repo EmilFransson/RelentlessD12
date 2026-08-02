@@ -90,6 +90,8 @@ namespace Relentless
 				m_pCaptureTargetPanel->OnEvent(aEvent);
 				return true;
 			}
+			else
+				m_pCaptureTargetPanel = nullptr;
 
 			if (io.WantCaptureMouse)
 				return true;

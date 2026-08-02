@@ -133,6 +133,10 @@ using float4x4 = Matrix;
 		float EndDistanceLayer1;
 		float HeightOffsetLayer0;
 		float HeightOffsetLayer1;
+		float InScatteringTextureMaxMip;
+		float FullyDirectionalDistance;
+		float NonDirectionalDistance;
+		float InscatteringColorIntensity;
 		float2 Padding;
 	};
 

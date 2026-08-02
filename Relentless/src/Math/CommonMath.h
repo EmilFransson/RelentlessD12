@@ -29,6 +29,7 @@ namespace Relentless
 		constexpr Color Magenta			= Color(1.0f, 0.0f, 1.0f, 1.0f);
 		constexpr Color Cyan			= Color(0.0f, 1.0f, 1.0f, 1.0f);
 		constexpr Color Gray			= Color(0.5f, 0.5f, 0.5f, 1.0f);
+		constexpr Color LightGray		= Color(0.85f, 0.85f, 0.85f, 1.0f);
 		constexpr Color LightSkyBlue	= Color(0.529411793f, 0.807843208f, 0.980392218f, 1.0f);
 
 		//Rows:

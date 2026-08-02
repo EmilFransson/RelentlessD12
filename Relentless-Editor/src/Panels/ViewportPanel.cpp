@@ -357,7 +357,12 @@ namespace Relentless
 	bool ViewportPanel::OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent&) noexcept
 	{
 		if (!IsFocused())
+		{
+			m_CameraInput.MoveAxis.x = Keyboard::IsKeyDown(RLS_Key::A) ? -1.0f : (Keyboard::IsKeyDown(RLS_Key::D) ? 1.0f : 0.0f);
+			m_CameraInput.MoveAxis.y = Keyboard::IsKeyDown(RLS_Key::Q) ? -1.0f : (Keyboard::IsKeyDown(RLS_Key::E) ? 1.0f : 0.0f);
+			m_CameraInput.MoveAxis.z = Keyboard::IsKeyDown(RLS_Key::W) ? 1.0f : (Keyboard::IsKeyDown(RLS_Key::S) ? -1.0f : 0.0f);
 			ImGui::SetWindowFocus(GetName().c_str());
+		}
 		
 		ConfineAndHideMouseAtCursorPosition();
 		ResolveAndSetCameraMode();

@@ -52,6 +52,9 @@ namespace Relentless
 		Add(Shader::Create(ShaderType::Compute, "Bloom.hlsl", "cs_downsample"));
 		Add(Shader::Create(ShaderType::Compute, "Bloom.hlsl", "cs_downsample", { "KARIS_AVERAGE=1" }));
 		Add(Shader::Create(ShaderType::Compute, "Bloom.hlsl", "cs_upscale"));
+
+		Add(Shader::Create(ShaderType::Compute, "ExponentialHeightFogComputeShader.hlsl", "cs_main"));
+		Add(Shader::Create(ShaderType::Compute, "ExponentialHeightFogComputeShader.hlsl", "cs_main", { "USE_INSCATTERING_TEXTURE" }));
 	}
 
 	void ShaderLibrary::Add(const std::shared_ptr<Shader>& pShader) noexcept

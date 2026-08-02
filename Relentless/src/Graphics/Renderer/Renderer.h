@@ -22,6 +22,7 @@ namespace Relentless
 	class Bloom;
 	class DepthPrePass;
 	class EditorGrid;
+	class ExponentialHeightFog;
 	class ForwardRenderer;
 	class ForwardOpaqueAlphaMask;
 	class ForwardAlphaBlend;
@@ -148,6 +149,7 @@ namespace Relentless
 		UniquePtr<BlitPass> m_pBlitPass;
 		UniquePtr<Bloom> m_pBloom;
 		UniquePtr<ShadowMapping> m_pShadowMapping;
+		UniquePtr<ExponentialHeightFog> m_pExponentialHeightFog;
 
 		AssetHandle m_BRDFLutTextureHandle = AssetHandle::INVALID;
 		

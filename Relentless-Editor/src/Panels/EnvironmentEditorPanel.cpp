@@ -52,6 +52,7 @@ namespace Relentless
 		renderFeatures.Disable(ERenderFeature::HBAOPlus);
 		renderFeatures.Disable(ERenderFeature::EntityPicking);
 		renderFeatures.Disable(ERenderFeature::Outlines);
+		renderFeatures.Disable(ERenderFeature::ExponentialHeightFog);
 
 		RenderQualitySettings renderQualitySettings{};
 

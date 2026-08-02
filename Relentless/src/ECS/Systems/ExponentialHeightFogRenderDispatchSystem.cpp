@@ -46,7 +46,10 @@ namespace Relentless
 				renderProxy.HeightOffsetLayer0 = fogLayer0.HeightOffset;
 				renderProxy.HeightOffsetLayer1 = fogLayer1.HeightOffset;
 				renderProxy.InScatterTexture = exponentialHeightFogComponent.HasAssignedInScatterTexture() ? exponentialHeightFogComponent.GetInscatterTexture()->GetResource() : nullptr;
-			
+				renderProxy.FullyDirectionalDistance = exponentialHeightFogComponent.GetFullyDirectionalInScatteringColorDistance();
+				renderProxy.NonDirectionalDistance = exponentialHeightFogComponent.GetNonDirectionalInScatteringColorDistance();
+				renderProxy.InscatteringColorIntensity = exponentialHeightFogComponent.GetInscatteringColorIntensity();
+
 				aSceneState.EntityManager.Remove<ExponentialHeightFogComponent::DirtyRenderState>(aEntity);
 			});
 

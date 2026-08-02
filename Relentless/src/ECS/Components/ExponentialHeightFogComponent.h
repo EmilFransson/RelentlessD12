@@ -15,14 +15,17 @@ namespace Relentless
 		ExponentialHeightFogComponent& operator=(ExponentialHeightFogComponent&&) noexcept;
 		virtual ~ExponentialHeightFogComponent() noexcept override;
 
-		static constexpr Color DEFAULT_INSCATTERING_COLOR = Colors::Black;
+		static constexpr Color DEFAULT_INSCATTERING_COLOR = Colors::LightGray;
 		static constexpr Color DEFAULT_INSCATTERING_TEXTURE_TINT = Colors::White;
+		static constexpr float DEFAULT_INSCATTERING_COLOR_INTENSITY = 1.0f;
 		static constexpr float DEFAULT_DENSITY = 0.02f;
 		static constexpr float DEFAULT_HEIGHT_FALLOF = 0.2f;
 		static constexpr float DEFAULT_START_DISTANCE = 0.0f;
-		static constexpr float DEFAULT_END_DISTANCE = 0.0f;
+		static constexpr float DEFAULT_END_DISTANCE = 1'000.0f;
 		static constexpr float DEFAULT_HEIGHT_OFFSET = 0.0f;
 		static constexpr float DEFAULT_MAX_OPACITY = 1.0f;
+		static constexpr float DEFAULT_FULLY_DIRECTIONAL_INSCATTERING_COLOR_DISTANCE = 1000.0f;
+		static constexpr float DEFAULT_NON_DIRECTIONAL_INSCATTERING_COLOR_DISTANCE = 10.0f;
 		static constexpr uint8 NUM_FOG_LAYERS = 2u;
 		
 		struct DirtyRenderState{};
@@ -39,12 +42,15 @@ namespace Relentless
 		virtual void CopyFrom(const ExponentialHeightFogComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager) override final;
 
 		NO_DISCARD const FogLayer& GetFogLayer(uint8 aLayerIndex) const noexcept;
+		NO_DISCARD float GetFullyDirectionalInScatteringColorDistance() const noexcept;
 		NO_DISCARD const Color& GetInscatteringColor() const noexcept;
+		NO_DISCARD float GetInscatteringColorIntensity() const noexcept;
 		NO_DISCARD EFogInscatterMode GetInscatterMode() const noexcept;
 		NO_DISCARD Ref<TextureCube> GetInscatterTexture() const noexcept;
 		NO_DISCARD const AssetHandle& GetInscatterTextureHandle() noexcept;
 		NO_DISCARD const Color& GetInscatterTextureTintColor() const noexcept;
 		NO_DISCARD float GetMaxOpacity() const noexcept;
+		NO_DISCARD float GetNonDirectionalInScatteringColorDistance() const noexcept;
 
 		NO_DISCARD bool HasAssignedInScatterTexture() const noexcept;
 
@@ -52,7 +58,9 @@ namespace Relentless
 
 		void RemoveInscatterTexture() noexcept;
 
+		void SetFullyDirectionalInScatteringColorDistance(float aDistance) noexcept;
 		void SetInscatteringColor(const Color& aColor) noexcept;
+		void SetInscatteringColorIntensity(float aIntensity) noexcept;
 		void SetInscatterMode(EFogInscatterMode aInscatterMode) noexcept;
 		void SetInscatterTexture(const AssetHandle& aCubemapAssetHandle) noexcept;
 		void SetInscatterTextureTintColor(const Color& aTintColor) noexcept;
@@ -62,6 +70,7 @@ namespace Relentless
 		void SetLayerStartDistance(uint8 aLayerIndex, float aStartDistance) noexcept;
 		void SetLayerHeightOffset(uint8 aLayerIndex, float aHeightOffset) noexcept;
 		void SetMaxOpacity(float aMaxOpacity) noexcept;
+		void SetNonDirectionalInScatteringColorDistance(float aDistance) noexcept;
 	private:
 		void ConnectTextureCube() noexcept;
 
@@ -75,6 +84,9 @@ namespace Relentless
 		Color m_InscatteringColor = DEFAULT_INSCATTERING_COLOR;
 		Color m_InscatteringTextureTintColor = DEFAULT_INSCATTERING_TEXTURE_TINT;
 		float m_MaxOpacity = DEFAULT_MAX_OPACITY;
+		float m_InscatteringColorIntensity = DEFAULT_INSCATTERING_COLOR_INTENSITY;
+		float m_FullyDirectionalInScatteringColorDistance = DEFAULT_FULLY_DIRECTIONAL_INSCATTERING_COLOR_DISTANCE;
+		float m_NonDirectionalInScatteringColorDistance = DEFAULT_NON_DIRECTIONAL_INSCATTERING_COLOR_DISTANCE;
 		EFogInscatterMode m_InscatterMode = EFogInscatterMode::Uniform;
 	};
 }

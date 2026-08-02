@@ -2,6 +2,7 @@
 
 #include "Graphics/Renderer/Renderer.h"
 
+#include "Subsystem/CoreTypes/FogRenderSubsystem.h"
 #include "Subsystem/CoreTypes/LightRenderSubsystem.h"
 #include "Subsystem/CoreTypes/MaterialRenderSubsystem.h"
 #include "Subsystem/CoreTypes/MeshRenderSubsystem.h"
@@ -24,6 +25,7 @@ namespace Relentless
 		GetSubsystem<LightRenderSubsystem>();
 		GetSubsystem<SkyBoxRenderSubsystem>();
 		GetSubsystem<SkyLightRenderSubsystem>();
+		GetSubsystem<FogRenderSubsystem>();
 		GetSubsystem<SelectionRenderSubsystem>();
 		GetSubsystem<PostProcessRenderSubsystem>();
 	}
