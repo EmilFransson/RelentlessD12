@@ -58,8 +58,6 @@ namespace Relentless
 
 		void CreateStartScene() noexcept;
 
-		void UI_DrawMainMenuBar() noexcept;
-
 		void LoadModules(ELoadPhase aLoadPhase) noexcept;
 
 		void UpdateSubsystems(float aDeltaTime) noexcept;
@@ -80,16 +78,6 @@ namespace Relentless
 
 		Ref<Scene> m_pActiveScene = nullptr;
 		Ref<Scene> m_pEditorScene = nullptr;
-
-		bool m_DisplayOutlinerPanel = true;
-		bool m_DisplayContentBrowserPanel = true;
-		bool m_DisplayPropertiesPanel = true;
-		bool m_DisplayInspectorPanel = false;
-		bool m_DisplayMetricsPanel = true;
-		bool m_DisplaySceneRendererPanel = true;
-		bool m_DisplayStatisticsPanel = true;
-
-		bool m_ImmersiveModeEnabled = false;
 
 		AssetHandle m_PlayButtonTextureHandle = NULL_HANDLE;
 		AssetHandle m_StopButtonTextureHandle = NULL_HANDLE;

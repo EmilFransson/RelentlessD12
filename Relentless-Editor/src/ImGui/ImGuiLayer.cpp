@@ -1,8 +1,33 @@
 ﻿#include "ImGuiLayer.h"
 #include "ImGuiFonts.h"
 
+#include "Core/Editor.h"
+
+#include "Module/ModuleManager.h"
+#include "Module/UIModule.h"
+
+#include "Panels/EditorViewportPanel.h"
+
+#include "Subsystem/EditorViewportSubsystem.h"
+#include "Subsystem/EngineContentSubsystem.h"
+#include "Subsystem/EntityComponentDefinitionRegistry.h"
+#include "Subsystem/SelectionSubsystem.h"
+
+#include "UI/Views/Details/LayoutBuilders/ContextMenuBuilder.h"
+#include "UI/Widgets/Button.h"
+#include "UI/Widgets/ContextMenu.h"
+#include "UI/Widgets/HorizontalBox.h"
+#include "UI/Widgets/Label.h"
+#include "UI/Widgets/Spacer.h"
+
 namespace Relentless
 {
+	static Button* FileButton = nullptr;
+	static Button* SpawnButton = nullptr;
+	static Button* MinimizeButton = nullptr;
+	static Button* MaximizeButton = nullptr;
+	static Button* ExitButton = nullptr;
+
 	ImGuiLayer::ImGuiLayer(GraphicsDevice* pDevice) noexcept
 		:Layer("ImGuiLayer"), m_pDevice{ pDevice }
 	{
@@ -22,6 +47,9 @@ namespace Relentless
 		pCommandContext->SetViewport(FloatRect(0, 0, (float)pTarget->GetWidth(), (float)pTarget->GetHeight()), 0, 1);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = pTarget->GetRTV()->GetCPUHandle();
+
+		constexpr float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+		pCommandContext->GetCommandList()->ClearRenderTargetView(handle, clearColor, 0, nullptr);
 		pCommandContext->GetCommandList()->OMSetRenderTargets(1u, &handle, false, nullptr);
 
 		static bool dockspaceOpen = true;
@@ -33,11 +61,14 @@ namespace Relentless
 		// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
 		// because it would be confusing to have two docking targets within each others.
 		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
+		const float topInset = 70.0f;
+		const float bottomInset = 30.0f;
+
 		if (opt_fullscreen)
 		{
 			const ImGuiViewport* viewport = ImGui::GetMainViewport();
-			ImGui::SetNextWindowPos(viewport->WorkPos);
-			ImGui::SetNextWindowSize(viewport->WorkSize);
+			ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + topInset));
+			ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, viewport->WorkSize.y - topInset - bottomInset));
 			ImGui::SetNextWindowViewport(viewport->ID);
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -77,6 +108,62 @@ namespace Relentless
 			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 		}
 		ImGui::End();
+
+		// --- TEMP: top chrome band ---
+		{
+			const ImGuiViewport* vp = ImGui::GetMainViewport();
+			ImGui::SetNextWindowPos(vp->WorkPos);
+			ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x, topInset));
+			ImGui::SetNextWindowViewport(vp->ID);
+
+			constexpr ImGuiWindowFlags barFlags =
+				ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
+				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
+				ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+			if (ImGui::Begin("##TopChromeBand", nullptr, barFlags))
+			{
+				m_pTopChromeBox->AssignSize(Vector2(vp->WorkSize.x, topInset));
+				m_pTopChromeBox->Render();
+			}
+			ImGui::End();
+
+			ImGui::PopStyleVar(3);
+		}
+
+		// --- TEMP: bottom chrome band ---
+		{
+			const ImGuiViewport* vp = ImGui::GetMainViewport();
+			ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x, vp->WorkPos.y + vp->WorkSize.y - bottomInset));
+			ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x, bottomInset));
+			ImGui::SetNextWindowViewport(vp->ID);
+
+			constexpr ImGuiWindowFlags barFlags =
+				ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
+				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
+				ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+			if (ImGui::Begin("##BottomChromeBand", nullptr, barFlags))
+			{
+				m_pBottomChromeBox->AssignSize(Vector2(vp->WorkSize.x, bottomInset));
+				m_pBottomChromeBox->Render();
+			}
+			ImGui::End();
+
+			ImGui::PopStyleVar(3);
+		}
+
+		m_pFPSLabel->SetText(std::format("FPS: {}", Time::GetFramesPerSecond()));
 	}
 
 	void ImGuiLayer::EndFrame(CommandContext* pCommandContext) noexcept
@@ -94,12 +181,17 @@ namespace Relentless
 		}
 	}
 
+	bool ImGuiLayer::IsAnyMainMenuButtonHovered() noexcept
+	{
+		return FileButton->IsHovered() || SpawnButton->IsHovered() || MinimizeButton->IsHovered() || MaximizeButton->IsHovered() || ExitButton->IsHovered();
+	}
+
 	void ImGuiLayer::OnImGuiRender() noexcept
 	{
 		PROFILE_FUNC;
 
-		static bool showWindow = true;
-		ImGui::ShowDemoWindow(&showWindow);
+		//static bool showWindow = true;
+		//ImGui::ShowDemoWindow(&showWindow);
 	}
 
 	void ImGuiLayer::OnAttach()
@@ -252,6 +344,77 @@ namespace Relentless
 			};
 
 		RLS_VERIFY(ImGui_ImplDX12_Init(&info));
+
+		m_pTopChromeBox = RLS_NEW VerticalBox();
+		m_pTopChromeBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		m_pTopChromeBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
+
+		HorizontalBox* pMainMenuBox = m_pTopChromeBox->AddWidget(RLS_NEW HorizontalBox());
+		pMainMenuBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pMainMenuBox->SetVerticalSizePolicy(ESizePolicy::Fixed);
+		pMainMenuBox->SetSize(Vector2(-1.0f, 30.0f));
+		pMainMenuBox->SetBackgroundColor(Color(0.1f, 0.1f, 0.1f, 1.0f));
+
+		FileButton = pMainMenuBox->AddWidget(Button::CreateTransparent("File"));
+		FileButton->OnClicked(this, &ImGuiLayer::OnFileButtonClicked);
+		FileButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+		FileButton->SetMargin(FloatRect::WithLeft(5.0f));
+
+		SpawnButton = pMainMenuBox->AddWidget(Button::CreateTransparent("Spawn"));
+		SpawnButton->OnClicked(this, &ImGuiLayer::OnSpawnButtonClicked);
+		SpawnButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+
+		pMainMenuBox->AddWidget(RLS_NEW Spacer())
+			->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+
+		m_pProjectNameLabel = pMainMenuBox->AddWidget(RLS_NEW Label("Project Name"));
+		m_pProjectNameLabel->SetPadding(Vector2(100.0f, 0.0f));
+		m_pProjectNameLabel->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+
+		HorizontalBox* pRightBox = pMainMenuBox->AddWidget(RLS_NEW HorizontalBox());
+		pRightBox->SetSpacing(20.0f);
+
+		MinimizeButton = pRightBox->AddWidget(Button::CreateTransparent(ICON_FA_WINDOW_MINIMIZE));
+		MinimizeButton->OnClicked([] { Application::Get().GetWindow()->Minimize(); });
+		MinimizeButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+
+		MaximizeButton = pRightBox->AddWidget(Button::CreateTransparent(ICON_FA_WINDOW_MAXIMIZE));
+		MaximizeButton->OnClicked([] { Application::Get().SubmitToMainThread([]() { Application::Get().GetWindow()->ToggleMaximize();  }); });
+		MaximizeButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+
+		ExitButton = pRightBox->AddWidget(Button::CreateTransparent(ICON_FA_XMARK));
+		ExitButton->OnClicked([] { Application::Get().InitializeShutdownProcedure(); });
+		ExitButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+		ExitButton->SetMargin(FloatRect::WithRight(5.0f));
+
+		m_pBottomChromeBox = RLS_NEW VerticalBox();
+		m_pBottomChromeBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		m_pBottomChromeBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
+
+		HorizontalBox* pBottomChromeBox = m_pBottomChromeBox->AddWidget(RLS_NEW HorizontalBox());
+		pBottomChromeBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pBottomChromeBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
+		pBottomChromeBox->SetBackgroundColor(Color(0.1f, 0.1f, 0.1f, 1.0f));
+		pBottomChromeBox->SetHorizontalAlignmentPolicy(EHorizontalAlignmentPolicy::Right);
+
+		m_pFPSLabel = pBottomChromeBox->AddWidget(RLS_NEW Label("FPS: "));
+		m_pFPSLabel->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+		m_pFPSLabel->SetMargin(FloatRect::WithRight(5.0f));
+
+		HorizontalBox* pMainChromeBand = m_pTopChromeBox->AddWidget(RLS_NEW HorizontalBox());
+		pMainChromeBand->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pMainChromeBand->SetVerticalSizePolicy(ESizePolicy::Stretch);
+
+		pMainChromeBand->AddWidget(RLS_NEW Button(std::format("{}  {}", ICON_FA_CUBE, ICON_FA_CHEVRON_DOWN)))
+			->OnClicked(this, &ImGuiLayer::OnAddEntityButtonClicked)
+			->SetTooltipText("Quickly add to the project.")
+			->SetMargin(FloatRect::WithLeft(5.0f))
+			->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center)
+			->SetHorizontalSizePolicy(ESizePolicy::Fixed)
+			->SetVerticalSizePolicy(ESizePolicy::Fixed)
+			->SetSize(Vector2(60.0f, 30.0f));
+
+		Project::OnProjectChanged.Connect(this, &ImGuiLayer::OnProjectChanged);
 	}
 
 	void ImGuiLayer::OnDetach()
@@ -259,6 +422,135 @@ namespace Relentless
 		ImGui_ImplDX12_Shutdown();
 		ImGui_ImplWin32_Shutdown();
 		ImGui::DestroyContext();
+
+		Project::OnProjectChanged.Detach(this);
+	}
+
+	void ImGuiLayer::OnAddEntityButtonClicked()
+	{
+		Editor* pEditor = Editor::Get();
+
+		EntityComponentDefinitionRegistry* pEntityComponentDefinitionRegistry = pEditor->GetSubsystem<EntityComponentDefinitionRegistry>();
+
+		auto CreateEntityItem = [pEntityComponentDefinitionRegistry]<typename ComponentType>(ContextMenuBuilder& aBuilder, Callback<void()>&& OnSelectedCallback)
+		{
+			Ref<IEntityComponentDefinition> pComponentDefinition = pEntityComponentDefinitionRegistry->GetDefinition<ComponentType>();
+			aBuilder.AddItem(std::format("{} {}", pComponentDefinition->GetIcon(), pComponentDefinition->GetDisplayName()), [callback = std::forward<Callback<void()>>(OnSelectedCallback)]()
+				{
+					callback();
+					ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
+				})
+				.Tooltip(pComponentDefinition->GetDisplayName());
+		};
+
+		auto TranslateAndSelectEntity = [](entity aEntity)
+		{
+				Editor* pEditor = Editor::Get();
+				EditorViewportSubsystem* pEditorViewportSubsystem = pEditor->GetSubsystem<EditorViewportSubsystem>();
+				SelectionSubsystem* pSelectionSubsystem = pEditor->GetSubsystem<SelectionSubsystem>();
+				pSelectionSubsystem->DeselectAllEntities();
+
+				Scene* pActiveScene = pEditor->GetActiveScene();
+				EntityManager& entityManager = pActiveScene->GetEntityManager();
+
+				const std::vector<ViewportPanel*>& viewportPanels = pEditorViewportSubsystem->GetViewportPanels();
+				const ViewportPanel* pViewportPanel = viewportPanels.back();
+				const ViewportClient& client = pViewportPanel->GetClient();
+				const Vector3& cameraLocation = client.GetCamera().GetLocation();
+				const Vector3 cameraForward = client.GetCamera().GetForwardVector();
+
+				entityManager.Get<TransformComponent>(aEntity).SetWorldLocation(cameraLocation + (cameraForward * 5.0f));
+				pSelectionSubsystem->SelectEntity(aEntity);
+		};
+
+		ContextMenuBuilder builder;
+		builder.AddSubmenu(ICON_FA_LIGHTBULB "  Lights", [CreateEntityItem, TranslateAndSelectEntity](ContextMenuBuilder& aBuilder)
+			{
+				CreateEntityItem.operator()<DirectionalLightComponent>(aBuilder, [TranslateAndSelectEntity]()
+					{
+						TranslateAndSelectEntity(Editor::Get()->GetActiveScene()->CreateLight("DirectionalLight", ELightType::Directional));
+					});
+				CreateEntityItem.operator()<PointLightComponent>(aBuilder, [TranslateAndSelectEntity]()
+					{
+						TranslateAndSelectEntity(Editor::Get()->GetActiveScene()->CreateLight("PointLight", ELightType::Point));
+					});
+				CreateEntityItem.operator()<SpotLightComponent> (aBuilder, [TranslateAndSelectEntity]()
+					{
+						TranslateAndSelectEntity(Editor::Get()->GetActiveScene()->CreateLight("SpotLight", ELightType::Spot));
+					});
+				//CreateEntityItem.operator()<SkyLightComponent>(aBuilder, [TranslateAndSelectEntity]() 
+				//	{
+				//		TranslateAndSelectEntity(Editor::Get()->GetActiveScene()->CreateLight("SkyLight", ELightType::Sky));
+				//	});
+			});
+
+		builder.AddSubmenu(ICON_FA_SHAPES "   Shapes", [TranslateAndSelectEntity](ContextMenuBuilder& aBuilder)
+			{
+				aBuilder.AddItem("Cube", [TranslateAndSelectEntity]()
+					{
+						Editor* pEditor = Editor::Get();
+						Scene* pActiveScene = pEditor->GetActiveScene();
+						EngineContentSubsystem* pContentSubsystem = pEditor->GetSubsystem<EngineContentSubsystem>();
+						EntityManager& entityManager = pActiveScene->GetEntityManager();
+						
+						const entity cubeEntity = pActiveScene->CreateEntity("Cube");
+						entityManager.Add<MeshFilterComponent>(cubeEntity).SetMesh(pContentSubsystem->GetCubeMeshHandle());
+						entityManager.Add<MeshRendererComponent>(cubeEntity).SetMaterial(pContentSubsystem->GetWhiteMaterialHandle());
+						
+						TranslateAndSelectEntity(cubeEntity);
+						ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
+					})
+					.Tooltip("Cube");
+
+				aBuilder.AddItem("Sphere", [TranslateAndSelectEntity]()
+					{
+						Editor* pEditor = Editor::Get();
+						Scene* pActiveScene = pEditor->GetActiveScene();
+						EngineContentSubsystem* pContentSubsystem = pEditor->GetSubsystem<EngineContentSubsystem>();
+						EntityManager& entityManager = pActiveScene->GetEntityManager();
+
+						const entity sphereEntity = pActiveScene->CreateEntity("Sphere");
+						entityManager.Add<MeshFilterComponent>(sphereEntity).SetMesh(pContentSubsystem->GetSphereMeshHandle());
+						entityManager.Add<MeshRendererComponent>(sphereEntity).SetMaterial(pContentSubsystem->GetWhiteMaterialHandle());
+
+						TranslateAndSelectEntity(sphereEntity);
+						ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
+					})
+					.Tooltip("Sphere");
+			});
+
+		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(builder.BuildContextMenu());
+	}
+
+	void ImGuiLayer::OnFileButtonClicked()
+	{
+		ContextMenuBuilder builder;
+		builder.AddItem("Exit", [](){ Application::Get().InitializeShutdownProcedure(); });
+
+		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(builder.BuildContextMenu());
+	}
+
+	void ImGuiLayer::OnProjectChanged()
+	{
+		m_pProjectNameLabel->SetText(Project::GetName());
+	}
+
+	void ImGuiLayer::OnSpawnButtonClicked()
+	{
+		static int counter = 0;
+
+		ContextMenuBuilder builder;
+		builder.AddItem("Empty Entity", []() {  Editor::Get()->GetActiveScene()->CreateEntity(std::format("Entity_{}", counter++).c_str()); });
+		builder.AddItem("1000 Entities", []() 
+			{  
+				Scene* pScene = Editor::Get()->GetActiveScene();
+
+				for (auto _ : std::views::repeat(std::monostate{}, 1'000))
+					pScene->CreateEntity(std::format("Entity_{}", counter++).c_str()); 
+			});
+		builder.AddItem("Editor Viewport", [](){ ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EditorViewportPanel>(); });
+
+		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(builder.BuildContextMenu());
 	}
 
 }

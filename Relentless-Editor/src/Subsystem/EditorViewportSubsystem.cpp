@@ -16,6 +16,11 @@
 
 namespace Relentless
 {
+	const std::vector<ViewportPanel*>& EditorViewportSubsystem::GetViewportPanels() const noexcept
+	{
+		return m_EditorViewports;
+	}
+
 	bool EditorViewportSubsystem::OnLoad(ISystemManager* aSystemManager) noexcept
 	{
 		m_pEditor = static_cast<Editor*>(aSystemManager);

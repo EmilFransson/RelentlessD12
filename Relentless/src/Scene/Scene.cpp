@@ -202,9 +202,11 @@ namespace Relentless
 	{
 		auto lightEntity = CreateEntity(name);
 		if (aLightTypetype == ELightType::Directional)
-			m_EntityManager.Add<DirectionalLightComponent>(lightEntity);
+			m_EntityManager.Add<DirectionalLightComponent>(lightEntity).SetIntensityLux(2'000.0f);
 		else if (aLightTypetype == ELightType::Point)
 			m_EntityManager.Add<PointLightComponent>(lightEntity);
+		else if (aLightTypetype == ELightType::Sky)
+			m_EntityManager.Add<SkyLightComponent>(lightEntity);
 		else
 		{
 			RLS_ASSERT(aLightTypetype == ELightType::Spot, "[Scene::CreateLight]: Invalid Light Type");

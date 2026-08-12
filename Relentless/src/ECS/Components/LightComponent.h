@@ -9,7 +9,7 @@
 
 namespace Relentless
 {
-	enum class ELightType : uint8 { Directional = 0, Point, Spot };
+	enum class ELightType : uint8 { Directional = 0, Point, Spot, Sky };
 
 	template<typename LightType>
 	struct LightBaseComponent : public ManagedComponent<LightType>

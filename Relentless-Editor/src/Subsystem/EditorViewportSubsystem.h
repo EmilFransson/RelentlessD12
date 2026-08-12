@@ -13,6 +13,8 @@ namespace Relentless
 	class EditorViewportSubsystem : public ISubsystem
 	{
 	public:
+		NO_DISCARD const std::vector<ViewportPanel*>& GetViewportPanels() const noexcept;
+
 		NO_DISCARD virtual bool OnLoad(ISystemManager* aSystemManager) noexcept override;
 		
 		static bool ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept;

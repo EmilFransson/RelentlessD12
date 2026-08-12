@@ -10,6 +10,8 @@
 #include "ECS/Components/MeshFilterComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 
+#include "ImGui/ImGuiLayer.h"
+
 #include "Module/ContentBrowserModule.h"
 #include "Module/DetailsModule.h"
 #include "Module/UIModule.h"
@@ -70,40 +72,18 @@ namespace Relentless
 	{
 		PROFILE_FUNC;
 
-		UI_DrawMainMenuBar();
-
-		ImGui::Begin("Spawn");
-		
-		if (ImGui::Button("Spawn viewport"))
-			ModuleManager::LoadModuleChecked<UIModule>().OpenPanel<EditorViewportPanel>();
-
-		static int counter = 0;
-		if (ImGui::Button("Spawn Entity"))
-		{
-			m_pActiveScene->CreateEntity(std::format("Entity_{}", counter++).c_str());
-		}
-		if (ImGui::Button("Spawn 1000 Entities"))
-		{
-			for (uint32 i = 0u; i < 1000u; ++i)
-				m_pActiveScene->CreateEntity(std::format("Entity_{}", counter++).c_str());
-		}
-
-		ImGui::End();
-		
-		ImGui::Begin("TEST");
-
-		ImGui::Text("FPS: %d", Time::GetFramesPerSecond());
-
-		std::sort(ProfilerManager::ProfilerMetrics.begin(), ProfilerManager::ProfilerMetrics.end(), [](const ProfilerMetrics& a, const ProfilerMetrics& b)
-			{
-				return a.durationInMilliSeconds > b.durationInMilliSeconds;
-			});
-
-		for (auto& p : ProfilerManager::ProfilerMetrics)
-			ImGui::Text("Func: %s: MS: %f", p.ContextName, p.durationInMilliSeconds);
-
-		ProfilerManager::ClearData();
-		ImGui::End();
+		//ImGui::Begin("TEST");
+		//
+		//std::sort(ProfilerManager::ProfilerMetrics.begin(), ProfilerManager::ProfilerMetrics.end(), [](const ProfilerMetrics& a, const ProfilerMetrics& b)
+		//	{
+		//		return a.durationInMilliSeconds > b.durationInMilliSeconds;
+		//	});
+		//
+		//for (auto& p : ProfilerManager::ProfilerMetrics)
+		//	ImGui::Text("Func: %s: MS: %f", p.ContextName, p.durationInMilliSeconds);
+		//
+		//ProfilerManager::ClearData();
+		//ImGui::End();
 
 		{
 			std::lock_guard<std::mutex> lock(m_OnUIRenderMutex);
@@ -121,6 +101,8 @@ namespace Relentless
 		CreateSubsystems();
 		LoadModules(ELoadPhase::PostCreateSubsystems);
 		CreateStartScene();
+
+		Application::Get().GetWindow()->CanDragTitleBarCallback = []() { return !ImGuiLayer::IsAnyMainMenuButtonHovered(); };
 	}
 
 	void Editor::OnDestroy() noexcept
@@ -287,52 +269,6 @@ namespace Relentless
 		const entity exponentialHeightFogEntity = m_pActiveScene->CreateEntity("ExponentialHeightFog");
 		entityManager.Add<ExponentialHeightFogComponent>(exponentialHeightFogEntity);
 		m_pActiveScene->SetActiveExponentialHeightFog(exponentialHeightFogEntity);
-	}
-
-	void Editor::UI_DrawMainMenuBar() noexcept
-	{
-		if (m_ImmersiveModeEnabled)
-			return;
-
-		const float currentPadding = ImGui::GetStyle().FramePadding.y;
-		const float currentBorderSize = ImGui::GetStyle().WindowBorderSize;
-		ImGui::GetStyle().WindowBorderSize = 0.0f;
-		ImGui::GetStyle().FramePadding.y = 10.0f;
-
-		ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(Colors::EvenRowColorDefault.R(), Colors::EvenRowColorDefault.G(), Colors::EvenRowColorDefault.B(), Colors::EvenRowColorDefault.A()));
-
-		const bool open = ImGui::BeginMainMenuBar();
-		ImGui::GetStyle().FramePadding.y = currentPadding;
-		ImGui::GetStyle().WindowBorderSize = currentBorderSize;
-		ImGui::PopStyleColor();
-
-		if (!open)
-			return;
-
-		if (ImGui::BeginMenu("File"))
-		{
-			if (ImGui::MenuItem("Exit", nullptr))
-				Application::Get().InitializeShutdownProcedure();
-
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("View"))
-		{
-			ImGui::MenuItem("Scene Hierarchy Panel", nullptr, &m_DisplayOutlinerPanel);
-			ImGui::MenuItem("Content Browser Panel", nullptr, &m_DisplayContentBrowserPanel);
-			ImGui::MenuItem("Properties Panel", nullptr, &m_DisplayPropertiesPanel);
-			ImGui::MenuItem("Inspector Panel", nullptr, &m_DisplayInspectorPanel);
-			ImGui::MenuItem("Metrics Panel", nullptr, &m_DisplayMetricsPanel);
-			ImGui::MenuItem("Scene Renderer Panel", nullptr, &m_DisplaySceneRendererPanel);
-			ImGui::MenuItem("Statistics Panel", nullptr, &m_DisplayStatisticsPanel);
-
-			ImGui::MenuItem("Immersive Mode", "Ctrl + i", &m_ImmersiveModeEnabled);
-
-			ImGui::EndMenu();
-		}
-
-		ImGui::EndMainMenuBar();
 	}
 
 	void Editor::LoadModules(ELoadPhase aLoadPhase) noexcept

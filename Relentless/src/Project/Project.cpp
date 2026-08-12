@@ -87,7 +87,10 @@ namespace Relentless
 		if (File::Exists(projectFile))
 		{
 			if (Ref<Project> loaded = Load(projectFile))
+			{
+				OnProjectChanged();
 				return loaded;
+			}
 
 			RLS_CORE_WARN("[Project::LoadOrCreateDefault]: Default project at '{0}' failed to load; recreating.", projectFile.string());
 		}
@@ -107,6 +110,8 @@ namespace Relentless
 		AssetRegistryModule& assetRegistryModule = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
 		assetRegistryModule.RegisterRoot("Game", "Game", GetAssetDirectory(), EAssetSourceType::Project);
 		assetRegistryModule.ScanForAssets(GetAssetDirectory());
+
+		OnProjectChanged();
 
 		return s_ActiveProject;
 	}

@@ -82,6 +82,11 @@ namespace Relentless
 		return Vector2u(rect.left, rect.top);
 	}
 
+	void Window::Minimize() noexcept
+	{
+		::ShowWindow(m_WindowHandle, SW_MINIMIZE);
+	}
+
 	void Window::PollMessages() noexcept
 	{
 		MSG msg{};
@@ -115,10 +120,10 @@ namespace Relentless
 		case WM_LBUTTONDOWN:
 		{
 			const POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-			constexpr LONG titlebarHeight = 40u;
-			const bool pointIsInTitlebar = point.y >= 0 && point.y <= titlebarHeight && point.x > 100;
+			constexpr LONG titlebarHeight = 30u;
+			const bool pointIsInTitlebar = point.y >= 0 && point.y <= titlebarHeight;
 
-			if (pointIsInTitlebar)
+			if (pointIsInTitlebar && CanDragTitleBarCallback.IsSet() && CanDragTitleBarCallback())
 			{
 				POINT screenPoint = point;
 				::ClientToScreen(hWnd, &screenPoint);
@@ -132,7 +137,7 @@ namespace Relentless
 		case WM_LBUTTONDBLCLK:
 		{
 			const POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-			constexpr LONG titlebarHeight = 40u;
+			constexpr LONG titlebarHeight = 30u;
 			const bool pointIsInTitlebar = point.y >= 0 && point.y <= titlebarHeight && point.x > 100;
 
 			if (pointIsInTitlebar)
@@ -345,6 +350,12 @@ namespace Relentless
 	void Window::SetPosition(const Vector2u& newPosition) noexcept
 	{
 		::SetWindowPos(m_WindowHandle, nullptr, newPosition.x, newPosition.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	}
+
+	void Window::ToggleMaximize() noexcept
+	{
+		const bool isMaximized = ::IsZoomed(m_WindowHandle) != 0;
+		::ShowWindow(m_WindowHandle, isMaximized ? SW_RESTORE : SW_MAXIMIZE);
 	}
 }
 

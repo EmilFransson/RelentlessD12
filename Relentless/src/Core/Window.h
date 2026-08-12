@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/DLLExport.h"
 #include "Callback/Broadcaster.h"
+#include "Callback/Callback.h"
 
 namespace Relentless
 {
@@ -20,9 +21,15 @@ namespace Relentless
 		NO_DISCARD static Vector2i GetDisplaySize() noexcept;
 		NO_DISCARD WindowHandle GetNativeWindow() const noexcept;
 		NO_DISCARD Vector2u GetTopLeft() const noexcept;
+
+		void Minimize() noexcept;
+
 		void PollMessages() noexcept;
+		
 		void SetTitle(const char* pTitle) noexcept;
 		void SetPosition(const Vector2u& newPosition) noexcept;
+
+		void ToggleMaximize() noexcept;
 
 		Broadcaster<void(bool maximized)> OnFocusChanged;
 		Broadcaster<void(uint32 width, uint32 height)> OnResizeOrMove;
@@ -34,11 +41,14 @@ namespace Relentless
 		Broadcaster<void(uint32 key)> OnCharInput;
 		Broadcaster<void()> OnCloseOrDestroy;
 
+		Callback<bool()> CanDragTitleBarCallback;
 	private:
 		static LRESULT WndProcStatic(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 		LRESULT HandleMessages(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
 	private:
 		WindowHandle m_WindowHandle = nullptr;
+
+
 		static inline WndProcHook s_WndProcHook = nullptr;
 		uint32 m_DisplayWidth = 0u;
 		uint32 m_DisplayHeight = 0u;

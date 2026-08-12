@@ -2,6 +2,9 @@
 #include <Relentless.h>
 #include "ImGui/ImGuiIncludes.h"
 
+#include "UI/Widgets/VerticalBox.h"
+#include "UI/Widgets/IWidget.h"
+
 namespace Relentless
 {
 	#define OPENSANS_BOLD_18 0
@@ -33,6 +36,8 @@ namespace Relentless
 		std::atomic<size_t> m_NextFree = 0u;
 	};
 
+	class Label;
+
 	class ImGuiLayer : public Layer
 	{
 	public:
@@ -40,16 +45,29 @@ namespace Relentless
 		virtual ~ImGuiLayer() noexcept override = default;
 
 		void BeginFrame(Ref<Texture> pTarget, CommandContext* pCommandContext) noexcept;
+		
 		void EndFrame(CommandContext* pCommandContext) noexcept;
+
+		NO_DISCARD static bool IsAnyMainMenuButtonHovered() noexcept;
 
 		virtual void OnImGuiRender() noexcept override final;
 	private:
 		virtual void OnAttach() override final;
 		virtual void OnDetach() override final;
+
+		void OnAddEntityButtonClicked();
+		void OnFileButtonClicked();
+		void OnProjectChanged();
+		void OnSpawnButtonClicked();
 	private:
 		GraphicsDevice* m_pDevice = nullptr;
 		UniquePtr<DescriptorHeap> m_pDescriptorHeap = nullptr;
 		DescriptorHandle m_DescriptorHandle;
 		ImGuiSRVAllocator m_Allocator;
+
+		Ref<VerticalBox> m_pTopChromeBox = nullptr;
+		Ref<VerticalBox> m_pBottomChromeBox = nullptr;
+		Label* m_pProjectNameLabel = nullptr;
+		Label* m_pFPSLabel = nullptr;
 	};
 }

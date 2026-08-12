@@ -1,6 +1,8 @@
 #pragma once
 #include "Core/DLLExport.h"
 
+#include "Callback/Broadcaster.h"
+
 namespace Relentless
 {
 	struct ProjectConfig
@@ -25,6 +27,8 @@ namespace Relentless
 		static Ref<Project> New(const ProjectConfig& aConfig) noexcept;
 		
 		static bool SaveActive(const Path& aPath) noexcept;
+
+		inline static Broadcaster<void()> OnProjectChanged;
 	private:
 		ProjectConfig m_Config;
 		Path m_ActiveProjectDirectory;

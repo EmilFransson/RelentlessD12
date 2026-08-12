@@ -297,7 +297,7 @@ namespace Relentless
 	{
 		OpenPanel<EntityDetailsPanel>();
 		OpenPanel<OutlinerPanel>();
-		OpenPanel<WidgetShowcasePanel>();
+		//OpenPanel<WidgetShowcasePanel>();
 	}
 
 	void UIModule::SetActiveContextMenu(Ref<ContextMenu> aContextMenu) noexcept
