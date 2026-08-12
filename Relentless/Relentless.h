@@ -55,6 +55,7 @@
 //Graphics:
 #include <src/Graphics/Renderer/Renderer.h>
 #include <src/Graphics/Renderer/RenderTypes.h>
+#include <src/Graphics/Renderer/RenderViewModes.h>
 #include <src/Graphics/RHI/Device.h>
 #include <src/Graphics/RHI/ResourceViews.h>
 #include <src/Graphics/RHI/CommandContext.h>

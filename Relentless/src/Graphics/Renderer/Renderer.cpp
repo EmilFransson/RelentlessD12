@@ -403,6 +403,7 @@ namespace Relentless
 
 		renderView.RenderFeatures = aViewRenderDesc.RenderFeatures;
 		renderView.RenderQualitySettings = aViewRenderDesc.RenderQualitySettings;
+		renderView.RenderViewMode = aViewRenderDesc.RenderViewMode;
 		renderView.ViewID = aViewRenderDesc.ViewID;
 
 		return renderView;
@@ -486,6 +487,9 @@ namespace Relentless
 		outViewUniform.SkyBoxIndex				= pSkyBoxRenderSubsystem->GetRenderData()->GetSRVIndex();
 		outViewUniform.ShadowViewsIndex			= pLightRenderSubsystem->GetShadowViewsRenderData()->GetSRVIndex();
 		outViewUniform.FogIndex					= pFogRenderSubsystem->GetRenderData()->GetSRVIndex();
+
+		outViewUniform.RenderFeatures			= aRenderView.RenderFeatures.ToShaderMask();
+		outViewUniform.RenderViewMode			= static_cast<uint32>(aRenderView.RenderViewMode);
 	}
 
 	void Renderer::InvokeDispatchRequests() noexcept
@@ -738,6 +742,7 @@ namespace Relentless
 		}
 
 		//Histogram Auto Exposure:
+		if (aRenderView.RenderFeatures.IsEnabled(ERenderFeature::AutoExposure))
 		{
 			PROFILE_SCOPE("Renderer::Render::AutoExposure");
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
@@ -746,6 +751,7 @@ namespace Relentless
 		}
 
 		//Bloom:
+		if (aRenderView.RenderFeatures.IsEnabled(ERenderFeature::Bloom))
 		{
 			PROFILE_SCOPE("Renderer::Render::Bloom");
 			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
@@ -753,7 +759,8 @@ namespace Relentless
 			commandContexts.push_back(pCommandContext);
 		}
 
-		CommandContext::Execute(commandContexts);
+		if (!commandContexts.empty())
+			CommandContext::Execute(commandContexts);
 
 		//Transition LDR & final texture to UAV:
 		{
@@ -769,12 +776,10 @@ namespace Relentless
 		{
 			PROFILE_SCOPE("Renderer::Render::Post Process");
 
-			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
 			m_pPostProcessing->Render(*pCommandContext, aRenderView, aSceneTextures, aSceneBuffers.AverageLuminanceBuffer.pBuffer);
 			pCommandContext->Execute();
 		}
-		
-		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE));
 
 		/*BEGIN LDR*/
 		

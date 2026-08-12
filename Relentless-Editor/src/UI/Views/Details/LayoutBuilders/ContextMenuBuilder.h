@@ -136,6 +136,7 @@ namespace Relentless
 	public:
 		explicit RadioButtonItemBuilder(ContextMenuBuilder& aParent, ContextMenuItem& aItem) noexcept;
 		RadioButtonItemBuilder& OnValueChanged(Callback<void(bool)>&& aCallback) noexcept;
+		RadioButtonItemBuilder& TextColor(const Color& aColor) noexcept;
 		RadioButtonItemBuilder& Value(Callback<bool()>&& aCallback) noexcept;
 	};
 

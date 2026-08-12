@@ -24,6 +24,36 @@ SamplerComparisonState sLinearClampComparisonGreater :		register(s11, space1);
 SamplerComparisonState sLinearWrapComparisonGreater :		register(s12, space1);
 SamplerComparisonState sLinearClampComparisonLessEqual :    register(s13, space1);
 
+//Need to be kept in sync with RenderFeatures.h
+#define RENDER_FEATURE_EntityPicking         0
+#define RENDER_FEATURE_Grid                  1
+#define RENDER_FEATURE_HBAOPlus              2
+#define RENDER_FEATURE_Outlines              3
+#define RENDER_FEATURE_Skybox                4
+#define RENDER_FEATURE_ExponentialHeightFog  5
+#define RENDER_FEATURE_Bloom                 6
+#define RENDER_FEATURE_AutoExposure          7
+#define RENDER_FEATURE_ToneMap               8
+
+bool HasRenderFeature(uint aFeature)
+{
+    return (cView.RenderFeatures & (1u << aFeature)) != 0u;
+}
+
+//Need to be kept in sync with RenderViewModes.h
+#define VIEW_MODE_Lit               0
+#define VIEW_MODE_Unlit             1
+#define VIEW_MODE_GeometricNormals  2
+#define VIEW_MODE_ShadingNormals    3
+#define VIEW_MODE_Metallic          4
+#define VIEW_MODE_Roughness         5
+#define VIEW_MODE_AmbientOcclusion  6
+#define VIEW_MODE_Opacity           7
+
+bool IsRenderViewMode(uint aRenderViewMode)
+{
+    return cView.RenderViewMode == aRenderViewMode;
+}
 
 InstanceData GetInstance(uint index)
 {

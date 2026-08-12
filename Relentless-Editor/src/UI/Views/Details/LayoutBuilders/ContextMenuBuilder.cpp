@@ -187,8 +187,11 @@ namespace Relentless
 		else if (!aItem.Tooltip.empty())
 			pMainRow->SetTooltipText(aItem.Tooltip);
 
-		Ref<RadioButton> pRadioButton = pMainRow->AddWidget(RLS_NEW RadioButton(aItem.Name));
+		Ref<RadioButton> pRadioButton = pMainRow->AddWidget(RLS_NEW RadioButton(aItem.Icon.empty() ? aItem.Name : std::format("{} {}", aItem.Icon, aItem.Name)));
 		pRadioButton->SetBorderColor(Colors::Transparent);
+
+		if (aItem.TextColor.IsSet())
+			pRadioButton->SetTextColor(aItem.TextColor.Get());
 
 		if (aItem.ValueCallbackBool.IsSet())
 			pRadioButton->Value(std::move(aItem.ValueCallbackBool));
@@ -333,6 +336,12 @@ namespace Relentless
 	RadioButtonItemBuilder& RadioButtonItemBuilder::OnValueChanged(Callback<void(bool)>&& aCallback) noexcept
 	{
 		m_Item.OnValueChangedCallbackBool = std::move(aCallback);
+		return *this;
+	}
+
+	RadioButtonItemBuilder& RadioButtonItemBuilder::TextColor(const Color& aColor) noexcept
+	{
+		m_Item.TextColor.Set(aColor);
 		return *this;
 	}
 

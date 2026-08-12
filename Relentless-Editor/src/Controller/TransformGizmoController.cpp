@@ -60,6 +60,21 @@ namespace Relentless
 		return m_CurrentMode;
 	}
 
+	ETransformGizmoMovementMode TransformGizmoController::GetActiveRotationMovementMode() const noexcept
+	{
+		return m_CurrentRotationMovementMode;
+	}
+
+	ETransformGizmoMovementMode TransformGizmoController::GetActiveScaleMovementMode() const noexcept
+	{
+		return m_CurrentScaleMovementMode;
+	}
+
+	ETransformGizmoMovementMode TransformGizmoController::GetActiveTranslationMovementMode() const noexcept
+	{
+		return m_CurrentTranslationMovementMode;
+	}
+
 	ETransformGizmoInteractionState TransformGizmoController::GetCurrentInteractionState() const noexcept
 	{
 		return m_CurrentState;
@@ -68,6 +83,21 @@ namespace Relentless
 	ETransformGizmoType TransformGizmoController::GetActiveTransformType() const noexcept
 	{
 		return m_CurrentType;
+	}
+
+	float TransformGizmoController::GetRotationSnapValue() const noexcept
+	{
+		return m_RotationSnapDelta;
+	}
+
+	float TransformGizmoController::GetScaleSnapValue() const noexcept
+	{
+		return m_ScaleSnapDelta;
+	}
+
+	float TransformGizmoController::GetTranslationSnapValue() const noexcept
+	{
+		return m_TranslationSnapDelta;
 	}
 
 	bool TransformGizmoController::IsInteracting() const noexcept
@@ -95,6 +125,26 @@ namespace Relentless
 		m_CurrentTranslationMovementMode = movementMode;
 	}
 
+	void TransformGizmoController::SetRotationSnapValue(float aValue) noexcept
+	{
+		m_RotationSnapDelta = aValue;
+	}
+
+	void TransformGizmoController::SetScaleSnapValue(float aValue) noexcept
+	{
+		m_ScaleSnapDelta = aValue;
+	}
+
+	void TransformGizmoController::SetTranslationSnapValue(float aValue) noexcept
+	{
+		m_TranslationSnapDelta = aValue;
+	}
+
+	void TransformGizmoController::SetActiveScaleMovementMode(ETransformGizmoMovementMode aMovementMode) noexcept
+	{
+		m_CurrentScaleMovementMode = aMovementMode;
+	}
+
 	void TransformGizmoController::SetActiveRotationMovementMode(ETransformGizmoMovementMode movementMode) noexcept
 	{
 		m_CurrentRotationMovementMode = movementMode;
@@ -107,12 +157,17 @@ namespace Relentless
 
 	void TransformGizmoController::ToggleTranslationMovementMode() noexcept
 	{
-		TransformGizmoController_private::ToggleEnum(m_CurrentTranslationMovementMode, ETransformGizmoMovementMode::Free, ETransformGizmoMovementMode::Snap);
+		TransformGizmoController_private::ToggleEnum(m_CurrentTranslationMovementMode, ETransformGizmoMovementMode::Continuous, ETransformGizmoMovementMode::Snap);
 	}
 
 	void TransformGizmoController::ToggleRotationMovementMode() noexcept
 	{
-		TransformGizmoController_private::ToggleEnum(m_CurrentRotationMovementMode, ETransformGizmoMovementMode::Free, ETransformGizmoMovementMode::Snap);
+		TransformGizmoController_private::ToggleEnum(m_CurrentRotationMovementMode, ETransformGizmoMovementMode::Continuous, ETransformGizmoMovementMode::Snap);
+	}
+
+	void TransformGizmoController::ToggleScaleMovementMode() noexcept
+	{
+		TransformGizmoController_private::ToggleEnum(m_CurrentScaleMovementMode, ETransformGizmoMovementMode::Continuous, ETransformGizmoMovementMode::Snap);
 	}
 
 	void TransformGizmoController::PreConfigureImGuizmo(const TransformGizmoControllerContext& context)
@@ -160,10 +215,13 @@ namespace Relentless
 			TransformGizmoController_private::FillSnap(snapValues, m_TranslationSnapDelta);
 		else if (m_CurrentType == ETransformGizmoType::Rotate)
 			TransformGizmoController_private::FillSnap(snapValues, m_RotationSnapDelta);
+		else if (m_CurrentType == ETransformGizmoType::Scale)
+			TransformGizmoController_private::FillSnap(snapValues, m_ScaleSnapDelta);
 
 		float* pSnapDelta = nullptr;
 		if ((m_CurrentType == ETransformGizmoType::Translate && m_CurrentTranslationMovementMode == ETransformGizmoMovementMode::Snap) ||
-			(m_CurrentType == ETransformGizmoType::Rotate && m_CurrentRotationMovementMode == ETransformGizmoMovementMode::Snap))
+			(m_CurrentType == ETransformGizmoType::Rotate && m_CurrentRotationMovementMode == ETransformGizmoMovementMode::Snap) ||
+			(m_CurrentType == ETransformGizmoType::Scale && m_CurrentScaleMovementMode == ETransformGizmoMovementMode::Snap))
 		{
 			pSnapDelta = snapValues;
 		}

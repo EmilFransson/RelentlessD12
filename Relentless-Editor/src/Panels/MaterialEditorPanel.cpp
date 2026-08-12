@@ -12,7 +12,7 @@
 namespace Relentless
 {
 	MaterialEditorPanel::MaterialEditorPanel(const std::vector<AssetHandle>& someMaterials) noexcept
-		:ViewportPanel("Material Editor")
+		:SceneViewportPanel("Material Editor")
 	{
 		Ref<Material> pMaterial = AssetManager::Get<Material>(someMaterials.front());
 		pMaterial->OnPropertyChanged.Connect(this, &MaterialEditorPanel::OnMaterialEdited);
@@ -21,12 +21,7 @@ namespace Relentless
 		m_pMaterialDetailsView = RLS_NEW MaterialDetailsView(someMaterials.front());
 		CreatePreviewScene();
 
-		Renderer::Dispatch([viewID = GetUUID()](Renderer* aRenderer)
-			{
-				aRenderer->CreateView(viewID);
-			});
-
-		SetRoot(BuildWindowLayout());
+		Renderer::Dispatch([viewID = GetUUID()](Renderer* aRenderer) { aRenderer->CreateView(viewID); });
 	}
 
 	MaterialEditorPanel::~MaterialEditorPanel()
@@ -38,62 +33,7 @@ namespace Relentless
 			context.Material->OnSaved.Detach(this);
 		}
 
-		Renderer::Dispatch([viewID = GetUUID()](Renderer* aRenderer)
-			{
-				aRenderer->DestroyView(viewID);
-			});
-	}
-
-	ViewRenderDesc MaterialEditorPanel::BuildRenderDescriptor() const noexcept
-	{
-		const SharedPtr<PerspectiveCamera> pCamera = GetCamera();
-
-		RenderFeatures renderFeatures{};
-		renderFeatures.Disable(ERenderFeature::Grid);
-		renderFeatures.Disable(ERenderFeature::EntityPicking);
-		renderFeatures.Disable(ERenderFeature::HBAOPlus);
-		renderFeatures.Disable(ERenderFeature::Outlines);
-		renderFeatures.Disable(ERenderFeature::ExponentialHeightFog);
-
-		RenderQualitySettings renderQualitySettings{};
-
-		ViewRenderDesc renderDesc
-		{
-			.ViewTransform = pCamera->GetViewTransform(),
-			.SceneID = m_pPreviewScene->GetUUID(),
-			.ViewID = GetUUID(),
-			.RenderFeatures = renderFeatures,
-			.RenderQualitySettings = renderQualitySettings,
-			.MouseHoverCoordinates = IsClientAreaHovered() ? GetClientHoverCoordinates() : Vector2i(-1, -1),
-			.RenderTarget = m_pRenderTarget
-		};
-
-		const Vector2i& region = GetViewportSize();
-		renderDesc.ViewTransform.Viewport = FloatRect(0.0f, 0.0f, Math::Max(1.0f, (float)region.x), Math::Max(1.0f, (float)region.y));
-
-		return renderDesc;
-	}
-
-	Ref<VerticalBox> MaterialEditorPanel::BuildWindowLayout() noexcept
-	{
-		Ref<VerticalBox> pRoot = RLS_NEW VerticalBox();
-		pRoot->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pRoot->SetVerticalSizePolicy(ESizePolicy::Stretch);
-
-		HorizontalBox* pBox = pRoot->AddWidget(RLS_NEW HorizontalBox());
-		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
-
-		pBox->AddWidget(BuildDefaultCanvasWidget());
-
-		HorizontalBox* pDetailsViewBox = pBox->AddWidget(RLS_NEW HorizontalBox());
-		pDetailsViewBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
-		pDetailsViewBox->SetSize(Vector2(300.0f, -1.0f));
-		pDetailsViewBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
-
-		pDetailsViewBox->AddWidget(m_pMaterialDetailsView);
-
-		return pRoot;
+		Renderer::Dispatch([viewID = GetUUID()](Renderer* aRenderer) { aRenderer->DestroyView(viewID); });
 	}
 
 	String MaterialEditorPanel::GetDisplayName() const noexcept
@@ -106,6 +46,44 @@ namespace Relentless
 	{
 		MaterialDetailsContext& context = m_pMaterialDetailsView->GetContext<MaterialDetailsContext>();
 		return std::format("MaterialEditor_{}", ConvertUUIDToString(context.Material->GetUUID()));
+	}
+
+	Scene* MaterialEditorPanel::GetViewportScene() const noexcept
+	{
+		return m_pPreviewScene;
+	}
+
+	ViewportClient::Desc MaterialEditorPanel::CreateClientDesc()
+	{
+		ViewportClient::Desc desc;
+		desc.Location = Vector3(0.0f, 1.0f, -2.0f);
+		desc.FocusTarget = Vector3::Zero;
+		desc.NavigationPreset = ECameraNavigationPreset::OrbitOnly;
+
+		return desc;
+	}
+
+	ViewportSidePanelDesc MaterialEditorPanel::CreateSidePanelDesc()
+	{
+		return ViewportSidePanelDesc{ .Width = 300.0f, .StartVisible = true };
+	}
+
+	void MaterialEditorPanel::ExtendSidePanel(Ref<VerticalBox>& aSidePanelBox)
+	{
+		aSidePanelBox->AddWidget(m_pMaterialDetailsView);
+	}
+
+	void MaterialEditorPanel::OnInitialized()
+	{
+		ViewportClient& client = GetClient();
+		PerspectiveCameraController* pCameraController = client.GetCameraController();
+		pCameraController->SetOrbitDistance(Vector3::Distance(Vector3(0.0f, 1.0f, -2.0f), Vector3::Zero));
+		pCameraController->SetMode(ECameraControllerNavigationMode::Orbit);
+
+		client.SetRenderFeature(ERenderFeature::Grid, false);
+		client.SetRenderFeature(ERenderFeature::EntityPicking, false);
+		client.SetRenderFeature(ERenderFeature::Outlines, false);
+		client.SetRenderFeature(ERenderFeature::ExponentialHeightFog, false);
 	}
 
 	bool MaterialEditorPanel::OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept
@@ -123,18 +101,28 @@ namespace Relentless
 	{
 		if (Mouse::IsButtonDown(RLS_Button::Right))
 		{
-			const UniquePtr<PerspectiveCameraController>& pCameraController = GetCameraController();
+			ViewportClient& client = GetClient();
+			PerspectiveCameraController* pCameraController = client.GetCameraController();
+			PerspectiveCamera& camera = client.GetCamera();
+
 			const float orbitDistance = pCameraController->GetOrbitDistance();
-			pCameraController->SetOrbitDistance(orbitDistance - (aEvent.DeltaCoordinates.y * 0.005f));
+			const float delta = (aEvent.DeltaCoordinates.y * 0.005f);
+			const float newOrbitDistance = Math::Max(0.1f, orbitDistance - delta);
+			const float orbitDistanceDelta = newOrbitDistance - orbitDistance;
+
+			const Vector3 location = camera.GetLocation();
+			const Vector3 cameraToOrigin = Vector3::Zero - camera.GetLocation();
+			Vector3 cameraToOriginDirection;
+			cameraToOrigin.Normalize(cameraToOriginDirection);
+
+			const Vector3 newLocation = location - (cameraToOriginDirection * orbitDistanceDelta);
+			pCameraController->SetOrbitDistance(newOrbitDistance);
+			camera.SetLocation(newLocation);
+			
 			return true;
 		}
 		else 
 			return ViewportPanel::OnMouseDragEvent(aEvent);
-	}
-
-	void MaterialEditorPanel::ResolveAndSetCameraMode() noexcept
-	{
-		//Nothing - Only orbit allowed.
 	}
 
 	void MaterialEditorPanel::Update() noexcept
@@ -170,7 +158,7 @@ namespace Relentless
 			AssetToolsModule& assetTools = ModuleManager::LoadModuleChecked<AssetToolsModule>();
 			const AssetHandle floorHandle = assetTools.CreateAsset<Material>("M_FloorMaterial", "", nullptr, false);
 			Ref<Material> pFloorMaterial = AssetManager::Get<Material>(floorHandle);
-			pFloorMaterial->SetAlbedoColor(Color(0.01f, 0.01f, 0.01f, 1.0f));
+			pFloorMaterial->SetAlbedoColor(Color(0.5f, 0.5f, 0.5f, 1.0f));
 			pFloorMaterial->SetRoughness(1.0f);
 			
 			MeshRendererComponent& meshRendererComponent = entityManager.Add<MeshRendererComponent>(floor);
@@ -189,7 +177,7 @@ namespace Relentless
 			entity dirLight = m_pPreviewScene->CreateLight("Directional Light", ELightType::Directional);
 			auto& dlc = entityManager.Get<DirectionalLightComponent>(dirLight);
 			dlc.SetColor(Math::MakeFromColorTemperature(5'900.0f));
-			dlc.SetIntensityLux(500.0f);
+			dlc.SetIntensityLux(150.0f);
 
 			auto& tc = entityManager.Get<TransformComponent>(dirLight);
 			tc.SetWorldRotationEulerDegrees(Vector3(-90.0f, 0.0f, 0.0f));
@@ -203,8 +191,8 @@ namespace Relentless
 			exposureSettings.SetHistogramMinEV100(0.0f);
 			exposureSettings.SetHistogramMaxEV100(0.0f);
 
-			exposureSettings.SetMinEV100(3.0f);
-			exposureSettings.SetMaxEV100(3.0f);
+			exposureSettings.SetMinEV100(5.0f);
+			exposureSettings.SetMaxEV100(5.0f);
 		}
 
 		const AssetHandle environmentHandle = assetToolsModule.CreateAsset<Environment>("MaterialPreviewEnvironment", "", nullptr, false);
@@ -230,21 +218,6 @@ namespace Relentless
 			skyLightComponent.SetLowerHemisphereColor(Colors::White);
 
 			m_pPreviewScene->SetActiveSkyLight(skyLight);
-		}
-		
-		//Camera:
-		{
-			constexpr Vector3 location = Vector3(0.0f, 1.0f, -2.0f);
-			Quaternion rotation = Math::CreateLookToRotation(location, Vector3::Zero);
-			rotation.Normalize();
-
-			SharedPtr<PerspectiveCamera> pCamera = GetCamera();
-			pCamera->SetLocation(location);
-			pCamera->SetRotation(rotation);
-
-			const UniquePtr<PerspectiveCameraController>& pCameraController = GetCameraController();
-			pCameraController->SetOrbitDistance(Vector3::Distance(location, Vector3::Zero));
-			pCameraController->SetMode(ECameraControllerNavigationMode::Orbit);
 		}
 	}
 

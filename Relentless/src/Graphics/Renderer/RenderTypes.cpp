@@ -1,10 +1,12 @@
 #include "RenderTypes.h"
 
+#include "Graphics/RHI/CommandContext.h"
 #include "Graphics/RHI/Device.h"
 
 namespace Relentless
 {
 	static std::array<Ref<Texture>, (uint32)DefaultTextureType::Max> s_DefaultTextures;
+	static std::array<Ref<Buffer>, (uint32)DefaultBufferType::Max> s_DefaultBuffers;
 
 	namespace GraphicsCommon
 	{
@@ -40,12 +42,26 @@ namespace Relentless
 			CreateDefaultTexture(DefaultTextureType::Normal2D, "Default Normal", TextureDesc::Create2D(1u, 1u, ResourceFormat::RGBA32_FLOAT, 1u, textureFlags), &DEFAULT_NORMAL);
 			CreateDefaultTexture(DefaultTextureType::BlackCube, "Default Black Cube", TextureDesc::CreateCube(1u, 1u, ResourceFormat::RGBA32_FLOAT, 1u, textureFlags), BLACK_CUBE);
 			CreateDefaultTexture(DefaultTextureType::WhiteCube, "Default White Cube", TextureDesc::CreateCube(1u, 1u, ResourceFormat::RGBA32_FLOAT, 1u, textureFlags), WHITE_CUBE);
+
+			CommandContext* pCommandContext = aGraphicsDevice->AllocateCommandContext();
+
+			ScratchAllocation alloc = pCommandContext->AllocateScratch(sizeof(float) * 4u);
+			float* pFloats = &alloc.As<float>();
+			pFloats[0] = pFloats[1] = pFloats[2] = pFloats[3] = 1.0f;
+
+			s_DefaultBuffers[(uint32)DefaultBufferType::Ones] = aGraphicsDevice->CreateBuffer(BufferDesc::CreateStructured(4u, sizeof(float)), "Ones");
+
+			pCommandContext->CopyBuffer(alloc.pBackingResource, s_DefaultBuffers[(uint32)DefaultBufferType::Ones], alloc.Size, alloc.Offset, 0);
+			pCommandContext->Execute();
 		}
 
 		void Destroy() noexcept
 		{
 			for (auto& pTexture : s_DefaultTextures)
 				pTexture.Reset();
+
+			for (auto& pBuffer : s_DefaultBuffers)
+				pBuffer.Reset();
 		}
 
 		Texture* GetDefaultTexture(DefaultTextureType aDefaultTextureType) noexcept
@@ -53,5 +69,9 @@ namespace Relentless
 			return s_DefaultTextures[(uint32)aDefaultTextureType];
 		}
 
+		Buffer* GetDefaultBuffer(DefaultBufferType aDefaultBufferType) noexcept
+		{
+			return s_DefaultBuffers[(uint32)aDefaultBufferType];
+		}
 	}
 }

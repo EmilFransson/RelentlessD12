@@ -1,31 +1,25 @@
 #include "EnvironmentEditorPanel.h"
 
-#include "Core/Editor.h"
-
 #include "Scene/Scene.h"
 
 #include "UI/DragDrop/AssetViewDragDropOperation.h"
 #include "UI/Views/Details/EnvironmentDetailsView.h"
+#include "UI/Widgets/Canvas.h"
 #include "UI/Widgets/VerticalBox.h"
 
 namespace Relentless
 {
 	EnvironmentEditorPanel::EnvironmentEditorPanel(const std::vector<AssetHandle>& someEnvironments) noexcept
-		:ViewportPanel("Environment Editor")
+		: SceneViewportPanel("Environment Editor")
 	{
 		m_pEnvironmentDetailsView = RLS_NEW EnvironmentDetailsView(someEnvironments.front());
 		CreatePreviewScene();
 
-		Renderer::Dispatch([viewID = GetUUID()](Renderer* aRenderer)
-			{ 
-				aRenderer->CreateView(viewID);
-			});
+		Renderer::Dispatch([viewID = GetUUID()](Renderer* aRenderer) { aRenderer->CreateView(viewID); });
 		
 		Ref<Environment> pEnvironment = AssetManager::Get<Environment>(someEnvironments.front());
 		pEnvironment->OnPropertyChanged.Connect(this, &EnvironmentEditorPanel::OnEnvironmentEdited);
 		pEnvironment->OnSaved.Connect(this, &EnvironmentEditorPanel::OnEnvironmentSaved);
-
-		SetRoot(BuildWindowLayout());
 	}
 
 	EnvironmentEditorPanel::~EnvironmentEditorPanel()
@@ -37,65 +31,7 @@ namespace Relentless
 			context.Environment->OnSaved.Detach(this);
 		}
 
-		Renderer::Dispatch([viewID = GetUUID()](Renderer* aRenderer)
-			{ 
-				aRenderer->DestroyView(viewID);
-			});
-	}
-
-	ViewRenderDesc EnvironmentEditorPanel::BuildRenderDescriptor() const noexcept
-	{
-		const SharedPtr<PerspectiveCamera> pCamera = GetCamera();
-
-		RenderFeatures renderFeatures{};
-		renderFeatures.Disable(ERenderFeature::Grid);
-		renderFeatures.Disable(ERenderFeature::HBAOPlus);
-		renderFeatures.Disable(ERenderFeature::EntityPicking);
-		renderFeatures.Disable(ERenderFeature::Outlines);
-		renderFeatures.Disable(ERenderFeature::ExponentialHeightFog);
-
-		RenderQualitySettings renderQualitySettings{};
-
-		ViewRenderDesc renderDesc
-		{
-			.ViewTransform = pCamera->GetViewTransform(),
-			.SceneID = m_pPreviewScene->GetUUID(),
-			.ViewID = GetUUID(),
-			.RenderFeatures = renderFeatures,
-			.RenderQualitySettings = renderQualitySettings,
-			.MouseHoverCoordinates = IsClientAreaHovered() ? GetClientHoverCoordinates() : Vector2i(-1, -1),
-			.RenderTarget = m_pRenderTarget
-		};
-
-		const Vector2i& region = GetViewportSize();
-		renderDesc.ViewTransform.Viewport = FloatRect(0.0f, 0.0f, Math::Max(1.0f, (float)region.x), Math::Max(1.0f, (float)region.y));
-
-		return renderDesc;
-	}
-
-	Ref<VerticalBox> EnvironmentEditorPanel::BuildWindowLayout() noexcept
-	{
-		Ref<VerticalBox> pRoot = RLS_NEW VerticalBox();
-		pRoot->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pRoot->SetVerticalSizePolicy(ESizePolicy::Stretch);
-
-		Ref<HorizontalBox> pBox = pRoot->AddWidget(RLS_NEW HorizontalBox());
-		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
-
-		pBox->AddWidget(BuildDefaultCanvasWidget());
-
-		Ref<HorizontalBox> pDetailsViewBox = pBox->AddWidget(RLS_NEW HorizontalBox());
-		pDetailsViewBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
-		pDetailsViewBox->SetSize(Vector2(300.0f, -1.0f));
-		pDetailsViewBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
-
-		pDetailsViewBox->AddWidget(m_pEnvironmentDetailsView);
-
-		m_pCanvas->OnDragOver(this, &EnvironmentEditorPanel::OnCanvasDragOver);
-		m_pCanvas->OnDrop(this, &EnvironmentEditorPanel::OnDropOnCanvas);
-
-		return pRoot;
+		Renderer::Dispatch([viewID = GetUUID()](Renderer* aRenderer) {  aRenderer->DestroyView(viewID); });
 	}
 
 	String EnvironmentEditorPanel::GetDisplayName() const noexcept
@@ -108,6 +44,35 @@ namespace Relentless
 	{
 		EnvironmentDetailsContext& context = m_pEnvironmentDetailsView->GetContext<EnvironmentDetailsContext>();
 		return std::format("EnvironmentEditor_{}", ConvertUUIDToString(context.Environment->GetUUID()));
+	}
+
+	Scene* EnvironmentEditorPanel::GetViewportScene() const noexcept
+	{
+		return m_pPreviewScene;
+	}
+
+	ViewportSidePanelDesc EnvironmentEditorPanel::CreateSidePanelDesc()
+	{
+		return ViewportSidePanelDesc{ .Width = 300.0f, .StartVisible = true };
+	}
+
+	void EnvironmentEditorPanel::ExtendSidePanel(Ref<VerticalBox>& aSidePanelBox)
+	{
+		aSidePanelBox->AddWidget(m_pEnvironmentDetailsView);
+	}
+
+	void EnvironmentEditorPanel::OnInitialized()
+	{
+		Canvas* pCanvas = GetCanvas();
+		pCanvas->OnDragOver(this, &EnvironmentEditorPanel::OnCanvasDragOver);
+		pCanvas->OnDrop(this, &EnvironmentEditorPanel::OnDropOnCanvas);
+
+		ViewportClient& client = GetClient();
+		client.SetRenderFeature(ERenderFeature::Grid, false);
+		client.SetRenderFeature(ERenderFeature::HBAOPlus, false);
+		client.SetRenderFeature(ERenderFeature::EntityPicking, false);
+		client.SetRenderFeature(ERenderFeature::Outlines, false);
+		client.SetRenderFeature(ERenderFeature::ExponentialHeightFog, false);
 	}
 
 	bool EnvironmentEditorPanel::OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept

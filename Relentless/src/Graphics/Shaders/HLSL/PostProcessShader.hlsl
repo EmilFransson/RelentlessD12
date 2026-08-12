@@ -100,11 +100,14 @@ void cs_main(uint3 threadId : SV_DispatchThreadID)
     Texture2D<float4> sourceHDRTexture = ResourceDescriptorHeap[passData.SourceIndex];
     RWTexture2D<float4> targetTexture = ResourceDescriptorHeap[passData.TargetIndex];
     
-    float3 hdrTextureColor = sourceHDRTexture.Load(int3(threadId.xy, 0)).rgb;
-    hdrTextureColor += Bloom(uv);
-    hdrTextureColor *= Exposure();
+    float3 outColor = sourceHDRTexture.Load(int3(threadId.xy, 0)).rgb;
+    outColor += Bloom(uv);
+    outColor *= Exposure();
     
-    const float3 sdr = ToneMap(hdrTextureColor);
+    if (HasRenderFeature(RENDER_FEATURE_ToneMap))
+    {
+        outColor = ToneMap(outColor);
+    }
     
-    targetTexture[threadId.xy] = float4(sdr, 1.0f);
+    targetTexture[threadId.xy] = float4(outColor, 1.0f);
 }

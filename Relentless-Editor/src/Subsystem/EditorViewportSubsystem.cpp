@@ -42,8 +42,8 @@ namespace Relentless
 		if (m_DraggedEntities.empty() || !m_pDragContextPanel)
 			return;
 
-		const SharedPtr<PerspectiveCamera> pCamera = m_pDragContextPanel->GetCamera();
-		const ViewTransform& viewTransform = pCamera->GetViewTransform();
+		const PerspectiveCamera& camera = m_pDragContextPanel->GetClient().GetCamera();
+		const ViewTransform& viewTransform = camera.GetViewTransform();
 
 		const FloatRect& viewport = viewTransform.Viewport;
 		const float viewportWidth = viewport.GetWidth();
@@ -90,8 +90,8 @@ namespace Relentless
 		if (meshAssetDatas.empty())
 			return;
 
-		const SharedPtr<PerspectiveCamera> pCamera = aPanel->GetCamera();
-		const ViewTransform& viewTransform = pCamera->GetViewTransform();
+		const PerspectiveCamera& camera = aPanel->GetClient().GetCamera();
+		const ViewTransform& viewTransform = camera.GetViewTransform();
 
 		const FloatRect& viewport = viewTransform.Viewport;
 		const float viewportWidth = viewport.GetWidth();

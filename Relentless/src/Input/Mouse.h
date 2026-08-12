@@ -16,6 +16,8 @@ namespace Relentless
 		float WheelDelta = 0.0f;
 		Vector2u LocalPosition = Vector2u(0u, 0u);
 		Vector2u ScreenSpacePosition = Vector2u(0u, 0u);
+
+		NO_DISCARD bool IsAnyButtonDown() const noexcept { return !PressedButtons.empty(); }
 	};
 
 	class RLS_API Mouse

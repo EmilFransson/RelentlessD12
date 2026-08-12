@@ -47,6 +47,8 @@ namespace Relentless
 			ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), ImGui::ColorConvertFloat4ToU32(ImVec4(m_DropAreaOverlayColor.R(), m_DropAreaOverlayColor.G(), m_DropAreaOverlayColor.B(), 0.15f)), 2.0f);
 			ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), ImGui::ColorConvertFloat4ToU32(ImVec4(m_DropAreaOverlayColor.R(), m_DropAreaOverlayColor.G(), m_DropAreaOverlayColor.B(), 0.5f)), 2.0f, 0, 2.0f);
 		}
+		else if (m_pWidget->IsHovered())
+			ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 1.0f, 0.5f)), 2.0f, 0, 2.0f);
 	}
 
 	void AssetDropTarget::OnSlotDragEnter(MAYBE_UNUSED const WidgetGeometry& aGeometry, const Ref<DragDropOperationBase>& aDragDropOperation) noexcept

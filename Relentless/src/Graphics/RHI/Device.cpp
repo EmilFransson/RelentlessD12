@@ -306,8 +306,6 @@ namespace Relentless
 			pBuffer->SetUAV(CreateUAV(pBuffer, BufferUAVDesc(desc.Format, isRaw, withCounter)));
 		}
 
-		//TEMP: Required because of issues when loading assets in parallel:
-		std::lock_guard<std::mutex> guard(m_GlobalMutex);
 		if (pInitData)
 		{
 			if (EnumHasAllFlags(desc.Flags, BufferFlag::Upload))
@@ -403,8 +401,6 @@ namespace Relentless
 		pTexture->SetResourceState(resourceState, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
 
 		{
-			//TEMP: Required because of issues when loading assets in parallel:
-			std::lock_guard<std::mutex> guard(m_GlobalMutex);
 
 			if (initData.GetSize() > 0)
 			{

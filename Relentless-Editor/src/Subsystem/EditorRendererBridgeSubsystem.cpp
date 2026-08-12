@@ -23,7 +23,12 @@ namespace Relentless
 			return;
 
 		if (aEntityID == 0u)
-			m_HoveredEntity = NULL_ENTITY;
+		{
+			if (entity skyBox = pScene->GetActiveSkyBox(); skyBox != NULL_ENTITY)
+				m_HoveredEntity = skyBox;
+			else
+				m_HoveredEntity = NULL_ENTITY;
+		}
 		else
 		{
 			const uint32 actualEntityID = aEntityID - 1;

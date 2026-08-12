@@ -17,8 +17,10 @@ namespace Relentless
 	void PostProcessing::Render(CommandContext& aCommandContext, const RenderView& aRenderView, SceneTextures& aSceneTextures, Ref<Buffer> aAverageLuminanceBuffer) noexcept
 	{
 		aCommandContext.InsertResourceBarrier(aSceneTextures.pHDRColorTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		aCommandContext.InsertResourceBarrier(aAverageLuminanceBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		aCommandContext.InsertResourceBarrier(aSceneTextures.pBloomUpscaleTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		if (aRenderView.RenderFeatures.IsEnabled(ERenderFeature::Bloom))
+			aCommandContext.InsertResourceBarrier(aSceneTextures.pBloomUpscaleTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		if (aRenderView.RenderFeatures.IsEnabled(ERenderFeature::AutoExposure))
+			aCommandContext.InsertResourceBarrier(aAverageLuminanceBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 		aCommandContext.SetPipelineState(m_pDevice->GetOrCreateComputePipeline(m_pDevice->GetGlobalRootSignature(), "PostProcessShader", "cs_main"));
 		aCommandContext.SetComputeRootSignature(m_pDevice->GetGlobalRootSignature());
@@ -43,11 +45,11 @@ namespace Relentless
 
 		params.SourceIndex = aSceneTextures.pHDRColorTarget->GetSRVIndex();
 		params.TargetIndex = aSceneTextures.pLDRColorTarget->GetUAVIndex();
-		params.AverageLuminanceIndex = aAverageLuminanceBuffer->GetSRVIndex();
-		params.BloomIndex = aSceneTextures.pBloomUpscaleTarget->GetSRVIndex();
+		params.AverageLuminanceIndex = aRenderView.RenderFeatures.IsEnabled(ERenderFeature::AutoExposure) ? aAverageLuminanceBuffer->GetSRVIndex() : GraphicsCommon::GetDefaultBuffer(DefaultBufferType::Ones)->GetSRVIndex();
+		params.BloomIndex = aRenderView.RenderFeatures.IsEnabled(ERenderFeature::Bloom) ? aSceneTextures.pBloomUpscaleTarget->GetSRVIndex() : GraphicsCommon::GetDefaultTexture(DefaultTextureType::Black2D)->GetSRVIndex();
 		params.BloomIntensity = renderProxy.BloomProxySettings.Intensity;
 		params.BloomBlendFactor = 0.3f;
-		params.BloomDirtMaskIndex = renderProxy.BloomProxySettings.DirtMask ? renderProxy.BloomProxySettings.DirtMask->GetSRVIndex() : GraphicsCommon::GetDefaultTexture(DefaultTextureType::Black2D)->GetSRVIndex();
+		params.BloomDirtMaskIndex = aRenderView.RenderFeatures.IsEnabled(ERenderFeature::Bloom) && renderProxy.BloomProxySettings.DirtMask ? renderProxy.BloomProxySettings.DirtMask->GetSRVIndex() : GraphicsCommon::GetDefaultTexture(DefaultTextureType::Black2D)->GetSRVIndex();
 		params.BloomDirtMaskIntensity = renderProxy.BloomProxySettings.DirtMaskIntensity;
 		params.BloomDirtMaskTint = renderProxy.BloomProxySettings.DirtMaskTint;
 

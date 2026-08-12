@@ -17,7 +17,7 @@ namespace Relentless
 
 		static constexpr Color DEFAULT_INSCATTERING_COLOR = Colors::LightGray;
 		static constexpr Color DEFAULT_INSCATTERING_TEXTURE_TINT = Colors::White;
-		static constexpr float DEFAULT_INSCATTERING_COLOR_INTENSITY = 1.0f;
+		static constexpr float DEFAULT_INSCATTERING_COLOR_INTENSITY = 50.0f;
 		static constexpr float DEFAULT_DENSITY = 0.02f;
 		static constexpr float DEFAULT_HEIGHT_FALLOF = 0.2f;
 		static constexpr float DEFAULT_START_DISTANCE = 0.0f;

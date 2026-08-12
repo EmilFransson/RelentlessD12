@@ -1,24 +1,27 @@
 #pragma once
 #include "UI/Views/Details/EnvironmentDetailsView.h"
 
-#include "Panels/ViewportPanel.h"
+#include "Panels/SceneViewportPanel.h"
 
 namespace Relentless
 {
 	class Scene;
 
-	class EnvironmentEditorPanel : public ViewportPanel
+	class EnvironmentEditorPanel : public SceneViewportPanel
 	{
 	public:
 		EnvironmentEditorPanel(const std::vector<AssetHandle>& someEnvironments) noexcept;
 		virtual ~EnvironmentEditorPanel() override;
 
-		NO_DISCARD ViewRenderDesc BuildRenderDescriptor() const noexcept override;
-		NO_DISCARD Ref<VerticalBox> BuildWindowLayout() noexcept;
-		
 		NO_DISCARD virtual String GetDisplayName() const noexcept override;
 		NO_DISCARD virtual String GetPersistKey() const noexcept override;
+		NO_DISCARD Scene* GetViewportScene() const noexcept override;
 	protected:
+		NO_DISCARD ViewportSidePanelDesc CreateSidePanelDesc() override;
+		
+		void ExtendSidePanel(Ref<VerticalBox>& aSidePanelBox) override;
+		
+		void OnInitialized() override;
 		NO_DISCARD bool OnKeyPressedEvent(KeyPressedEvent& aEvent) noexcept override;
 
 		void Update() noexcept override;
@@ -32,6 +35,6 @@ namespace Relentless
 	private:
 		Ref<Scene> m_pPreviewScene;
 		entity m_EnvironmentPreviewEntity = NULL_ENTITY;
-		EnvironmentDetailsView* m_pEnvironmentDetailsView = nullptr;
+		Ref<EnvironmentDetailsView> m_pEnvironmentDetailsView = nullptr;
 	};
 }

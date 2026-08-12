@@ -3,6 +3,7 @@
 #include "Event/EditorEvents.h"
 
 #include "Panels/Panel.h"
+#include "Panels/ViewportPanel.h"
 
 #include "UI/Widgets/ContextMenu.h"
 
@@ -22,6 +23,10 @@ namespace Relentless
 		PanelType* OpenPanel(Args&&... someArgs) noexcept
 		{
 			UniquePtr<PanelType> pNewPanel = MakeUnique<PanelType>(std::forward<Args>(someArgs)...);
+
+			if (ViewportPanel* pViewportPanel = dynamic_cast<ViewportPanel*>(pNewPanel.get()))
+				pViewportPanel->Initialize();
+
 			pNewPanel->OnGainedFocus.Connect(this, &UIModule::OnPanelGainedFocus);
 			pNewPanel->OnLostFocus.Connect(this, &UIModule::OnPanelLostFocus);
 			pNewPanel->OnMouseEnter.Connect(this, &UIModule::OnMouseEnterPanel);

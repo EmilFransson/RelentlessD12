@@ -1,14 +1,11 @@
 #include "ViewportPanel.h"
 #include "Core/Editor.h"
 
-#include "Subsystem/EditorViewportSubsystem.h"
-#include "Subsystem/SelectionSubsystem.h"
-
 #include "UI/Widgets/Button.h"
+#include "UI/Widgets/Canvas.h"
 #include "UI/Widgets/HorizontalBox.h"
 #include "UI/Widgets/Spacer.h"
 #include "UI/Widgets/VerticalBox.h"
-#include "UI/Views/Details/ViewportDetailsView.h"
 
 namespace Relentless
 {
@@ -16,24 +13,7 @@ namespace Relentless
 		:PanelBase(aTitle, ImGuiWindowFlags_None),
 		 m_UUID{ CreateUUID() }
 	{
-		m_pCamera = PerspectiveCamera::Create();
-
-		const Vector3 intitialLocation = Vector3(13.0f, 13.0f, -13.0f);
-		const Quaternion initialRotation = Math::CreateLookToRotation(intitialLocation, Vector3::Zero);
-
-		m_pCamera->SetLocation(intitialLocation);
-		m_pCamera->SetRotation(initialRotation);
-		m_pCamera->SetNearPlane(0.1f);
-		m_pCamera->SetFarPlane(1'000.0f);
-
-		m_pCameraController = MakeUnique<PerspectiveCameraController>(m_pCamera.get());
-		m_pTransformController = MakeUnique<TransformGizmoController>();
-
 		SetPadding(Vector2(0.0f, 0.0f));
-
-		//Create a starting 1x1 render target:
-		m_pRenderTarget = Application::Get().GetGraphicsDevice()->CreateTexture(TextureDesc::Create2D(1u, 1u, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Canvas Render Target");
-	
 		OnLostFocus.Connect(this, &ViewportPanel::OnFocusLost);
 	}
 
@@ -63,66 +43,53 @@ namespace Relentless
 		return pCanvasBox;
 	}
 
-	Ref<VerticalBox> ViewportPanel::BuildDefaultWindowLayout() noexcept
+	ViewRenderDesc ViewportPanel::BuildRenderDescriptor() const noexcept
 	{
-		Ref<VerticalBox> pRoot = new VerticalBox();
+		const PerspectiveCamera& camera = m_pClient->GetCamera();
 
-		//Toolbar box:
-		{
-			HorizontalBox* pToolbarBox = pRoot->AddWidget(RLS_NEW HorizontalBox());
-			pToolbarBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-			pToolbarBox->SetVerticalSizePolicy(ESizePolicy::Fixed);
-			pToolbarBox->SetSize(Vector2(-1.0f, 20.0f));
-			pToolbarBox->SetMargin(FloatRect(5.0f, 5.0f, 5.0f, 5.0f));
+		ViewRenderDesc renderDesc;
+		renderDesc.ViewTransform = camera.GetViewTransform();
+		renderDesc.ViewID = GetUUID();
+		renderDesc.RenderFeatures = m_pClient->GetRenderFeatures();
+		renderDesc.RenderQualitySettings = m_pClient->GetRenderQualitySettings();
+		renderDesc.RenderViewMode = m_pClient->GetViewMode();
+		renderDesc.MouseHoverCoordinates = IsClientAreaHovered() ? GetClientHoverCoordinates() : Vector2i(-1, -1);
+		renderDesc.RenderTarget = m_pSurface->GetTexture();
 
-			pToolbarBox->AddWidget(RLS_NEW Spacer())
-				->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		const Vector2u& region = m_pSurface->GetSize();
+		renderDesc.ViewTransform.Viewport = FloatRect(0.0f, 0.0f, Math::Max(1.0f, (float)region.x), Math::Max(1.0f, (float)region.y));
 
-			pToolbarBox->AddWidget(RLS_NEW Button(ICON_FA_GEAR))
-				->OnClicked(this, &ViewportPanel::OnSettingsButtonClicked)
-				->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.75f))
-				->SetBorderColor(Colors::Transparent)
-				->SetPadding(Vector2(4.0f, 1.0f))
-				->SetVerticalSizePolicy(ESizePolicy::Stretch);
-		} 
-
-		HorizontalBox* pCanvasAndSettingsBox = pRoot->AddWidget(RLS_NEW HorizontalBox());
-		pCanvasAndSettingsBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-		pCanvasAndSettingsBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
-
-		//Canvas box:
-		{
-			pCanvasAndSettingsBox->AddWidget(BuildDefaultCanvasWidget());
-		}
-		//Viewport Settings box:
-		{
-			m_pSettingsBox = pCanvasAndSettingsBox->AddWidget(RLS_NEW VerticalBox());
-			m_pSettingsBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
-			m_pSettingsBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
-			m_pSettingsBox->SetSize(Vector2(450.0f, -1.0f));
-			m_pSettingsBox->SetIsVisible(false);
-
-			m_pViewportDetailsView = m_pSettingsBox->AddWidget(RLS_NEW ViewportDetailsView(this));
-			m_pViewportDetailsView->SetHorizontalSizePolicy(ESizePolicy::Stretch);
-			m_pViewportDetailsView->SetVerticalSizePolicy(ESizePolicy::Stretch);
-		}
-
-		return pRoot;
+		return renderDesc;
 	}
 
-    SharedPtr<PerspectiveCamera> ViewportPanel::GetCamera() const noexcept
+	Canvas* ViewportPanel::GetCanvas() const noexcept
 	{
-		return m_pCamera;
+		return m_pCanvas;
 	}
 
-	const UniquePtr<PerspectiveCameraController>& ViewportPanel::GetCameraController() const noexcept
+	ViewportClient& ViewportPanel::GetClient() noexcept
 	{
-		return m_pCameraController;
+		return *m_pClient;
 	}
 
-	const Vector2i& ViewportPanel::GetViewportSize() const noexcept
+	const ViewportClient& ViewportPanel::GetClient() const noexcept
 	{
-		return m_ViewportSize;
+		return *m_pClient;
+	}
+
+	const ViewportSurface& ViewportPanel::GetSurface() const noexcept
+	{
+		return *m_pSurface;
+	}
+
+	ViewportSurface& ViewportPanel::GetSurface() noexcept
+	{
+		return *m_pSurface;
+	}
+
+	Vector2u ViewportPanel::GetViewportSize() const noexcept
+	{
+		return m_pSurface->GetSize();
 	}
 
 	Vector2i ViewportPanel::GetClientHoverCoordinates() const noexcept
@@ -151,6 +118,16 @@ namespace Relentless
 		return m_UUID;
 	}
 
+	void ViewportPanel::Initialize()
+	{
+		m_pSurface = CreateSurface();
+		m_pClient = CreateClient();
+
+		RegisterExtensions();
+		SetRoot(BuildWindowLayout());
+		OnInitialized();
+	}
+
 	bool ViewportPanel::IsClientAreaHovered() const noexcept
 	{
 		return m_ClientAreaHovered;
@@ -170,11 +147,84 @@ namespace Relentless
 	{
 		RecomputeCameraValidScreenRect();
 
-		m_pCameraController->Update(m_CameraInput);
-		m_pCamera->Update();
+		if (!Mouse::IsButtonDown(RLS_Button::Left) && !Mouse::IsButtonDown(RLS_Button::Right) && !Mouse::IsButtonDown(RLS_Button::Wheel))
+			m_OwnsCurrentPress = false;
 
-		m_CameraInput.MouseDelta = Vector2i::Zero();
-		m_CameraDeactivatedThisFrame = false;
+		const float deltaTime = Time::GetDeltaTime();
+
+		bool exclusiveInput = false;
+		for (const auto& pExtension : m_Extensions)
+			exclusiveInput |= pExtension->WantsExclusiveInput();
+
+		const bool canNavigate = m_OwnsCurrentPress && !exclusiveInput && (m_pClient->IsNavigating() || IsCameraValidClientAreaHovered());
+
+		m_pClient->SetNavigationEnabled(canNavigate);
+		m_pClient->Update(deltaTime);
+
+		for (auto& pExtension : m_Extensions)
+			pExtension->OnUpdate(deltaTime);
+
+		m_pSurface->Flush();
+		UpdateCursorCapture();
+	}
+
+	Ref<IBaseWidget> ViewportPanel::BuildToolbarWidget()
+	{
+		const ViewportToolbarDesc desc = CreateToolbarDesc();
+		if (!desc.IsEnabled())
+			return nullptr;
+
+		HorizontalBox* pBar = RLS_NEW HorizontalBox();
+		pBar->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pBar->SetVerticalSizePolicy(ESizePolicy::Fixed);
+		pBar->SetSize(Vector2(-1.0f, desc.Height));
+		pBar->SetMargin(FloatRect::Uniform(desc.Margin));
+
+		HorizontalBox* pLeft = pBar->AddWidget(RLS_NEW HorizontalBox());
+		pLeft->SetSpacing(desc.GroupSpacing);
+
+		pBar->AddWidget(RLS_NEW Spacer())->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		
+		HorizontalBox* pRight = pBar->AddWidget(RLS_NEW HorizontalBox());
+		pRight->SetSpacing(desc.GroupSpacing);
+
+		m_ToolbarSlots.Left = pLeft; 
+		m_ToolbarSlots.Right = pRight;
+
+		ExtendToolbar(m_ToolbarSlots);
+
+		for (auto& pExtension : m_Extensions)
+			pExtension->ExtendToolbar(m_ToolbarSlots);
+
+		return pBar;
+	}
+
+	Ref<VerticalBox> ViewportPanel::BuildSidePanelWidget()
+	{
+		const ViewportSidePanelDesc desc = CreateSidePanelDesc();
+		if (!desc.IsEnabled())
+			return nullptr;
+
+		Ref<VerticalBox> pSettingsBox = RLS_NEW VerticalBox();
+		pSettingsBox->SetHorizontalSizePolicy(ESizePolicy::Fixed);
+		pSettingsBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
+		pSettingsBox->SetSize(Vector2(desc.Width, -1.0f));
+		pSettingsBox->SetIsVisible(desc.StartVisible);
+
+		ExtendSidePanel(pSettingsBox);
+
+		for (auto& pExtension : m_Extensions)
+			pExtension->ExtendSidePanel(pSettingsBox);
+
+		return pSettingsBox;
+	}
+
+	void ViewportPanel::BroadcastEvent(const ViewportInputEvent& aInputEvent)
+	{
+		for (const auto& pExtension : m_Extensions)
+			pExtension->HandleInput(aInputEvent);
+
+		m_pClient->HandleInput(aInputEvent);
 	}
 
 	void ViewportPanel::ConfineAndHideMouseAtCursorPosition() noexcept
@@ -184,35 +234,21 @@ namespace Relentless
 		Mouse::HideCursor();
 	}
 
-	void ViewportPanel::DrawCameraValidClientAreaRect() noexcept
-	{
-		ImGui::GetWindowDrawList()->AddRect(ImVec2((float)m_CameraValidScreenRect.Left, (float)m_CameraValidScreenRect.Top), ImVec2((float)m_CameraValidScreenRect.Right, (float)m_CameraValidScreenRect.Bottom), IM_COL32(255, 255, 255, 255));
-	}
-
-	void ViewportPanel::HandleTransformGizmoInteraction() noexcept
-	{
-		auto pEditor = Editor::Get();
-		
-		std::vector<entity> participatingEntities = pEditor->GetTransformSelection();
-		if (participatingEntities.empty())
-			return;
-
-		const TransformGizmoControllerContext transformContext
-		{
-			.Entities = std::move(participatingEntities),
-			.WorldToView = m_pCamera->GetViewTransform().WorldToView,
-			.ViewToClip = m_pCamera->GetViewTransform().ViewToClip,
-			.Rect = m_pCanvas->GetScreenRect(),
-			.pScene = pEditor->GetActiveScene(),
-		};
-
-		m_pTransformController->Execute(transformContext);
-	}
-
 	bool ViewportPanel::IsCameraValidClientAreaHovered() const noexcept
 	{
 		const Vector2u cursorScreenPos = Mouse::GetCursorScreenPosition();
 		return m_CameraValidScreenRect.Contains(Vector2i(cursorScreenPos.x, cursorScreenPos.y));
+	}
+
+	ViewportInputEvent ViewportPanel::MakeInputEvent(EViewportInputType aInputType) const noexcept
+	{
+		ViewportInputEvent event;
+		event.Type = aInputType;
+		event.ClientCoordinates = GetClientHoverCoordinates();
+		event.PointerInfo = Mouse::CreatePointerInfo();
+		event.KeyboardModifiers = Keyboard::GetModifierMask();
+
+		return event;
 	}
 
 	void ViewportPanel::OnCanvasHoverStateChanged(bool newState) noexcept
@@ -228,56 +264,114 @@ namespace Relentless
 		const float width = Math::Max(1.0f, static_cast<float>(newSize.x));
 		const float height = Math::Max(1.0f, static_cast<float>(newSize.y));
 
-		m_ViewportSize = Vector2i(static_cast<int32>(width), static_cast<int32>(height));
-		m_pCameraController->SetViewport(FloatRect(0.0f, 0.0f, width, height));
-
-		m_pRenderTarget = Application::Get().GetGraphicsDevice()->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Canvas Render Target");
+		m_pSurface->RequestResize(Vector2u(width, height));
+		m_pClient->GetCameraController()->SetViewport(FloatRect(0.0f, 0.0f, width, height));
 	}
 
 	Texture* ViewportPanel::OnCanvasTargetRequest() const noexcept
 	{
-		return m_pRenderTarget.Get();
+		Texture* pTexture = m_pSurface->GetTexture();
+		return pTexture ? pTexture : GraphicsCommon::GetDefaultTexture(DefaultTextureType::Black2D);
 	}
 
 	void ViewportPanel::OnCanvasRenderEnd() noexcept
 	{
 		PROFILE_FUNC;
-		HandleTransformGizmoInteraction();
+
+		for (const auto& pExtension : m_Extensions)
+			pExtension->OnCanvasRenderEnd();
 	}
 
 	void ViewportPanel::OnFocusLost(MAYBE_UNUSED PanelBase* aPanelBase) noexcept
 	{
-		m_CameraInput.MoveAxis = Vector3::Zero;
-		m_CameraInput.MouseWheelDelta = 0.0f;
-		m_CameraInput.MouseDelta = Vector2i::Zero();
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::FocusLost);
+		BroadcastEvent(inputEvent);
+		UpdateCursorCapture();
+	}
+
+	Ref<VerticalBox> ViewportPanel::BuildWindowLayout() noexcept
+	{
+		Ref<VerticalBox> pRoot = RLS_NEW VerticalBox();
+
+		//Toolbar box:
+		{
+			if (Ref<IBaseWidget> pToolbar = BuildToolbarWidget())
+				pRoot->AddWidget(pToolbar);
+		}
+
+		HorizontalBox* pCanvasAndSettingsBox = pRoot->AddWidget(RLS_NEW HorizontalBox());
+		pCanvasAndSettingsBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
+		pCanvasAndSettingsBox->SetVerticalSizePolicy(ESizePolicy::Stretch);
+
+		//Canvas box:
+		{
+			pCanvasAndSettingsBox->AddWidget(BuildDefaultCanvasWidget());
+		}
+		//Viewport Settings box:
+		{
+			if (Ref<VerticalBox> pSidePanel = BuildSidePanelWidget())
+			{
+				pCanvasAndSettingsBox->AddWidget(pSidePanel);
+
+				if (m_ToolbarSlots.Right)
+				{
+					Button* pButton = m_ToolbarSlots.Right->AddWidget(RLS_NEW Button(ICON_FA_GEAR));
+					pButton->OnClicked([sidePanel = pSidePanel.Get(), pButton]()
+						{ 
+							sidePanel->SetIsVisible(!sidePanel->IsVisible()); 
+							pButton->SetTextColor(sidePanel->IsVisible() ? Colors::SoftOrange : Colors::TextInactive);
+						});
+					pButton->SetTextColor(pSidePanel->IsVisible() ? Colors::SoftOrange : Colors::TextInactive);
+					pButton->OnMouseEnter([sidePanel = pSidePanel.Get()](Button* aButton) { aButton->SetTextColor(sidePanel->IsVisible() ? Colors::SoftOrange : Colors::TextDefault); });
+					pButton->OnMouseExit([sidePanel = pSidePanel.Get()](Button* aButton) { aButton->SetTextColor(sidePanel->IsVisible() ? Colors::SoftOrange : Colors::TextInactive); });
+					pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+					pButton->SetTooltipText("Toggle the viewport settings panel.");
+				}
+			}
+		}
+
+		return pRoot;
+	}
+
+	UniquePtr<ViewportClient> ViewportPanel::CreateClient()
+	{
+		return MakeUnique<ViewportClient>(CreateClientDesc());
+	}
+
+	ViewportClient::Desc ViewportPanel::CreateClientDesc()
+	{
+		return ViewportClient::Desc{};
+	}
+
+	UniquePtr<ViewportSurface> ViewportPanel::CreateSurface()
+	{
+		return MakeUnique<ViewportSurface>(CreateSurfaceDesc());
+	}
+
+	ViewportSurface::Desc ViewportPanel::CreateSurfaceDesc()
+	{
+		return ViewportSurface::Desc::Native();
+	}
+
+	ViewportToolbarDesc ViewportPanel::CreateToolbarDesc()
+	{
+		return ViewportToolbarDesc::Disabled();
+	}
+
+	 ViewportSidePanelDesc ViewportPanel::CreateSidePanelDesc()
+	{
+		return ViewportSidePanelDesc::Disabled();
 	}
 
 	bool ViewportPanel::OnKeyPressedEvent(KeyPressedEvent& event) noexcept
 	{
-		switch (event.key)
-		{
-		case RLS_Key::A: m_CameraInput.MoveAxis.x -= 1.0f;	break;
-		case RLS_Key::D: m_CameraInput.MoveAxis.x += 1.0f;	break;
-		case RLS_Key::W: m_CameraInput.MoveAxis.z += 1.0f;	break;
-		case RLS_Key::S: m_CameraInput.MoveAxis.z -= 1.0f;	break;
-		case RLS_Key::Q: m_CameraInput.MoveAxis.y -= 1.0f;	break;
-		case RLS_Key::E: m_CameraInput.MoveAxis.y += 1.0f;	break;
-		case RLS_Key::Alt: ResolveAndSetCameraMode();		break;
-		default: break;
-		}
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::KeyPressed);
+		inputEvent.Key = event.key;
 
-		if (!(Mouse::IsButtonDown(RLS_Button::Left) || Mouse::IsButtonDown(RLS_Button::Right) || Mouse::IsButtonDown(RLS_Button::Wheel)))
+		if (!RouteInput(inputEvent))
 		{
-			//Transform Gizmo:
-			switch (event.key)
-			{
-			case RLS_Key::Q: m_pTransformController->SetActiveType(ETransformGizmoType::None);		break;
-			case RLS_Key::W: m_pTransformController->SetActiveType(ETransformGizmoType::Translate); break;
-			case RLS_Key::E: m_pTransformController->SetActiveType(ETransformGizmoType::Rotate);	break;
-			case RLS_Key::R: m_pTransformController->SetActiveType(ETransformGizmoType::Scale);		break;
-			case RLS_Key::T: m_pTransformController->ToggleActiveMode(); break;
-			default: OnHotkeyPressed(this, event.key); break;
-			}
+			OnHotkeyPressed(this, event.key);
+			return false;
 		}
 
 		return true;
@@ -285,108 +379,51 @@ namespace Relentless
 
 	bool ViewportPanel::OnKeyReleasedEvent(KeyReleasedEvent& event) noexcept
 	{
-		switch (event.key)
-		{
-		case RLS_Key::A: m_CameraInput.MoveAxis.x += 1.0f;	break;
-		case RLS_Key::D: m_CameraInput.MoveAxis.x -= 1.0f;	break;
-		case RLS_Key::W: m_CameraInput.MoveAxis.z -= 1.0f;	break;
-		case RLS_Key::S: m_CameraInput.MoveAxis.z += 1.0f;	break;
-		case RLS_Key::Q: m_CameraInput.MoveAxis.y += 1.0f;	break;
-		case RLS_Key::E: m_CameraInput.MoveAxis.y -= 1.0f;	break;
-		case RLS_Key::Alt: ResolveAndSetCameraMode();		break;
-		default: break;
-		}
-		return true;
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::KeyReleased);
+		inputEvent.Key = event.key;
+		return RouteInput(inputEvent);
 	}
 
 	bool ViewportPanel::OnLeftMouseButtonPressedEvent(LeftMouseButtonPressedEvent&) noexcept
 	{
-		if (m_CameraIsActive)
-		{
-			ResolveAndSetCameraMode();
-			return true;
-		}
+		if (!IsCameraValidClientAreaHovered())
+			return false;
 
-		SelectionSubsystem* pSelection = Editor::Get()->GetSubsystem<SelectionSubsystem>();
-		if (pSelection->GetSelectedEntityCount() > 0u && m_pTransformController->IsInteracting())
-		{
-			switch (m_pTransformController->GetActiveTransformType())
-			{
-			case ETransformGizmoType::Translate:
-			case ETransformGizmoType::Rotate:
-			{
-				if (Keyboard::IsKeyDown(RLS_Key::Alt))
-					Editor::Get()->OnViewportEntityDuplicationRequest();
-				break;
-			}
-			default:
-				break;
-			}
-		
-			return true;
-		}
+		m_OwnsCurrentPress = true;
 
-		ConfineAndHideMouseAtCursorPosition();
-
-		return true;
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseButtonPressed);
+		inputEvent.Button = RLS_Button::Left;
+		const bool consumed = RouteInput(inputEvent);
+		UpdateCursorCapture();
+		return consumed;
 	}
 
 	bool ViewportPanel::OnLeftMouseButtonReleasedEvent(LeftMouseButtonReleasedEvent&) noexcept
 	{
-		if (!m_CameraIsActive)
-		{
-			Mouse::FreeCursor();
-			Mouse::ShowCursor();
-		}
-
-		ResolveAndSetCameraMode();
-
-		SelectionSubsystem* pSelection = Editor::Get()->GetSubsystem<SelectionSubsystem>();
-		if (pSelection->GetSelectedEntityCount() > 0u && m_pTransformController->IsInteracting())
-			return true;
-
-		if (!m_CameraIsActive && !m_CameraDeactivatedThisFrame)
-		{
-			const Vector2i hoverCoords = GetClientHoverCoordinates();
-			OnClickedOnViewport(this, Vector2u(hoverCoords.x, hoverCoords.y));
-		}
-
-		return true;
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseButtonReleased);
+		inputEvent.Button = RLS_Button::Left;
+		const bool consumed = RouteInput(inputEvent);
+		UpdateCursorCapture();
+		return consumed;
 	}
 
 	bool ViewportPanel::OnRightMouseButtonPressedEvent(RightMouseButtonPressedEvent&) noexcept
 	{
 		if (!IsFocused())
-		{
-			m_CameraInput.MoveAxis.x = Keyboard::IsKeyDown(RLS_Key::A) ? -1.0f : (Keyboard::IsKeyDown(RLS_Key::D) ? 1.0f : 0.0f);
-			m_CameraInput.MoveAxis.y = Keyboard::IsKeyDown(RLS_Key::Q) ? -1.0f : (Keyboard::IsKeyDown(RLS_Key::E) ? 1.0f : 0.0f);
-			m_CameraInput.MoveAxis.z = Keyboard::IsKeyDown(RLS_Key::W) ? 1.0f : (Keyboard::IsKeyDown(RLS_Key::S) ? -1.0f : 0.0f);
 			ImGui::SetWindowFocus(GetName().c_str());
-		}
-		
-		ConfineAndHideMouseAtCursorPosition();
-		ResolveAndSetCameraMode();
 
-		return true;
+		m_OwnsCurrentPress = true;
+
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseButtonPressed);
+		inputEvent.Button = RLS_Button::Right;
+		return RouteInput(inputEvent);
 	}
 
 	bool ViewportPanel::OnRightMouseButtonReleasedEvent(RightMouseButtonReleasedEvent&) noexcept
 	{
-		if (!m_CameraIsActive)
-		{
-			Mouse::FreeCursor();
-			Mouse::ShowCursor();
-		}
-
-		ResolveAndSetCameraMode();
-
-		if (!m_CameraIsActive && !m_CameraDeactivatedThisFrame)
-		{
-			const Vector2i hoverCoords = GetClientHoverCoordinates();
-			OnClickedOnViewport(this, Vector2u(hoverCoords.x, hoverCoords.y));
-		}
-
-		return true;
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseButtonReleased);
+		inputEvent.Button = RLS_Button::Right;
+		return RouteInput(inputEvent);
 	}
 
 	bool ViewportPanel::OnMiddleMouseButtonPressedEvent(MiddleMouseButtonPressedEvent&) noexcept
@@ -394,49 +431,44 @@ namespace Relentless
 		if (!IsFocused())
 			ImGui::SetWindowFocus(GetName().c_str());
 
-		ConfineAndHideMouseAtCursorPosition();
-		ResolveAndSetCameraMode();
-
-		return true;
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseButtonPressed);
+		inputEvent.Button = RLS_Button::Wheel;
+		return RouteInput(inputEvent);
 	}
 
 	bool ViewportPanel::OnMiddleMouseButtonReleasedEvent(MiddleMouseButtonReleasedEvent&) noexcept
 	{
-		Mouse::FreeCursor();
-		Mouse::ShowCursor();
-		
-		return true;
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseButtonReleased);
+		inputEvent.Button = RLS_Button::Wheel;
+		return RouteInput(inputEvent);
 	}
 
 	bool ViewportPanel::OnMouseBeginDragEvent(MAYBE_UNUSED MouseBeginDragEvent& aEvent) noexcept
 	{
-		SelectionSubsystem* pSelection = Editor::Get()->GetSubsystem<SelectionSubsystem>();
+		if (!IsCameraValidClientAreaHovered())
+			return false;
 
-		if (pSelection->GetSelectedEntityCount() > 0 && m_pTransformController->IsInteracting())
-			return true;
-
-		ResolveAndSetCameraMode();
-		m_CameraIsActive = true;
-
-		return true;
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseDragBegin);
+		inputEvent.Button = RLS_Button::Left;
+		return RouteInput(inputEvent);
 	}
 
 	bool ViewportPanel::OnMouseDragEvent(MouseDragEvent& aEvent) noexcept
 	{
-		if (IsCameraValidClientAreaHovered())
-			m_CameraInput.MouseDelta = aEvent.DeltaCoordinates;
+		if (!IsCameraValidClientAreaHovered())
+			return false;
 
-		return true;
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseDrag);
+		inputEvent.Button = RLS_Button::Left;
+		inputEvent.MouseDelta = aEvent.DeltaCoordinates;
+		return RouteInput(inputEvent);
 	}
 
 	bool ViewportPanel::OnMouseEndDragEvent(MAYBE_UNUSED MouseEndDragEvent& aEvent) noexcept
 	{
-		ResolveAndSetCameraMode();
-
-		m_CameraIsActive = false;
-		m_CameraDeactivatedThisFrame = true;
-		
-		return true;
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseDragEnd);
+		inputEvent.Button = RLS_Button::Left;
+		return RouteInput(inputEvent);
 	}
 
 	bool ViewportPanel::OnMouseWheelScrolledEvent(MouseWheelScrolledEvent& event) noexcept
@@ -444,38 +476,10 @@ namespace Relentless
 		if (!IsCameraValidClientAreaHovered())		
 			return false;
 
-		const bool scrolledUp = event.Delta > 0.0f;
-
-		if (m_pCameraController->GetMode() == ECameraControllerNavigationMode::Orbit)
-		{
-			if (scrolledUp)
-				m_pCameraController->ZoomOrbit(-1.0f);
-			else
-				m_pCameraController->ZoomOrbit(1.0f);
-		}
-		else if (m_pCameraController->GetMode() == ECameraControllerNavigationMode::Fly)
-				m_pCameraController->StepSpeed(scrolledUp);
-
-		return true;
-	}
-
-	void ViewportPanel::OnSettingsButtonClicked()
-	{
-		m_pSettingsBox->SetIsVisible(!m_pSettingsBox->IsVisible());
-	}
-
-	void ViewportPanel::OnViewportResize(const Vector2i& newSize)
-	{
-		if (newSize.x <= 0 || newSize.y <= 0)
-			return;
-
-		const float width = Math::Max(1.0f, static_cast<float>(newSize.x));
-		const float height = Math::Max(1.0f, static_cast<float>(newSize.y));
-
-		m_ViewportSize = Vector2i((int32)width, (int32)height);
-		m_pCameraController->SetViewport(FloatRect(0.0f, 0.0f, width, height));
-
-		m_pRenderTarget = Application::Get().GetGraphicsDevice()->CreateTexture(TextureDesc::Create2D(width, height, ResourceFormat::RGB10A2_UNORM, 1u, TextureFlag::ShaderResource | TextureFlag::UnorderedAccess), "Canvas Render Target");
+		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseWheel);
+		inputEvent.Button = RLS_Button::Wheel;
+		inputEvent.WheelDelta = event.Delta;
+		return RouteInput(inputEvent);
 	}
 
 	void ViewportPanel::RecomputeCameraValidScreenRect() noexcept
@@ -483,29 +487,41 @@ namespace Relentless
 		const IntRect screenRect = m_pCanvas->GetScreenRect();
 		m_ScreenPosition = Vector2u(screenRect.Left, screenRect.Top);
 
-		constexpr int edgeOffset = 8;
-		m_CameraValidScreenRect.Left = screenRect.Left + edgeOffset;
-		m_CameraValidScreenRect.Top = screenRect.Top + edgeOffset;
-		m_CameraValidScreenRect.Right = screenRect.Right - edgeOffset;
-		m_CameraValidScreenRect.Bottom = screenRect.Bottom - edgeOffset;
+		constexpr int CAMERA_RESIZE_GRIP_INSET = 8;
+		m_CameraValidScreenRect.Left = screenRect.Left + CAMERA_RESIZE_GRIP_INSET;
+		m_CameraValidScreenRect.Top = screenRect.Top + CAMERA_RESIZE_GRIP_INSET;
+		m_CameraValidScreenRect.Right = screenRect.Right - CAMERA_RESIZE_GRIP_INSET;
+		m_CameraValidScreenRect.Bottom = screenRect.Bottom - CAMERA_RESIZE_GRIP_INSET;
 	}
 
-	void ViewportPanel::ResolveAndSetCameraMode() noexcept
+	bool ViewportPanel::RouteInput(const ViewportInputEvent& aInputEvent)
 	{
-		if (Mouse::IsButtonDown(RLS_Button::Left) && Mouse::IsButtonDown(RLS_Button::Right))
-			m_pCameraController->SetMode(ECameraControllerNavigationMode::Pan);
-		else if (Mouse::IsButtonDown(RLS_Button::Left))
+		for (const auto& pExtension : m_Extensions)
 		{
-			if (Keyboard::IsKeyDown(RLS_Key::Alt))
-				m_pCameraController->SetMode(ECameraControllerNavigationMode::Orbit);
-			else
-				m_pCameraController->SetMode(ECameraControllerNavigationMode::Dolly);
+			if (pExtension->HandleInput(aInputEvent))
+				return true;
+
+			if (pExtension->WantsExclusiveInput())
+				return true;
 		}
-		else if (Mouse::IsButtonDown(RLS_Button::Right))
-			m_pCameraController->SetMode(ECameraControllerNavigationMode::Fly);
-		else if (Mouse::IsButtonDown(RLS_Button::Wheel))
-			m_pCameraController->SetMode(ECameraControllerNavigationMode::Pan);
-		else 
-			m_pCameraController->SetMode(ECameraControllerNavigationMode::None);
+
+		return m_pClient->HandleInput(aInputEvent);
+	}
+
+	void ViewportPanel::UpdateCursorCapture()
+	{
+		const bool shouldCapture = m_pClient->IsNavigating();
+		if (shouldCapture == m_CursorCaptured)
+			return;
+
+		m_CursorCaptured = shouldCapture;
+
+		if (shouldCapture)
+			ConfineAndHideMouseAtCursorPosition();
+		else
+		{
+			Mouse::FreeCursor();
+			Mouse::ShowCursor();
+		}
 	}
 }

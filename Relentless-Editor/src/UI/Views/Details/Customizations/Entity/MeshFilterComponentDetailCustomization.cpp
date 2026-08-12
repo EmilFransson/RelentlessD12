@@ -58,7 +58,7 @@ namespace Relentless
 						});
 				})
 			.NameSlot().Label("Mesh")
-			.ValueSlot().AssetThumbnail().Row()
+			.ValueSlot().AssetThumbnail().Tooltip(isNone ? "" : pAssetData->PackagePath.string() + pAssetData->Name).Row()
 			.RevertSlot().Widget([&detailsContext, &aDetailLayoutBuilder, isNone]()
 				{
 					Ref<HorizontalBox> pRevertBox = RLS_NEW HorizontalBox();

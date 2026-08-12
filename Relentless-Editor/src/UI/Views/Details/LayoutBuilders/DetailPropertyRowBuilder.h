@@ -1,9 +1,12 @@
 #pragma once
 #include <Relentless.h>
 
+#include "Core/Editor.h"
+
 #include "DetailLayoutBuilderHelpers.h"
 
 #include "SlotBuilder.h"
+#include "Subsystem/AssetDefinitionRegistry.h"
 
 #include "UI/Nodes/AssetDetailNode.h"
 #include "UI/Nodes/DetailNode.h"
@@ -260,25 +263,44 @@ namespace Relentless
 										AssetDetailNode* pAssetDetailNode = static_cast<AssetDetailNode*>(pNode);
 										WeakPtr<AssetThumbnailData> pThumbnailDataWeakPtr = pAssetDetailNode->GetThumbnailData()->GetWeakPtr();
 
-										pValueBox->AddWidget(RLS_NEW::Relentless::AssetDropTarget())
-											->OnAreAssetsAcceptable([acceptableTypes = std::move(acceptableAssetTypes)](Span<const AssetData> someAssetDatas)
+										::Relentless::AssetDropTarget* pDropTarget = pValueBox->AddWidget(RLS_NEW ::Relentless::AssetDropTarget());
+										pDropTarget->OnAreAssetsAcceptable([acceptableTypes = std::move(acceptableAssetTypes)](Span<const AssetData> someAssetDatas)
+											{
+												return someAssetDatas.GetSize() == 1u &&
+													!acceptableTypes.empty() &&
+													std::ranges::any_of(acceptableTypes, [&someAssetDatas](TypeIndex aType) { return aType == someAssetDatas[0].Type; });
+											});
+										pDropTarget->OnAssetsDropped([assetsDroppedCallback = std::move(assetsDroppedCallback), pThumbnailDataWeakPtr](Span<const AssetData> someAssetDatas)
+											{
+												if (assetsDroppedCallback.IsSet())
 												{
-													return someAssetDatas.GetSize() == 1u && 
-														!acceptableTypes.empty() && 
-														std::ranges::any_of(acceptableTypes, [&someAssetDatas](TypeIndex aType) { return aType == someAssetDatas[0].Type; });
-												})
-											->OnAssetsDropped([assetsDroppedCallback = std::move(assetsDroppedCallback), pThumbnailDataWeakPtr](Span<const AssetData> someAssetDatas)
-												{
-													if (assetsDroppedCallback.IsSet())
-													{
-														assetsDroppedCallback(someAssetDatas);
-														if (SharedPtr<AssetThumbnailData> pAssetThumbnailData = pThumbnailDataWeakPtr.lock())
-															pAssetThumbnailData->SetAssetData(someAssetDatas[0]);
-													}
-												})
-											->Slot(RLS_NEW AssetThumbnail(pThumbnailDataWeakPtr, Vector2(50.0f, 50.0f)))
-											->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center)
-											->SetIsEnabled(valueSlot.Details.Enabled);
+													assetsDroppedCallback(someAssetDatas);
+													if (SharedPtr<AssetThumbnailData> pAssetThumbnailData = pThumbnailDataWeakPtr.lock())
+														pAssetThumbnailData->SetAssetData(someAssetDatas[0]);
+												}
+											});
+										AssetThumbnail* pAssetThumbnail = pDropTarget->Slot(RLS_NEW AssetThumbnail(pThumbnailDataWeakPtr, Vector2(50.0f, 50.0f)));
+										pAssetThumbnail->SetTooltipText(valueSlot.Details.Tooltip);
+										pAssetThumbnail->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
+										pAssetThumbnail->SetIsEnabled(valueSlot.Details.Enabled);
+										pAssetThumbnail->OnMouseDoubleClick.Connect([pThumbnailDataWeakPtr](const WidgetGeometry&, const PointerInfo&)
+											{
+												SharedPtr<AssetThumbnailData> pAssetThumbnailData = pThumbnailDataWeakPtr.lock();
+												if (!pAssetThumbnailData)
+													return;
+
+												const AssetData& assetData = pAssetThumbnailData->GetAssetData();
+
+												Ref<IAssetDefinition> pAssetDefinition = Editor::Get()->GetSubsystem<AssetDefinitionRegistry>()->GetDefinitionForAsset(assetData);
+												if (!pAssetDefinition)
+													return;
+
+												const AssetHandle assetHandle = AssetManager::FindAsset(assetData.Type, assetData.Uuid);
+												if (!assetHandle.IsValid())
+													return;
+
+												pAssetDefinition->OpenAssets({ assetHandle });
+											});
 									}
 									break;
 								}

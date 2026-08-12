@@ -7,6 +7,7 @@ namespace Relentless
 {
 	enum class RLS_Key : uint16
 	{
+		None = 0u, 
 		BackSpace = 8, Tab,
 		Enter = 13,
 		LShift = 16,
@@ -22,10 +23,21 @@ namespace Relentless
 		RShift = 161, RCtrl
 	};
 
+	enum class KeyboardModifierMask : uint8
+	{
+		None = 0u,
+		Shift = 1u << 0,
+		Ctrl = 1u << 1,
+		Alt = 1u << 2
+	};
+	DECLARE_BITMASK_TYPE(KeyboardModifierMask);
+
 	constexpr const uint16 KEY_COUNT{ 256 };
 	class RLS_API Keyboard
 	{
 	public:
+		NO_DISCARD static KeyboardModifierMask GetModifierMask() noexcept;
+
 		static void UpdateKeyState(uint32 keyCode, bool isPressed) noexcept;
 		static void Update() noexcept;
 		NO_DISCARD static bool IsKeyDown(const RLS_Key key) noexcept;

@@ -31,6 +31,11 @@ namespace Relentless
 		constexpr Color Gray			= Color(0.5f, 0.5f, 0.5f, 1.0f);
 		constexpr Color LightGray		= Color(0.85f, 0.85f, 0.85f, 1.0f);
 		constexpr Color LightSkyBlue	= Color(0.529411793f, 0.807843208f, 0.980392218f, 1.0f);
+		constexpr Color EmberOrange		= Color(0.949f, 0.396f, 0.133f, 1.0f);
+		constexpr Color FlameOrange		= Color(1.000f, 0.478f, 0.102f, 1.0f);
+		constexpr Color SoftOrange		= Color(1.000f, 0.549f, 0.259f, 1.0f);
+		constexpr Color BurntOrange		= Color(0.910f, 0.349f, 0.047f, 1.0f);
+		constexpr Color LightOrange		= Color(1.000f, 0.627f, 0.200f, 1.0f);
 
 		//Rows:
 		constexpr Color EvenRowColorDefault					= Normalize(21.0f, 21.0f, 21.0f, 255.0f);
@@ -196,6 +201,11 @@ namespace Relentless
 		NO_DISCARD inline static int RandomRange(int min, int max) noexcept
 		{
 			return min + rand() % (max - min + 1);
+		}
+
+		NO_DISCARD inline static float Round(float aValue) noexcept
+		{
+			return std::round(aValue);
 		}
 
 		template<typename T>

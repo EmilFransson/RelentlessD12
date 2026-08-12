@@ -72,5 +72,20 @@ float4 ps_main(VS_OUT psIn, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
     outColor = lerp(refractedBackground, outColor, surface.Alpha);
     #endif
     
-    return float4(outColor, surface.Alpha);
+    if (IsRenderViewMode(VIEW_MODE_Unlit))
+        return float4(surface.AlbedoColor + surface.EmissiveColor, surface.Alpha);
+    else if (IsRenderViewMode(VIEW_MODE_GeometricNormals))
+        return float4(inputs.NormalWS * 0.5f + 0.5f, surface.Alpha);
+    else if (IsRenderViewMode(VIEW_MODE_ShadingNormals))
+        return float4(surface.Normal * 0.5f + 0.5f, surface.Alpha);
+    else if (IsRenderViewMode(VIEW_MODE_Metallic))
+        return float4(surface.Metalness, surface.Metalness, surface.Metalness, surface.Alpha);
+    else if (IsRenderViewMode(VIEW_MODE_Roughness))
+        return float4(surface.Roughness, surface.Roughness, surface.Roughness, surface.Alpha);
+    else if (IsRenderViewMode(VIEW_MODE_AmbientOcclusion))
+        return float4(surface.AmbientOcclusion, surface.AmbientOcclusion, surface.AmbientOcclusion, surface.Alpha);
+    else if (IsRenderViewMode(VIEW_MODE_Opacity))
+        return float4(surface.Alpha, surface.Alpha, surface.Alpha, 1.0f);
+    else
+        return float4(outColor, surface.Alpha);
 }

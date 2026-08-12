@@ -4,6 +4,7 @@
 namespace Relentless
 {
 	enum class ECameraControllerNavigationMode: uint8 { None, Fly, Orbit, Dolly, Pan };
+	enum class ECameraNavigationPreset : uint8 { None = 0u, Default, OrbitOnly };
 
 	class PerspectiveCameraController
 	{

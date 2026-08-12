@@ -4,7 +4,11 @@
 
 namespace Relentless
 {
+	class DragDropOperationBase;
+	class Editor;
 	class EditorViewportPanel;
+	class Reply;
+	struct WidgetGeometry;
 
 	class EditorViewportSubsystem : public ISubsystem
 	{

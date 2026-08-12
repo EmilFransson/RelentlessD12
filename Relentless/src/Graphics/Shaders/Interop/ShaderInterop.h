@@ -140,13 +140,6 @@ using float4x4 = Matrix;
 		float2 Padding;
 	};
 
-	//struct Environment
-	//{
-	//	SkyboxData Skybox;
-	//	SkyLightData SkyLight;
-	//	FogData FogData;
-	//};
-
 	struct Light
 	{
 		float3 Position;
@@ -215,7 +208,8 @@ using float4x4 = Matrix;
 
 		uint ShadowViewsIndex;
 		uint FogIndex;
-		float2 Padding;
+		uint RenderFeatures;
+		uint RenderViewMode;
 	};
 
 	static const uint INVALID_DESCRIPTOR_INDEX = 0xFFFFFFFF;

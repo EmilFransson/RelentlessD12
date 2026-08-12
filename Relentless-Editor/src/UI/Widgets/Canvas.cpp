@@ -22,7 +22,7 @@ namespace Relentless
 		PROFILE_FUNC;
 
 		Vector2 sizeFloat = GetAssignedSize();
-		Vector2i size = Vector2i(sizeFloat.x, sizeFloat.y); //GetAssignedSize(); //Vector2i(static_cast<int32>(ImGui::GetContentRegionAvail().x), static_cast<int32>(ImGui::GetContentRegionAvail().y));
+		Vector2i size = Vector2i(sizeFloat.x, sizeFloat.y);
 
 		if (size.x > 0 && size.y > 0)
 		{

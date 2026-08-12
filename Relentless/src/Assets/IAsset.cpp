@@ -91,7 +91,7 @@ namespace Relentless
 		if (!pAssetdata)
 			return false;
 
-		Path bulkDataFilePath = pAssetdata->PackagePath;
+		Path bulkDataFilePath = assetRegistry.VirtualPathToAbsolutePath(pAssetdata->PackagePath.string());
 		bulkDataFilePath = FilepathUtils::Combine(bulkDataFilePath, pAssetdata->Name);
 
 		FilepathUtils::SetExtension(bulkDataFilePath, ".rbulk");

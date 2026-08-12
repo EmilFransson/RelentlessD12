@@ -4,7 +4,7 @@ namespace Relentless
 	DescriptorManager::DescriptorManager(GraphicsDevice* pDevice) noexcept
 	{
 		m_pRTVDescriptorHeap = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 100'000, false);
-		m_pDSVDescriptorHeap = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 100, false);
+		m_pDSVDescriptorHeap = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1'000, false);
 		m_pShaderBindablesDescriptorHeapNV = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, false);
 		m_pShaderBindablesDescriptorHeap = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 100'000, true);
 		m_pSamplerDescriptorHeap = new DescriptorHeap(pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE, true);

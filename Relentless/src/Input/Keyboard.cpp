@@ -6,6 +6,20 @@ namespace Relentless
 	bool Keyboard::m_sRepeatEnabled{ false };
 	Broadcaster<void(RLS_Key, bool)> Keyboard::OnKeyStateChanged;
 
+	KeyboardModifierMask Keyboard::GetModifierMask() noexcept
+	{
+		KeyboardModifierMask mask = KeyboardModifierMask::None;
+
+		if (IsKeyDown(RLS_Key::LShift) || IsKeyDown(RLS_Key::RShift))
+			mask |= KeyboardModifierMask::Shift;
+		if (IsKeyDown(RLS_Key::LCtrl) || IsKeyDown(RLS_Key::RCtrl))
+			mask |= KeyboardModifierMask::Ctrl;
+		if (IsKeyDown(RLS_Key::Alt))   
+			mask |= KeyboardModifierMask::Alt;
+
+		return mask;
+	}
+
 	void Keyboard::UpdateKeyState(uint32 keyCode, bool isPressed) noexcept
 	{
 		s_PersistentKeyStates[(uint16)keyCode] = isPressed;

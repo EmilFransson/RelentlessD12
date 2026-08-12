@@ -3,6 +3,7 @@
 #include "ECS/ECSCommon.h"
 
 #include "Graphics/Renderer/RenderFeatures.h"
+#include "Graphics/Renderer/RenderViewModes.h"
 #include "Graphics/Renderer/RenderQualitySettings.h"
 #include "Graphics/RHI/Buffer.h"
 #include "Graphics/RHI/DescriptorHeap.h"
@@ -68,6 +69,7 @@ namespace Relentless
 		RenderScene* pRenderScene					= nullptr;
 		Ref<Buffer> ViewCB							= nullptr;
 		uint32 FrameIndex							= 0u;
+		ERenderViewMode RenderViewMode				= ERenderViewMode::Lit;
 	};
 
 	struct ShadowView : public RenderView
@@ -86,6 +88,7 @@ namespace Relentless
 		UUID ViewID									= {};
 		RenderFeatures RenderFeatures				= {};
 		RenderQualitySettings RenderQualitySettings = {};
+		ERenderViewMode	RenderViewMode				= ERenderViewMode::Lit;
 		Vector2i MouseHoverCoordinates				= Vector2i(-1, -1);
 		Ref<Texture> RenderTarget					= nullptr;
 	};
@@ -173,10 +176,17 @@ namespace Relentless
 		Max,
 	};
 
+	enum class DefaultBufferType
+	{
+		Ones,
+		Max,
+	};
+
 	namespace GraphicsCommon
 	{
-		void Create(GraphicsDevice* aGraphicsDevice) noexcept;
-		void Destroy() noexcept;
-		NO_DISCARD Texture* GetDefaultTexture(DefaultTextureType aDefaultTextureType) noexcept;
+		RLS_API void Create(GraphicsDevice* aGraphicsDevice) noexcept;
+		RLS_API void Destroy() noexcept;
+		NO_DISCARD RLS_API Texture* GetDefaultTexture(DefaultTextureType aDefaultTextureType) noexcept;
+		NO_DISCARD RLS_API Buffer* GetDefaultBuffer(DefaultBufferType aDefaultBufferType) noexcept;
 	}
 }
