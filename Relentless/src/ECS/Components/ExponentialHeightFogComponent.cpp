@@ -7,28 +7,6 @@
 
 namespace Relentless
 {
-	ExponentialHeightFogComponent::ExponentialHeightFogComponent(ExponentialHeightFogComponent&& aOther) noexcept
-		: ManagedComponent<ExponentialHeightFogComponent>(std::move(aOther))
-		, m_InscatterCubemapHandle(aOther.m_InscatterCubemapHandle)
-	{
-		aOther.DetachTextureCube();
-		aOther.m_InscatterCubemapHandle = AssetHandle::INVALID;
-		ConnectTextureCube();
-	}
-
-	ExponentialHeightFogComponent& ExponentialHeightFogComponent::operator=(ExponentialHeightFogComponent&& aOther) noexcept
-	{
-		if (this != &aOther)
-		{
-			DetachTextureCube();
-			aOther.DetachTextureCube();
-			m_InscatterCubemapHandle = std::move(aOther.m_InscatterCubemapHandle);
-			aOther.m_InscatterCubemapHandle = AssetHandle::INVALID;
-			ConnectTextureCube();
-		}
-		return *this;
-	}
-
 	ExponentialHeightFogComponent::~ExponentialHeightFogComponent() noexcept
 	{
 		DetachTextureCube();
@@ -36,6 +14,9 @@ namespace Relentless
 
 	void ExponentialHeightFogComponent::CopyFrom(const ExponentialHeightFogComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
+		m_Self = aThisEntity;
+		m_EntityManager = &aEntityManager;
+
 		DetachTextureCube();
 		m_InscatterCubemapHandle = aOtherComponent.m_InscatterCubemapHandle;
 		ConnectTextureCube();
@@ -43,11 +24,11 @@ namespace Relentless
 		m_FogLayers = aOtherComponent.m_FogLayers;
 		m_InscatteringColor = aOtherComponent.m_InscatteringColor;
 		m_MaxOpacity = aOtherComponent.m_MaxOpacity;
+		m_FullyDirectionalInScatteringColorDistance = aOtherComponent.m_FullyDirectionalInScatteringColorDistance;
+		m_NonDirectionalInScatteringColorDistance = aOtherComponent.m_NonDirectionalInScatteringColorDistance;
 		m_InscatterMode = aOtherComponent.m_InscatterMode;
 
-		this->m_Self = aThisEntity;
-		this->m_EntityManager = &aEntityManager;
-		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
 	const ExponentialHeightFogComponent::FogLayer& ExponentialHeightFogComponent::GetFogLayer(uint8 aLayerIndex) const noexcept
@@ -111,6 +92,7 @@ namespace Relentless
 	{
 		m_FogLayers[1].Density = 0.0f;
 		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+		ConnectTextureCube();
 	}
 
 	void ExponentialHeightFogComponent::RemoveInscatterTexture() noexcept
@@ -118,7 +100,6 @@ namespace Relentless
 		if (!m_InscatterCubemapHandle.IsValid())
 			return;
 
-		m_InscatterCubemapHandle = AssetHandle::INVALID;
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_InscatterCubemapHandle);
 	}
@@ -278,6 +259,18 @@ namespace Relentless
 		Ref<TextureCube> pTextureCube = AssetManager::Get<TextureCube>(m_InscatterCubemapHandle);
 		pTextureCube->OnDestroy.Connect(this, &ExponentialHeightFogComponent::OnTextureCubeAssetDestroy);
 		pTextureCube->OnPropertyChanged.Connect(this, &ExponentialHeightFogComponent::OnTextureCubeAssetPropertyChanged);
+
+		m_InscatteringTextureDestroyCallbackID = pTextureCube->OnDestroy.Connect(
+			[pManager = m_EntityManager, self = m_Self](MAYBE_UNUSED IAsset* aAsset)
+			{
+				pManager->Get<ExponentialHeightFogComponent>(self).RemoveInscatterTexture();
+			});
+
+		m_InscatteringTextureChangedCallbackID = pTextureCube->OnPropertyChanged.Connect(
+			[pManager = m_EntityManager, self = m_Self](MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty)
+			{
+				pManager->AddOrReplace<DirtyRenderState>(self);
+			});
 	}
 
 	void ExponentialHeightFogComponent::DetachTextureCube() noexcept
@@ -286,8 +279,12 @@ namespace Relentless
 			return;
 
 		Ref<TextureCube> pTextureCube = AssetManager::Get<TextureCube>(m_InscatterCubemapHandle);
-		pTextureCube->OnDestroy.Detach(this);
-		pTextureCube->OnPropertyChanged.Detach(this);
+		pTextureCube->OnDestroy.Detach(m_InscatteringTextureDestroyCallbackID);
+		pTextureCube->OnPropertyChanged.Detach(m_InscatteringTextureChangedCallbackID);
+
+		m_InscatterCubemapHandle = AssetHandle::INVALID;
+		m_InscatteringTextureChangedCallbackID = INVALID_CALLBACK_ID;
+		m_InscatteringTextureDestroyCallbackID = INVALID_CALLBACK_ID;
 	}
 
 	void ExponentialHeightFogComponent::OnTextureCubeAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept

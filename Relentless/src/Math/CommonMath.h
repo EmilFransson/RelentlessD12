@@ -350,9 +350,9 @@ namespace Relentless
 			const float ndcX = (2.0f * aPixel.x / aViewportSize.x) - 1.0f;
 			const float ndcY = 1.0f - (2.0f * aPixel.y / aViewportSize.y);
 
-			// NDC -> view. D3D12 clip-space z is [0,1]: near plane z=0, far z=1.
-			const Vector4 nearH = Vector4::Transform(Vector4(ndcX, ndcY, 0.0f, 1.0f), aInverseProjectionMatrix);
-			const Vector4 farH = Vector4::Transform(Vector4(ndcX, ndcY, 1.0f, 1.0f), aInverseProjectionMatrix);
+			// NDC -> view. D3D12 clip-space z is [0,1]: near plane z=0, far z=1. (MIND reverse-Z!)
+			const Vector4 nearH = Vector4::Transform(Vector4(ndcX, ndcY, 1.0f, 1.0f), aInverseProjectionMatrix);
+			const Vector4 farH = Vector4::Transform(Vector4(ndcX, ndcY, 0.0f, 1.0f), aInverseProjectionMatrix);
 
 			const Vector3 nearV = Vector3(nearH.x, nearH.y, nearH.z) / nearH.w;
 			const Vector3 farV = Vector3(farH.x, farH.y, farH.z) / farH.w;

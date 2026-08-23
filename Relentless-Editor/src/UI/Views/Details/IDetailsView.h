@@ -22,6 +22,7 @@ namespace Relentless
 		template<typename ContextType>
 		NO_DISCARD ContextType& GetContext() noexcept;
 		NO_DISCARD VerticalBox* GetHeader() const noexcept;
+		NO_DISCARD Ref<TreeView<Ref<DetailNode>>> GetTreeView() const noexcept;
 
 		virtual void OnRender() noexcept override;
 		

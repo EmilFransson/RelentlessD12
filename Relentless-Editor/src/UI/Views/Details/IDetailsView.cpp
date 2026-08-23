@@ -59,6 +59,11 @@ namespace Relentless
 		return m_pHeaderBox;
 	}
 
+	Ref<TreeView<Ref<DetailNode>>> IDetailsView::GetTreeView() const noexcept
+	{
+		return m_pDetailsTreeView;
+	}
+
 	void IDetailsView::OnRender() noexcept
 	{
 		m_pMainBox->AssignSize(GetAssignedSize());

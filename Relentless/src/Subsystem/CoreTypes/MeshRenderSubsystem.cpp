@@ -36,6 +36,8 @@ namespace Relentless
 
 		Renderer* pRenderer = pRenderScene->GetRenderer();
 		m_OnUploadCallbackID = pRenderer->RegisterOnUploadCallback(Callback<void(CommandContext&)>::Bind(this, &MeshRenderSubsystem::OnUpload));
+		m_OnFrameRenderBeginCallbackID = pRenderer->RegisterOnFrameRenderBeginCallback(Callback<void()>::Bind(this, &MeshRenderSubsystem::OnFrameRenderBegin));
+
 		m_pGraphicsDevice = pRenderer->GetDevice();
 
 		return true;
@@ -46,6 +48,7 @@ namespace Relentless
 		RenderScene* pRenderScene = static_cast<RenderScene*>(aSystemManager);
 		Renderer* pRenderer = pRenderScene->GetRenderer();
 		pRenderer->UnregisterOnUploadCallback(m_OnUploadCallbackID);
+		pRenderer->UnregisterOnFrameRenderBeginCallback(m_OnFrameRenderBeginCallbackID);
 	}
 
 	bool MeshRenderSubsystem::ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept
@@ -71,7 +74,7 @@ namespace Relentless
 		outMeshData.IndexBufferIndex = aRenderProxy.IndexBuffer->GetSRVIndex();
 	}
 
-	void MeshRenderSubsystem::OnUpload(CommandContext& aCommandContext) noexcept
+	void MeshRenderSubsystem::OnFrameRenderBegin()
 	{
 		m_IDToSlotMap.clear();
 		m_MeshCache.clear();
@@ -87,7 +90,10 @@ namespace Relentless
 			ShaderInterop::MeshData& meshData = m_MeshCache.emplace_back();
 			BuildMeshData(meshData, renderProxy);
 		}
+	}
 
+	void MeshRenderSubsystem::OnUpload(CommandContext& aCommandContext) noexcept
+	{
 		const uint32 numElements = static_cast<uint32>(m_MeshCache.size());
 		const uint32 desiredElements = Math::AlignUp(Math::Max(1u, numElements), 8u);
 		const uint32 stride = sizeof(ShaderInterop::MeshData);

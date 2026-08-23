@@ -110,78 +110,10 @@ namespace Relentless
 		EntityDetailsContext& detailsContext = aDetailLayoutBuilder.GetDetailsView()->GetContext<EntityDetailsContext>();
 		DetailHelpers::EntityHandleFactory<MRC> handleFactory({ .Entities = detailsContext.Entities, .EntityManager = *detailsContext.EntityManager });
 
-		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-		EngineContentSubsystem* pEngineContentSubsystem = Editor::Get()->GetSubsystem<EngineContentSubsystem>();
-
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(ICON_FA_PALETTE "  Mesh Renderer");
+		categoryBuilder.AddHeaderAction("Remove", [this]() { RemoveFromInspected(); });
 
-		const AssetHandle heuristicHandle = detailsContext.EntityManager->Get<MeshRendererComponent>(detailsContext.Entities.front()).GetMaterialHandle();
-
-		const bool allSameAndValid = heuristicHandle.IsValid() && std::ranges::all_of(detailsContext.Entities, [&detailsContext, &heuristicHandle](const entity aEntity)
-			{
-				return detailsContext.EntityManager->Get<MeshRendererComponent>(aEntity).GetMaterialHandle() == heuristicHandle;
-			});
-
-		AssetData* pAssetData = nullptr;  
-		bool isNone = false;
-		
-		if (allSameAndValid)
-			pAssetData = assetRegistry.FindAsset(heuristicHandle.Uuid);
-
-		if (!pAssetData)
-		{
-			pAssetData = assetRegistry.FindAsset(pEngineContentSubsystem->GetNoneTexture2DHandle().Uuid);
-			isNone = true;
-		}
-
-		RLS_ASSERT(pAssetData, "[MeshRendererComponentDetailCustomization::CustomizeDetails]: Asset data is invalid.");	
-
-		categoryBuilder.AddAssetProperty("Material", *pAssetData)
-			.AcceptableAssetTypes({ Material::StaticType() })
-			.OnAssetsDropped([&detailsContext, &aDetailLayoutBuilder](Span<const AssetData> someAssetDatas)
-				{
-					const AssetHandle assetHandle = AssetManager::LoadAsset(someAssetDatas[0]);
-					std::ranges::for_each(detailsContext.Entities, [&detailsContext, &assetHandle](const entity aEntity)
-						{
-							detailsContext.EntityManager->Get<MeshRendererComponent>(aEntity).SetMaterial(assetHandle);
-						});
-
-					Application::Get().SubmitToMainThread([&aDetailLayoutBuilder]()
-						{
-							aDetailLayoutBuilder.GetDetailsView()->Rebuild<EntityDetailsContext>();
-						});
-				})
-			.NameSlot().Label("Material")
-			.ValueSlot().AssetThumbnail().Tooltip(isNone ? "" : pAssetData->PackagePath.string() + pAssetData->Name).Row()
-			.RevertSlot().Widget([&detailsContext, &aDetailLayoutBuilder, isNone]()
-				{
-					Ref<HorizontalBox> pRevertBox = RLS_NEW HorizontalBox();
-					pRevertBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
-
-					if (!isNone)
-					{
-						Button* pButton = pRevertBox->AddWidget(Button::CreateTransparent(ICON_FA_ARROW_ROTATE_LEFT));
-						pButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f));
-						pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
-
-						pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 1.0f)); });
-						pButton->OnMouseExit([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f)); });
-						pButton->OnClicked([&detailsContext, &aDetailLayoutBuilder]()
-							{
-								std::ranges::for_each(detailsContext.Entities, [&detailsContext](const entity aEntity)
-									{  
-										detailsContext.EntityManager->Get<MeshRendererComponent>(aEntity).RemoveMaterial(); 
-									});
-
-								Application::Get().SubmitToMainThread([&aDetailLayoutBuilder]()
-									{
-										aDetailLayoutBuilder.GetDetailsView()->Rebuild<EntityDetailsContext>();
-									});
-							});
-					}
-
-					return pRevertBox;
-				});
+		handleFactory.MakeAssetTarget(categoryBuilder, "Material", { Material::StaticType() }, &MRC::GetMaterialHandle, &MRC::SetMaterial, &MRC::RemoveMaterial);
 
 		auto pCastShadowsHandle = handleFactory.Make(&MRC::IsCastingShadows, &MRC::SetCastShadows, true);
 		categoryBuilder.AddProperty<bool>("Cast Shadows", pCastShadowsHandle)

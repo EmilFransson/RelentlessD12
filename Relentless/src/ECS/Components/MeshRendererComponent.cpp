@@ -12,35 +12,11 @@ namespace Relentless
 		DetachMaterial();
 	}
 
-	MeshRendererComponent::MeshRendererComponent(MeshRendererComponent&& aOtherComponent) noexcept
-		: ManagedComponent<MeshRendererComponent>(std::move(aOtherComponent))
-		, m_MaterialHandle(aOtherComponent.m_MaterialHandle)
-		, m_LightChannels(aOtherComponent.m_LightChannels)
-		, m_CastShadows(aOtherComponent.m_CastShadows)
-	{
-		aOtherComponent.DetachMaterial();
-		aOtherComponent.m_MaterialHandle = AssetHandle::INVALID;
-		ConnectMaterial();
-	}
-
-	MeshRendererComponent& MeshRendererComponent::operator=(MeshRendererComponent&& aOtherComponent) noexcept
-	{
-		if (this != &aOtherComponent)
-		{
-			DetachMaterial();
-			aOtherComponent.DetachMaterial();
-			m_MaterialHandle = std::move(aOtherComponent.m_MaterialHandle);
-			aOtherComponent.m_MaterialHandle = AssetHandle::INVALID;
-			ConnectMaterial();
-			
-			m_LightChannels = aOtherComponent.m_LightChannels;
-			m_CastShadows = aOtherComponent.m_CastShadows;
-		}
-		return *this;
-	}
-
 	void MeshRendererComponent::CopyFrom(const MeshRendererComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
+		m_Self = aThisEntity;
+		m_EntityManager = &aEntityManager;
+
 		DetachMaterial();
 		m_MaterialHandle = aOtherComponent.m_MaterialHandle;
 		ConnectMaterial();
@@ -48,8 +24,6 @@ namespace Relentless
 		m_LightChannels = aOtherComponent.m_LightChannels;
 		m_CastShadows = aOtherComponent.m_CastShadows;
 
-		m_Self = aThisEntity;
-		m_EntityManager = &aEntityManager;
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
@@ -87,6 +61,7 @@ namespace Relentless
 	void MeshRendererComponent::OnBound() noexcept
 	{
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
+		ConnectMaterial();
 	}
 
 	void MeshRendererComponent::RemoveMaterial() noexcept
@@ -95,7 +70,6 @@ namespace Relentless
 			return;
 
 		DetachMaterial();
-		m_MaterialHandle = AssetHandle::INVALID;
 
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_MaterialHandle);
@@ -147,8 +121,18 @@ namespace Relentless
 			return;
 
 		Ref<Material> pMaterial = AssetManager::Get<Material>(m_MaterialHandle);
-		pMaterial->OnDestroy.Connect(this, &MeshRendererComponent::OnMaterialAssetDestroy);
-		pMaterial->OnPropertyChanged.Connect(this, &MeshRendererComponent::OnMaterialAssetPropertyChanged);
+
+		m_MaterialDestroyCallbackID = pMaterial->OnDestroy.Connect(
+			[pManager = m_EntityManager, self = m_Self](MAYBE_UNUSED IAsset* aAsset)
+			{
+				pManager->Get<MeshRendererComponent>(self).RemoveMaterial();
+			});
+
+		m_MaterialChangedCallbackID = pMaterial->OnPropertyChanged.Connect(
+			[pManager = m_EntityManager, self = m_Self](MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty)
+			{
+				pManager->AddOrReplace<DirtyRenderState>(self);
+			});
 	}
 
 	void MeshRendererComponent::DetachMaterial() noexcept
@@ -157,8 +141,12 @@ namespace Relentless
 			return;
 
 		Ref<Material> pMaterial = AssetManager::Get<Material>(m_MaterialHandle);
-		pMaterial->OnDestroy.Detach(this);
-		pMaterial->OnPropertyChanged.Detach(this);
+		pMaterial->OnDestroy.Detach(m_MaterialDestroyCallbackID);
+		pMaterial->OnPropertyChanged.Detach(m_MaterialChangedCallbackID);
+
+		m_MaterialDestroyCallbackID = INVALID_CALLBACK_ID;
+		m_MaterialChangedCallbackID = INVALID_CALLBACK_ID;
+		m_MaterialHandle = AssetHandle::INVALID;
 	}
 
 	void MeshRendererComponent::OnMaterialAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept

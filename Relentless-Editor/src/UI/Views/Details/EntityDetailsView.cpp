@@ -74,7 +74,7 @@ namespace Relentless
 			if (m_Context.Entities.empty())
 				m_RootNodes.clear();
 
-			TearDown();
+			//TearDown();
 		}
 	}
 

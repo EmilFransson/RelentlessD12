@@ -40,6 +40,7 @@ namespace Relentless
 
 		Renderer* pRenderer = pRenderScene->GetRenderer();
 		m_OnUploadCallbackID = pRenderer->RegisterOnUploadCallback(Callback<void(CommandContext&)>::Bind(this, &PrimitiveRenderSubsystem::OnUpload));
+		m_OnFrameRenderBeginCallbackID = pRenderer->RegisterOnFrameRenderBeginCallback(Callback<void()>::Bind(this, &PrimitiveRenderSubsystem::OnFrameRenderBegin));
 		m_pGraphicsDevice = pRenderer->GetDevice();
 
 		return true;
@@ -51,6 +52,7 @@ namespace Relentless
 
 		Renderer* pRenderer = pRenderScene->GetRenderer();
 		pRenderer->UnregisterOnUploadCallback(m_OnUploadCallbackID);
+		pRenderer->UnregisterOnFrameRenderBeginCallback(m_OnFrameRenderBeginCallbackID);
 	}
 
 	bool PrimitiveRenderSubsystem::ShouldCreateSubsystem(ISystemManager* aSystemManager) noexcept
@@ -82,7 +84,7 @@ namespace Relentless
 		outInstanceData.LightChannelMask = static_cast<uint32>(aRenderProxy.LightChannelMask);
 	}
 
-	void PrimitiveRenderSubsystem::OnUpload(CommandContext& aCommandContext) noexcept
+	void PrimitiveRenderSubsystem::OnFrameRenderBegin()
 	{
 		PROFILE_FUNC;
 
@@ -126,6 +128,11 @@ namespace Relentless
 
 		for (uint32 instanceID = 0u; instanceID < m_InstanceCache.size(); ++instanceID)
 			m_InstanceCache[instanceID].ID = instanceID;
+	}
+
+	void PrimitiveRenderSubsystem::OnUpload(CommandContext& aCommandContext) noexcept
+	{
+		PROFILE_FUNC;
 
 		const uint32 numElements = static_cast<uint32>(m_InstanceCache.size());
 		const uint32 desiredElements = Math::AlignUp(Math::Max(1u, numElements), 8u);

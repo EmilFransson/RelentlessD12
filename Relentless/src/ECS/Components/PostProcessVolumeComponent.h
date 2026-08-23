@@ -1,5 +1,6 @@
 #pragma once
 #include "ECS/Component.h"
+#include "ECS/EntityManager.h"
 
 namespace Relentless
 {
@@ -12,20 +13,20 @@ namespace Relentless
 	template<typename TOwner>
 	struct SubObject
 	{
-	public:
-		explicit SubObject(TOwner* aOwner) noexcept
-			: m_pOwner{ aOwner }{}
-
-		virtual ~SubObject() noexcept = default;
 	protected:
-		TOwner* m_pOwner = nullptr;
+		EntityManager* m_pManager = nullptr;
+		entity m_Self = NULL_ENTITY;
+
+		TOwner* Owner() noexcept
+		{
+			RLS_ASSERT(m_pManager, "SubObject not injected");
+			return &m_pManager->Get<TOwner>(m_Self);
+		}
 
 		void NotifyOwner(uint64 aHash) noexcept
 		{
 			static_assert(requires(TOwner * p, uint64 h) { p->NotifyPropertyChanged(h); }, "Owner must implement NotifyPropertyChanged(uint64)");
-			RLS_ASSERT(m_pOwner, "SubObject owner not injected");
-			
-			m_pOwner->NotifyPropertyChanged(aHash);
+			Owner()->NotifyPropertyChanged(aHash);
 		}
 
 		friend TOwner;
@@ -38,8 +39,6 @@ namespace Relentless
 	struct RLS_API AmbientOcclusionSettings : public SubObject<PostProcessVolumeComponent>
 	{
 	public:
-		explicit AmbientOcclusionSettings(PostProcessVolumeComponent* aOwner) noexcept;
-
 		NO_DISCARD float GetBias() const noexcept;
 		NO_DISCARD EAmbientOcclusionBlurRadius GetBlurRadius() const noexcept;
 		NO_DISCARD float GetBlurSharpness() const noexcept;
@@ -75,12 +74,12 @@ namespace Relentless
 	struct RLS_API BloomSettings : public SubObject<PostProcessVolumeComponent>
 	{
 	public:
-		explicit BloomSettings(PostProcessVolumeComponent* aOwner) noexcept;
+		BloomSettings() noexcept = default;
 		BloomSettings(const BloomSettings& aOther) noexcept;
 		BloomSettings& operator=(const BloomSettings&) noexcept;
 		BloomSettings(BloomSettings&&) noexcept;
 		BloomSettings& operator=(BloomSettings&&) noexcept;
-		virtual ~BloomSettings() noexcept override;
+		~BloomSettings() noexcept;
 
 		NO_DISCARD Ref<Texture2D> GetDirtMask() const noexcept;
 		NO_DISCARD const AssetHandle& GetDirtMaskHandle() const noexcept;
@@ -100,21 +99,19 @@ namespace Relentless
 		void ConnectDirtMask() noexcept;
 
 		void DetachDirtMask() noexcept;
-
-		void OnDirtMaskAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept;
-		void OnDirtMaskAssetPropertyChanged(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty) noexcept;
 	private:
 		AssetHandle m_DirtMaskHandle = AssetHandle::INVALID;
 		Color m_DirtMaskTint = Colors::Gray;
 		float m_Intensity = 1.0f;
 		float m_DirtMaskIntensity = 0.0f;
+
+		CallbackID m_DirtMaskChangedCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_DirtMaskDestroyCallbackID = INVALID_CALLBACK_ID;
 	};
 
 	struct RLS_API ExposureSettings : public SubObject<PostProcessVolumeComponent>
 	{
 	public:
-		explicit ExposureSettings(PostProcessVolumeComponent* aOwner) noexcept;
-
 		NO_DISCARD float GetCompensation() const noexcept;
 		NO_DISCARD float GetMinEV100() const noexcept;
 		NO_DISCARD float GetMaxEV100() const noexcept;
@@ -168,12 +165,11 @@ namespace Relentless
 		void SetHasInfiniteExtent(bool aHasInfiniteExtent) noexcept;
 	private:
 		void InjectSelf() noexcept;
-
 		void NotifyPropertyChanged(uint64 aPropertyHash) noexcept;
 	private:
-		ExposureSettings m_ExposureSettings{ this };
-		AmbientOcclusionSettings m_AmbientOcclusionSettings{ this };
-		BloomSettings m_BloomSettings{ this };
+		ExposureSettings m_ExposureSettings;
+		AmbientOcclusionSettings m_AmbientOcclusionSettings;
+		BloomSettings m_BloomSettings;
 		bool m_InfiniteExtent = true;
 	};
 }

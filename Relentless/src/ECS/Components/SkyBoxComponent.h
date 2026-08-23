@@ -60,5 +60,10 @@ namespace Relentless
 		float m_Intensity = 1.0f;
 		float m_LodBias = 0.0f;
 		float m_BlendFactor = 0.0f;
+
+		CallbackID m_PrimaryEnvironmentDestroyCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_PrimaryEnvironmentChangedCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_BlendEnvironmentDestroyCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_BlendEnvironmentChangedCallbackID = INVALID_CALLBACK_ID;
 	};
 }

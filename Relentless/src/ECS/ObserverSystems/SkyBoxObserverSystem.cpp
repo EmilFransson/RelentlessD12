@@ -14,7 +14,7 @@ namespace Relentless
 	{
 		EntityManager& entityManager = aScene.GetEntityManager();
 
-		entityManager.OnRemove<SkyBoxComponent>().Connect([this, uid = aScene.GetUUID()](MAYBE_UNUSED EntityManager& aEntityManager, entity aEntity) { OnSkyBoxComponentRemoved(aEntity, uid); });
+		entityManager.OnRemove<SkyBoxComponent>().Connect([this, pScene = &aScene](MAYBE_UNUSED EntityManager& aEntityManager, entity aEntity) { OnSkyBoxComponentRemoved(aEntity, pScene); });
 		entityManager.OnCreated<HiddenInGameComponent>().Connect(this, &SkyBoxObserverSystem::OnEntityVisibilityChanged);
 		entityManager.OnRemove<HiddenInGameComponent>().Connect(this, &SkyBoxObserverSystem::OnEntityVisibilityChanged);
 		aScene.OnSkyBoxChange.Connect(this, &SkyBoxObserverSystem::OnActiveSkyBoxChange);
@@ -34,9 +34,12 @@ namespace Relentless
 			aEntityManager.AddOrReplace<SkyBoxComponent::DirtyRenderState>(aEntity);
 	}
 
-	void SkyBoxObserverSystem::OnSkyBoxComponentRemoved(entity aEntity, const UUID& aUUID) noexcept
+	void SkyBoxObserverSystem::OnSkyBoxComponentRemoved(entity aEntity, Scene* aScene) noexcept
 	{
-		Renderer::Dispatch([aEntity, aUUID](Renderer* aRenderer)
+		if (aScene->GetActiveSkyBox() == aEntity)
+			aScene->RemoveActiveSkyBox();
+
+		Renderer::Dispatch([aEntity, aUUID = aScene->GetUUID()](Renderer* aRenderer)
 			{
 				RenderScene* pRenderScene = aRenderer->GetRenderScene(aUUID);
 				SkyBoxRenderSubsystem* pSkyBoxRenderSubsystem = pRenderScene->GetSubsystem<SkyBoxRenderSubsystem>();

@@ -33,7 +33,9 @@ namespace Relentless
 		entity CreateCamera(const char* name) noexcept;
 		entity CreateEntity(const char* tag) noexcept;
 		entity CreateEntityWithUUID(const char* tag, const UUID& guid) noexcept;
+		entity CreateExponentialHeightFog(const char* aName);
 		entity CreateLight(const char* aName, ELightType aLightType) noexcept;
+		entity CreatePostProcessVolume(const char* aName);
 
 		NO_DISCARD entity GetActiveExponentialHeightFog() const noexcept;
 		NO_DISCARD entity GetActiveSkyBox() const noexcept;

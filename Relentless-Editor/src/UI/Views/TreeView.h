@@ -23,9 +23,12 @@ namespace Relentless
 			this->m_Mode = ETableViewMode::Tree;
 		}
 
-		NO_DISCARD std::vector<ItemType> GetDescendants(const ItemType& pAncestor) noexcept;
+		void CollapseAll() noexcept;
 
 		NO_DISCARD bool ExistsItemInfo(const ItemType& pItem) const;
+		void ExpandAll() noexcept;
+
+		NO_DISCARD std::vector<ItemType> GetDescendants(const ItemType& pAncestor) noexcept;
 		NO_DISCARD const ItemInfo& GetItemInfo(const ItemType& pItem) const;
 		NO_DISCARD const ItemType& GetItemFromIndex(uint32 index) const;
 
@@ -74,6 +77,18 @@ namespace Relentless
 		bool m_ShouldRefresh = true;
 		bool m_ClippingActive = true;
 	};
+
+	template<class ItemType>
+	void TreeView<ItemType>::ExpandAll() noexcept
+	{
+		std::ranges::for_each(m_LinearizedItems, [this](const ItemType& aItem) { SetItemExpandedState(aItem, true); });
+	}
+
+	template<class ItemType>
+	void TreeView<ItemType>::CollapseAll() noexcept
+	{
+		std::ranges::for_each(m_LinearizedItems, [this](const ItemType& aItem) { SetItemExpandedState(aItem, false); });
+	}
 
 	template<class ItemType>
 	bool TreeView<ItemType>::ExistsItemInfo(const ItemType& pItem) const

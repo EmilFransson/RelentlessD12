@@ -1,12 +1,16 @@
 #include "DetailCategoryRow.h"
 
+#include "Module/ModuleManager.h"
+#include "Module/UIModule.h"
+
 #include "UI/Widgets/HorizontalBox.h"
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/Label.h"
+#include "UI/Widgets/Spacer.h"
 
 namespace Relentless
 {
-	DetailCategoryRow::DetailCategoryRow(std::string_view aName, bool aIsExpanded) noexcept
+	DetailCategoryRow::DetailCategoryRow(StringView aName, bool aIsExpanded) noexcept
 	{
 		Ref<HorizontalBox> pBox = RLS_NEW HorizontalBox();
 		pBox->SetHorizontalSizePolicy(ESizePolicy::Stretch);
@@ -21,6 +25,15 @@ namespace Relentless
 		pBox->AddWidget(RLS_NEW Label(aName));
 
 		m_ColumnWidgets2.push_back(pBox);
+
+		OnMouseDown.Connect([this](const WidgetGeometry&, const PointerInfo& aPointerInfo)
+			{
+				if (aPointerInfo.EffectingButton == RLS_Button::Right && m_OnContextMenuOpening.IsSet())
+				{
+					if (Ref<ContextMenu> pContextMenu = m_OnContextMenuOpening())
+						ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(pContextMenu);
+				}
+			});
 	}
 
 	Button* DetailCategoryRow::GetExpandButton() const noexcept

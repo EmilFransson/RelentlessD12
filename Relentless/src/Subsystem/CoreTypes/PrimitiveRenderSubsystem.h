@@ -31,6 +31,7 @@ namespace Relentless
 	private:
 		void BuildInstanceData(ShaderInterop::InstanceData& outInstanceData, const PrimitiveRenderProxy& aRenderProxy) const noexcept;
 
+		void OnFrameRenderBegin();
 		void OnUpload(CommandContext& aCommandContext) noexcept;
 	private:
 		std::unordered_map<uint32, PrimitiveRenderProxy> m_RenderData;
@@ -39,6 +40,7 @@ namespace Relentless
 		SceneBuffer m_InstanceDataBuffer;
 
 		CallbackID m_OnUploadCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_OnFrameRenderBeginCallbackID = INVALID_CALLBACK_ID;
 
 		MaterialRenderSubsystem* m_pMaterialRenderSubsystem = nullptr;
 		MeshRenderSubsystem* m_pMeshRenderSubsystem = nullptr;

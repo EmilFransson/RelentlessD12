@@ -148,7 +148,7 @@ namespace Relentless
 			meshRendererComponent.SetMaterial(materialDetailsContext.MaterialHandle);
 
 			MeshFilterComponent& meshFilterComponent = entityManager.Add<MeshFilterComponent>(m_MaterialPreviewEntity);
-			meshFilterComponent.SetMesh(pEngineContentSubsystem->GetSphereMeshHandle());
+			meshFilterComponent.SetMesh(pEngineContentSubsystem->GetAssetHandle(EEngineAsset::SphereMesh));
 		}
 
 		//Floor:
@@ -165,7 +165,7 @@ namespace Relentless
 			meshRendererComponent.SetMaterial(floorHandle);
 
 			MeshFilterComponent& meshFilterComponent = entityManager.Add<MeshFilterComponent>(floor);
-			meshFilterComponent.SetMesh(pEngineContentSubsystem->GetCubeMeshHandle());
+			meshFilterComponent.SetMesh(pEngineContentSubsystem->GetAssetHandle(EEngineAsset::CubeMesh));
 
 			auto& tc = entityManager.Get<TransformComponent>(floor);
 			tc.SetWorldScale(Vector3(5.0f, 0.5f, 5.0f));
@@ -198,7 +198,7 @@ namespace Relentless
 		const AssetHandle environmentHandle = assetToolsModule.CreateAsset<Environment>("MaterialPreviewEnvironment", "", nullptr, false);
 		Ref<Environment> pMaterialPreviewEnvironment = AssetManager::Get<Environment>(environmentHandle);
 		pMaterialPreviewEnvironment->SetSourceType(EEnvironmentSourceType::Cubemap);
-		pMaterialPreviewEnvironment->SetEnvironmentMapHandle(pEngineContentSubsystem->GetMaterialPreviewCubemapHandle());
+		pMaterialPreviewEnvironment->SetEnvironmentMapHandle(pEngineContentSubsystem->GetAssetHandle(EEngineAsset::QuattroCantiTextureCube));
 
 		//Sky Box:
 		{

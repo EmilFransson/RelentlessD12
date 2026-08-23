@@ -1,10 +1,13 @@
 #include "IDetailGroupBuilder.h"
 
+#include "IDetailCategoryBuilder.h"
+
 namespace Relentless
 {
-	IDetailGroupBuilder::IDetailGroupBuilder(const char* aName, Ref<DetailNode> aNode) noexcept
+	IDetailGroupBuilder::IDetailGroupBuilder(const char* aName, Ref<DetailNode> aNode, IDetailCategoryBuilder& aParent) noexcept
 		:m_Name{ aName }, 
-		 m_pGroupNode{ aNode }
+		 m_pGroupNode{ aNode },
+		 m_DetailCategoryBuilder{ aParent }
 	{
 	}
 
@@ -15,4 +18,10 @@ namespace Relentless
 		m_pGroupNode->AddChild(RLS_NEW AssetDetailNode(aPropertyName, aAssetData));
 		return DetailPropertyRowBuilder<AssetData>(aPropertyName, m_pGroupNode->GetChildren().back());
 	}
+
+	IDetailCategoryBuilder& IDetailGroupBuilder::GetCategoryBuilder() const noexcept
+	{
+		return m_DetailCategoryBuilder;
+	}
+
 }

@@ -20,7 +20,8 @@ namespace Relentless
 		EntityComponentDefinitionRegistry* pEntityComponentDefinitionRegistry = Editor::Get()->GetSubsystem<EntityComponentDefinitionRegistry>();
 		Ref<IEntityComponentDefinition> pEntityComponentDefinition = pEntityComponentDefinitionRegistry->GetDefinition<EHFC>();
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(std::format("{}  {}", pEntityComponentDefinition->GetIcon(), pEntityComponentDefinition->GetDisplayName()).c_str());
-
+		categoryBuilder.AddHeaderAction("Remove", [this]() { RemoveFromInspected(); });
+		
 		categoryBuilder.AddProperty<bool>(
 			"Is Active",
 			[&context](){ return context.Scene->GetActiveExponentialHeightFog() == context.Entities.front(); },
@@ -147,33 +148,7 @@ namespace Relentless
 
 		IDetailGroupBuilder inscatteringTextureGroup = categoryBuilder.EditGroup("Inscattering Texture");
 
-		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-		EngineContentSubsystem* pEngineContentSubsystem = Editor::Get()->GetSubsystem<EngineContentSubsystem>();
-		const AssetHandle heuristicHandle = context.EntityManager->Get<EHFC>(context.Entities.front()).GetInscatterTextureHandle();
-
-		const bool allSameAndValid = heuristicHandle.IsValid() && std::ranges::all_of(context.Entities, [&context, &heuristicHandle](const entity aEntity)
-			{
-				return context.EntityManager->Get<EHFC>(aEntity).GetInscatterTextureHandle() == heuristicHandle;
-			});
-
-		AssetData* pAssetData = nullptr;
-
-		if (allSameAndValid)
-			pAssetData = assetRegistry.FindAsset(heuristicHandle.Uuid);
-		if (!pAssetData)
-			pAssetData = assetRegistry.FindAsset(pEngineContentSubsystem->GetNoneTexture2DHandle().Uuid);
-
-		RLS_ASSERT(pAssetData, "[ExponentialHeightFogComponentDetailCustomization::CustomizeDetails]: Asset data is invalid.");
-
-		inscatteringTextureGroup.AddAssetProperty("Inscattering Color Cubemap", *pAssetData)
-			.AcceptableAssetTypes({ TextureCube::StaticType() })
-			.OnAssetsDropped([&context](Span<const AssetData> someAssetDatas)
-				{
-					const AssetHandle assetHandle = AssetManager::LoadAsset(someAssetDatas[0]);
-					std::ranges::for_each(context.Entities, [&context, &assetHandle](entity aEntity) { context.EntityManager->Get<EHFC>(aEntity).SetInscatterTexture(assetHandle); });
-				})
-			.NameSlot().Label("Inscattering Color Cubemap")
-			.ValueSlot().AssetThumbnail();
+		handleFactory.MakeAssetTarget(categoryBuilder, "Inscattering Color Cubemap", { TextureCube::StaticType() }, &EHFC::GetInscatterTextureHandle, &EHFC::SetInscatterTexture, &EHFC::RemoveInscatterTexture);
 
 		auto pInScatterTextureTintColorHandle = handleFactory.Make(&EHFC::GetInscatterTextureTintColor, &EHFC::SetInscatterTextureTintColor, EHFC::DEFAULT_INSCATTERING_TEXTURE_TINT);
 		inscatteringTextureGroup.AddProperty<Color>("Inscattering Texture Tint", pInScatterTextureTintColorHandle)

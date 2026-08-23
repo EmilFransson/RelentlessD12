@@ -14,11 +14,12 @@
 namespace Relentless
 {
 	struct AssetData;
+	class IDetailCategoryBuilder;
 
 	class IDetailGroupBuilder
 	{
 	public:
-		explicit IDetailGroupBuilder(const char* aName, Ref<DetailNode> aNode) noexcept;
+		explicit IDetailGroupBuilder(const char* aName, Ref<DetailNode> aNode, IDetailCategoryBuilder& aParent) noexcept;
 		virtual ~IDetailGroupBuilder() noexcept = default;
 
 		DetailPropertyRowBuilder<AssetData> AddAssetProperty(const char* aPropertyName, const AssetData& aAssetData) noexcept;
@@ -35,10 +36,15 @@ namespace Relentless
 		template<typename DataType>
 		DetailPropertyRowBuilder<DataType> AddProperty(const char* aPropertyName, Callback<DataType()> aGetter, Callback<void(const DataType&)> aSetter, Callback<DataType()> aDefaultGetter) noexcept;
 
+		NO_DISCARD IDetailCategoryBuilder& GetCategoryBuilder() const noexcept;
+
+
 		bool m_IsExpanded = true;
 	private:
 		String m_Name;
 		Ref<DetailNode> m_pGroupNode;
+
+		IDetailCategoryBuilder& m_DetailCategoryBuilder;
 	};
 
 	template<typename DataType>

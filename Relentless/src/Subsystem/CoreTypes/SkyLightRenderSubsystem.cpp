@@ -82,11 +82,11 @@ namespace Relentless
 	{
 		SkyLightRenderData& renderData = m_RenderData[aRenderProxy.ID];
 
-		renderData.PrimaryEntry.IrradianceDirty = aRenderProxy.PrimaryEnvironmentMap  && (aRenderProxy.PrimaryEnvironmentMap != renderData.RenderProxy.PrimaryEnvironmentMap);
-		renderData.PrimaryEntry.RadianceDirty = aRenderProxy.PrimaryEnvironmentMap  && (aRenderProxy.PrimaryEnvironmentMap != renderData.RenderProxy.PrimaryEnvironmentMap);
+		renderData.PrimaryEntry.IrradianceDirty |= aRenderProxy.PrimaryEnvironmentMap && (aRenderProxy.PrimaryEnvironmentMap != renderData.RenderProxy.PrimaryEnvironmentMap);
+		renderData.PrimaryEntry.RadianceDirty |= aRenderProxy.PrimaryEnvironmentMap  && (aRenderProxy.PrimaryEnvironmentMap != renderData.RenderProxy.PrimaryEnvironmentMap);
 
-		renderData.SecondaryEntry.IrradianceDirty = aRenderProxy.BlendEnvironmentMap && (aRenderProxy.BlendEnvironmentMap != renderData.RenderProxy.BlendEnvironmentMap);
-		renderData.SecondaryEntry.RadianceDirty = aRenderProxy.BlendEnvironmentMap && (aRenderProxy.BlendEnvironmentMap != renderData.RenderProxy.BlendEnvironmentMap);
+		renderData.SecondaryEntry.IrradianceDirty |= aRenderProxy.BlendEnvironmentMap && (aRenderProxy.BlendEnvironmentMap != renderData.RenderProxy.BlendEnvironmentMap);
+		renderData.SecondaryEntry.RadianceDirty |= aRenderProxy.BlendEnvironmentMap && (aRenderProxy.BlendEnvironmentMap != renderData.RenderProxy.BlendEnvironmentMap);
 
 		UpdateActiveID(aRenderProxy);
 		EnsureIBLMapsAllocated(aRenderProxy, renderData);

@@ -13,10 +13,20 @@ namespace Relentless
 		TearDown();
 	}
 
+	void IDetailLayoutBuilder::CollapseAll() noexcept
+	{
+		m_pView->GetTreeView()->CollapseAll();
+	}
+
 	IDetailCategoryBuilder& IDetailLayoutBuilder::EditCategory(const char* aName) noexcept
 	{
-		auto [it, inserted] = m_Categories.try_emplace(aName, std::make_unique<IDetailCategoryBuilder>(aName));
+		auto [it, inserted] = m_Categories.try_emplace(aName, MakeUnique<IDetailCategoryBuilder>(aName, *this));
 		return *(it->second);
+	}
+
+	void IDetailLayoutBuilder::ExpandAll() noexcept
+	{
+		m_pView->GetTreeView()->ExpandAll();
 	}
 
 	void IDetailLayoutBuilder::ForceRefreshDetails() noexcept

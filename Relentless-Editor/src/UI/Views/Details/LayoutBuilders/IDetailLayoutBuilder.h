@@ -1,5 +1,8 @@
 #pragma once
+#include "ContextMenuBuilder.h"
+
 #include "IDetailCategoryBuilder.h" 
+#include "ImGui/ImGuiFonts.h"
 
 #include "Module/DetailsModule.h"
 #include "Module/ModuleManager.h"
@@ -19,8 +22,11 @@ namespace Relentless
 
 		template<typename InspectedType>
 		std::vector<Ref<DetailNode>> Build() noexcept;
+
+		void CollapseAll() noexcept;
 		
 		NO_DISCARD IDetailCategoryBuilder& EditCategory(const char* aName) noexcept;
+		void ExpandAll() noexcept;
 
 		void ForceRefreshDetails() noexcept;
 
@@ -56,9 +62,50 @@ namespace Relentless
 		for (auto& [name, pBuilder] : m_Categories)
 		{
 			Ref<DetailNode> pCategoryNode = RLS_NEW DetailNode(name.c_str());
-			pCategoryNode->OnRequestRow([name](const ItemInfo& aItemInfo)
+			pCategoryNode->OnRequestRow([this, name](const ItemInfo& aItemInfo)
 				{
-					return RLS_NEW DetailCategoryRow(name, aItemInfo.IsExpanded);
+					Ref<DetailCategoryRow> pRow = RLS_NEW DetailCategoryRow(name, aItemInfo.IsExpanded);
+
+					pRow->OnContextMenuOpening([this, name]()
+						{
+							ContextMenuBuilder builder;
+							if (!m_Categories.contains(name))
+								return builder.BuildContextMenu();
+
+							const std::vector<HeaderAction>& headerActions = m_Categories.at(name)->GetHeaderActions();
+							if (!headerActions.empty())
+							{
+								builder.AddSection("Actions");
+
+								for (const HeaderAction& headerAction : headerActions)
+								{
+									builder.AddItem(headerAction.Label,	[onClicked = headerAction.OnClicked, closeOnSelection = headerAction.CloseOnSelection]()
+										{
+											const bool bClose = closeOnSelection;
+											onClicked();
+											if (bClose)
+												ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
+										});
+								}
+							}
+
+							builder.AddSection("Expansion");
+
+							builder.AddItem("Collapse All", [this]() 
+								{ 
+									CollapseAll(); 
+									ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
+								});
+							builder.AddItem("Expand All", [this]() 
+								{
+									ExpandAll();
+									ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
+								});
+
+							return builder.BuildContextMenu();
+						});
+
+					return pRow;
 				});
 
 			for (auto& entry : pBuilder->GetEntries())

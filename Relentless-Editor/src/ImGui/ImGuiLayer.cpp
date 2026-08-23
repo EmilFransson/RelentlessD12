@@ -478,46 +478,65 @@ namespace Relentless
 					{
 						TranslateAndSelectEntity(Editor::Get()->GetActiveScene()->CreateLight("SpotLight", ELightType::Spot));
 					});
-				//CreateEntityItem.operator()<SkyLightComponent>(aBuilder, [TranslateAndSelectEntity]() 
-				//	{
-				//		TranslateAndSelectEntity(Editor::Get()->GetActiveScene()->CreateLight("SkyLight", ELightType::Sky));
-				//	});
+				CreateEntityItem.operator()<SkyLightComponent>(aBuilder, [TranslateAndSelectEntity]() 
+					{
+						TranslateAndSelectEntity(Editor::Get()->GetActiveScene()->CreateLight("SkyLight", ELightType::Sky));
+					});
 			});
+
+		struct ShapeEntry
+		{
+			const char* Name = nullptr;
+			EEngineAsset EngineAsset;
+		};
+
+		static constexpr std::array shapeEntries = std::to_array<ShapeEntry>(
+		{
+			{"Capsule",		EEngineAsset::CapsuleMesh},
+			{"Cone",		EEngineAsset::ConeMesh},
+			{"Cube",		EEngineAsset::CubeMesh},
+			{"Cylinder",	EEngineAsset::CylinderMesh},
+			{"IcoSphere",	EEngineAsset::IcoSphereMesh},
+			{"Plane",		EEngineAsset::PlaneMesh},
+			{"Sphere",		EEngineAsset::SphereMesh},
+			{"Triangle",	EEngineAsset::TriangleMesh},
+			{"Torus",		EEngineAsset::TorusMesh},
+			{"UtahTeapot",	EEngineAsset::UtahTeapotMesh},
+			{"Quad",		EEngineAsset::QuadMesh}
+		});
 
 		builder.AddSubmenu(ICON_FA_SHAPES "   Shapes", [TranslateAndSelectEntity](ContextMenuBuilder& aBuilder)
 			{
-				aBuilder.AddItem("Cube", [TranslateAndSelectEntity]()
-					{
-						Editor* pEditor = Editor::Get();
-						Scene* pActiveScene = pEditor->GetActiveScene();
-						EngineContentSubsystem* pContentSubsystem = pEditor->GetSubsystem<EngineContentSubsystem>();
-						EntityManager& entityManager = pActiveScene->GetEntityManager();
-						
-						const entity cubeEntity = pActiveScene->CreateEntity("Cube");
-						entityManager.Add<MeshFilterComponent>(cubeEntity).SetMesh(pContentSubsystem->GetCubeMeshHandle());
-						entityManager.Add<MeshRendererComponent>(cubeEntity).SetMaterial(pContentSubsystem->GetWhiteMaterialHandle());
-						
-						TranslateAndSelectEntity(cubeEntity);
-						ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
-					})
-					.Tooltip("Cube");
+				for (const auto& shapeEntry : shapeEntries)
+				{
+					aBuilder.AddItem(shapeEntry.Name, [TranslateAndSelectEntity, &shapeEntry]()
+						{
+							Editor* pEditor = Editor::Get();
+							Scene* pActiveScene = pEditor->GetActiveScene();
+							EngineContentSubsystem* pContentSubsystem = pEditor->GetSubsystem<EngineContentSubsystem>();
+							EntityManager& entityManager = pActiveScene->GetEntityManager();
 
-				aBuilder.AddItem("Sphere", [TranslateAndSelectEntity]()
-					{
-						Editor* pEditor = Editor::Get();
-						Scene* pActiveScene = pEditor->GetActiveScene();
-						EngineContentSubsystem* pContentSubsystem = pEditor->GetSubsystem<EngineContentSubsystem>();
-						EntityManager& entityManager = pActiveScene->GetEntityManager();
+							const entity shapeEntity = pActiveScene->CreateEntity(shapeEntry.Name);
+							entityManager.Add<MeshFilterComponent>(shapeEntity).SetMesh(pContentSubsystem->GetAssetHandle(shapeEntry.EngineAsset));
+							entityManager.Add<MeshRendererComponent>(shapeEntity).SetMaterial(pContentSubsystem->GetAssetHandle(EEngineAsset::WhiteMaterial));
 
-						const entity sphereEntity = pActiveScene->CreateEntity("Sphere");
-						entityManager.Add<MeshFilterComponent>(sphereEntity).SetMesh(pContentSubsystem->GetSphereMeshHandle());
-						entityManager.Add<MeshRendererComponent>(sphereEntity).SetMaterial(pContentSubsystem->GetWhiteMaterialHandle());
-
-						TranslateAndSelectEntity(sphereEntity);
-						ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
-					})
-					.Tooltip("Sphere");
+							TranslateAndSelectEntity(shapeEntity);
+							ModuleManager::LoadModuleChecked<UIModule>().DestroyActiveContextMenu();
+						})
+						.Tooltip(shapeEntry.Name);
+				}
 			});
+
+		CreateEntityItem.operator()<ExponentialHeightFogComponent>(builder, [TranslateAndSelectEntity]()
+					{
+						TranslateAndSelectEntity(Editor::Get()->GetActiveScene()->CreateExponentialHeightFog("ExponentialHeightFog"));
+					});
+
+		CreateEntityItem.operator()<PostProcessVolumeComponent>(builder, [TranslateAndSelectEntity]()
+					{
+						TranslateAndSelectEntity(Editor::Get()->GetActiveScene()->CreatePostProcessVolume("PostProcessVolume"));
+					});
+
 
 		ModuleManager::LoadModuleChecked<UIModule>().SetActiveContextMenu(builder.BuildContextMenu());
 	}

@@ -14,9 +14,10 @@ namespace Relentless
 		NO_DISCARD IDetailsView* GetDetailsView() const noexcept;
 
 		NO_DISCARD virtual bool IsEntityInspected(entity aEntity) const noexcept;
+
+		void RemoveFromInspected();
 	protected:
 		virtual ~EntityDetailCustomization() noexcept override = default;
-
 		virtual void CustomizeDetails(const SharedPtr<IDetailLayoutBuilder>& aDetailLayoutBuilder) noexcept override final;
 
 		NO_DISCARD virtual bool ShouldCustomize(IDetailLayoutBuilder& aDetailLayoutBuilder) const noexcept override;
@@ -61,6 +62,18 @@ namespace Relentless
 		}
 
 		return false;
+	}
+
+	template<typename ComponentType>
+	void EntityDetailCustomization<ComponentType>::RemoveFromInspected()
+	{
+		if (SharedPtr<IDetailLayoutBuilder> pLayoutBuilder = m_pWeakDetailLayoutBuilder.lock())
+		{
+			const EntityDetailsContext& context = pLayoutBuilder->GetDetailsView()->GetContext<EntityDetailsContext>();
+			std::ranges::for_each(context.Entities, [&context](entity aEntity) { context.EntityManager->Remove<ComponentType>(aEntity); });
+
+			pLayoutBuilder->ForceRefreshDetails();
+		}
 	}
 
 	template<typename ComponentType>

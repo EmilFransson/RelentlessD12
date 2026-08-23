@@ -12,36 +12,15 @@ namespace Relentless
 		DetachMesh();
 	}
 
-	MeshFilterComponent::MeshFilterComponent(MeshFilterComponent&& aOther) noexcept
-		: ManagedComponent<MeshFilterComponent>(std::move(aOther))
-		, m_MeshHandle(aOther.m_MeshHandle)
-	{
-		aOther.DetachMesh();
-		aOther.m_MeshHandle = AssetHandle::INVALID;
-		ConnectMesh();
-	}
-
-	MeshFilterComponent& MeshFilterComponent::operator=(MeshFilterComponent&& aOther) noexcept
-	{
-		if (this != &aOther)
-		{
-			DetachMesh();
-			aOther.DetachMesh();
-			m_MeshHandle = std::move(aOther.m_MeshHandle);
-			aOther.m_MeshHandle = AssetHandle::INVALID;
-			ConnectMesh();
-		}
-		return *this;
-	}
-
 	void MeshFilterComponent::CopyFrom(const MeshFilterComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
+		m_Self = aThisEntity;
+		m_EntityManager = &aEntityManager;
+
 		DetachMesh();
 		m_MeshHandle = aOtherComponent.m_MeshHandle;
 		ConnectMesh();
 
-		m_Self = aThisEntity;
-		m_EntityManager = &aEntityManager;
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
@@ -64,6 +43,7 @@ namespace Relentless
 	void MeshFilterComponent::OnBound() noexcept
 	{
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
+		ConnectMesh();
 	}
 
 	void MeshFilterComponent::RemoveMesh() noexcept
@@ -71,7 +51,8 @@ namespace Relentless
 		if (!m_MeshHandle.IsValid())
 			return;
 
-		m_MeshHandle = AssetHandle::INVALID;
+		DetachMesh();
+
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_MeshHandle);
 	}
@@ -97,8 +78,18 @@ namespace Relentless
 			return;
 
 		Ref<Mesh> pMesh = AssetManager::Get<Mesh>(m_MeshHandle);
-		pMesh->OnDestroy.Connect(this, &MeshFilterComponent::OnMeshAssetDestroy);
-		pMesh->OnPropertyChanged.Connect(this, &MeshFilterComponent::OnMeshAssetPropertyChanged);
+
+		m_MeshDestroyCallbackID = pMesh->OnDestroy.Connect(
+			[pManager = m_EntityManager, self = m_Self](MAYBE_UNUSED IAsset* aAsset)
+			{
+				pManager->Get<MeshFilterComponent>(self).RemoveMesh();
+			});
+
+		m_MeshChangedCallbackID = pMesh->OnPropertyChanged.Connect(
+			[pManager = m_EntityManager, self = m_Self](MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty)
+			{
+				pManager->AddOrReplace<DirtyRenderState>(self);
+			});
 	}
 
 	void MeshFilterComponent::DetachMesh() noexcept
@@ -107,8 +98,12 @@ namespace Relentless
 			return;
 
 		Ref<Mesh> pMesh = AssetManager::Get<Mesh>(m_MeshHandle);
-		pMesh->OnDestroy.Detach(this);
-		pMesh->OnPropertyChanged.Detach(this);
+		pMesh->OnDestroy.Detach(m_MeshDestroyCallbackID);
+		pMesh->OnPropertyChanged.Detach(m_MeshChangedCallbackID);
+
+		m_MeshDestroyCallbackID = INVALID_CALLBACK_ID;
+		m_MeshChangedCallbackID = INVALID_CALLBACK_ID;
+		m_MeshHandle = AssetHandle::INVALID;
 	}
 
 	void MeshFilterComponent::OnMeshAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept

@@ -10,6 +10,8 @@ namespace Relentless
 		const bool fixedWidth = horizontalSizePolicy == ESizePolicy::Fixed;
 		const bool fixedHeight = verticalSizePolicy == ESizePolicy::Fixed;
 
+		size = Vector2(40.0f, 40.0f);
+		
 		if (fixedWidth)
 			size.x = GetFixedWidth();
 		if (fixedHeight)
@@ -18,7 +20,6 @@ namespace Relentless
 		if (fixedWidth && fixedWidth)
 			return size;
 
-		size = Vector2(40.0f, 40.0f);
 		return size;
 	}
 

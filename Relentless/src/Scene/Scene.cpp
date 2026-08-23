@@ -9,6 +9,7 @@
 #include "ECS/Components/MeshFilterComponent.h"
 #include "ECS/Components/MeshRendererComponent.h"
 #include "ECS/Components/NameComponent.h"
+#include "ECS/Components/PostProcessVolumeComponent.h"
 #include "ECS/Components/SkyBoxComponent.h"
 #include "ECS/Components/SkyLightComponent.h"
 #include "ECS/Components/TransformComponent.h"
@@ -169,7 +170,11 @@ namespace Relentless
 		CopyComponentIfExists<DirectionalLightComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<PointLightComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<SpotLightComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<SkyLightComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<SkyBoxComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<CameraComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<ExponentialHeightFogComponent>(entityToCopy, newEntity);
+		CopyComponentIfExists<PostProcessVolumeComponent>(entityToCopy, newEntity);
 		CopyComponentIfExists<HiddenInGameComponent>(entityToCopy, newEntity);
 
 		return newEntity;
@@ -198,6 +203,14 @@ namespace Relentless
 		return newEntity;
 	}
 
+	entity Scene::CreateExponentialHeightFog(const char* aName)
+	{
+		auto fogEntity = CreateEntity(aName);
+		m_EntityManager.Add<ExponentialHeightFogComponent>(fogEntity);
+		
+		return fogEntity;
+	}
+
 	entity Scene::CreateLight(const char* name, ELightType aLightTypetype) noexcept
 	{
 		auto lightEntity = CreateEntity(name);
@@ -214,6 +227,14 @@ namespace Relentless
 		}
 		
 		return lightEntity;
+	}
+
+	entity Scene::CreatePostProcessVolume(const char* aName)
+	{
+		auto postProcessEntity = CreateEntity(aName);
+		m_EntityManager.Add<PostProcessVolumeComponent>(postProcessEntity);
+
+		return postProcessEntity;
 	}
 
 	entity Scene::GetActiveExponentialHeightFog() const noexcept

@@ -11,8 +11,8 @@ namespace Relentless
 	{
 	public:
 		ExponentialHeightFogComponent() = default;
-		ExponentialHeightFogComponent(ExponentialHeightFogComponent&&) noexcept;
-		ExponentialHeightFogComponent& operator=(ExponentialHeightFogComponent&&) noexcept;
+		ExponentialHeightFogComponent(ExponentialHeightFogComponent&&) noexcept = default;
+		ExponentialHeightFogComponent& operator=(ExponentialHeightFogComponent&&) noexcept = default;
 		virtual ~ExponentialHeightFogComponent() noexcept override;
 
 		static constexpr Color DEFAULT_INSCATTERING_COLOR = Colors::LightGray;
@@ -88,5 +88,8 @@ namespace Relentless
 		float m_FullyDirectionalInScatteringColorDistance = DEFAULT_FULLY_DIRECTIONAL_INSCATTERING_COLOR_DISTANCE;
 		float m_NonDirectionalInScatteringColorDistance = DEFAULT_NON_DIRECTIONAL_INSCATTERING_COLOR_DISTANCE;
 		EFogInscatterMode m_InscatterMode = EFogInscatterMode::Uniform;
+
+		CallbackID m_InscatteringTextureChangedCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_InscatteringTextureDestroyCallbackID = INVALID_CALLBACK_ID;
 	};
 }

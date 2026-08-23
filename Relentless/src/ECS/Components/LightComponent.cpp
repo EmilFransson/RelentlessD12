@@ -135,6 +135,9 @@ namespace Relentless
 
 	void SpotLightComponent::CopyFrom(const SpotLightComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
+		m_Self = aThisEntity;
+		m_EntityManager = &aEntityManager;
+
 		m_Color = aOtherComponent.m_Color;
 		m_LightChannel = aOtherComponent.m_LightChannel;
 		m_Intensity = aOtherComponent.m_Intensity;
@@ -149,9 +152,7 @@ namespace Relentless
 		m_InnerConeAngle = aOtherComponent.m_InnerConeAngle;
 		m_OuterConeAngle = aOtherComponent.m_OuterConeAngle;
 
-		this->m_Self = aThisEntity;
-		this->m_EntityManager = &aEntityManager;
-		this->m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
+		m_EntityManager->AddOrReplace<DirtyRenderState>(this->m_Self);
 	}
 
 	float SpotLightComponent::GetAttenuationRadius() const noexcept

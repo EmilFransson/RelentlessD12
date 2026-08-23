@@ -132,10 +132,10 @@ namespace Relentless
 			if (materialHandle.IsValid() && !AssetManager::LoadAsset(materialHandle))
 			{
 				RLS_CORE_WARN("[EditorViewportSubsystem::OnDropOnCanvas]: Failed to load material asset dependency for mesh '{0}'.", meshAssetData.Name);
-				materialHandle = contentSubsystem.GetWhiteMaterialHandle();
+				materialHandle = contentSubsystem.GetAssetHandle(EEngineAsset::WhiteMaterial);
 			}
 			else if (!materialHandle.IsValid())
-				materialHandle = contentSubsystem.GetWhiteMaterialHandle();
+				materialHandle = contentSubsystem.GetAssetHandle(EEngineAsset::WhiteMaterial);
 
 			const entity newEntity = pActiveScene->CreateEntity(pMesh->GetName().c_str());
 			entityManager.Get<TransformComponent>(newEntity).SetWorldLocation(spawnLocation);

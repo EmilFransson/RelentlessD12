@@ -9,11 +9,6 @@
 
 namespace Relentless
 {
-	AmbientOcclusionSettings::AmbientOcclusionSettings(PostProcessVolumeComponent* aOwner) noexcept
-		:SubObject<PostProcessVolumeComponent>{ aOwner }
-	{
-	}
-
 	float AmbientOcclusionSettings::GetBias() const noexcept
 	{
 		return m_Bias;
@@ -140,19 +135,12 @@ namespace Relentless
 		NOTIFY_NESTED_PROPERTY_CHANGED("m_AmbientOcclusionSettings", m_StepCount);
 	}
 
-	BloomSettings::BloomSettings(PostProcessVolumeComponent* aOwner) noexcept
-		: SubObject<PostProcessVolumeComponent>{ aOwner }
-	{
-	}
-
 	BloomSettings::BloomSettings(const BloomSettings& aOther) noexcept
-		: SubObject<PostProcessVolumeComponent>{ aOther.m_pOwner }
-		, m_DirtMaskHandle{ aOther.m_DirtMaskHandle }
+		: m_DirtMaskHandle{ aOther.m_DirtMaskHandle }
 		, m_DirtMaskTint{ aOther.m_DirtMaskTint }
 		, m_Intensity{ aOther.m_Intensity }
 		, m_DirtMaskIntensity{ aOther.m_DirtMaskIntensity }
 	{
-		ConnectDirtMask();
 	}
 
 	BloomSettings& BloomSettings::operator=(const BloomSettings& aOther) noexcept
@@ -172,15 +160,20 @@ namespace Relentless
 	}
 
 	BloomSettings::BloomSettings(BloomSettings&& aOther) noexcept
-		: SubObject<PostProcessVolumeComponent>{ std::move(aOther.m_pOwner) }
-		, m_DirtMaskHandle{ aOther.m_DirtMaskHandle }
+		: m_DirtMaskHandle{ aOther.m_DirtMaskHandle }
 		, m_DirtMaskTint{ aOther.m_DirtMaskTint }
 		, m_Intensity{ aOther.m_Intensity }
 		, m_DirtMaskIntensity{ aOther.m_DirtMaskIntensity }
 	{
-		aOther.DetachDirtMask();
+		m_pManager = aOther.m_pManager;
+		m_Self = aOther.m_Self;
+
+		m_DirtMaskDestroyCallbackID = aOther.m_DirtMaskDestroyCallbackID;
+		m_DirtMaskChangedCallbackID = aOther.m_DirtMaskChangedCallbackID;
+
 		aOther.m_DirtMaskHandle = AssetHandle::INVALID;
-		ConnectDirtMask();
+		aOther.m_DirtMaskDestroyCallbackID = INVALID_CALLBACK_ID;
+		aOther.m_DirtMaskChangedCallbackID = INVALID_CALLBACK_ID;
 	}
 
 	BloomSettings& BloomSettings::operator=(BloomSettings&& aOther) noexcept
@@ -188,18 +181,21 @@ namespace Relentless
 		if (this != &aOther)
 		{
 			DetachDirtMask();
-			aOther.DetachDirtMask();
-			
-			m_pOwner = std::move(aOther.m_pOwner);
-			m_DirtMaskHandle = std::move(aOther.m_DirtMaskHandle);
-			m_DirtMaskTint = std::move(aOther.m_DirtMaskTint);
-			m_Intensity = std::move(aOther.m_Intensity);
-			m_DirtMaskIntensity = std::move(aOther.m_DirtMaskIntensity);
+
+			m_pManager = aOther.m_pManager;
+			m_Self = aOther.m_Self;
+
+			m_DirtMaskHandle = aOther.m_DirtMaskHandle;
+			m_DirtMaskTint = aOther.m_DirtMaskTint;
+			m_Intensity = aOther.m_Intensity;
+			m_DirtMaskIntensity = aOther.m_DirtMaskIntensity;
+
+			m_DirtMaskDestroyCallbackID = aOther.m_DirtMaskDestroyCallbackID;
+			m_DirtMaskChangedCallbackID = aOther.m_DirtMaskChangedCallbackID;
 
 			aOther.m_DirtMaskHandle = AssetHandle::INVALID;
-			aOther.m_pOwner = nullptr;
-
-			ConnectDirtMask();
+			aOther.m_DirtMaskDestroyCallbackID = INVALID_CALLBACK_ID;
+			aOther.m_DirtMaskChangedCallbackID = INVALID_CALLBACK_ID;
 		}
 		return *this;
 	}
@@ -281,19 +277,24 @@ namespace Relentless
 		if (!m_DirtMaskHandle.IsValid())
 			return;
 
+		RLS_ASSERT(m_pManager, "[BloomSettings::ConnectDirtMask]: Identity not injected.");
+
+		EntityManager* pManager = m_pManager;
+		const entity self = m_Self;
+
 		Ref<Texture2D> pDirtMask = AssetManager::Get<Texture2D>(m_DirtMaskHandle);
-		pDirtMask->OnDestroy.Connect(this, &BloomSettings::OnDirtMaskAssetDestroy);
-		pDirtMask->OnPropertyChanged.Connect(this, &BloomSettings::OnDirtMaskAssetPropertyChanged);
-	}
 
-	void BloomSettings::OnDirtMaskAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept
-	{
-		RemoveDirtMask();
-	}
+		m_DirtMaskDestroyCallbackID = pDirtMask->OnDestroy.Connect(
+			[pManager, self](MAYBE_UNUSED IAsset* aAsset)
+			{
+				pManager->Get<PostProcessVolumeComponent>(self).GetBloom().RemoveDirtMask();
+			});
 
-	void BloomSettings::OnDirtMaskAssetPropertyChanged(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty) noexcept
-	{
-		NOTIFY_NESTED_PROPERTY_CHANGED("m_BloomSettings", m_DirtMaskHandle);
+		m_DirtMaskChangedCallbackID = pDirtMask->OnPropertyChanged.Connect(
+			[pManager, self](MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty)
+			{
+				pManager->AddOrReplace<PostProcessVolumeComponent::DirtyRenderState>(self);
+			});
 	}
 
 	void BloomSettings::RemoveDirtMask() noexcept
@@ -301,7 +302,7 @@ namespace Relentless
 		if (!m_DirtMaskHandle.IsValid())
 			return;
 
-		m_DirtMaskHandle = AssetHandle::INVALID;
+		DetachDirtMask();
 		NOTIFY_NESTED_PROPERTY_CHANGED("m_BloomSettings", m_DirtMaskHandle);
 	}
 
@@ -316,13 +317,12 @@ namespace Relentless
 			return;
 
 		Ref<Texture2D> pDirtMask = AssetManager::Get<Texture2D>(m_DirtMaskHandle);
-		pDirtMask->OnDestroy.Detach(this);
-		pDirtMask->OnPropertyChanged.Detach(this);
-	}
+		pDirtMask->OnDestroy.Detach(m_DirtMaskDestroyCallbackID);
+		pDirtMask->OnPropertyChanged.Detach(m_DirtMaskChangedCallbackID);
 
-	ExposureSettings::ExposureSettings(PostProcessVolumeComponent* aOwner) noexcept
-		: SubObject<PostProcessVolumeComponent>{ aOwner }
-	{
+		m_DirtMaskDestroyCallbackID = INVALID_CALLBACK_ID;
+		m_DirtMaskChangedCallbackID = INVALID_CALLBACK_ID;
+		m_DirtMaskHandle = AssetHandle::INVALID;
 	}
 
 	float ExposureSettings::GetCompensation() const noexcept
@@ -483,15 +483,15 @@ namespace Relentless
 
 	void PostProcessVolumeComponent::CopyFrom(const PostProcessVolumeComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
-		m_AmbientOcclusionSettings = aOtherComponent.m_AmbientOcclusionSettings;
-		m_ExposureSettings = aOtherComponent.m_ExposureSettings;
-		m_BloomSettings = aOtherComponent.m_BloomSettings;
-
-		InjectSelf();
-		
 		m_Self = aThisEntity;
 		m_EntityManager = &aEntityManager;
-		
+		InjectSelf();
+
+		m_AmbientOcclusionSettings = aOtherComponent.m_AmbientOcclusionSettings;
+		m_ExposureSettings = aOtherComponent.m_ExposureSettings;
+		m_BloomSettings = aOtherComponent.m_BloomSettings;   // triggers ConnectDirtMask
+		m_InfiniteExtent = aOtherComponent.m_InfiniteExtent; 
+
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
@@ -508,8 +508,12 @@ namespace Relentless
 
 	void PostProcessVolumeComponent::InjectSelf() noexcept
 	{
-		m_AmbientOcclusionSettings.m_pOwner = this;
-		m_ExposureSettings.m_pOwner = this;
+		m_AmbientOcclusionSettings.m_pManager = m_EntityManager;
+		m_AmbientOcclusionSettings.m_Self = m_Self;
+		m_ExposureSettings.m_pManager = m_EntityManager;
+		m_ExposureSettings.m_Self = m_Self;
+		m_BloomSettings.m_pManager = m_EntityManager;
+		m_BloomSettings.m_Self = m_Self;
 	}
 
 	void PostProcessVolumeComponent::NotifyPropertyChanged(uint64 aPropertyHash) noexcept

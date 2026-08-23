@@ -46,15 +46,16 @@ namespace Relentless
 
 	void TransformComponent::CopyFrom(const TransformComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
+		m_Self = aThisEntity;
+		m_EntityManager = &aEntityManager;
+
 		m_LocalTransform = aOtherComponent.m_LocalTransform;
 		m_WorldMatrix = aOtherComponent.m_WorldMatrix;
 		m_LocalVersion = aOtherComponent.m_LocalVersion;
 		m_WorldVersion = aOtherComponent.m_WorldVersion;
 		m_LocalVersionSeenForWorld = aOtherComponent.m_LocalVersionSeenForWorld;
 		m_ParentWorldVersionSeen = aOtherComponent.m_ParentWorldVersionSeen;
-
-		m_Self = aThisEntity;
-		m_EntityManager = &aEntityManager;
+		
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 

@@ -117,6 +117,7 @@ namespace Relentless
 		const bool multiSelection = context.Entities.size() > 1u;
 
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(ICON_FA_CLOUD_SUN "  Sky Light");
+		categoryBuilder.AddHeaderAction("Remove", [this]() { RemoveFromInspected(); });
 
 		Ref<PropertyHandle<bool>> pIsActiveSkyLightHandle = RLS_NEW PropertyHandle<bool>([&context]()
 			{
@@ -139,19 +140,7 @@ namespace Relentless
 			[](entity, SkyLightComponent& aSLC, const int& aCaptureMode) { aSLC.SetCaptureMode(static_cast<ESkyLightCaptureMode>(aCaptureMode)); },
 			static_cast<int>(ESkyLightCaptureMode::Static));
 
-		SkyLightComponent& skyLightComponent = context.EntityManager->Get<SkyLightComponent>(context.Entities.front());
-		const AssetHandle& assetHandle = skyLightComponent.GetPrimaryEnvironmentHandle();
-		AssetData* pAssetData = ModuleManager::LoadModuleChecked<AssetRegistryModule>().FindAsset(assetHandle.Uuid);
-
-		categoryBuilder.AddAssetProperty("Primary Environment", *pAssetData)
-			.AcceptableAssetTypes({ Environment::StaticType() })
-			.OnAssetsDropped([&context](Span<const AssetData> someAssetDatas)
-				{
-					const AssetHandle assetHandle = AssetManager::LoadAsset(someAssetDatas[0]);
-					std::ranges::for_each(context.Entities, [&context, &assetHandle](entity aEntity) { context.EntityManager->Get<SkyLightComponent>(aEntity).SetPrimaryEnvironment(assetHandle); });
-				})
-			.NameSlot().Label("Primary Environment")
-			.ValueSlot().AssetThumbnail();
+		handleFactory.MakeAssetTarget(categoryBuilder, "Primary Environment", { Environment::StaticType() }, &SLC::GetPrimaryEnvironmentHandle, &SLC::SetPrimaryEnvironment, &SLC::RemovePrimaryEnvironment);
 
 		categoryBuilder.AddProperty<int>("Capture Mode", pCaptureModeHandle)
 			.NameSlot().Label("Capture Mode")
@@ -202,15 +191,7 @@ namespace Relentless
 
 		IDetailGroupBuilder groupBuilder = categoryBuilder.EditGroup("Advanced");
 
-		groupBuilder.AddAssetProperty("Blend Environment", *pAssetData)
-			.AcceptableAssetTypes({ Environment::StaticType() })
-			.OnAssetsDropped([&context](Span<const AssetData> someAssetDatas)
-				{
-					const AssetHandle assetHandle = AssetManager::LoadAsset(someAssetDatas[0]);
-					std::ranges::for_each(context.Entities, [&context, &assetHandle](entity aEntity) { context.EntityManager->Get<SkyLightComponent>(aEntity).SetBlendEnvironment(assetHandle); });
-				})
-			.NameSlot().Label("Blend Environment")
-			.ValueSlot().AssetThumbnail();
+		handleFactory.MakeAssetTarget(groupBuilder, "Blend Environment", { Environment::StaticType() }, &SLC::GetBlendEnvironmentHandle, &SLC::SetBlendEnvironment, &SLC::RemoveBlendEnvironment);
 
 		auto pBlendHandle = handleFactory.Make(&SLC::GetBlendFactor, &SLC::SetBlendFactor, 0.0f);
 		groupBuilder.AddProperty<float>("Blend Factor", pBlendHandle)

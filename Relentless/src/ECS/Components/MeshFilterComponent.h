@@ -9,8 +9,8 @@ namespace Relentless
 	{
 	public:
 		MeshFilterComponent() = default;
-		MeshFilterComponent(MeshFilterComponent&&) noexcept;
-		MeshFilterComponent& operator=(MeshFilterComponent&&) noexcept;
+		MeshFilterComponent(MeshFilterComponent&&) noexcept = default;
+		MeshFilterComponent& operator=(MeshFilterComponent&&) noexcept = default;
 		virtual ~MeshFilterComponent() noexcept override;
 
 		struct DirtyRenderState {};
@@ -36,5 +36,8 @@ namespace Relentless
 		void OnMeshAssetPropertyChanged(MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty) noexcept;
 	private:
 		AssetHandle m_MeshHandle = NULL_HANDLE;
+
+		CallbackID m_MeshDestroyCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_MeshChangedCallbackID = INVALID_CALLBACK_ID;
 	};
 }

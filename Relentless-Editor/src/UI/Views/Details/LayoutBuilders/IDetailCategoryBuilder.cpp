@@ -1,11 +1,14 @@
 #include "IDetailCategoryBuilder.h"
 
+#include "IDetailLayoutBuilder.h"
+
 #include <Relentless.h>
 
 namespace Relentless
 {
-	IDetailCategoryBuilder::IDetailCategoryBuilder(const char* aName) noexcept
+	IDetailCategoryBuilder::IDetailCategoryBuilder(const char* aName, IDetailLayoutBuilder& aParent) noexcept
 		: m_Name{ aName }
+		, m_DetailLayoutBuilder{ aParent }
 	{
 	}
 
@@ -18,12 +21,22 @@ namespace Relentless
 		return *(m_Entries.back().Node);
 	}
 
+	IDetailLayoutBuilder& IDetailCategoryBuilder::GetLayoutBuilder() const noexcept
+	{
+		return m_DetailLayoutBuilder;
+	}
+
+	const std::vector<HeaderAction>& IDetailCategoryBuilder::GetHeaderActions() const noexcept
+	{
+		return m_HeaderActions;
+	}
+
 	IDetailGroupBuilder IDetailCategoryBuilder::EditGroup(const char* aGroupName) noexcept
 	{
 		RLS_ASSERT(!ExistsProperty(aGroupName), "[IDetailCategoryBuilder::EditGroup]: Group already exists in category.");
 
 		m_Entries.push_back({ .IsGroup = true, .Node = RLS_NEW DetailNode(aGroupName), .GroupName = aGroupName});
-		return IDetailGroupBuilder(aGroupName, m_Entries.back().Node);
+		return IDetailGroupBuilder(aGroupName, m_Entries.back().Node, *this);
 	}
 
 	DetailPropertyRowBuilder<AssetData> IDetailCategoryBuilder::AddAssetProperty(const char* aPropertyName, const AssetData& aAssetData) noexcept

@@ -1,5 +1,4 @@
 #pragma once
-
 #include "AssetDetailPropertyRowBuilder.h"
 #include "DetailPropertyRowBuilder.h"
 #include "IDetailGroupBuilder.h"
@@ -15,6 +14,7 @@
 namespace Relentless
 {
 	struct AssetData;
+	class IDetailLayoutBuilder;
 
 	struct DetailEntry
 	{
@@ -23,10 +23,17 @@ namespace Relentless
 		String GroupName		= "";
 	};
 
+	struct HeaderAction
+	{
+		String Label;
+		Callback<void()> OnClicked;
+		bool CloseOnSelection = true;
+	};
+
 	class IDetailCategoryBuilder
 	{
 	public:
-		explicit IDetailCategoryBuilder(const char* aName) noexcept;
+		IDetailCategoryBuilder(const char* aName, IDetailLayoutBuilder& aParent) noexcept;
 		virtual ~IDetailCategoryBuilder() noexcept = default;
 
 		NO_DISCARD DetailNode& AddProperty(const char* aPropertyName) noexcept;
@@ -45,15 +52,40 @@ namespace Relentless
 		template<typename DataType>
 		DetailPropertyRowBuilder<DataType> AddProperty(const char* aPropertyName, Callback<DataType()> aGetter, Callback<void(const DataType&)> aSetter, Callback<DataType()> aDefaultGetter) noexcept;
 
+		NO_DISCARD IDetailLayoutBuilder& GetLayoutBuilder() const noexcept;
+		NO_DISCARD const std::vector<HeaderAction>& GetHeaderActions() const noexcept;
+
 		NO_DISCARD IDetailGroupBuilder EditGroup(const char* aGroupName) noexcept;
 		NO_DISCARD bool ExistsProperty(const char* aPropertyName) const noexcept;
 		
 		NO_DISCARD const std::vector<DetailEntry>& GetEntries() const noexcept;
+
+		template<typename InstanceType>
+		IDetailCategoryBuilder& AddHeaderAction(StringView aLabel, InstanceType* aInstanceType, void(InstanceType::*aMethod)())
+		{
+			HeaderAction& headerAction = m_HeaderActions.emplace_back();
+			headerAction.Label = aLabel;
+			headerAction.OnClicked = [aInstanceType, aMethod]() { return (aInstanceType->*aMethod)(); };
+
+			return *this;
+		}
+
+		template<typename Func>
+		IDetailCategoryBuilder& AddHeaderAction(StringView aLabel, Func&& aCallback)
+		{
+			HeaderAction& headerAction = m_HeaderActions.emplace_back();
+			headerAction.Label = aLabel;
+			headerAction.OnClicked = Callback<void()>(std::forward<Func>(aCallback));
+
+			return *this;
+		}
 		
 		bool m_IsExpanded = true;
 	private:
 		std::vector<DetailEntry> m_Entries;
+		std::vector<HeaderAction> m_HeaderActions;
 		String m_Name;
+		IDetailLayoutBuilder& m_DetailLayoutBuilder;
 	};
 
 	template<typename DataType>

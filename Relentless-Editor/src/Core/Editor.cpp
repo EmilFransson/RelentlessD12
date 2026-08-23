@@ -238,8 +238,8 @@ namespace Relentless
 			tc.SetWorldRotationEulerDegrees(Vector3(-90.0f, 0.0f, 0.0f));
 		}
 
-		const AssetHandle WhiteMaterialHandle = pContentSubsystem->GetWhiteMaterialHandle();
-		const AssetHandle meshHandle = pContentSubsystem->GetCubeMeshHandle();
+		const AssetHandle WhiteMaterialHandle = pContentSubsystem->GetAssetHandle(EEngineAsset::WhiteMaterial);
+		const AssetHandle meshHandle = pContentSubsystem->GetAssetHandle(EEngineAsset::CubeMesh);
 
 		const entity cubeEntity = m_pActiveScene->CreateEntity("Cube");
 		entityManager.Add<MeshFilterComponent>(cubeEntity).SetMesh(meshHandle);
@@ -258,8 +258,8 @@ namespace Relentless
 		m_pActiveScene->SetActiveSkyLight(skyBoxAndLightEntity);
 		m_pActiveScene->SetActiveSkyBox(skyBoxAndLightEntity);
 
-		const AssetHandle citrusOrchardRoadEnvironmentHandle = pContentSubsystem->GetCitrusOrchardRoadEnvironmentHandle();
-		const AssetHandle overcastSoilEnvironmentHandle = pContentSubsystem->GetOvercastSoilEnvironmentHandle();
+		const AssetHandle citrusOrchardRoadEnvironmentHandle = pContentSubsystem->GetAssetHandle(EEngineAsset::CitrusOrchardRoadEnvironment);
+		const AssetHandle overcastSoilEnvironmentHandle = pContentSubsystem->GetAssetHandle(EEngineAsset::OvercastSoilEnvironment);
 
 		skyBoxComponent.SetPrimaryEnvironment(citrusOrchardRoadEnvironmentHandle);
 		skyLightComponent.SetPrimaryEnvironment(citrusOrchardRoadEnvironmentHandle);

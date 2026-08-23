@@ -353,7 +353,12 @@ namespace Relentless
 
 	SectionItemBuilder::SectionItemBuilder(ContextMenuBuilder& aParent, ContextMenuItem& aItem) noexcept
 		: ContextMenuItemBuilder<SectionItemBuilder>(aParent, aItem)
-	{}
+	{
+		Font(UI::Fonts::Get("Small"));
+		SeparatorColor(Color(1.0f, 1.0f, 1.0f, 0.25f));
+		TextColor(Colors::TextInactive);
+		Thickness(0.5f);
+	}
 
 	SectionItemBuilder& SectionItemBuilder::SeparatorColor(const Color& aColor) noexcept
 	{

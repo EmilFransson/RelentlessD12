@@ -11,8 +11,8 @@ namespace Relentless
 	{
 	public:
 		MeshRendererComponent() = default;
-		MeshRendererComponent(MeshRendererComponent&&) noexcept;
-		MeshRendererComponent& operator=(MeshRendererComponent&&) noexcept;
+		MeshRendererComponent(MeshRendererComponent&&) noexcept = default;
+		MeshRendererComponent& operator=(MeshRendererComponent&&) noexcept = default;
 		virtual ~MeshRendererComponent() noexcept override;
 
 		struct DirtyRenderState{};
@@ -48,5 +48,8 @@ namespace Relentless
 		AssetHandle m_MaterialHandle = AssetHandle::INVALID;
 		ELightChannel m_LightChannels = ELightChannel::Default;
 		bool m_CastShadows = true;
+
+		CallbackID m_MaterialDestroyCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_MaterialChangedCallbackID = INVALID_CALLBACK_ID;
 	};
 }

@@ -129,6 +129,7 @@ namespace Relentless
 			});
 
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(ICON_FA_LIGHTBULB "  Light");
+		categoryBuilder.AddHeaderAction("Remove", [this]() { RemoveFromInspected(); });
 
 		categoryBuilder.AddProperty<int>("Type", pTypeHandle)
 			.NameSlot().Label("Type")

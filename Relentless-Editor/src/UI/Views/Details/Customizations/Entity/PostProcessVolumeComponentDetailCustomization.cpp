@@ -25,6 +25,7 @@ namespace Relentless
 		DetailHelpers::EntityHandleFactory<PPVC> handleFactory({ .Entities = context.Entities, .EntityManager = *context.EntityManager });
 
 		IDetailCategoryBuilder& categoryBuilder = aDetailLayoutBuilder.EditCategory(ICON_FA_PAINTBRUSH "  Post Process");
+		categoryBuilder.AddHeaderAction("Remove", [this]() { RemoveFromInspected(); });
 
 		auto pInfiniteExtentHandle = handleFactory.Make(&PPVC::HasInfiniteExtent, &PPVC::SetHasInfiniteExtent, false);
 		categoryBuilder.AddProperty<bool>("Infinite Extent", pInfiniteExtentHandle)
@@ -32,7 +33,7 @@ namespace Relentless
 			.ValueSlot().CheckBox().Enabled(false);
 
 		CustomizeAmbientOcclusionDetails(categoryBuilder, context, pDetailsView);
-		CustomizeBloomDetails(categoryBuilder, context, pDetailsView);
+		CustomizeBloomDetails(categoryBuilder, context);
 		CustomizeExposureDetails(categoryBuilder, context);
 	}
 
@@ -112,7 +113,7 @@ namespace Relentless
 			.ValueSlot().ComboBox().Options({ "4", "8" });
 	}
 
-	void PostProcessVolumeComponentDetailCustomization::CustomizeBloomDetails(IDetailCategoryBuilder& aCategoryBuilder, EntityDetailsContext& aContext, IDetailsView* aDetailsView) noexcept
+	void PostProcessVolumeComponentDetailCustomization::CustomizeBloomDetails(IDetailCategoryBuilder& aCategoryBuilder, EntityDetailsContext& aContext) noexcept
 	{
 		using Bloom = BloomSettings;
 
@@ -127,52 +128,7 @@ namespace Relentless
 			.NameSlot().Label("Intensity")
 			.ValueSlot().Slider().Range(0.0f, 8.0f);
 
-		//Dirt Mask:
-		{
-			AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-			EngineContentSubsystem* pEngineContentSubsystem = Editor::Get()->GetSubsystem<EngineContentSubsystem>();
-
-			PostProcessVolumeComponent& postProcessComponent = aContext.EntityManager->Get<PostProcessVolumeComponent>(aContext.Entities.front());
-			const AssetHandle& assetHandle = postProcessComponent.GetBloom().GetDirtMaskHandle();
-			AssetData* pAssetData = assetRegistry.FindAsset(assetHandle.Uuid);
-
-			const bool isNone = pAssetData == nullptr;
-			if (isNone)
-				pAssetData = assetRegistry.FindAsset(pEngineContentSubsystem->GetNoneTexture2DHandle().Uuid);
-
-			bloomGroupBuilder.AddAssetProperty("Dirt Mask", *pAssetData)
-				.AcceptableAssetTypes({ Texture2D::StaticType() })
-				.OnAssetsDropped([&aContext, aDetailsView](Span<const AssetData> someAssetDatas)
-					{
-						const AssetHandle assetHandle = AssetManager::LoadAsset(someAssetDatas[0]);
-						std::ranges::for_each(aContext.Entities, [&aContext, &assetHandle](entity aEntity) { aContext.EntityManager->Get<PostProcessVolumeComponent>(aEntity).GetBloom().SetDirtMask(assetHandle); });
-						Application::Get().SubmitToMainThread([aDetailsView]() { aDetailsView->RequestRefresh(); });
-					})
-				.NameSlot().Label("Dirt Mask")
-				.ValueSlot().AssetThumbnail().Row()
-				.RevertSlot().Widget([isNone, aDetailsView, &aContext]()
-					{
-						Ref<HorizontalBox> pRevertBox = RLS_NEW HorizontalBox();
-						pRevertBox->SetPadding({ 0.0f, 2.0f, 0.0f, 2.0f });
-
-						if (!isNone)
-						{
-							Button* pButton = pRevertBox->AddWidget( Button::CreateTransparent(ICON_FA_ARROW_ROTATE_LEFT));
-							pButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f));
-							pButton->SetVerticalAlignmentPolicy(EVerticalAlignmentPolicy::Center);
-
-							pButton->OnMouseEnter([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 1.0f)); });
-							pButton->OnMouseExit([](Button* aButton) { aButton->SetTextColor(Color(1.0f, 1.0f, 1.0f, 0.5f)); });
-							pButton->OnClicked([aDetailsView, &aContext]()
-								{
-									std::ranges::for_each(aContext.Entities, [&aContext](entity aEntity) { aContext.EntityManager->Get<PostProcessVolumeComponent>(aEntity).GetBloom().RemoveDirtMask(); });
-									Application::Get().SubmitToMainThread([aDetailsView]() { aDetailsView->RequestRefresh(); });
-								});
-						}
-
-						return pRevertBox;
-					});
-		}
+		bloomHandleFactory.MakeAssetTarget(aCategoryBuilder, "Dirt Mask", { Texture2D::StaticType() }, &Bloom::GetDirtMaskHandle, &Bloom::SetDirtMask, &Bloom::RemoveDirtMask);
 
 		auto pDirtMaskIntensityHandle = bloomHandleFactory.Make(&Bloom::GetDirtMaskIntensity, &Bloom::SetDirtMaskIntensity, 0.0f);
 		bloomGroupBuilder.AddProperty<float>("Dirt Mask Intensity", pDirtMaskIntensityHandle)

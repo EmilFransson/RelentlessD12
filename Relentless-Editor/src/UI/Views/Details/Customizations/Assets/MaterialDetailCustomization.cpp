@@ -73,7 +73,7 @@ namespace Relentless
 				if (!pAssetData)
 				{
 					isNone = true;
-					pAssetData = assetRegistry.FindAsset(pEngineContentSubsystem->GetNoneTexture2DHandle().Uuid);
+					pAssetData = assetRegistry.FindAsset(pEngineContentSubsystem->GetAssetHandle(EEngineAsset::NoneThumbnail).Uuid);
 				}
 				aGroupBuilder.AddAssetProperty(aPropertyName, *pAssetData)
 					.AcceptableAssetTypes({ Texture2D::StaticType() })

@@ -17,8 +17,8 @@ namespace Relentless
 	{
 	public:
 		SkyLightComponent() = default;
-		SkyLightComponent(SkyLightComponent&&) noexcept = default;
-		SkyLightComponent& operator=(SkyLightComponent&&) noexcept = default;
+		SkyLightComponent(SkyLightComponent&& aOtherComponent) noexcept = default;
+		SkyLightComponent& operator=(SkyLightComponent&& aOtherComponent) noexcept = default;
 		virtual ~SkyLightComponent() noexcept override;
 
 		struct DirtyRenderState{};
@@ -86,5 +86,10 @@ namespace Relentless
 		float m_Intensity = 1.0f;
 		ESkyLightCaptureMode m_CaptureMode = ESkyLightCaptureMode::Static;
 		ESkyLightLowerHemisphereMode m_LowerHemisphereMode = ESkyLightLowerHemisphereMode::Environment;
+
+		CallbackID m_PrimaryEnvironmentDestroyCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_PrimaryEnvironmentChangedCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_BlendEnvironmentDestroyCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_BlendEnvironmentChangedCallbackID = INVALID_CALLBACK_ID;
 	};
 }

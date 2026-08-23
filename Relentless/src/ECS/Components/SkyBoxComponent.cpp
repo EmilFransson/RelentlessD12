@@ -17,6 +17,9 @@ namespace Relentless
 
 	void SkyBoxComponent::CopyFrom(const SkyBoxComponent& aOtherComponent, entity aThisEntity, EntityManager& aEntityManager)
 	{
+		m_Self = aThisEntity;
+		m_EntityManager = &aEntityManager;
+
 		DetachPrimaryEnvironment();
 		DetachBlendEnvironment();
 
@@ -30,8 +33,6 @@ namespace Relentless
 		ConnectPrimaryEnvironment();
 		ConnectBlendEnvironment();
 
-		m_Self = aThisEntity;
-		m_EntityManager = &aEntityManager;
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 	}
 
@@ -90,6 +91,8 @@ namespace Relentless
 	void SkyBoxComponent::OnBound() noexcept
 	{
 		m_EntityManager->AddOrReplace<SkyBoxComponent::DirtyRenderState>(m_Self);
+		ConnectPrimaryEnvironment();
+		ConnectBlendEnvironment();
 	}
 
 	void SkyBoxComponent::RemoveBlendEnvironment() noexcept
@@ -98,7 +101,6 @@ namespace Relentless
 			return;
 
 		DetachBlendEnvironment();
-		m_BlendEnvironmentHandle = NULL_HANDLE;
 
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_BlendEnvironmentHandle);
@@ -110,7 +112,6 @@ namespace Relentless
 			return;
 
 		DetachPrimaryEnvironment();
-		m_PrimaryEnvironmentHandle = NULL_HANDLE;
 
 		m_EntityManager->AddOrReplace<DirtyRenderState>(m_Self);
 		NOTIFY_PROPERTY_CHANGED(m_PrimaryEnvironmentHandle);
@@ -192,8 +193,18 @@ namespace Relentless
 			return;
 
 		Ref<Environment> pBlendEnvironment = AssetManager::Get<Environment>(m_BlendEnvironmentHandle);
-		pBlendEnvironment->OnDestroy.Connect(this, &SkyBoxComponent::OnBlendEnvironmentAssetDestroy);
-		pBlendEnvironment->OnPropertyChanged.Connect(this, &SkyBoxComponent::OnEnvironmentAssetPropertyChanged);
+
+		m_BlendEnvironmentDestroyCallbackID = pBlendEnvironment->OnDestroy.Connect(
+			[pManager = m_EntityManager, self = m_Self](MAYBE_UNUSED IAsset* aAsset)
+			{
+				pManager->Get<SkyBoxComponent>(self).RemovePrimaryEnvironment();
+			});
+
+		m_BlendEnvironmentChangedCallbackID = pBlendEnvironment->OnPropertyChanged.Connect(
+			[pManager = m_EntityManager, self = m_Self](MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty)
+			{
+				pManager->AddOrReplace<DirtyRenderState>(self);
+			});
 	}
 
 	void SkyBoxComponent::ConnectPrimaryEnvironment() noexcept
@@ -202,8 +213,18 @@ namespace Relentless
 			return;
 
 		Ref<Environment> pPrimaryEnvironment = AssetManager::Get<Environment>(m_PrimaryEnvironmentHandle);
-		pPrimaryEnvironment->OnDestroy.Connect(this, &SkyBoxComponent::OnPrimaryEnvironmentAssetDestroy);
-		pPrimaryEnvironment->OnPropertyChanged.Connect(this, &SkyBoxComponent::OnEnvironmentAssetPropertyChanged);
+
+		m_PrimaryEnvironmentDestroyCallbackID = pPrimaryEnvironment->OnDestroy.Connect(
+			[pManager = m_EntityManager, self = m_Self](MAYBE_UNUSED IAsset* aAsset)
+			{
+				pManager->Get<SkyBoxComponent>(self).RemovePrimaryEnvironment();
+			});
+
+		m_PrimaryEnvironmentChangedCallbackID = pPrimaryEnvironment->OnPropertyChanged.Connect(
+			[pManager = m_EntityManager, self = m_Self](MAYBE_UNUSED IAsset* aAsset, MAYBE_UNUSED uint64 aProperty)
+			{
+				pManager->AddOrReplace<DirtyRenderState>(self);
+			});
 	}
 
 	void SkyBoxComponent::DetachBlendEnvironment() noexcept
@@ -212,8 +233,12 @@ namespace Relentless
 			return;
 
 		Ref<Environment> pBlendEnvironment = AssetManager::Get<Environment>(m_BlendEnvironmentHandle);
-		pBlendEnvironment->OnDestroy.Detach(this);
-		pBlendEnvironment->OnPropertyChanged.Detach(this);
+		pBlendEnvironment->OnDestroy.Detach(m_BlendEnvironmentDestroyCallbackID);
+		pBlendEnvironment->OnPropertyChanged.Detach(m_BlendEnvironmentChangedCallbackID);
+
+		m_BlendEnvironmentDestroyCallbackID = INVALID_CALLBACK_ID;
+		m_BlendEnvironmentChangedCallbackID = INVALID_CALLBACK_ID;
+		m_BlendEnvironmentHandle = AssetHandle::INVALID;
 	}
 
 	void SkyBoxComponent::DetachPrimaryEnvironment() noexcept
@@ -222,8 +247,12 @@ namespace Relentless
 			return;
 
 		Ref<Environment> pPrimaryEnvironment = AssetManager::Get<Environment>(m_PrimaryEnvironmentHandle);
-		pPrimaryEnvironment->OnDestroy.Detach(this);
-		pPrimaryEnvironment->OnPropertyChanged.Detach(this);
+		pPrimaryEnvironment->OnDestroy.Detach(m_PrimaryEnvironmentDestroyCallbackID);
+		pPrimaryEnvironment->OnPropertyChanged.Detach(m_PrimaryEnvironmentChangedCallbackID);
+
+		m_PrimaryEnvironmentDestroyCallbackID = INVALID_CALLBACK_ID;
+		m_PrimaryEnvironmentChangedCallbackID = INVALID_CALLBACK_ID;
+		m_PrimaryEnvironmentHandle = AssetHandle::INVALID;
 	}
 
 	void SkyBoxComponent::OnBlendEnvironmentAssetDestroy(MAYBE_UNUSED IAsset* aAsset) noexcept

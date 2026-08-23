@@ -28,6 +28,7 @@ namespace Relentless
 	private:
 		void BuildMaterialData(ShaderInterop::Material& outMaterialData, const MaterialRenderProxy& aRenderProxy) const noexcept;
 
+		void OnFrameRenderBegin();
 		void OnUpload(CommandContext& aCommandContext) noexcept;
 	private:
 		std::unordered_map<UUID, MaterialRenderProxy> m_RenderData;
@@ -38,6 +39,8 @@ namespace Relentless
 		SceneBuffer m_MaterialDataBuffer;
 
 		CallbackID m_OnUploadCallbackID = INVALID_CALLBACK_ID;
+		CallbackID m_OnFrameRenderBeginCallbackID = INVALID_CALLBACK_ID;
+
 		GraphicsDevice* m_pGraphicsDevice = nullptr;
 	};
 }
