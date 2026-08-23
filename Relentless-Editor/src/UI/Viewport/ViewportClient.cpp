@@ -73,6 +73,9 @@ namespace Relentless
 		{
 		case EViewportInputType::KeyPressed:
 		{
+			if (!aInputEvent.PointerInfo.PressedButtons.contains(RLS_Button::Right))
+				return false;
+
 			switch (aInputEvent.Key)
 			{
 			case RLS_Key::A: m_CameraInput.MoveAxis.x -= 1.0f;	return true;
@@ -88,6 +91,9 @@ namespace Relentless
 		}
 		case EViewportInputType::KeyReleased:
 		{
+			if (!aInputEvent.PointerInfo.PressedButtons.contains(RLS_Button::Right))
+				return false;
+
 			switch (aInputEvent.Key)
 			{
 			case RLS_Key::A: m_CameraInput.MoveAxis.x += 1.0f;	return true;

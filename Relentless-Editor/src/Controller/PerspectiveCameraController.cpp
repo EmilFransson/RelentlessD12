@@ -318,7 +318,7 @@ namespace Relentless
 		movement.y -= static_cast<float>(mouseDelta.y);
 		movement.Normalize();
 
-		constexpr float speedMultiplier = 10.0f;
+		constexpr float speedMultiplier = 30.0f;
 
 		const Vector3 translation = movement * Time::GetDeltaTime() * speedMultiplier;
 		const Vector3& currentLocation = m_pCamera->GetLocation();

@@ -431,6 +431,8 @@ namespace Relentless
 		if (!IsFocused())
 			ImGui::SetWindowFocus(GetName().c_str());
 
+		m_OwnsCurrentPress = true;
+
 		ViewportInputEvent inputEvent = MakeInputEvent(EViewportInputType::MouseButtonPressed);
 		inputEvent.Button = RLS_Button::Wheel;
 		return RouteInput(inputEvent);
