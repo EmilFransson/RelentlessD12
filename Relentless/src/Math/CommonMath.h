@@ -52,6 +52,11 @@ namespace Relentless
 
 		//Folder:
 		constexpr Color FolderDefault	= Colors::Normalize(182.0f, 143.0f, 85.0f, 255.0f);
+
+		NO_DISCARD inline static float SRGBToLinear(float aValue) noexcept
+		{
+			return (aValue <= 0.04045f) ? aValue / 12.92f : std::pow((aValue + 0.055f) / 1.055f, 2.4f);
+		}
 	};
 
 	namespace Math

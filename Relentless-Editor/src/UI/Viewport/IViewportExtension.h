@@ -17,7 +17,7 @@ namespace Relentless
 
 		virtual bool HandleInput(const ViewportInputEvent&) { return false; }
 
-		virtual void OnRegistered(const ViewportPanel&) {}
+		virtual void OnRegistered(ViewportPanel&) {}
 		virtual void OnUnregister() {}
 		virtual void OnUpdate(float) {}
 		virtual void OnCanvasRenderEnd() {}

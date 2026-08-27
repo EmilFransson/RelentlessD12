@@ -8,8 +8,8 @@ namespace Relentless
 {
 	ViewportDetailsView::ViewportDetailsView(ViewportPanel* aViewportPanel) noexcept
 	{
-		m_DetailsContext.CameraController = aViewportPanel->GetClient().GetCameraController();
-		
+		m_DetailsContext.ViewportPanel = aViewportPanel;
+
 		SetContext(&m_DetailsContext);
 		Rebuild<ViewportDetailsContext>();
 	}

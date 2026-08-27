@@ -100,6 +100,14 @@ namespace Relentless
 		LoadModules(ELoadPhase::PostProjectLoad);
 		CreateSubsystems();
 		LoadModules(ELoadPhase::PostCreateSubsystems);
+
+		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
+		Application& app = Application::Get();
+		while (assetRegistry.IsLoadingAssets())
+		{
+			app.FlushMainThreadQueue();
+		}
+
 		CreateStartScene();
 
 		Application::Get().GetWindow()->CanDragTitleBarCallback = []() { return !ImGuiLayer::IsAnyMainMenuButtonHovered(); };
@@ -221,9 +229,6 @@ namespace Relentless
 	void Editor::CreateStartScene() noexcept
 	{
 		SetActiveScene(RLS_NEW Scene());
-
-		AssetRegistryModule& assetRegistry = ModuleManager::LoadModuleChecked<AssetRegistryModule>();
-		while (assetRegistry.IsLoadingAssets()) {}
 
 		EngineContentSubsystem* pContentSubsystem = GetSubsystem<EngineContentSubsystem>();
 		EntityManager& entityManager = m_pActiveScene->GetEntityManager();

@@ -10,7 +10,6 @@
 #include "Graphics/Renderer/Techniques/BlitPass.h"
 #include "Graphics/Renderer/Techniques/Bloom.h"
 #include "Graphics/Renderer/Techniques/DepthPrePass.h"
-#include "Graphics/Renderer/Techniques/EditorGrid.h"
 #include "Graphics/Renderer/Techniques/ExponentialHeightFog.h"
 #include "Graphics/Renderer/Techniques/ForwardAlphaBlend.h"
 #include "Graphics/Renderer/Techniques/ForwardOpaqueAlphaMask.h"
@@ -45,7 +44,6 @@ namespace Relentless
 
 		m_pForwardOpaqueAlphaMask			= MakeUnique<ForwardOpaqueAlphaMask>(pDevice);
 		m_pForwardAlphaBlend				= MakeUnique<ForwardAlphaBlend>(pDevice);
-		m_pEditorGrid						= MakeUnique<EditorGrid>(pDevice);
 		m_pPostProcessing					= MakeUnique<PostProcessing>(pDevice);
 		m_pDepthPrePass						= MakeUnique<DepthPrePass>(pDevice);
 		m_pHBAOPlus							= MakeUnique<HBAOPlus>(pDevice);
@@ -119,6 +117,17 @@ namespace Relentless
 		}
 
 		m_Frame++;
+	}
+
+	CallbackID Renderer::RegisterRenderCallback(ERenderPhase aPhase, Callback<void(CommandContext&, const RenderView&, SceneTextures&)>&& aCallback)
+	{
+		std::lock_guard<std::mutex> guard(s_RenderCallbackMutex);
+
+		static CallbackID nextCallbackID = 0u;
+		CallbackID toReturn = nextCallbackID++;
+
+		m_RenderCallbacks[aPhase].push_back({ std::move(aCallback), toReturn } );
+		return toReturn;
 	}
 
 	void Renderer::SyncRingBuffer() noexcept
@@ -437,13 +446,29 @@ namespace Relentless
 		m_ViewBuffers.erase(aUUID);
 		m_RenderViews.erase(aUUID);
 		m_ViewTextureResources.erase(aUUID);
-
 	}
 
 	void Renderer::Dispatch(Callback<void(Renderer*)>&& aCallback) noexcept
 	{
 		std::lock_guard<std::mutex> guard(s_DispatchMutex);
 		s_EnqueuedRequests.emplace_back(std::move(aCallback));
+	}
+
+	void Renderer::DispatchRenderCallbacks(ERenderPhase aPhase, const RenderView& aRenderView, SceneTextures& aSceneTextures)
+	{
+		std::lock_guard<std::mutex> guard(s_RenderCallbackMutex);
+
+		std::vector<CommandContext*> commandContexts;
+		//TODO: This will run for every view!! This is WRONG!
+		for (auto& callbackContext : m_RenderCallbacks[aPhase])
+		{
+			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
+			callbackContext.Callback(*pCommandContext, aRenderView, aSceneTextures);
+			commandContexts.push_back(pCommandContext);
+		}
+
+		if (!commandContexts.empty())
+			CommandContext::Execute(commandContexts);
 	}
 
 	void Renderer::GetViewUniforms(const RenderView& aRenderView, ShaderInterop::ViewUniforms& outViewUniform) noexcept
@@ -782,16 +807,8 @@ namespace Relentless
 		}
 
 		/*BEGIN LDR*/
-		
-		//Editor Grid:
-		if (aRenderView.RenderFeatures.IsEnabled(ERenderFeature::Grid))
-		{
-			PROFILE_SCOPE("Renderer::Render::Editor Grid");
 
-			CommandContext* pCommandContext = m_pDevice->AllocateCommandContext();
-			m_pEditorGrid->Render(*pCommandContext, aRenderView, aSceneTextures);
-			pCommandContext->Execute();
-		}
+		DispatchRenderCallbacks(ERenderPhase::PostTonemap, aRenderView, aSceneTextures);
 
 		m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)->InsertWait(m_pDevice->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT));
 		

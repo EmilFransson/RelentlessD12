@@ -6,7 +6,7 @@ namespace Relentless
 	class PickingViewportExtension final : public IViewportExtension
 	{
 	public:
-		void OnRegistered(const ViewportPanel& aViewportPanel) override;
+		void OnRegistered(ViewportPanel& aViewportPanel) override;
 	protected:
 		NO_DISCARD bool HandleInput(const ViewportInputEvent& aInputEvent) override;
 	private:

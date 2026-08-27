@@ -194,6 +194,11 @@ namespace Relentless
 		return m_NavigationEnabled;
 	}
 
+	void ViewportClient::SetMSAASamples(EMSAASampleCount aSamples) noexcept
+	{
+		m_Desc.RenderQualitySettings.MSAASampleCount = aSamples;
+	}
+
 	void ViewportClient::SetRenderFeature(ERenderFeature aRenderFeature, bool aEnabled) noexcept
 	{
 		if (aEnabled)

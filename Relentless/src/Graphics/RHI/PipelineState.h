@@ -1,5 +1,9 @@
 #pragma once
+
+#include "Core/DLLExport.h"
+
 #include "DeviceResource.h"
+
 #include "Graphics/Shaders/Shader.h"
 
 namespace Relentless
@@ -18,7 +22,7 @@ namespace Relentless
 		Undefined,
 	};
 
-	class PipelineStateInitializer
+	class RLS_API PipelineStateInitializer
 	{
 		friend class PipelineState;
 	public:

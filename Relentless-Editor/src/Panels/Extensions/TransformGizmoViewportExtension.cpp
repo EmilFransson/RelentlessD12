@@ -25,7 +25,7 @@ namespace Relentless
 		inline constexpr float Scale[] = { 0.03125f, 0.0625f, 0.1f, 0.125f, 0.25f, 0.5f, 1.0f, 10.0f };
 	}
 
-	void TransformGizmoViewportExtension::OnRegistered(const ViewportPanel& aViewportPanel)
+	void TransformGizmoViewportExtension::OnRegistered(ViewportPanel& aViewportPanel)
 	{
 		m_pViewportPanel = &aViewportPanel;
 	}

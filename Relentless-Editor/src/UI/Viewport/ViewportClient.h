@@ -52,8 +52,9 @@ namespace Relentless
 		NO_DISCARD bool IsNavigating() const noexcept;
 		NO_DISCARD bool IsNavigationEnabled() const noexcept;
 
-		void SetRenderFeature(ERenderFeature aRenderFeature, bool aEnabled) noexcept;
+		void SetMSAASamples(EMSAASampleCount aSamples) noexcept;
 		void SetNavigationEnabled(bool aEnable) noexcept;
+		void SetRenderFeature(ERenderFeature aRenderFeature, bool aEnabled) noexcept;
 		void SetViewMode(ERenderViewMode aViewMode);
 
 		void ToggleRenderFeature(ERenderFeature aRenderFeature) noexcept;

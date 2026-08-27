@@ -2,10 +2,12 @@
 
 #include "Controller/PerspectiveCameraController.h"
 
+#include "UI/Viewport/ViewportClient.h"
+
 namespace Relentless
 {
 	struct ViewportDetailsContext
 	{
-		PerspectiveCameraController* CameraController = nullptr;
+		ViewportPanel* ViewportPanel = nullptr;
 	};
 }

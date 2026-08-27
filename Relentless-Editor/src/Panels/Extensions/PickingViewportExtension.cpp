@@ -12,7 +12,7 @@
 
 namespace Relentless
 {
-	void PickingViewportExtension::OnRegistered(const ViewportPanel& aViewportPanel)
+	void PickingViewportExtension::OnRegistered(ViewportPanel& aViewportPanel)
 	{
 		m_pViewportPanel = &aViewportPanel;
 	}

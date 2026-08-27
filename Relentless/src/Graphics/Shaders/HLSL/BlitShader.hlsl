@@ -22,5 +22,5 @@ void cs_main(uint3 threadId : SV_DispatchThreadID)
     const float4 sdr = sourceTexture.Load(int3(threadId.xy, 0));
     const float3 sRGB = LinearToSRGB(sdr.xyz);
     
-    targetTexture[threadId.xy] = float4(sRGB, sdr.a);
+    targetTexture[threadId.xy] = float4(sRGB, 1.0f);
 }

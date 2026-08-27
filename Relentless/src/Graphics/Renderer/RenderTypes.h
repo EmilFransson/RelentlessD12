@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/DLLExport.h"
+
 #include "ECS/ECSCommon.h"
 
 #include "Graphics/Renderer/RenderFeatures.h"
@@ -59,7 +61,7 @@ namespace Relentless
 		}
 	};
 
-	struct RenderView : public ViewTransform
+	struct RLS_API RenderView : public ViewTransform
 	{
 		RenderFeatures RenderFeatures				= {};
 		RenderQualitySettings RenderQualitySettings	= {};
@@ -119,7 +121,7 @@ namespace Relentless
 		Ref<Texture> pMSAADepthTarget		= nullptr;
 	};
 
-	struct SceneTextures
+	struct RLS_API SceneTextures
 	{
 		Ref<Texture> pHDRColorTarget					= nullptr;
 		Ref<Texture> pLDRColorTarget					= nullptr;
@@ -165,6 +167,8 @@ namespace Relentless
 		static constexpr uint32 PerPass		= 1u;
 		static constexpr uint32 PerView		= 2u;
 	};
+
+	enum class ERenderPhase : uint8 { FrameBegin = 0u, PostTonemap, Count };
 
 	enum class DefaultTextureType
 	{

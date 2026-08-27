@@ -14,7 +14,9 @@
 #include "UI/Views/Details/Customizations/Entity/SpotLightComponentDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Entity/TransformComponentDetailCustomization.h"
 
+#include "UI/Views/Details/Customizations/Viewport/EditorGridDetailCustomization.h"
 #include "UI/Views/Details/Customizations/Viewport/ViewportCameraDetailCustomization.h"
+#include "UI/Views/Details/Customizations/Viewport/ViewportRenderDetailCustomization.h"
 
 #include "UI/Views/Details/Context/EntityDetailsContext.h"
 #include "UI/Views/Details/Context/EnvironmentDetailsContext.h"
@@ -32,6 +34,8 @@ namespace Relentless
 	{
 		//Viewport Details:
 		m_DetailCustomizationRegistry.Register<ViewportDetailsContext, ViewportCameraDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<ViewportDetailsContext, EditorGridDetailCustomization>();
+		m_DetailCustomizationRegistry.Register<ViewportDetailsContext, ViewportRenderDetailCustomization>();
 
 		//Entity Details:
 		m_DetailCustomizationRegistry.Register<EntityDetailsContext, TransformComponentDetailCustomization>();

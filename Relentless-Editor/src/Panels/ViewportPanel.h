@@ -36,6 +36,10 @@ namespace Relentless
 		NO_DISCARD Canvas* GetCanvas() const noexcept;
 		NO_DISCARD ViewportClient& GetClient() noexcept;
 		NO_DISCARD const ViewportClient& GetClient() const noexcept;
+		
+		template<typename ExtensionType>
+		NO_DISCARD ExtensionType* GetExtension() const noexcept;
+		
 		NO_DISCARD ViewportSurface& GetSurface() noexcept;
 		NO_DISCARD const ViewportSurface& GetSurface() const noexcept;
 		NO_DISCARD Vector2u GetViewportSize() const noexcept;
@@ -118,6 +122,7 @@ namespace Relentless
 		void UpdateCursorCapture();
 	private:
 		std::vector<UniquePtr<IViewportExtension>> m_Extensions;
+		std::unordered_map<TypeIndex, IViewportExtension*> m_TypeIndexToExtensionMap;
 
 		UUID m_UUID;
 
@@ -135,13 +140,25 @@ namespace Relentless
 		bool m_OwnsCurrentPress = false;
 	};
 
+	template<typename ExtensionType>
+	ExtensionType* ViewportPanel::GetExtension() const noexcept
+	{
+		static_assert(std::is_base_of_v<IViewportExtension, ExtensionType>, "[ViewportPanel::GetExtension] Extension must inherit from IViewportExtension");
+		static constexpr TypeIndex ID = getTypeIndex<ExtensionType>();
+
+		return m_TypeIndexToExtensionMap.contains(ID) ? static_cast<ExtensionType*>(m_TypeIndexToExtensionMap.at(ID)) : nullptr;
+	}
+
 	template<typename ExtensionType, typename ...Args>
 	ExtensionType& ViewportPanel::RegisterExtension(Args&&... args)
 	{
 		static_assert(std::is_base_of_v<IViewportExtension, ExtensionType>, "[ViewportPanel::RegisterExtension] Extension must inherit from IViewportExtension");
 		
+		static constexpr TypeIndex ID = getTypeIndex<ExtensionType>();
+
 		UniquePtr<ExtensionType> pExtension = MakeUnique<ExtensionType>(std::forward<Args>(args)...);
 		ExtensionType& reference = *pExtension;
+		m_TypeIndexToExtensionMap[ID] = pExtension.get();
 
 		m_Extensions.push_back(std::move(pExtension));
 		reference.OnRegistered(*this);

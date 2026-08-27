@@ -2,6 +2,7 @@
 
 #include "Core/Editor.h"
 
+#include "Extensions/EditorGridExtension.h"
 #include "Extensions/PickingViewportExtension.h"
 #include "Extensions/TransformGizmoViewportExtension.h"
 
@@ -147,6 +148,7 @@ namespace Relentless
 	{
 		RegisterExtension<TransformGizmoViewportExtension>();
 		RegisterExtension<PickingViewportExtension>();
+		RegisterExtension<EditorGridExtension>();
 	}
 
 	void EditorViewportPanel::OnActiveSceneChanged(Scene* aScene) noexcept

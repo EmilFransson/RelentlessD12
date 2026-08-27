@@ -10,7 +10,7 @@ namespace Relentless
 	class TransformGizmoViewportExtension final : public IViewportExtension
 	{
 	public:
-		void OnRegistered(const ViewportPanel& aViewportPanel) override;
+		void OnRegistered(ViewportPanel& aViewportPanel) override;
 	protected:
 		void ExtendToolbar(ViewportToolbarSlots& aSlots) override;
 

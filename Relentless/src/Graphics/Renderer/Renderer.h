@@ -21,7 +21,6 @@ namespace Relentless
 	class BlitPass;
 	class Bloom;
 	class DepthPrePass;
-	class EditorGrid;
 	class ExponentialHeightFog;
 	class ForwardRenderer;
 	class ForwardOpaqueAlphaMask;
@@ -70,6 +69,8 @@ namespace Relentless
 		}
 		
 		void Render() noexcept;
+
+		static CallbackID RegisterRenderCallback(ERenderPhase aPhase, Callback<void(CommandContext&, const RenderView&, SceneTextures&)>&& aCallback);
 		CallbackID RegisterOnFrameRenderBeginCallback(Callback<void()> aFrameRenderBeginCallback) noexcept;
 		CallbackID RegisterOnUploadCallback(Callback<void(CommandContext&)> aUploadCallback) noexcept;
 		void RenderViews(const std::vector<ViewRenderDesc>& someRenderDescs) noexcept;
@@ -88,6 +89,8 @@ namespace Relentless
 
 		constexpr static ResourceFormat ShadowFormat = ResourceFormat::D32_FLOAT;
 	private:
+		void DispatchRenderCallbacks(ERenderPhase aPhase, const RenderView& aRenderView, SceneTextures& aSceneTextures);
+
 		void GetViewUniforms(const RenderView& renderView, ShaderInterop::ViewUniforms& outViewUniform) noexcept;
 
 		void InvokeDispatchRequests() noexcept;
@@ -125,6 +128,13 @@ namespace Relentless
 
 		GraphicsDevice* m_pDevice = nullptr;
 
+		struct RenderCallbackContext
+		{
+			Callback<void(CommandContext&, const RenderView&, SceneTextures&)> Callback;
+			CallbackID CallbackID;
+		};
+
+		inline static std::unordered_map<ERenderPhase, std::vector<RenderCallbackContext>> m_RenderCallbacks;
 		inline static std::vector<Callback<void(Renderer*)>> s_EnqueuedRequests;
 		inline static std::vector<RenderJob> s_EnqueuedRenderJobs;
 		inline static std::vector<RenderJob> s_InProgressRenderJobs;
@@ -136,7 +146,6 @@ namespace Relentless
 		*/
 		UniquePtr<ForwardOpaqueAlphaMask> m_pForwardOpaqueAlphaMask;
 		UniquePtr<ForwardAlphaBlend> m_pForwardAlphaBlend;
-		UniquePtr<EditorGrid> m_pEditorGrid;
 		UniquePtr<PostProcessing> m_pPostProcessing;
 		UniquePtr<DepthPrePass> m_pDepthPrePass;
 		UniquePtr<HBAOPlus> m_pHBAOPlus;
@@ -173,6 +182,7 @@ namespace Relentless
 
 		inline static std::mutex s_RenderJobMutex;
 		inline static std::mutex s_DispatchMutex;
+		inline static std::mutex s_RenderCallbackMutex;
 		std::mutex m_OnFrameBeginMutex;
 		std::mutex m_OnUploadMutex;
 	};
